@@ -1,6 +1,6 @@
-// TERMIN WYSYŁKI — JEDNA FORMUŁA SPÓŹNIENIA NA CAŁY PANEL (13.09.2026).
+// TERMIN WYSYŁKI — JEDNA FORMUŁA SPÓŹNIENIA NA CAŁY PANEL.
 //
-// Reguła jest treścią niezmiennika 4.49 i do tego dnia mieszkała WEWNĄTRZ `wiekZamowienia`
+// Reguła „jedna formuła terminu wysyłki” mieszkała dawniej WEWNĄTRZ `wiekZamowienia`
 // (zegar na liście zamówień). Zakładka STATYSTYKI zadaje jej to samo pytanie o INNY moment
 // — nie „czy zamówienie już się spóźnia", a „czy paczka, która WYSZŁA, wyszła w terminie".
 // Druga kopia limitów, startu i odcięcia 12:00 rozjechałaby się przy pierwszej zmianie
@@ -34,9 +34,9 @@ const przesunDzien = (dzienIso, dni) => new Date(Date.parse(`${dzienIso}T00:00:0
   .toISOString().slice(0, 10);
 
 /**
- * Ręczna data wysyłki z zamówienia (PRZ-104) albo `null` = standardowy termin.
+ * Ręczna data wysyłki z zamówienia albo `null` = standardowy termin.
  *
- * ⚠️ ZNACZY „NAJPÓŹNIEJ DO” (decyzja właściciela 21.10.2026), nie „nie wcześniej niż”: zamówienie
+ * ⚠️ ZNACZY „NAJPÓŹNIEJ DO”, nie „nie wcześniej niż”: zamówienie
  * zostaje w „Do zrobienia”, wolno je wysłać wcześniej, a po tym dniu robi się po terminie.
  * Śmieci w kolumnie (ręczny SQL) czytamy jak brak daty — termin wraca do standardu, ekran żyje.
  */
@@ -73,7 +73,7 @@ export function zakresDatyWysylki(dzis) {
  *
  * ⚠️ EKSPRES BIJE INDYWIDUALNE: zamówienie indywidualne z pozycją ekspresową ma 2 dni,
  * nie 7. Jedyny wyjątek od „kanał rozstrzyga typ", bo pozycja ekspresowa jest decyzją
- * silniejszą niż kanał (niezmiennik 4.49).
+ * silniejszą niż kanał.
  *
  * ⚠️ EKSPORTOWANE OSOBNO, bo `wiekZamowienia` potrzebuje typu TAKŻE wtedy, gdy terminu nie
  * ma: napis „czeka na wpłatę" niesie typ, a `terminZamowienia` oddaje wtedy `null`. Bez tego
@@ -83,8 +83,8 @@ export function zakresDatyWysylki(dzis) {
 export function typZamowienia(z) {
   if (czyEkspres(z?.pozycje)) return 'ekspres';
   if (z?.indywidualne) return 'indywidualne';
-  // PRZ-101.08: kanał Allegro z konfiguracji (dowolny klucz) liczy się jak Allegro. Luźniejsza reguła
-  // „zaczyna się od allegro, bez względu na wielkość liter” zostaje obok — tak liczyła produkcja.
+  // Kanał Allegro z konfiguracji (dowolny klucz) liczy się jak Allegro. Luźniejsza reguła
+  // „zaczyna się od allegro, bez względu na wielkość liter” zostaje obok.
   if (umiejetnosciZamowienia(z).terminWysylki || String(z?.sklep ?? '').toLowerCase().startsWith('allegro')) return 'allegro';
   return 'krotki';
 }
@@ -117,7 +117,7 @@ export function startZegara(z) {
  */
 export function terminZamowienia(z) {
   const typ = typZamowienia(z);
-  // PRZ-104: ręczna data zastępuje termin — także bez wpłaty (decyzja właściciela 21.10.2026). Termin
+  // Ręczna data zastępuje termin — także bez wpłaty. Termin
   // bez startu zegara ma wtedy `start: null`: czas realizacji (statystyki) i tak liczy się od startu.
   const reczny = recznyTermin(z);
   const start = startZegara(z);
@@ -154,7 +154,7 @@ export function dzienTerminu(termin) {
  * O ile dni roboczych chwila jest PO terminie (0 = w terminie). JEDYNA miara spóźnienia:
  * zegar listy, „Po terminie”, statystyki i karta pytają tutaj.
  *
- * ⚠️ Dla standardu to dokładnie stare `dniRoboczeMiedzy(start, chwila) − limit` (przypięte
+ * ⚠️ Dla standardu to dokładnie `dniRoboczeMiedzy(start, chwila) − limit` (przypięte
  * testem równoważności w tests/domena/termin-wysylki-reczny-prz104.test.js), z ulgą weekendową:
  * termin w piątek czerwienieje w poniedziałek. Ręczna data dostaje tę samą ulgę.
  */
@@ -166,23 +166,22 @@ export function dniPoTerminie(termin, chwila) {
 /**
  * Dni robocze od startu do wysłania — albo `null`, gdy pytanie nie ma sensu.
  *
- * ⚠️⚠️ WYSŁANE PRZED OPŁACENIEM ODDAJE `null`, NIE ZERO. Zmierzone na produkcji 13.09.2026:
- * 15 zamówień ma `wyslane_at` wcześniejszy niż `oplacone_at`, a zamówienie 28171 o 217 godzin
- * (wysłane 4.08, opłacone 13.08). Arytmetyka bez tego warunku dałaby liczbę ujemną albo
- * — po `Math.max(0, …)` — zero, czyli „wysłane tego samego dnia": NAJLEPSZY możliwy wynik
- * dla przypadku, który w ogóle nie powinien wchodzić do statystyki.
+ * ⚠️⚠️ WYSŁANE PRZED OPŁACENIEM ODDAJE `null`, NIE ZERO. W danych z produkcji zdarzają się
+ * zamówienia z `wyslane_at` wcześniejszym niż `oplacone_at` (nawet o kilka dni). Arytmetyka
+ * bez tego warunku dałaby liczbę ujemną albo — po `Math.max(0, …)` — zero, czyli „wysłane
+ * tego samego dnia": NAJLEPSZY możliwy wynik dla przypadku, który w ogóle nie powinien
+ * wchodzić do statystyki.
  *
- * ⚠️⚠️ PORÓWNUJEMY CHWILE, NIE DNI — poprawka po recenzji 13.09.2026. Do tego dnia stało tu
- * `dzienWyslania < t.dzienStartu`, czyli porównanie DNI warszawskich, choć akapit wyżej
- * obiecywał chwile. Ujemny czas realizacji mieszczący się w jednej dacie przechodził wtedy
- * jako wysyłka wzorowa: opłacone 20:00 PL, wysłane 08:00 PL TEGO SAMEGO DNIA (12 h na minusie)
- * dawało `dniRoboczeDoWysylki = 0`, `tegoSamegoDnia = true`, `poTerminie = false`, a wiersz
- * „wysłane przed wpłatą" pokazywał przy tym 0. Na produkcji 13 z tych 15 zamówień różni się
- * „o sekundy", więc ekran obiecywał 15 wyłączeń, a pokazywał 1–2 — i chwalił się wynikiem
- * policzonym na przypadkach, których nie umie policzyć.
+ * ⚠️⚠️ PORÓWNUJEMY CHWILE, NIE DNI. Porównanie samych DNI warszawskich przepuszczałoby
+ * ujemny czas realizacji mieszczący się w jednej dacie jako wysyłkę wzorową: opłacone 20:00 PL,
+ * wysłane 08:00 PL TEGO SAMEGO DNIA (12 h na minusie) dawałoby `dniRoboczeDoWysylki = 0`,
+ * `tegoSamegoDnia = true`, `poTerminie = false`, a wiersz „wysłane przed wpłatą" pokazywałby
+ * przy tym 0. Większość takich zamówień różni się tylko „o sekundy", więc porównanie samych dat
+ * ukrywałoby prawie wszystkie z nich — a ekran chwaliłby się wynikiem policzonym na przypadkach,
+ * których nie umie policzyć.
  *
  * ⚠️⚠️ CHWILE SKŁADA `fmtDataCzas`, A NIE `Date.parse`, i to jest tu treścią. Panel miesza
- * DWIE SKALE CZASU (patrz nagłówek domain/format-daty.js): nasze znaczniki są UTC z „Z",
+ * DWIE SKALE CZASU (patrz nagłówek domena/format-daty.js): nasze znaczniki są UTC z „Z",
  * a daty ze sklepu przychodzą BEZ strefy, już w czasie warszawskim. `Date.parse` czytałby
  * jedne i drugie jako UTC (kontener chodzi z TZ=UTC), więc wpłata sklepowa „08:30" wyglądałaby
  * na 10:30 PL i zamówienie nadane o 09:00 PL fałszywie wypadałoby z mianownika jako „wysłane

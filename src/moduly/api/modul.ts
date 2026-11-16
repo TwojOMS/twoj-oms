@@ -6,9 +6,9 @@ import { kanalIndywidualnyWlaczony } from '../kanaly/klasyfikacja.ts';
 
 const DOBA_MS = 86_400_000;
 const GODZINA_MS = 3_600_000;
-/** PRZ-153.E1.3: dziennik wywołań API trzymamy 90 dni. */
+/** Dziennik wywołań API trzymamy 90 dni. */
 export const DNI_DZIENNIKA_API = 90;
-/** PRZ-153.E5.1: wynik zapisu z `Idempotency-Key` trzymamy 7 dni. */
+/** Wynik zapisu z `Idempotency-Key` trzymamy 7 dni. */
 export const DNI_IDEMPOTENCJI = 7;
 
 /** Publiczne API v1; trasy i obsługa błędów zamknięte we własnym pluginie. */

@@ -1,11 +1,11 @@
 // Czy karte wysylamy paczkomatem. Kolumna „Paczkomat" w magazynie.
 //
-// ⚠️ POLE USTAWIANE WYLACZNIE RECZNIE — decyzja wlasciciela z 2026-08-06.
-// Wczesniejszy projekt wyliczal odpowiedz z rozmiaru (prog 640 mm, najdluzszy wymiar
-// wewnetrzny gabarytu InPostu) i pozwalal ja nadpisac. Regula wypadla, bo placila dwa razy:
-// raz brakiem wymiarow (okolo 588 kart ich nie ma), raz falszywa pewnoscia przy produkcie
-// zwinietym w rulon, ktory prog „na plasko" odrzuca, a ktory realnie sie miesci.
-// Wlasciciel oznacza to sam, hurtem — patrz edycja masowa.
+// ⚠️ POLE USTAWIANE WYŁĄCZNIE RĘCZNIE.
+// Wcześniejszy projekt wyliczał odpowiedź z rozmiaru (próg 640 mm, najdłuższy wymiar
+// wewnętrzny gabarytu InPostu) i pozwalał ją nadpisać. Reguła wypadła, bo płaciła dwa razy:
+// raz brakiem wymiarów (wielu kart ich nie ma), raz fałszywą pewnością przy produkcie
+// zwiniętym w rulon, który próg „na płasko" odrzuca, a który realnie się mieści.
+// Operator oznacza to sam, hurtem — patrz edycja masowa.
 export const PACZKOMAT_WARTOSCI = new Set(['tak', 'nie']);
 
 // ⚠️ TRZY STANY, NIE DWA. `null` znaczy „jeszcze nieoznaczone" i to CO INNEGO niz 'nie':

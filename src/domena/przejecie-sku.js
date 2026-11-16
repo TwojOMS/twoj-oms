@@ -2,13 +2,13 @@
 // WYLACZNIE, ktora karta moze PRZEJAC numer, ktory jej produkt ma juz w sklepie, a ktora
 // takiej odpowiedzi nie ma i musi trafic do czlowieka.
 //
-// PO CO TO ISTNIEJE (zmierzone na produkcji 2026-08-12): 278 kart — czwarta czesc katalogu —
+// PO CO TO ISTNIEJE (zmierzone przy przejmowaniu katalogu): około czwartej części kart katalogu
 // nie ma NASZEGO numeru, a ich produkt ma WLASNY numer w sklepie („PC-KLOSZ-168",
-// „PD10"). Generator SKU (`domain/sku-generator.js`) ich nie przejmuje i nie ma jak: on WYDAJE
+// „PD10"). Generator SKU (`domena/sku-generator.js`) ich nie przejmuje i nie ma jak: on WYDAJE
 // numery nowe i poprawnie omija zajete. Zostaje wiec ROZBIEZNOSC — rejestr milczy, sklep ma
 // numer. To nie jest kosmetyka:
 //
-// ⚠️⚠️ GDYBY POTEM POJECHAL ZAPIS (`domain/zapis-do-sklepu.js`), NADPISALBY NUMER BEDACY
+// ⚠️⚠️ GDYBY POTEM POJECHAL ZAPIS (`domena/zapis-do-sklepu.js`), NADPISALBY NUMER BEDACY
 // TOZSAMOSCIA PRODUKTU. Numer w sklepie laduje w adresach, eksportach, feedzie do Google
 // i na Allegro — podmieniony nie da sie „cofnac przyciskiem".
 //
@@ -24,7 +24,7 @@
  * ⚠️ WIELKIE LITERY, choc `UNIQUE` na `karty.sku` jest w SQLite czuly (BINARY). I to jest cala
  * roznica: „PD10" przejete z jednego sklepu i „pd10" z drugiego przejda przez nasza kolumne
  * jako DWA rozne numery, a w sklepie beda JEDNYM — czyli zapis odbilby sie o duplikat
- * dopiero na produkcji. Ta sama regula stoi w `sku-generator.js` i `db/magazyn.js`.
+ * dopiero na produkcji. Ta sama regula stoi w `sku-generator.js` i `oms/db/magazyn.js`.
  */
 const kluczNumeru = (sku) => String(sku ?? '').trim().toUpperCase();
 
@@ -86,7 +86,7 @@ const OPIS_SPORU = (sku, nazwa) => `Numer „${sku}" chce przejąć także karta
  * i nigdy po cichu pominieta.
  *
  * ⚠️ KARTA, KTOREJ PRODUKTY NUMERU NIE MAJA, W OGOLE TU NIE WRACA. Nie ma czego przejmowac,
- * a pozycja „—" na liscie 278 wierszy byla by szumem; od nadawania numerow NOWYCH jest
+ * a pozycja „—" na liście kilkuset wierszy byla by szumem; od nadawania numerow NOWYCH jest
  * generator SKU.
  */
 export function przejeciaZeSklepu(karty, produkty, zajete) {

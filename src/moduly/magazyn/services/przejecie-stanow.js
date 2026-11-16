@@ -7,7 +7,7 @@ import { migawkaStanow } from '../../../oms/db/stany-magazynowe.js';
 // Ten sam odczyt co pętla ERLI: `true` = wszystko zamrożone, obiekt = klucze z prawdziwą wartością.
 export const zamrozonyStock = z => { const l = zamrozonePola(z); return l.includes('*') || l.includes('stock'); };
 
-// P20d (pomiar 14.11): `isFulfillment` boolean na elemencie LISTY /sale/offers; szczegóły oferty go nie mają.
+// Zmierzone na API: `isFulfillment` boolean na elemencie LISTY /sale/offers; szczegóły oferty go nie mają.
 // `features` nie występuje — zostaje jako tolerancja. Bez żadnego pola liczba = null (brak odczytu, nie 0).
 export function policzFulfillment(oferty) {
   const flaga = o => o?.isFulfillment ?? o?.features?.isFulfillment;
@@ -16,7 +16,7 @@ export function policzFulfillment(oferty) {
   return { liczba: ids.size, ids };
 }
 
-// Skutek objęcia dla jednej oferty Allegro (D55): wznowienie, zakończenie przy 0, fulfillment.
+// Skutek objęcia dla jednej oferty Allegro: wznowienie, zakończenie przy 0, fulfillment.
 export function skutekObjecia(typ, o, ilosc, fulfillmentIds = new Set()) {
   if (typ !== 'allegro') return '';
   if (fulfillmentIds.has(String(o.idZewnetrzne))) return 'Fulfillment — ilość niezmienialna.';
@@ -25,7 +25,7 @@ export function skutekObjecia(typ, o, ilosc, fulfillmentIds = new Set()) {
   return '';
 }
 
-// D59: pozycje ERLI od granicy, które po przejęciu zaczną zdejmować stan karty.
+// Pozycje ERLI od granicy, które po przejęciu zaczną zdejmować stan karty.
 export function roznicaStanuErli(db, kanal, wiersze) {
   const przejmowane = wiersze.filter(w => w.kartaId && ['active', 'inactive'].includes(w.stan));
   if (!przejmowane.length) return [];

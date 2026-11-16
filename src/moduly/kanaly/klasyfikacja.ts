@@ -17,7 +17,7 @@ function listaId(x: unknown, nazwa: string): number[] {
 }
 /**
  * Czy instalacja przyjmuje zamówienia z panelu zamówień indywidualnych (API `/api/zamowienia-z-karty`,
- * kanał raportu INDYWIDUALNE, pozycja „Indywidualne” w filtrze listy). PRZ-089: u obcego człowieka tego
+ * kanał raportu INDYWIDUALNE, pozycja „Indywidualne” w filtrze listy). W cudzej instalacji tego
  * panelu nie ma. Bez wpisu decyduje historia — prefiksy indywidualne w OMS_HISTORIA_KLASYFIKACJA znaczą, że
  * kanał był w użyciu (istniejące wdrożenie z historią działa bez nowej zmiennej). Błędny JSON zgłasza wczytajKlasyfikacje.
  */
@@ -33,7 +33,7 @@ export function kanalIndywidualnyWlaczony(env: Srodowisko): boolean {
 }
 export function wczytajKlasyfikacje(env: Srodowisko, definicje: readonly DefinicjaKanalu[]) {
   const sklepy = new Map<string,string>();
-  // PRZ-089: kanały 'GDD' i 'INDYWIDUALNE' tylko z konfiguracji (niżej) — czysta instalacja zakładała ich granice.
+  // Kanały 'GDD' i 'INDYWIDUALNE' tylko z konfiguracji (niżej) — czysta instalacja zakładała ich granice.
   const raporty = new Set<string>(['DROPSHIPPING', 'B2B', 'RECZNE']);
   const aktywne = new Set<string>();
   for (const d of definicje) {

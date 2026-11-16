@@ -19,7 +19,7 @@ import { zl } from '../../../domena/kwoty.js';
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
 import { stronaOdmowy } from '../../../core/web/odmowa.js';
 
-// EKRAN STAŁYCH KLIENTÓW (21.08.2026).
+// EKRAN STAŁYCH KLIENTÓW.
 //
 // ⚠️ BEZ NIEGO BAZA JEST WORKIEM BEZ DNA. Wpisy powstają głównie z pracy — przyciskiem
 // „Zapamiętaj tego klienta" na karcie — a to znaczy, że prędzej czy później wpadnie tam
@@ -31,7 +31,7 @@ import { stronaOdmowy } from '../../../core/web/odmowa.js';
 // naprawia, a odbiera możliwość sprawdzenia, skąd wzięły się dane na fakturze sprzed pół
 // roku. Ta sama zasada, co przy firmach w słowniku kosztów (db/firmy-reczne.js).
 
-// PRZ-122.B07h: `zwolnionaFirma` — firma zwolniona z VAT (ta sama reguła co serwer); numer UE klienta to wtedy nie WDT.
+// `zwolnionaFirma` — firma zwolniona z VAT (ta sama reguła co serwer); numer UE klienta to wtedy nie WDT.
 export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = () => false }) {
   const ktoKlikal = (req) => req.uzytkownik ?? 'panel';
 
@@ -56,7 +56,7 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
       komunikatGus,
       // Bez tej flagi widok kusiłby przyciskiem „Pobierz z GUS" także wtedy, gdy GUS nie jest
       // skonfigurowany — kliknięcie kończyłoby się komunikatem zamiast danymi.
-      // PRZ-102.11: liczone przy każdym widoku — klucz zapisany w Ustawieniach pokazuje przycisk bez restartu.
+      // Liczone przy każdym widoku — klucz zapisany w Ustawieniach pokazuje przycisk bez restartu.
       gusDziala: gusDostepny(gus),
       dostawy: DOSTAWY,
       platnosci: PLATNOSCI,
@@ -72,7 +72,7 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
   };
 
   // Stare odnośniki przekierowują na osobny formularz. Sam `/klienci` oddaje listę.
-  // PRZ-152.G13: odmowa „nie ma takiego klienta” w układzie OMS (status i tekst bez zmian); powrót na listę klientów.
+  // Odmowa „nie ma takiego klienta” w układzie OMS (status i tekst bez zmian); powrót na listę klientów.
   const brakKlienta = (reply) => stronaOdmowy(reply, 404, 'Nie ma takiego klienta', {
     tytul: 'Nie ma takiego klienta', napisWroc: 'Wróć do klientów', wroc: '/klienci',
   });
@@ -92,11 +92,11 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
     return renderuj(reply, { edytowany: klient, formularz: polaZKlienta(klient), otwarty: true });
   });
 
-  // ——— KARTA KLIENTA (21.08.2026, prośba właściciela: „kliknięcie w nazwę klienta otwiera
-  // stronę z jego danymi oraz historią zamówień") ————————————————————————————————————
+  // ——— KARTA KLIENTA: kliknięcie w nazwę klienta otwiera stronę z jego danymi
+  // oraz historią zamówień ————————————————————————————————————————————————————————
   //
-  // ⚠️ TO NIE JEST DRUGA KOPIA FORMULARZA — karta CZYTA, formularz ZAPISUJE. Piętnaście pól
-  // dalej istnieje w jednym szablonie (`klienci.ejs`), a ten ekran pokazuje wyłącznie to,
+  // ⚠️ TO NIE JEST DRUGA KOPIA FORMULARZA — karta CZYTA, formularz ZAPISUJE. Pola
+  // formularza istnieją w jednym szablonie (`klienci.ejs`), a ten ekran pokazuje wyłącznie to,
   // co w bazie już jest, plus historię, której formularz nie ma skąd znać.
   app.get('/klienci/:id/karta', async (req, reply) => {
     const klient = klientPoId(db, req.params.id);
@@ -118,7 +118,7 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
       wyliczStatus,
       ETYKIETY: etykietyStatusow(db),
       dostawy: DOSTAWY,
-      // Grosze na złotówki zamienia domena (domain/kwoty.js), nie dzielenie w szablonie.
+      // Grosze na złotówki zamienia domena (domena/kwoty.js), nie dzielenie w szablonie.
       zl,
     });
   });
@@ -165,8 +165,8 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
     try {
       firma = await gus.firmaPoNip(nip);
     } catch (e) {
-      // Awaria GUS-u NIE MOŻE wywalić ekranu razem z tym, co operator zdążył wpisać — ta sama
-      // zasada, co przy odpytywaniu DPD o status. Pełna treść idzie do dziennika.
+      // Awaria GUS-u NIE MOŻE wywalić ekranu razem z tym, co operator zdążył wpisać.
+      // Pełna treść idzie do dziennika.
       dopiszLog(db, null, { akcja: 'klient.gus', wynik: `BŁĄD: ${e.message}` });
       return odmowa(komunikatAwariiGus(e));
     }
@@ -213,8 +213,8 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
     try {
       dane = znormalizujKlienta(req.body ?? {});
     } catch (e) {
-      // ⚠️ ODMOWA ODDAJE FORMULARZ I ZOSTAWIA GO OTWARTYM. Piętnaście pól wpisanych
-      // i skasowanych komunikatem byłoby karą za literówkę w jednym z nich, a formularz
+      // ⚠️ ODMOWA ODDAJE FORMULARZ I ZOSTAWIA GO OTWARTYM. Skasowanie
+      // wpisanych pól komunikatem byłoby karą za literówkę w jednym z nich, a formularz
       // zamknięty pokazywałby komunikat o polu, którego na ekranie nie ma.
       return renderuj(reply.code(400), {
         formularz: req.body ?? {}, edytowany, blad: komunikatDlaOperatora(e), otwarty: true,

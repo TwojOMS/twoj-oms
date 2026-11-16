@@ -7,8 +7,8 @@ import { wierszePozycji } from './tabela-pozycji.js';
 import { zlotowki } from './kwoty.js';
 import { DOMYSLNE_ZDANIA } from './zdania-platnosci.js';
 
-// SZABLONY WIADOMOŚCI DO KUPUJĄCEGO (PRZ-101.03, zlecenie właściciela 18.10.2026: „maile są na stałe,
-// przydałaby się możliwość edycji treści oraz tworzenia nowych szablonów").
+// SZABLONY WIADOMOŚCI DO KUPUJĄCEGO — maile nie są na stałe: treść można edytować i tworzyć
+// nowe szablony.
 //
 // Moduł czysty: zna pola, bloki, domyślne treści i reguły zapisu; niczego nie czyta z bazy i nie wysyła.
 //
@@ -30,14 +30,14 @@ export const MAKS = Object.freeze({ wlasnych: 30, nazwa: 60, temat: 200, tresc: 
 
 /**
  * Szablony wbudowane — te same tematy, co na karcie zamówienia.
- * PRZ-102.21: `wyslane` („Zamówienie wysłane") — ręcznie z karty albo regułą z Ustawienia → Automatyzacje
- * (PRZ-108.08; reguła z tym szablonem wymusza warunek „ma numer listu”). Zapis w tym samym kluczu ustawień co reszta — bez migracji.
+ * `wyslane` („Zamówienie wysłane") — ręcznie z karty albo regułą z Ustawienia → Automatyzacje
+ * (reguła z tym szablonem wymusza warunek „ma numer listu”). Zapis w tym samym kluczu ustawień co reszta — bez migracji.
  */
 export const WBUDOWANE = Object.freeze(['potwierdzenie', 'proforma', 'faktura', 'przypomnienie', 'wyslane']);
 export const PLATNICZE = Object.freeze(['proforma', 'faktura', 'przypomnienie']);
 
 /**
- * PRZ-101.06: maile do ZESPOŁU (pracownika), nie do klienta — zaproszenie do panelu i link do nowego hasła
+ * Maile do ZESPOŁU (pracownika), nie do klienta — zaproszenie do panelu i link do nowego hasła
  * (moduly/ustawienia/poczta-kont.js). Wspólny rodzaj „konto": pola konta, bez pól zamówienia i bez podpisu.
  */
 export const KONTA = Object.freeze(['zaproszenie', 'reset']);
@@ -64,14 +64,15 @@ export const POLA = Object.freeze([
   { nazwa: 'numer_zamowienia', opis: 'Numer zamówienia.', w: WSZYSTKIE },
   { nazwa: 'data_zamowienia', opis: 'Dzień złożenia zamówienia (RRRR-MM-DD).', w: WSZYSTKIE },
   { nazwa: 'imie', opis: 'Imię kupującego z adresu dostawy. Gdy go nie ma, pole znika razem z odstępem przed przecinkiem: „Dzień dobry {imie}," daje „Dzień dobry,"; w „Dzień dobry, {imie}!" znika też wykrzyknik („Dzień dobry,").',
-    opisy: { konto: 'Imię pracownika z jego konta (Ustawienia → Zespół i dostęp → Użytkownicy).' }, w: [...WSZYSTKIE, 'konto'] },
-  // PRZ-101.06: pola maili do zespołu. Link idzie tylko do pracownika — nigdy do logu ani na ekran podglądu.
+    opisy: { konto: 'Imię pracownika z jego konta (Ustawienia → Zespół i dostęp → Użytkownicy).' },
+    opisyBezSciezki: { konto: 'Imię pracownika z jego konta.' }, w: [...WSZYSTKIE, 'konto'] },
+  // Pola maili do zespołu. Link idzie tylko do pracownika — nigdy do logu ani na ekran podglądu.
   { nazwa: 'link', wymagane: ['konto'], powodWymogu: 'bez linku pracownik nie ustawi hasła i nie wejdzie do panelu',
     opis: 'Jednorazowy link do ustawienia hasła. Obowiązkowe — bez niego pracownik nie wejdzie do panelu.', w: ['konto'] },
   { nazwa: 'waznosc', opis: 'Jak długo działa link, np. „48 h".', w: ['konto'] },
   { nazwa: 'kupujacy', opis: 'Imię i nazwisko kupującego z adresu dostawy; przy zamówieniu firmy bez osoby — nazwa firmy.', w: WSZYSTKIE },
   { nazwa: 'kwota', opis: 'Wartość zamówienia brutto (nie kwota do zapłaty) — ta sama suma, co na karcie, także po wpłatach.', w: WSZYSTKIE },
-  // Recenzja 18.10: po wpłacie częściowej {kwota} dalej pokazuje całość — przypomnienie „prosimy o dopłatę {kwota}"
+  // Po wpłacie częściowej {kwota} dalej pokazuje całość — przypomnienie „prosimy o dopłatę {kwota}"
   // żądałoby za dużo. {do_zaplaty} to ta sama liczba, co w sekcji DO ZAPŁATY.
   { nazwa: 'do_zaplaty', opis: 'Kwota do zapłaty brutto — po wpłatach częściowych sama reszta, ta sama co w sekcji DO ZAPŁATY. Puste, gdy nie ma czego przelewać (pobranie, opłacone, brak rachunku).', w: PLATNICZE },
   { nazwa: 'metoda_wysylki', opis: 'Sposób dostawy, np. „Kurier DPD".', w: WSZYSTKIE },
@@ -84,7 +85,7 @@ export const POLA = Object.freeze([
   { nazwa: 'sposob_platnosci', blok: true, opis: 'Sekcja PŁATNOŚĆ: metoda płatności i termin (przy pobraniu kwota dla kuriera).', w: ['potwierdzenie'] },
   { nazwa: 'wysylka', blok: true, opis: 'Sekcja WYSYŁKA: sposób dostawy i adres.', w: ['potwierdzenie', 'wlasny'] },
   { nazwa: 'dane_do_faktury', blok: true, opis: 'Sekcja FAKTURA: czy klient chce fakturę i na jakie dane.', w: ['potwierdzenie', 'wlasny'] },
-  // PRZ-102.21: bez numeru listu mail „zostało wysłane" nie daje klientowi niczego, czym sprawdzi paczkę.
+  // Bez numeru listu mail „zostało wysłane" nie daje klientowi niczego, czym sprawdzi paczkę.
   { nazwa: 'przesylki', blok: true, wymagane: ['wyslane'], powodWymogu: 'bez numeru listu klient nie sprawdzi, gdzie jest paczka',
     opis: 'Sekcja PRZESYŁKA: przewoźnik, numer listu i link do śledzenia każdej nadanej paczki (link, gdy panel zna stronę śledzenia przewoźnika), a przy odbiorze w punkcie — punkt. Obowiązkowe w tym mailu.', w: ['wyslane'] },
   { nazwa: 'dane_platnosci', blok: true, wymagane: PLATNICZE, powodWymogu: 'kwota, rachunek, tytuł przelewu', opis: 'Sekcje DO ZAPŁATY i PRZELEW (kwota, odbiorca, rachunek, tytuł, termin) oraz zdania o załącznikach. Obowiązkowe w mailach o płatności. Treść zdań zmienisz niżej w sekcji Zdania o płatności.', w: PLATNICZE },
@@ -93,10 +94,13 @@ export const POLA = Object.freeze([
 
 const POLE = new Map(POLA.map((p) => [p.nazwa, p]));
 
-/** Lista pól dostępnych w danym szablonie — do pokazania pod edytorem. */
-export function polaSzablonu(rodzaj) {
+/**
+ * Lista pól dostępnych w danym szablonie — do pokazania pod edytorem. `admin: false` = konto, które nie widzi ekranu
+ * Użytkownicy: opis bez ścieżki do niego (`opisyBezSciezki`).
+ */
+export function polaSzablonu(rodzaj, { admin = true } = {}) {
   return POLA.filter((p) => p.w.includes(rodzaj))
-    .map((p) => ({ nazwa: p.nazwa, opis: p.opisy?.[rodzaj] ?? p.opis, blok: Boolean(p.blok), wymagane: Boolean(p.wymagane?.includes(rodzaj)) }));
+    .map((p) => ({ nazwa: p.nazwa, opis: (!admin && p.opisyBezSciezki?.[rodzaj]) || (p.opisy?.[rodzaj] ?? p.opis), blok: Boolean(p.blok), wymagane: Boolean(p.wymagane?.includes(rodzaj)) }));
 }
 
 /** Rodzaj szablonu po identyfikatorze: maile do klienta mają własny, maile do zespołu wspólny „konto", reszta „wlasny". */
@@ -139,7 +143,7 @@ export const DOMYSLNE = Object.freeze({
       '{dane_platnosci}', '', '{zamkniecie}', '', '{podpis}',
     ].join('\n'),
   }),
-  // PRZ-102.21: nowy mail, bez „dzisiejszej" wersji — ta treść JEST mailem, dopóki operator jej nie zmieni.
+  // Nowy mail, bez „dzisiejszej" wersji — ta treść JEST mailem, dopóki operator jej nie zmieni.
   wyslane: Object.freeze({
     temat: 'Zamówienie nr {numer_zamowienia} zostało wysłane',
     tresc: [
@@ -148,7 +152,7 @@ export const DOMYSLNE = Object.freeze({
       '{przesylki}', '', '{podpis}',
     ].join('\n'),
   }),
-  // PRZ-101.06: zapis dzisiejszych maili do pracownika (moduly/ustawienia/poczta-kont.js: TEMATY, trescMaila).
+  // Zapis dzisiejszych maili do pracownika (moduly/ustawienia/poczta-kont.js: TEMATY, trescMaila).
   zaproszenie: Object.freeze({
     temat: 'Zaproszenie do panelu',
     tresc: [
@@ -272,7 +276,7 @@ const wartoscPola = (pola, nazwa) => jedenOdstep(Object.hasOwn(pola, nazwa) ? po
 
 // Pole puste tuż przed znakiem interpunkcji zabiera ze sobą odstęp przed sobą: „Dzień dobry {imie}," przy zamówieniu
 // firmy bez imienia daje „Dzień dobry,", a nie „Dzień dobry ,". Wartość podstawiona nie jest skanowana drugi raz.
-// PRZ-108.01: gdy puste pole stoi między znakiem interpunkcji przed sobą a znakiem po sobie („Dzień dobry, {imie}!"),
+// Gdy puste pole stoi między znakiem interpunkcji przed sobą a znakiem po sobie („Dzień dobry, {imie}!"),
 // znika też znak po nim — zostaje „Dzień dobry,", nie „Dzień dobry,!". Po zwykłym słowie znak zostaje:
 // „Witaj {imie}!" → „Witaj!".
 const RE_POLE_Z_ODSTEPEM = /( ?)\{([^{}\n]{0,40})\}([,.;:!?)]?)/g;
@@ -339,7 +343,7 @@ export function polaZamowienia(z, { podpis = '' } = {}) {
   };
 }
 
-/** Linie bloku `{podpis}` — to samo, co dziś kończy każdy mail; `pozdrowienie` z Ustawień (PRZ-102.19), brak = domyślne. */
+/** Linie bloku `{podpis}` — to samo, co dziś kończy każdy mail; `pozdrowienie` z Ustawień, brak = domyślne. */
 export const liniePodpisu = (sprzedawca, pozdrowienie = DOMYSLNE_ZDANIA.pozdrowienie) => [pozdrowienie, String(sprzedawca ?? '')];
 
 // ——— Stan zapisany w `ustawienia` (klucz KLUCZ_USTAWIEN, JSON) ————————————————————————————

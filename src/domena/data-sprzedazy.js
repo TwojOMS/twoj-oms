@@ -5,12 +5,11 @@ import { normalizujMetode } from './metody-platnosci.js';
 import { czyPobranie } from './wysylka.js';
 
 // Reguła prawna: kiedy obowiązek podatkowy VAT powstaje z ZAPŁATY (art. 19a ust. 8), a kiedy
-// z WYDANIA towaru (art. 19a ust. 1) — patrz „Podstawa prawna" w planie
-// docs/superpowers/plans/2026-08-04-oms-faktura-data-sprzedazy-i-zaplacone.md.
+// z WYDANIA towaru (art. 19a ust. 1) ustawy o VAT.
 //
 // Ta funkcja tylko PROPONUJE datę sprzedaży — operator widzi ją w polu na karcie i może ją
 // poprawić, dokładnie tak samo jak dziś przy dacie wystawienia (patrz `datyFaktury` w
-// domain/termin-platnosci.js). Ostatnie słowo o tym, co poleci na fakturę, ma człowiek,
+// domena/termin-platnosci.js). Ostatnie słowo o tym, co poleci na fakturę, ma człowiek,
 // nigdy ta funkcja.
 
 // „Dzisiaj" liczone W CZASIE WARSZAWSKIM, tak samo jak `dzisiajWarszawa()` w
@@ -19,7 +18,7 @@ import { czyPobranie } from './wysylka.js';
 // sprzedaży, wystawioną dziś rano.
 const dzisWarszawa = () => dzienWarszawa(new Date().toISOString());
 
-// „RRRR-MM-DD" → „D.MM", tak jak we wzorcu z planu („zapłacono 3.08 — ..."). To zapis,
+// „RRRR-MM-DD" → „D.MM", tak jak w zdaniu na karcie („zapłacono 3.08 — ..."). To zapis,
 // w którym operator normalnie pisze daty w rozmowie z klientem, nie ISO z zerami wiodącymi.
 function poPolsku(dataIso) {
   const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(dataIso ?? '');
@@ -34,15 +33,15 @@ function poPolsku(dataIso) {
  * nigdy przed — więc wiersz wpłaty opisany metodą „Za pobraniem" nie ma prawa uruchomić
  * tej gałęzi, bez względu na to, jaką datę nosi.
  *
- * ⚠️ TO NIE JEST HIPOTEZA. Zmierzone na produkcji 31.08.2026 przy zamówieniu 1259: sklep
- * PRO, oznaczając zamówienie jako zrealizowane, zapisuje `date_paid`, a poller czyta to
+ * ⚠️ TO NIE JEST HIPOTEZA. Zmierzone na prawdziwym zamówieniu: sklep, oznaczając
+ * zamówienie jako zrealizowane, zapisuje `date_paid`, a poller czyta to
  * jako wpłatę (`zrodlo: 'sklep'`, `metoda: 'Za pobraniem'`) — mimo że paczka dopiero
- * ruszyła w drogę, a `left_to_pay` na fakturze wynosił pełne 99,90. Panel proponował
- * wtedy datę sprzedaży ze zdaniem „zapłacono 31.08 — art. 19a ust. 8", czyli podawał
+ * ruszyła w drogę, a `left_to_pay` na fakturze wynosił pełną kwotę. Bez tej bramki panel
+ * proponuje datę sprzedaży ze zdaniem „zapłacono D.MM — art. 19a ust. 8", czyli podaje
  * człowiekowi FAŁSZYWĄ PODSTAWĘ PRAWNĄ przy dokumencie księgowym.
  *
- * ⚠️ SZKODA NIE BYŁA KOSMETYCZNA TYLKO PRZEZ ZBIEG OKOLICZNOŚCI: wiersz wpłaty powstaje
- * dwie sekundy po `wyslane_at`, więc obie gałęzie dawały ten sam dzień. Przy odroczonej
+ * ⚠️ SZKODA BYWA NIEWIDOCZNA TYLKO PRZEZ ZBIEG OKOLICZNOŚCI: wiersz wpłaty powstaje
+ * dwie sekundy po `wyslane_at`, więc obie gałęzie dają ten sam dzień. Przy odroczonej
  * wysyłce (sklep oznacza zamówienie wcześniej, niż paczka wyjeżdża) fałszywa wpłata
  * cofa datę sprzedaży do dnia oznaczenia — potrafi to być POPRZEDNI MIESIĄC, czyli VAT
  * w złym okresie JPK.
@@ -52,7 +51,7 @@ function poPolsku(dataIso) {
  * dalej podlega art. 19a ust. 8 i data sprzedaży ma być datą jego przelewu. Dlatego
  * pytamy o metodę POJEDYNCZEJ wpłaty, a nie o `czyPobranie(zamowienie)`.
  *
- * Rozpoznanie przez `normalizujMetode` (domain/metody-platnosci.js), a nigdy własnym
+ * Rozpoznanie przez `normalizujMetode` (domena/metody-platnosci.js), a nigdy własnym
  * dopasowaniem napisu: metoda przychodzi ze sklepu jako WOLNY TEKST i to tamten słownik
  * jest jedynym miejscem, które wie, że „Za pobraniem", „za pobraniem" i „Pobranie DPD"
  * to ta sama rzecz.
@@ -60,9 +59,9 @@ function poPolsku(dataIso) {
 const czyInkasoKuriera = (platnosc) => normalizujMetode(platnosc?.metoda).klucz === 'pobranie';
 
 /**
- * ⚠️ PRZY POBRANIU WPŁATA `zrodlo='sklep'` NIE JEST PRZEDPŁATĄ (PRZ-137.05, decyzja właściciela:
- * „przy metodzie pobranie date_paid nie tworzy wpłaty"). Od tej zmiany mapowanie Woo jej nie
- * tworzy, ale zamówienia zapisane wcześniej, których sklep już nie przyśle, nadal ją mają —
+ * ⚠️ PRZY POBRANIU WPŁATA `zrodlo='sklep'` NIE JEST PRZEDPŁATĄ (przy metodzie pobranie
+ * `date_paid` nie tworzy wpłaty). Mapowanie Woo dziś jej nie tworzy, ale zamówienia zapisane
+ * przez starszą wersję, których sklep już nie przyśle, nadal ją mają —
  * i to z metodą, której słownik nie zna („Płatność przy odbiorze"), więc `czyInkasoKuriera`
  * jej nie odsieje. Filtr idzie po ŹRÓDLE i tylko przy `czyPobranie(zamowienie)`: wpłata
  * ręczna (prawdziwy przelew przed wysyłką) dalej uruchamia art. 19a ust. 8.
@@ -77,7 +76,7 @@ const czyDatePaidPrzyPobraniu = (zamowienie, platnosc) => platnosc?.zrodlo === '
  * Reguła:
  *   1. Zamówienie ma PEŁNE pokrycie wpłat (`dataPokryciaWplat` na kwocie OCZEKIWANEJ, czyli
  *      `kwotaOczekiwanaGrosze` — kwota ze sklepu PLUS pozycje dopisane ręcznie, NIE
- *      `kwota_brutto`, patrz domain/suma-pozycji.js) ORAZ zapłatę otrzymano PRZED wydaniem
+ *      `kwota_brutto`, patrz domena/suma-pozycji.js) ORAZ zapłatę otrzymano PRZED wydaniem
  *      towaru (dzień wpłaty domykającej <= dzień z `wyslane_at`, albo wysyłki jeszcze nie
  *      było) → `podstawa: 'zaplata'`, `data` = dzień WARSZAWSKI tej konkretnej wpłaty, która
  *      domknęła kwotę (nie ostatniej, nie pierwszej). Art. 19a ust. 8: całość zapłaty PRZED
@@ -86,8 +85,8 @@ const czyDatePaidPrzyPobraniu = (zamowienie, platnosc) => platnosc?.zrodlo === '
  *      `dataPokryciaWplat` zwraca wtedy `null`.
  *   2. W przeciwnym razie (brak pokrycia ALBO zapłata dopiero po wydaniu — zwykły przelew
  *      po wysyłce, inkaso kuriera przy pobraniu) → `podstawa: 'wydanie'`, `data` = dzień z `z.wyslane_at`, a gdy
- *      pusty/nieparsowalny → `dzis` (dzień pakowania/wystawienia — patrz rozstrzygnięcie
- *      właściciela z 2026-08-04 w planie, Task 2: „pobranie wystawiamy w dniu wysyłki").
+ *      pusty/nieparsowalny → `dzis` (dzień pakowania/wystawienia — pobranie wystawiamy
+ *      w dniu wysyłki).
  *      Art. 19a ust. 1: obowiązek powstaje z chwilą wydania towaru.
  *
  * Drugi argument (`dzis`) istnieje dla testów i dla spójności z resztą modułu (por. drugi
@@ -122,10 +121,10 @@ export function proponowanaDataSprzedazy(zamowienie, dzis = dzisWarszawa()) {
   const dzienZaplaty = dataZaplaty ? dzienWarszawa(dataZaplaty) : '';
 
   // ⚠️ WARUNEK „PRZED DOSTAWĄ" JEST CAŁĄ TREŚCIĄ art. 19a ust. 8 — bez niego ta gałąź
-  // odpalała się przy KAŻDYM pokryciu kwoty, także przy zwykłym przelewie po wysyłce
-  // (i przy pobraniu, gdzie kurier inkasuje dopiero przy doręczeniu). Skutek nie był
-  // kosmetyczny: faktura dostawała datę sprzedaży z INNEGO MIESIĄCA niż powstał obowiązek
-  // podatkowy, czyli lądowała w złym okresie JPK/VAT.
+  // odpalałaby się przy KAŻDYM pokryciu kwoty, także przy zwykłym przelewie po wysyłce
+  // (i przy pobraniu, gdzie kurier inkasuje dopiero przy doręczeniu). Skutek nie jest
+  // kosmetyczny: faktura dostałaby datę sprzedaży z INNEGO MIESIĄCA niż powstał obowiązek
+  // podatkowy, czyli lądowałaby w złym okresie JPK/VAT.
   //
   // Porównanie leksykograficzne na dniach warszawskich `RRRR-MM-DD` — bez `Date`, bo to
   // format, w którym porządek napisów JEST porządkiem kalendarza, a `new Date('2026-10-25')`
@@ -137,7 +136,7 @@ export function proponowanaDataSprzedazy(zamowienie, dzis = dzisWarszawa()) {
   //
   // ⚠️ `dzienZaplaty`, a NIE `dataZaplaty`: `dzienWarszawa` na wartości, której nie umie
   // odczytać, oddaje pusty string (format-daty.js — nigdy „Invalid Date" na ekranie).
-  // Bez tego warunku uszkodzona data wpłaty dawała `{ data: '', podstawa: 'zaplata' }`:
+  // Bez tego warunku uszkodzona data wpłaty dałaby `{ data: '', podstawa: 'zaplata' }`:
   // zdanie z dziurą i domyślnie wybrany wariant „zapłacone" na karcie, przy dacie, której
   // panel nie zna. Nie wiedząc KIEDY zapłacono, nie wolno twierdzić, że obowiązek powstał
   // w dniu zapłaty — spadamy do „wydanie".

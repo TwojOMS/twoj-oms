@@ -1,4 +1,4 @@
-// PRZ-093.10: Ustawienia → Integracje → inFakt. Wzór: wysylka/trasy/ustawienia-inpost.js (PRZ-093.09).
+// Ustawienia → Integracje → inFakt. Wzór: wysylka/trasy/ustawienia-inpost.js.
 //
 // Dostęp: strażnik po prefiksie `/ustawienia` wpuszcza tylko konto z uprawnieniem „ustawienia”, a gościa demo
 // zatrzymuje na każdym POST-cie (core/bezpieczenstwo/podglad-demo.js) — tu tych blokad nie powtarzamy.
@@ -27,19 +27,19 @@ export function registerUstawieniaInfaktuRoutes(app, { db, konfiguracjaInfaktu, 
       konsumenckie: czyWysylacKonsumenckie(db), bladKonsumenckich,
       zapisano: KOMUNIKATY[req.query?.zapisano] ?? null,
       wymagaRestartu: k.wymagaRestartu(), odlaczonyDoRestartu: k.odlaczonyDoRestartu(),
-      // PRZ-121.02: wybrany „Brak” (plik albo Ustawienia, także zapisany po starcie) — klucz zostaje, OMS go nie używa.
+      // Wybrany „Brak” (plik albo Ustawienia, także zapisany po starcie) — klucz zostaje, OMS go nie używa.
       wybranyBrak: jawnyBrak(k.wyborProgramu?.teraz?.()),
-      // PRZ-108.06: formularz automatu KSeF jest na ekranie Ustawienia → Automatyzacje; tu zostaje stan i odnośnik
+      // Formularz automatu KSeF jest na ekranie Ustawienia → Automatyzacje; tu zostaje stan i odnośnik
       // (odnośnik tylko dla admina — tylko admin ten automat ustawia).
       automatStan: stanAutomatuKsef(db, teraz),
       admin: req.konto?.admin === true || req.konto?.podgladDemo === true,
     });
   }
 
-  // PRZ-102.12 → PRZ-108.06: stary adres zapisu automatu KSeF. Ta sama obsługa co na ekranie Automatyzacji
+  // Stary adres zapisu automatu KSeF. Ta sama obsługa co na ekranie Automatyzacji
   // (automat-ksef-ekran.js): tylko admin, 303 na nowy ekran, błąd formularza = 400 z ekranem Automatyzacji.
-  // PRZ-118.10: `infakt` (usługa modułu faktur: klient albo program) — nazwa programu w sekcji automatu przy 400.
-  // PRZ-119.07: automat czyta stan wybranego programu (`konfiguracjaProgramu`); nowy adres pod programem fakturowym,
+  // `infakt` (usługa modułu faktur: klient albo program) — nazwa programu w sekcji automatu przy 400.
+  // Automat czyta stan wybranego programu (`konfiguracjaProgramu`); nowy adres pod programem fakturowym,
   // a GET starego adresu (zakładki, stare odnośniki) — 301 na nowy. POST starego adresu zostaje aliasem zapisu.
   const automat = { db, konfiguracjaProgramu, automatKsef, teraz, infakt };
   app.post(`${EKRAN_INFAKTU}/ksef-automat`, obsluzZapisAutomatuKsef(automat));
@@ -50,13 +50,13 @@ export function registerUstawieniaInfaktuRoutes(app, { db, konfiguracjaInfaktu, 
   });
 
   // Prefiks /ustawienia: zapis tylko z prawem do Ustawień, również gdy klucz API pochodzi z pliku.
-  // PRZ-126.J01: i tylko admin — ten sam klucz zmienia tylko admin na ekranie Wysyłka do KSeF (ustawienia-ksef-sprzedazy.js),
+  // I tylko admin — ten sam klucz zmienia tylko admin na ekranie Wysyłka do KSeF (ustawienia-ksef-sprzedazy.js),
   // a trasa jest czynna także przy TwojeFaktury. Gościa demo zatrzymuje wcześniej hak podglądu.
   app.post(`${EKRAN_INFAKTU}/ksef-konsumenckie`, async (req, reply) => {
     if (req.konto?.admin !== true) return reply.code(403).view('brak-dostepu.ejs', { title: 'Brak dostępu', wlasnyUklad: true });
     const wartosci = [].concat(req.body?.wlaczony ?? '0');
     if (wartosci.some((w) => w !== '0' && w !== '1')) {
-      reply.code(400); // PRZ-126.C04: ekran z błędem przy przełączniku, nie surowy tekst
+      reply.code(400); // Ekran z błędem przy przełączniku, nie surowy tekst
       return widok(req, reply, { bladKonsumenckich: 'Nieprawidłowa wartość przełącznika faktur konsumenckich. Nic nie zapisano.' });
     }
     zapiszKonsumenckie(db, wartosci.includes('1'));

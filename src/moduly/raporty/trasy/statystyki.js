@@ -3,7 +3,7 @@ import { statystykiWOkresie, pierwszyDzienZamowien } from '../../../domena/staty
 import { dzienWarszawa } from '../../../domena/format-daty.js';
 
 // Zakladka STATYSTYKI — wysylka i platnosci. Trasa jest CIENKA: parsuje zakres, wola domene,
-// renderuje. Wzorzec: routes/raporty.js.
+// renderuje. Wzorzec: `trasy/raporty.js`.
 //
 // ⚠️ TEN MODUL NICZEGO NIE LICZY. Mianownik sklada `zamowieniaOkresu`, rozklad uslug
 // i terminowosc `statystyki-wysylki.js`, metody platnosci `statystyki-platnosci.js`,
@@ -11,9 +11,10 @@ import { dzienWarszawa } from '../../../domena/format-daty.js';
 // pierwszej zmianie reguly.
 
 // ⚠️ PIERWSZY DZIEN OMS-U. Zamowienia z przewoznikiem, metoda platnosci i data wyslania
-// zaczynaja sie 3.07.2026; historia (10 878 wierszy w `sprzedaz_historyczna`) niesie
-// wylacznie dzien, kwote, status i flage faktury. Zakres wychodzacy przed te date dostaje
-// pasek zastrzezenia — inaczej „Ten rok" pokazywalby 226 zamowien i wygladalo to jak awaria.
+// zaczynaja sie w dniu uruchomienia OMS-u; historia (`sprzedaz_historyczna`, rzad dziesiatek
+// tysiecy wierszy) niesie wylacznie dzien, kwote, status i flage faktury. Zakres wychodzacy
+// przed te date dostaje pasek zastrzezenia — inaczej „Ten rok" pokazywalby garstke
+// zamowien i wygladalo to jak awaria.
 // Początek pokrycia danych otrzymujemy z konfiguracji, a bez niej — z pierwszego zamówienia w bazie.
 
 const SKROTY = [
@@ -37,7 +38,7 @@ export function zarejestrujTrasyStatystyk(app, { db, config }) {
       });
     }
     const statystyki = await statystykiWOkresie(db, zakres, config.regulySprzedazy);
-    // PRZ-093.07: bez OMS_STATYSTYKI_PIERWSZY_DZIEN początkiem danych jest dzień pierwszego
+    // Bez OMS_STATYSTYKI_PIERWSZY_DZIEN początkiem danych jest dzień pierwszego
     // zamówienia w bazie (env wygrywa). Liczony przy każdym wejściu — zamówienia przybywają.
     const pierwszyZBazy = config.pierwszyDzienOms ? null : pierwszyDzienZamowien(db);
     const pierwszyDzien = config.pierwszyDzienOms ?? pierwszyZBazy;

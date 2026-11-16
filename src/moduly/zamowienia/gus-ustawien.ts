@@ -1,4 +1,4 @@
-// PRZ-102.11 — usługa GUS (REGON BIR1.1) z bieżącej konfiguracji: plik → panel → brak. Wzór: infaktZUstawien
+// Usługa GUS (REGON BIR1.1) z bieżącej konfiguracji: plik → panel → brak. Wzór: infaktZUstawien
 // (moduly/faktury/infakt-ustawien.ts) i kurierzy z Ustawień (moduly/wysylka/kurierzy.ts).
 //
 // Ta sama usługa trafia do karty zamówienia, zamówienia ręcznego, Stałych klientów i do warunku „czy pokazać

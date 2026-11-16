@@ -1,10 +1,10 @@
 import { grosze } from './kwoty.js';
 import { wyliczStatus } from './status.js';
 
-// PODSUMOWANIE HISTORII STALEGO KLIENTA (21.08.2026) — trzy liczby nad tabela zamowien
-// na karcie klienta: ile ich bylo, na ile i kiedy ostatnie.
+// PODSUMOWANIE HISTORII STAŁEGO KLIENTA — trzy liczby nad tabelą zamówień
+// na karcie klienta: ile ich było, na ile i kiedy ostatnie.
 //
-// ⚠️ MODUL JEST CZYSTY: dostaje gotowa liste naglowkow zamowien (db/zamowienia.js:
+// ⚠️ MODUL JEST CZYSTY: dostaje gotowa liste naglowkow zamowien (`oms/db/zamowienia.js`:
 // `zamowieniaPoNip`) i niczego nie pyta bazy. Dzieki temu regule „co wchodzi do sumy"
 // da sie sprawdzic testem bez zakladania zamowien.
 
@@ -22,7 +22,7 @@ import { wyliczStatus } from './status.js';
  *
  * ⚠️ PIENIADZE PRZEZ `grosze` Z DOMENY, nigdy `Number(...)` na napisie: kwoty leza
  * w bazie napisami i sumowanie ich zmiennoprzecinkowo rozjezdza sie o grosze przy
- * kilkunastu zamowieniach (przewodnik OMS, 4.5).
+ * kilkunastu zamowieniach.
  */
 export function podsumowanieHistorii(zamowienia) {
   const lista = zamowienia ?? [];

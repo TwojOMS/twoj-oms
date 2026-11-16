@@ -1,17 +1,17 @@
-<%# KARTA STALEGO KLIENTA (21.08.2026, prosba wlasciciela: „kliknięcie w nazwę klienta
-    otwiera stronę z jego danymi oraz historią zamówień").
+<%# KARTA STAŁEGO KLIENTA: dane klienta i historia jego zamówień, otwierane kliknięciem
+    w nazwę klienta na liście Klienci B2B.
 
-    ⚠️ EKRAN JEST DO ODCZYTU. Piętnaście pól formularza dalej mieszka w JEDNYM miejscu
+    ⚠️ EKRAN JEST DO ODCZYTU. Pola formularza mieszkają w JEDNYM miejscu
     (`klienci.ejs`) i otwiera je przycisk „Edytuj" — druga kopia pól rozjechałaby się z tamtą
     przy pierwszym nowym ustawieniu, a wtedy „popraw klienta" zapisywałoby coś innego niż
     „dopisz klienta".
 
     ⚠️ WIDOK NICZEGO NIE LICZY. Historia, podsumowanie i status każdego zamówienia przychodzą
-    policzone z domeny (`domain/historia-klienta.js`, `domain/status.js`) — tutaj zostaje
+    policzone z domeny (`domena/historia-klienta.js`, `domena/status.js`) — tutaj zostaje
     ZAPIS liczby po polsku. Druga kopia arytmetyki rozjechałaby się z pierwszą przy pierwszej
-    zmianie, a chodzi o pieniądze (ta sama zasada, co w raporty.ejs i finanse.ejs).
+    zmianie, a chodzi o pieniądze (ta sama zasada, co w widokach moduly/raporty/widoki).
 
-    ⚠️ ANI JEDNEGO KOLORU WPISANEGO WPROST — wszystko z palety w layout-oms.ejs, bo ma
+    ⚠️ ANI JEDNEGO KOLORU WPISANEGO WPROST — wszystko z palety w public/oms-uklad.css, bo ma
     wariant jasny i ciemny. %>
 
 <%
@@ -60,13 +60,13 @@
         <dt>Kanał</dt><dd><%= klient.b2b ? 'B2B' : 'zwykły' %></dd>
         <dt>Rabat</dt><dd><%= klient.rabat_procent ? `${klient.rabat_procent}%` : 'brak' %></dd>
         <%# ⚠️ PUSTA DOSTAWA TO „NIE USTALONO”, nie DPD: tak zapisuje sie klient z zamowienia
-            z dostawa, ktorej panel nie rozpoznal (PRZ-102.24). Pusty koszt to tez nie „gratis”. %>
+            z dostawa, ktorej panel nie rozpoznal. Pusty koszt to tez nie „gratis”. %>
         <% const dostawaKlienta = dostawy[klient.metoda_wysylki]; const kosztKlienta = String(klient.koszt_dostawy_brutto ?? '').trim(); %>
         <dt>Dostawa</dt><dd><% if (dostawaKlienta) { %><%= dostawaKlienta %><%= kosztKlienta === '0.00' ? ' · gratis' : (kosztKlienta ? ` · ${kosztKlienta} zł` : '') %><% } else { %><span class="wyjasnienie">nie ustalono</span><% } %></dd>
-        <%# ⚠️ WIERSZ POKAZUJE SIE TYLKO PRZY ROZLICZENIU ZBIORCZYM — u zwyklego klienta
-            trzy puste kwoty byłyby pytaniem, na ktore nie ma odpowiedzi. Kwoty wymieniamy
-            WPROST, bo od 24.08 to jedyne miejsce, w ktorym w ogole widac warunki umowy
-            (wczesniej: `.env` na NAS-ie, poza zasiegiem ekranu). %>
+        <%# ⚠️ WIERSZ „ROZLICZENIE” POKAZUJE SIĘ TYLKO PRZY ROZLICZENIU ZBIORCZYM — u zwykłego
+            klienta byłby pytaniem, na które nie ma odpowiedzi. Próg darmowej dostawy i opłatę
+            za obsługę wymieniamy WPROST, każdą gdy jest ustalona, bo karta ma pokazywać
+            warunki umowy bez otwierania formularza. %>
         <% if (klient.rozliczenie_zbiorcze) { %>
           <dt>Rozliczenie</dt><dd><b>zbiorcze</b> — jedna faktura na koniec miesiąca</dd>
         <% } %>
@@ -163,7 +163,7 @@
           <div class="kafel-wartosc"><%= podsumowanie.ile %></div>
           <% if (podsumowanie.ileAnulowanych) { %>
             <%# Anulowane liczy sie do liczby zamowien, ale NIE do sumy — inaczej „klient
-                zostawil u nas X zlotych" byloby nieprawda (domain/historia-klienta.js). %>
+                zostawil u nas X zlotych" byloby nieprawda (domena/historia-klienta.js). %>
             <div class="kafel-dopisek">w tym <%= podsumowanie.ileAnulowanych %> anulowanych</div>
           <% } %>
         </div>

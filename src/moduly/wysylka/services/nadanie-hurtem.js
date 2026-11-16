@@ -10,9 +10,9 @@ import { wstawEtykieteDoKolejki } from './kolejka-po-nadaniu.js';
  * limitu żądania przychodzącego (`requestTimeout: 0`), więc budżet chroni CZŁOWIEKA, który
  * czeka na ekran, a nie serwer.
  *
- * ⚠️ PRZED PRZ-070 BUDŻETU NIE BYŁO, bo hurt nadawał wyłącznie DPD (sekundy na paczkę). Od
- * 14.10.2026 nadaje też paczkomaty i „Wysyłam z Allegro", gdzie jedna paczka potrafi czekać
- * na numer kilkanaście sekund — dziesięć takich to minuty przed pustym ekranem.
+ * ⚠️ Hurt nadaje nie tylko DPD (sekundy na paczkę), ale też paczkomaty i „Wysyłam z Allegro",
+ * gdzie jedna paczka potrafi czekać na numer kilkanaście sekund — dziesięć takich to minuty
+ * przed pustym ekranem.
  */
 export const BUDZET_NADANIA_HURTEM_MS = 150_000;
 

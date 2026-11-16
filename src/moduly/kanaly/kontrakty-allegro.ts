@@ -8,9 +8,9 @@ export type PolaczenieAllegro = {
   kontoId: string | null; login: string | null; autoryzacja: Autoryzacja; pobieranie: Pobieranie;
   odUtc: string; raport: string; wersja: number; generacja: number; generacjaImportu: number;
 };
-/** Aplikacja Allegro, przez którą połączono kanał; NULL = wiersz sprzed PRZ-132 (DCR dla panelu, env dla env). */
+/** Aplikacja Allegro, przez którą połączono kanał; NULL = wiersz sprzed dodania kolumny (DCR dla panelu, env dla env). */
 export type AplikacjaKanalu = 'device' | 'dcr' | null;
-/** PRZ-132.02: kanał dowolnego typu z jednej tabeli `kanaly_sprzedazy`; `PolaczenieAllegro` zostaje aliasem bazy. */
+/** Kanał dowolnego typu z jednej tabeli `kanaly_sprzedazy`; `PolaczenieAllegro` zostaje aliasem bazy. */
 export type PolaczenieKanalu = PolaczenieAllegro & { typ: TypKanaluZnany; aplikacja: AplikacjaKanalu };
 export type Wynik<T> = { ok: true; dane: T } | {
   ok: false; kod: 'walidacja' | 'konflikt' | 'brak_dostepu' | 'odlaczone' | 'ponow_autoryzacje' | 'tymczasowy' | 'niejednoznaczny'; komunikat: string;

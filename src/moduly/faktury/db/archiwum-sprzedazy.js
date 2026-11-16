@@ -1,8 +1,8 @@
 import { zakresMiesiaca } from '../../../domena/lista-faktur.js';
 import { bladOperatora } from '../../../domena/bledy.js';
 
-// Dostep do tabel `archiwum_sprzedazy` i `stan_archiwum_sprzedazy` (schema.sql).
-// Zrodlem prawdy jest inFakt; tutaj lezy TYLKO „co i gdzie panel zapisal".
+// Dostęp do tabel `archiwum_sprzedazy` i `stan_archiwum_sprzedazy` (rdzen/migracje/0001-baseline.sql).
+// Źródłem prawdy jest program fakturowy; tutaj leży TYLKO „co i gdzie panel zapisał".
 
 export const wierszArchiwum = (db, uuid) => db.prepare(
   'SELECT * FROM archiwum_sprzedazy WHERE uuid = ?',
@@ -52,7 +52,7 @@ export function odnotujUdanyPrzebiegArchiwum(db, { chwila, podlogaZrobiona }) {
   `).run(podlogaZrobiona ? chwila : null, chwila);
 }
 
-// Blad NIE rusza `ostatnie_udane_at` ani podlogi (wzorzec `zapiszBladPobrania` w db/koszty.js).
+// Błąd NIE rusza `ostatnie_udane_at` ani podłogi (wzorzec `zapiszBladPobrania` w oms/db/koszty.js).
 export function zapiszBladArchiwum(db, tresc, chwila) {
   db.prepare(`
     INSERT INTO stan_archiwum_sprzedazy (id, ostatni_blad, ostatni_blad_at) VALUES (1, ?, ?)

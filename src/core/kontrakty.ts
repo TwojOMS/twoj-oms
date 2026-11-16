@@ -9,7 +9,7 @@ export type Migracja = {
   readonly wykonaj: (db: DatabaseSync) => void;
 };
 
-/** Klucz uprawnienia = dzisiejsza kolumna `uprawnienia.ekran`. `role` — kto z ISTNIEJĄCYCH kont dostaje ptaszek, gdy klucz pojawia się pierwszy raz (lekcja CELE, 13.09). */
+/** Klucz uprawnienia = dzisiejsza kolumna `uprawnienia.ekran`. `role` — kto z ISTNIEJĄCYCH kont dostaje ptaszek, gdy klucz pojawia się pierwszy raz. */
 export type Uprawnienie = {
   readonly klucz: string;
   readonly etykieta: string;
@@ -63,7 +63,7 @@ export type ModulOms<K = unknown> = {
   readonly zbuduj: (ctx: KontekstModulu<K>) => ZbudowanyModul;
 };
 
-// Kanał sprzedaży — kształt zmierzony 29.09 w woo/adapter.js i allegro/adapter.js oraz w services/poller.js.
+// Kanał sprzedaży — kształt wzięty z woo/adapter.js i allegro/adapter.js i services/poller.js.
 export type StronaZamowien = { readonly zamowienia: readonly unknown[]; readonly stron: number };
 
 export type KanalSprzedazy<Z = unknown> = {
@@ -71,18 +71,18 @@ export type KanalSprzedazy<Z = unknown> = {
   readonly kursorZ: (surowe: unknown) => string | null;
   readonly zlozoneZ: (surowe: unknown) => string | null;
   readonly mapuj: (surowe: unknown) => Z;
-  // PRZ-157.04: kanał z kolejką zdarzeń (ERLI) potwierdza odczyt dopiero po zapisie przebiegu w bazie.
+  // Kanał z kolejką zdarzeń (ERLI) potwierdza odczyt dopiero po zapisie przebiegu w bazie.
   readonly potwierdz?: () => Promise<void>;
 };
 
-// Kurier jako moduł (PRZ-135)
+// Kurier jako moduł
 export type PobranieKuriera = 'brak' | 'adapter' | 'umowa';
 // adapter: umie wysłać kwotę; umowa: dodatkowo wolno wybrać przy pobraniu na paczce.
-// PRZ-135.T2: 'adapter' awansuje do 'umowa' ustawieniem firmy (wysylka.umowa_pobrania.<kurier> = tak).
+// 'adapter' awansuje do 'umowa' ustawieniem firmy (wysylka.umowa_pobrania.<kurier> = tak).
 export type UmiejetnosciKuriera = {
   pobranie: PobranieKuriera;
-  // PRZ-137.03 (D2): czy adapter wiezie pobranie na paczce N > 1 (zamiennik za pobraniem) z jawnej
-  // decyzji operatora. Brak = nie (odmowa D3, neutralna — bez założenia, który kurier zostaje).
+  // Czy adapter wiezie pobranie na paczce N > 1 (zamiennik za pobraniem) z jawnej decyzji operatora.
+  // Brak = nie (odmowa, neutralna — bez założenia, który kurier zostaje).
   pobranieNaDosylce?: boolean;
   nadanieAsynchroniczne: boolean;
   sledzenie: 'brak' | 'wlasne' | 'przez_przewoznika';
@@ -119,8 +119,8 @@ export type OpisPrzewoznika = {
     metody?: readonly string[] };
 };
 
-// Kurier — kształt zmierzony 29.09 w kurierzy/dpd.js, inpost.js, allegro-wza.js i services/nadanie.js.
-// PRZ-022: modele danych faktycznie przekazywanych przez nadanie.js do klientów.
+// Kurier — kształt wzięty z kurierzy/dpd.js, inpost.js, allegro-wza.js i services/nadanie.js.
+// Modele danych faktycznie przekazywanych przez nadanie.js do klientów.
 export type WynikNadania = {
   readonly numerListu: string | null;
   readonly shipmentId?: string | number | null;
@@ -184,15 +184,15 @@ export type Kurier<Z = ZlecenieKuriera> = {
   readonly statusPrzesylki?: (numerListu: string) => Promise<unknown>;
 };
 
-// Program fakturowy (PRZ-118) — kontrakt, za którym stoi inFakt (src/integracje/programy/infakt.ts), a w PRZ-119
-// Fakturownia. Nazwy metod = nazwy klienta inFaktu (src/oms/infakt/client.js); jedyna nowa to `przygotujNabywce`.
+// Program fakturowy — kontrakt, za którym stoi inFakt (src/integracje/programy/infakt.ts), a obok niego
+// Fakturownia i TwojeFaktury. Nazwy metod = nazwy klienta inFaktu (src/oms/infakt/client.js); jedyna nowa to `przygotujNabywce`.
 // Ładunek i wiersz listy mają kształt v3 inFaktu (grosze całkowite) — tłumaczy adapter programu, nie domena.
 // Typy celowo luźne tam, gdzie dziś luźny jest kod (JS domeny buduje i czyta te pola bez typów): nazwane pola
 // dokumentują kształt, sygnatura indeksu przepuszcza resztę.
 
 export type OdmianaNazwy = Readonly<{ mianownik: string; dopelniacz: string; miejscownik: string; narzednik: string }>;
 
-// Kanał sprzedaży jako moduł (PRZ-133).
+// Kanał sprzedaży jako moduł.
 // Każda umiejętność jest obowiązkowa i stała dla platformy, nie dla konta.
 export type ZapisZwrotnyKanalu = Readonly<{
   ustawStatus?: (idZrodla: string, status: string) => Promise<unknown>;
@@ -202,14 +202,14 @@ export type WynikKataloguKanalu =
   | Readonly<{ ok: true; dane: unknown }>
   | Readonly<{ ok: false; powod: string }>;
 
-/** D20: osobny kontrakt ofert. Ładunek przygotowuje adapter kanału, nie zapis statusu zamówienia. */
+/** Osobny kontrakt ofert. Ładunek przygotowuje adapter kanału, nie zapis statusu zamówienia. */
 export type KatalogKanalu = Readonly<{
   odczytOfert: (filtry: Readonly<Record<string, unknown>>) => Promise<WynikKataloguKanalu>;
   wystawOferte: (idZewnetrzne: string, dane: Readonly<Record<string, unknown>>) => Promise<WynikKataloguKanalu>;
   zmienOferte: (idZewnetrzne: string, zmiany: Readonly<Record<string, unknown>>) => Promise<WynikKataloguKanalu>;
   // `externalId` = identyfikator oferty w kanale (nie sygnatura OMS-u), `price` w groszach (całkowita).
-  // Allegro (PRZ-160.E3.07, D38) wymaga w każdej pozycji `commandIdIlosci`/`commandIdCeny` (UUID zapisany przez
-  // pętlę przed wywołaniem); bez nich łącznik zwraca `{ok:false}`. Pola są poza typem, by nie poszerzać kontraktu.
+  // Allegro wymaga w każdej pozycji `commandIdIlosci`/`commandIdCeny` (UUID zapisany przez
+  // wołającego przed wywołaniem); bez nich łącznik zwraca `{ok:false}`. Pola są poza typem, by nie poszerzać kontraktu.
   zmienIloscCene: (zmiany: readonly Readonly<{ externalId: string; stock?: number; price?: number }>[]) => Promise<WynikKataloguKanalu>;
   stanOferty: (idZewnetrzne: string) => Promise<WynikKataloguKanalu>;
 }>;
@@ -249,9 +249,9 @@ export type KrokKonfiguratora = Readonly<{
   numer: number;
   tytul: string;
   instrukcja?: readonly string[];
-  // PRZ-149.04: wybór nad instrukcją (pole formularza kroku); punkt instrukcji `punkt` ma wariant na każdą opcję.
+  // Wybór nad instrukcją (pole formularza kroku); punkt instrukcji `punkt` ma wariant na każdą opcję.
   wybor?: Readonly<{ pole: PoleKonfiguratora; punkt: number; warianty: Readonly<Record<string, string>> }>;
-  // Dokładnie jedno z formularz/widok — walidacja kroków dojdzie w K04.
+  // Dokładnie jedno z formularz/widok.
   formularz?: Readonly<{ akcja: string; przycisk: string; pola: readonly PoleKonfiguratora[] }>;
   widok?: string;
 }>;
@@ -280,7 +280,7 @@ export type OpisProgramu = Readonly<{
   id: string;
   /** Odmiana do komunikatów: „do inFaktu”, „w inFakcie”, „z inFaktem”. */
   nazwa: OdmianaNazwy;
-  /** Jak program liczy VAT dokumentu wielopozycyjnego. W PRZ-118 strażnik przyjmuje tylko 'wierszami'. */
+  /** Jak program liczy VAT dokumentu wielopozycyjnego. Strażnik przyjmuje dziś tylko 'wierszami'. */
   regulaVat: 'wierszami' | 'odSumy';
   /** DOKŁADNIE zbiór metod opcjonalnych, które program ma (strażnik: src/integracje/program-fakturowy.ts). */
   zdolnosci: readonly ZdolnoscProgramu[];
@@ -292,14 +292,14 @@ export type OpisProgramu = Readonly<{
   adres: string;
   /** Ekran Ustawień programu: '/ustawienia/integracje/infakt'. */
   ekran: string;
-  /** PRZ-122: program wbudowany w OMS (TwojeFaktury) — dokument jest w panelu, nie w programie zewnętrznym. */
+  /** Program wbudowany w OMS (TwojeFaktury) — dokument jest w panelu, nie w programie zewnętrznym. */
   wbudowany?: true;
-  /** Decyzja właściciela 28.10.2026 pkt 4: WDT numerowane w serii faktur programu, bez serii WDT panelu. */
+  /** WDT numerowane w serii faktur programu, bez serii WDT panelu; program bez tej flagi wymaga serii własnej (services/faktura.js i faktura-okresu.js). */
   wdtWSeriiFaktur?: boolean;
   /** Wartości v3 przyjmowane przy zapisie; brak deklaracji = tylko `delivery`. */
   sposobyPlatnosci?: readonly string[];
   /**
-   * PRZ-119.12c (pomiar F9B, Fakturownia): program przyjmuje `paid_date` w ładunku wystawienia i każdą datę zapłaty,
+   * Pomiar F9B (Fakturownia): program przyjmuje `paid_date` w ładunku wystawienia i każdą datę zapłaty,
    * także sprzed daty wystawienia. Brak = data zapłaty nie wcześniejsza niż data wystawienia, bez `paid_date`
    * w ładunku (inFakt — dokumentacja `/paid.json`, niezmierzone; TwojeFaktury). Reguła: services/faktura.js.
    */

@@ -1,16 +1,16 @@
 import { tytulEkranuDlaAdresu } from '../../../domena/ekrany.js';
 import { stronaOdmowy } from '../../../core/web/odmowa.js';
-// PRZ-093.08: Ustawienia → Firma. Sprzedawca na proformie, specyfikacji i potwierdzeniu wywozu oraz nadawca
+// Ustawienia → Firma. Sprzedawca na proformie, specyfikacji i potwierdzeniu wywozu oraz nadawca
 // paczek DPD z Ustawień. Dla instalacji bez DPD_NADAWCA_* w pliku konfiguracji (Twój OMS u obcej firmy).
 //
-// Zasady jak w PRZ-092 (kurier DPD): plik WYGRYWA — gdy adres stoi w pliku, ekran go tylko pokazuje, a zapis = 409
-// (instalacje z plikiem, w tym produkcja właściciela, bez zmian). Zmiana działa od następnego dokumentu i następnej
+// Zasady jak przy kurierze DPD z Ustawień: plik WYGRYWA — gdy adres stoi w pliku, ekran go tylko pokazuje, a zapis = 409
+// (instalacje z plikiem działają bez zmian). Zmiana działa od następnego dokumentu i następnej
 // paczki, bez restartu (źródło czytane przy każdym użyciu: src/oms/db/adres-firmy.js).
 // Dostęp: strażnik po prefiksie `/ustawienia` wpuszcza tylko konto z uprawnieniem „ustawienia”, a gościa demo
 // zatrzymuje na każdym POST-cie (core/bezpieczenstwo/podglad-demo.js) — tu tych blokad nie powtarzamy.
 //
-// PRZ-102.20: na tym samym ekranie rachunek bankowy i bank (maile o płatności, proforma, IBAN pobrania WzA). Decyzja
-// właściciela: zapisuje WYŁĄCZNIE administrator (403 dla reszty kont z dostępem do Ustawień), bez dodatkowych bezpieczników.
+// Na tym samym ekranie rachunek bankowy i bank (maile o płatności, proforma, IBAN pobrania WzA). Zapisuje
+// WYŁĄCZNIE administrator (403 dla reszty kont z dostępem do Ustawień), bez dodatkowych bezpieczników.
 // Plik (OMS_RACHUNEK / OMS_BANK) wygrywa w całości: ekran pokazuje wartość z pliku, zapis = 409. Osobny wiersz
 // w konfiguracja_integracji — formularz adresu i jego usunięcie rachunku nie ruszają.
 import { sprawdzFormularzFirmy, EKRAN_ADRESU_FIRMY } from '../../../domena/adres-firmy.js';
@@ -18,14 +18,14 @@ import { wczytajZapisAdresuFirmy, zapiszAdresFirmy, usunAdresFirmy } from '../..
 import { sprawdzFormularzRachunku, ZAPIS_RACHUNKU_FIRMY, rachunekDoOdczytu } from '../../../domena/rachunek-firmy.js';
 import { wczytajZapisRachunkuFirmy, zapiszRachunekFirmy, usunRachunekFirmy } from '../../../oms/db/rachunek-firmy.js';
 import { nawigacjaUstawien } from '../../ustawienia/nawigacja.js';
-// PRZ-108.10: NIP i BDO sprzedawcy — zapisuje tylko administrator; plik wygrywa DLA SWOJEGO POLA (OMS_SPRZEDAWCA_NIP /
+// NIP i BDO sprzedawcy — zapisuje tylko administrator; plik wygrywa DLA SWOJEGO POLA (OMS_SPRZEDAWCA_NIP /
 // OMS_SPRZEDAWCA_BDO): ekran pokazuje wartość z pliku, zapis tego pola = 409. Dwa wiersze w konfiguracja_integracji.
 import { sprawdzFormularzNip, sprawdzFormularzBdo, ZAPIS_NIP_FIRMY, ZAPIS_BDO_FIRMY } from '../../../domena/nip-bdo-firmy.js';
 import { wczytajZapisNipuFirmy, wczytajZapisBdoFirmy, zapiszNipFirmy, zapiszBdoFirmy, usunBdoFirmy } from '../../../oms/db/nip-bdo-firmy.js';
-// PRZ-105: domyślna stawka VAT — zapisuje tylko administrator (ta sama zasada co rachunek), lista 23/8/5/0.
+// Domyślna stawka VAT — zapisuje tylko administrator (ta sama zasada co rachunek), lista 23/8/5/0.
 import { czytajStawkeDomyslna, zapiszStawkeDomyslna } from '../db/stawka-vat.js';
 import { STAWKA_VAT, STAWKI_VAT, czyStawkaVat, stawkiDlaProgramu } from '../../../domena/vat.js';
-// PRZ-122.B07b: zwolnienie z VAT — sekcja i zapis WYŁĄCZNIE przy TwojeFaktury (program wbudowany; inFakt bez zmian).
+// Zwolnienie z VAT — sekcja i zapis WYŁĄCZNIE przy TwojeFaktury (program wbudowany; inFakt bez zmian).
 // Zapisuje tylko administrator (403), przy innym programie 409, pusta podstawa przy zwolnionej firmie albo „inna” bez
 // tekstu → 400 ze zdaniem. Firma zwolniona → domyślna stawka „zw” (czytana z flagą tylko przy programie wbudowanym).
 import { sprawdzFormularzZwolnienia, czytajZwolnienie, zapiszZwolnienie, polaFormularzaZwolnienia, PODSTAWA_ART_113 } from '../db/zwolnienie-vat.js';
@@ -63,7 +63,7 @@ const ekranOdmowy = (url = '') => {
 };
 const tekst = (reply, kod, tresc) => stronaOdmowy(reply, kod, tresc, ekranOdmowy(reply.request?.url?.split('?')[0]));
 
-// `wyborProgramu` (usługa faktury.wyborProgramu, PRZ-121.01) — `program` działający od startu; bez niej jak dotąd (inFakt).
+// `wyborProgramu` (usługa faktury.wyborProgramu) — `program` działający od startu; bez niej jak dotąd (inFakt).
 export function registerUstawieniaFirmyRoutes(app, { db, adresFirmy, rachunekFirmy, nipBdoFirmy, wyborProgramu = null }) {
   const wbudowany = () => wyborProgramu?.program === PROGRAM_WBUDOWANY;
   const opcjeZw = () => ({ zw: wbudowany() });
@@ -129,7 +129,7 @@ export function registerUstawieniaFirmyRoutes(app, { db, adresFirmy, rachunekFir
     return reply.code(303).redirect(`${EKRAN_ADRESU_FIRMY}?zapisano=usunieto`);
   });
 
-  // PRZ-102.20: rachunek. Kolejność odmów: konto (403) → plik (409) → walidacja NRB (400, zdanie jak przy starcie).
+  // Rachunek. Kolejność odmów: konto (403) → plik (409) → walidacja NRB (400, zdanie jak przy starcie).
   app.post(ZAPIS_RACHUNKU_FIRMY, async (req, reply) => {
     if (req.konto?.admin !== true) return tekst(reply, 403, TYLKO_ADMIN);
     if (rachunekFirmy.wPliku) return tekst(reply, 409, W_PLIKU);
@@ -143,7 +143,7 @@ export function registerUstawieniaFirmyRoutes(app, { db, adresFirmy, rachunekFir
     return reply.code(303).redirect('/ustawienia/firma/rachunek?zapisano=rachunek');
   });
 
-  // PRZ-105: kolejność odmów jak przy rachunku — konto (403) → wartość spoza listy (400, ekran z komunikatem).
+  // Kolejność odmów jak przy rachunku — konto (403) → wartość spoza listy (400, ekran z komunikatem).
   app.post(ZAPIS_STAWKI, async (req, reply) => {
     if (req.konto?.admin !== true) return tekst(reply, 403, TYLKO_ADMIN_STAWKA);
     const stawka = String(req.body?.stawka ?? '').trim();
@@ -155,7 +155,7 @@ export function registerUstawieniaFirmyRoutes(app, { db, adresFirmy, rachunekFir
     return reply.code(303).redirect('/ustawienia/faktury/vat?zapisano=stawka-vat');
   });
 
-  // PRZ-122.B07b: zwolnienie z VAT. Kolejność odmów: konto (403) → program inny niż wbudowany (409) → walidacja (400).
+  // Zwolnienie z VAT. Kolejność odmów: konto (403) → program inny niż wbudowany (409) → walidacja (400).
   app.post(ZAPIS_ZWOLNIENIA, async (req, reply) => {
     if (req.konto?.admin !== true) return tekst(reply, 403, TYLKO_ADMIN_ZWOLNIENIE);
     if (!wbudowany()) return tekst(reply, 409, ZWOLNIENIE_INNY_PROGRAM);
@@ -171,7 +171,7 @@ export function registerUstawieniaFirmyRoutes(app, { db, adresFirmy, rachunekFir
     return reply.code(303).redirect('/ustawienia/faktury/vat?zapisano=zwolnienie');
   });
 
-  // PRZ-108.10: NIP. Kolejność odmów jak przy rachunku: konto (403) → pole w pliku (409) → walidacja (400, zdanie jak
+  // NIP. Kolejność odmów jak przy rachunku: konto (403) → pole w pliku (409) → walidacja (400, zdanie jak
   // przy starcie). Starych dokumentów nie ruszamy — nowy NIP działa od następnego dokumentu.
   app.post(ZAPIS_NIP_FIRMY, async (req, reply) => {
     if (req.konto?.admin !== true) return tekst(reply, 403, TYLKO_ADMIN_NIP);
@@ -185,7 +185,7 @@ export function registerUstawieniaFirmyRoutes(app, { db, adresFirmy, rachunekFir
     return reply.code(303).redirect('/ustawienia/firma/rejestrowe?zapisano=nip');
   });
 
-  // PRZ-108.10: BDO — pusty wpis znaczy „firma nie ma BDO” (wiersz z ekranu znika).
+  // BDO — pusty wpis znaczy „firma nie ma BDO” (wiersz z ekranu znika).
   app.post(ZAPIS_BDO_FIRMY, async (req, reply) => {
     if (req.konto?.admin !== true) return tekst(reply, 403, TYLKO_ADMIN_NIP);
     if (nipBdoFirmy.bdoWPliku) return tekst(reply, 409, BDO_W_PLIKU);

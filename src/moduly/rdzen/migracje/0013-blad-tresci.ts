@@ -1,6 +1,6 @@
 import type { Migracja } from '../../../core/kontrakty.ts';
 
-// PRZ-160.06b — trwały wpis błędu przy ofercie z przebiegu „Pobierz treść i zdjęcia ofert" (E1.04):
+// Trwały wpis błędu przy ofercie z przebiegu „Pobierz treść i zdjęcia ofert" (E1.04):
 // krótki tekst po polsku (np. ile zdjęć pominięto i pierwszy powód) i chwila wpisu. Kartę czyta E1.07.
 // Wyłącznie dokładanie, odporna na ponowienie: kolumna tylko gdy jej brak (wzór 0012).
 const KOLUMNY: readonly [string, string][] = [

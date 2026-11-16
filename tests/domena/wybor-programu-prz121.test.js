@@ -30,6 +30,9 @@ it('TwojeFaktury dostępne tylko za zgodą instalacji', () => {
   expect(wybierzProgram({ zUstawien: 'twojefaktury', zgoda: true }).program).toBe('twojefaktury');
   expect(wybierzProgram({ zUstawien: 'twojefaktury', zgoda: false })).toMatchObject({ program: 'brak', uwaga: expect.any(String) });
   expect(sprawdzFormularzWyboru({ program: 'twojefaktury' }, { zgoda: true }).bledy).toEqual([]);
+  // PRZ-175 p0 (0.1): komunikat formularza mówi o programie do faktur, nie o module.
+  expect(sprawdzFormularzWyboru({ program: 'twojefaktury' }, { zgoda: false }).bledy).toEqual([
+    'Program do faktur „TwojeFaktury (program wbudowany)” będzie dostępny wkrótce — wybierz inny.']);
   const db = openOmsDb();
   try {
     expect(() => zapiszWyborProgramu(db, 'twojefaktury')).toThrow('wkrótce');

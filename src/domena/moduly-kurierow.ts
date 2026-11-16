@@ -6,7 +6,7 @@ export const MODULY_KURIEROW = {
   dpd: {
     klucz: 'dpd', nazwa: 'DPD', logo: '/integracje/dpd.svg', idKatalogu: 'dpd',
     opisKatalogu: 'Nadaj przesyłki przez DPD.', umowa: 'wlasna', przewoznicy: ['dpd'],
-    // ⚠️ „Kurier DPD", a nie samo „DPD" (prosba właściciela 25.08.2026). Odkad kolumna „Dostawa"
+    // ⚠️ „Kurier DPD", a nie samo „DPD". Odkad kolumna „Dostawa"
     // pokazuje pelne nazwy uslug Allegro („Allegro Kurier DPD", „Allegro One Box"), samotne
     // „DPD" czytalo sie jak nazwa PRZEWOZNIKA obok nazw USLUG — a to jest nasza wlasna usluga
     // kurierska, na NASZEJ umowie. Para „Kurier DPD" / „Allegro Kurier DPD" mowi teraz wprost,
@@ -31,9 +31,9 @@ export const MODULY_KURIEROW = {
     // ⚠️ pobranie 'adapter', NIE 'umowa' — ochrona pieniedzy (kurier-nadania.js, kurierzyDoWyboru):
     // adapter umie wyslac kwote, ale umowa z InPostem na pobranie nie jest potwierdzona, wiec przy
     // pobraniu na tej paczce paczkomatu NIE ma w wyborze (inaczej towar oddany bez inkasa).
-    // PRZ-135.T2: firma z umową zaznacza ją w ustawieniach InPostu; wtedy reguły dostają
+    // Firma z umową zaznacza ją w ustawieniach InPostu; wtedy reguły dostają
     // `umowyPobrania: ['inpost']` parametrem — ten wpis zostaje 'adapter' na zawsze.
-    // PRZ-137.03: pobranieNaDosylce — z umową firmy paczkomat wiezie też zamiennik za pobraniem
+    // pobranieNaDosylce — z umową firmy paczkomat wiezie też zamiennik za pobraniem
     // (paczka N > 1, jawna decyzja operatora); adapter honoruje `pobranieNaTejPaczce` jak dpd.js.
     umiejetnosci: { pobranie: 'adapter', pobranieNaDosylce: true, nadanieAsynchroniczne: true, sledzenie: 'wlasne',
       etykieta: { zpl: true, zplPrzyNadaniu: true } },
@@ -48,8 +48,8 @@ export const MODULY_KURIEROW = {
     klucz: 'allegro_wza', nazwa: 'Wysyłam z Allegro', logo: '/integracje/allegro.svg', idKatalogu: 'wza',
     opisKatalogu: 'Nadaj przesyłki z wykorzystaniem powiązanego konta Allegro.', umowa: 'platformy',
     przewoznicy: ['dpd', 'inpost', 'dhl', 'orlen', 'allegro-one', 'packeta'],
-    // Brzmienie ustalone z wlascicielem („Allegro DPD, Allegro Paczkomat, Allegro Orlen") — kazda
-    // etykieta zaczyna sie od „Allegro", zeby w kolumnie „Dostawa" od razu bylo widac, ze to
+    // Kazda etykieta metody zaczyna sie od „Allegro" (np. „Allegro Kurier DPD", „Allegro punkt / automat"),
+    // zeby w kolumnie „Dostawa" od razu bylo widac, ze to
     // przesylka kanalu Allegro. `allegro_punkt` zbiera automaty i punkty (ORLEN, DHL BOX, One Box)
     // w jedna nazwe: dla operatora roznica jest zadna, a slownik rozbity na przewoznikow
     // rozjezdzalby sie z kazda nowa usluga Allegro. Te etykiety sa JEDYNYM zrodlem dla
@@ -62,8 +62,8 @@ export const MODULY_KURIEROW = {
       { klucz: 'allegro_kurier', etykieta: 'Allegro One Kurier', formularz: 'wza', punktOdbioru: false },
       { klucz: 'allegro_inne', etykieta: 'Allegro — inna metoda', formularz: 'wza', punktOdbioru: false },
     ],
-    // PRZ-137.03: pobranieNaDosylce false — adapter WzA bierze pobranie z zamówienia Allegro
-    // i nie umie wysłać go na kolejnej paczce; zamiennik za pobraniem dostaje odmowę D3.
+    // pobranieNaDosylce false — adapter WzA bierze pobranie z zamówienia Allegro
+    // i nie umie wysłać go na kolejnej paczce; zamiennik za pobraniem dostaje odmowę.
     umiejetnosci: { pobranie: 'umowa', pobranieNaDosylce: false, nadanieAsynchroniczne: true, sledzenie: 'przez_przewoznika',
       etykieta: { zpl: true, zplPrzyNadaniu: false } },
     pobieranieEtykiety: false,
@@ -82,11 +82,11 @@ export const MODULY_KURIEROW = {
     konfigurator: { sciezka: '/ustawienia/integracje', etykieta: 'Allegro', zdanie: '' },
     piaskownica: { atrapa: '', komunikat: '' },
   },
-  // PRZ-157.08: przewóz kupiony przez ERLI (src/oms/kurierzy/erli.js). Pobranie bierze ERLI z zamówienia
+  // Przewóz kupiony przez ERLI (src/oms/kurierzy/erli.js). Pobranie bierze ERLI z zamówienia
   // (jak WzA), etykieta PDF dopiero po `waybills[]`.
-  // PRZ-157.07e: jedna metoda `erli_przesylki` — wybiera ją wyłącznie droga nadania ERLI
+  // Jedna metoda `erli_przesylki` — wybiera ją wyłącznie droga nadania ERLI
   // (wysylka/services/droga-nadania-erli.js), bo zamówienie ERLI ma metodę „nieznana” albo „odbior_osobisty”.
-  // Śledzenie „wlasne”: od 09 adapter ma `statusPrzesylki` (status paczki z API ERLI) — kontrakt PRZ-135.
+  // Śledzenie „wlasne”: adapter ma `statusPrzesylki` (status paczki z API ERLI).
   erli_przesylki: {
     klucz: 'erli_przesylki', nazwa: 'Przesyłki Erli', logo: '', idKatalogu: 'erli_przesylki',
     opisKatalogu: '', umowa: 'platformy', przewoznicy: ['inpost', 'orlen', 'dhl', 'dpd'],
@@ -117,7 +117,7 @@ export function modulKurieraLubNull(klucz: unknown, rejestr: RejestrKurierow = M
 }
 
 /**
- * PRZ-142.01: „panelu InPost" / „panelu kuriera" — do komunikatów dla operatora, które kierują go
+ * „panelu InPost" / „panelu kuriera" — do komunikatów dla operatora, które kierują go
  * do panelu przewoźnika TEJ przesyłki. Nieznany albo pusty `przesylki.kurier` → neutralnie.
  */
 export function panelKuriera(klucz: unknown, rejestr: RejestrKurierow = MODULY_KURIEROW): string {
@@ -157,7 +157,7 @@ export function metodaKuriera(metoda: unknown, rejestr: RejestrKurierow = MODULY
 
 /**
  * ⚠️ Pieniądze: tylko kurier z `pobranie: 'umowa'` wolno wskazać przy pobraniu na tej paczce.
- * PRZ-135.T2: kurier z `'adapter'` awansuje, gdy firma zaznaczyła umowę na pobranie
+ * Kurier z `'adapter'` awansuje, gdy firma zaznaczyła umowę na pobranie
  * (`umowyFirmy`, z `umowyPobraniaFirmy(db)`); `'brak'` nie awansuje nigdy. Rejestr się nie zmienia.
  */
 export function pobranieNaUmowie(
@@ -170,7 +170,7 @@ export function pobranieNaUmowie(
 }
 
 /**
- * PRZ-137.03 (D2): czy kurier metody wiezie pobranie na paczce N > 1 (zamiennik za pobraniem).
+ * Czy kurier metody wiezie pobranie na paczce N > 1 (zamiennik za pobraniem).
  * Tylko jawne `pobranieNaDosylce: true` w rejestrze; nieznana metoda albo brak flagi = nie.
  */
 export function pobranieNaDosylce(metoda: unknown, rejestr: RejestrKurierow = MODULY_KURIEROW): boolean {
@@ -194,7 +194,7 @@ function kurierDomyslnyOpis(rejestr: RejestrKurierow): OpisKuriera {
   return opis;
 }
 
-/** D8: pierwsza metoda pierwszego kuriera z `umowa: 'wlasna'` (dziś 'dpd'). */
+/** Pierwsza metoda pierwszego kuriera z `umowa: 'wlasna'` (dziś 'dpd'). */
 export function metodaDomyslna(rejestr: RejestrKurierow = MODULY_KURIEROW): string {
   return kurierDomyslnyOpis(rejestr).metody[0]!.klucz;
 }
@@ -207,7 +207,7 @@ export function kurierDomyslny(rejestr: RejestrKurierow = MODULY_KURIEROW): stri
 export const METODA_DOMYSLNA = metodaDomyslna();
 export const KURIER_DOMYSLNY = kurierDomyslny() as KluczKurieraNadania;
 
-/** D5.3 wymaga adapterów: sprawdzenie ich metod należy do kontraktu składania (04b). */
+/** Składanie wymaga adapterów: sprawdzenie ich metod należy do kontraktu składania. */
 export function sprawdzOpisyKurierow(
   moduly: Readonly<Record<string, OpisKuriera>> = MODULY_KURIEROW,
   przewoznicy: Readonly<Record<string, OpisPrzewoznika>> = OPISY_PRZEWOZNIKOW,

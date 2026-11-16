@@ -1,8 +1,8 @@
-// PRZ-119.03 — Fakturownia za kontraktem ProgramFakturowy (core/kontrakty.ts), na kliencie src/oms/fakturownia/client.js.
+// Fakturownia za kontraktem ProgramFakturowy (core/kontrakty.ts), na kliencie src/oms/fakturownia/client.js.
 //
 // W odróżnieniu od inFaktu (cienkie przekazanie) ten adapter TŁUMACZY: ładunek w kształcie v3 inFaktu → `invoice`
-// Fakturowni i dokument Fakturowni → WierszDokumentu. Każde pole ciała żądania jest z pomiarów F1–F17
-// (docs/plany/PRZ-119-pomiary.md, tests/fixtures/fakturownia/), test porównuje je pole po polu.
+// Fakturowni i dokument Fakturowni → WierszDokumentu. Każde pole ciała żądania wynika z pomiarów F1–F17
+// na koncie próbnym (odpowiedzi w tests/fixtures/fakturownia/, numer pomiaru jest w nazwie pliku); test porównuje je pole po polu.
 //
 // Zasady (pomiary mają pierwszeństwo przed planem):
 //  • kwoty: grosze ↔ napis „123.00” WYŁĄCZNIE na liczbach całkowitych i napisach — nigdy mnożenie liczby
@@ -45,7 +45,7 @@ import { EKRAN_FAKTUROWNI } from '../../domena/konfiguracja-fakturownia.js';
 const STRATEGIA = Object.freeze({ position: 'default', sum: 'sum', invoice_form_price_kind: 'gross' });
 /** `gov_status`, przy którym dokument NIE poszedł do KSeF sam z siebie. */
 const BEZ_AUTOWYSYLKI = new Set<unknown>([null, undefined, 'not_connected', 'not_applicable']);
-/** `gov_status` dokumentu przyjętego przez KSeF — tylko wtedy `gov_id` jest numerem KSeF (decyzja kierownika, recenzja 03). */
+/** `gov_status` dokumentu przyjętego przez KSeF — tylko wtedy `gov_id` jest numerem KSeF. */
 const PRZYJETY_W_KSEF = new Set<unknown>(['ok', 'demo_ok']);
 /** Sposób płatności v3 → `payment_type` Fakturowni. Brak = przelew (jak inFakt). */
 const PLATNOSC: Readonly<Record<string, string>> = Object.freeze({ transfer: 'transfer', delivery: 'cash_on_delivery' });
@@ -57,7 +57,7 @@ const POLA_SPRZEDAWCY = ['seller_name', 'seller_tax_no', 'seller_street', 'selle
 const DNI_PRZED_SPRZEDAZA = 30;
 
 const odmowa = (komunikat: string) => bladOperatora(komunikat, { status: 400 });
-// PRZ-119.11a: profil próby Fakturowni (prywatna piaskownica) — KSeF tylko na atrapie, nigdy przez prawdziwe konto.
+// Profil próby Fakturowni (prywatna piaskownica) — KSeF tylko na atrapie, nigdy przez prawdziwe konto.
 export const ODMOWA_KSEF_PIASKOWNICY = 'Piaskownica: wysyłka do KSeF przez prawdziwą Fakturownię jest wyłączona — sprawdzisz ją na atrapie.';
 
 /** Grosze (liczba całkowita) → „123.00”. Bez dzielenia zmiennoprzecinkowego. */
@@ -147,7 +147,7 @@ export function programFakturownia(
     teraz = () => new Date(), piaskownica,
   }: {
     nazwa?: OdmianaNazwy; adres?: string; ekran?: string; alarmAutoKsef?: AlarmAutoKsef; teraz?: () => Date;
-    // PRZ-119.11a: profil próby — `oid` z prefiksem `proba-<znacznik bazy>-` (reset bazy demo nie zderza numerów
+    // Profil próby — `oid` z prefiksem `proba-<znacznik bazy>-` (reset bazy demo nie zderza numerów
     // z fakturami na koncie próbnym), wysyłka do KSeF odmawia przed klientem.
     piaskownica?: { znacznik: () => string };
   } = {},
@@ -243,7 +243,7 @@ export function programFakturownia(
     const issueDate = tekst(ladunek.invoice_date) || dzis();
     const sellDate = tekst(ladunek.sale_date) || issueDate;
     const zaplacono = ladunek.paid_price === undefined || ladunek.paid_price === null ? 0 : ladunek.paid_price;
-    // PRZ-119.12c, pomiar F9B: `status: paid` bez `paid_date` → Fakturownia wpisuje DZIŚ. Dlatego data zapłaty
+    // Pomiar F9B: `status: paid` bez `paid_date` → Fakturownia wpisuje DZIŚ. Dlatego data zapłaty
     // nigdy pusta: z ładunku (dzień opłacenia — services/faktura.js), a bez niej data sprzedaży (np. faktura okresu).
     const zaplata = zaplacono === 0 ? {} : {
       status: zaplacono === suma ? 'paid' : 'partial',
@@ -286,7 +286,7 @@ export function programFakturownia(
     if (!/^\d+$/.test(idRodzica)) throw odmowa('Korekta bez wskazania faktury korygowanej w Fakturowni. Korekta NIE została wystawiona.');
     const services = ladunek.services as Surowy[] | undefined;
     if (!Array.isArray(services) || services.length === 0) throw odmowa('Korekta bez pozycji. Korekta NIE została wystawiona.');
-    // Decyzja (b): dane sprzedawcy i nabywcy z KORYGOWANEGO dokumentu (stan na fakturze, nie dzisiejsza kartoteka).
+    // Dane sprzedawcy i nabywcy z KORYGOWANEGO dokumentu (stan na fakturze, nie dzisiejsza kartoteka).
     const rodzic = (await wolaj('pobierzFakture', idRodzica)) as Surowy;
     const wdt = rodzic?.kind === 'wdt';
     const grupy = new Map<string, { przed?: Surowy; po?: Surowy }>();
@@ -472,7 +472,7 @@ export function programFakturownia(
 
   // Metody opcjonalne: obecne ⇔ klient ma metodę W CHWILI OWIJANIA; zdolność ⇔ metoda w programie.
   const opcjonalne: Record<string, Metoda> = {
-    // Data zapłaty (`paidDate`) idzie do klienta: po `change_status` zapisuje ją osobnym PUT (PRZ-119.05).
+    // Data zapłaty (`paidDate`) idzie do klienta: po `change_status` zapisuje ją osobnym PUT.
     async oznaczZaplacona(id: unknown, opcje?: unknown) {
       const { paidDate } = (opcje && typeof opcje === 'object' ? opcje : {}) as { paidDate?: unknown };
       return paidDate === undefined || paidDate === null

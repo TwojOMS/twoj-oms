@@ -1,16 +1,14 @@
 // PRZELICZANIE NETTO ↔ BRUTTO w formularzach pozycji: „Dodaj pozycję” na karcie i wiersze ekranu „Nowe zamówienie”.
 //
-// Do PRZ-105 (21.10.2026) mieszkało w stronie (`_skrypt-cena.ejs`) — tam nie dało się go przetestować, a od
-// PRZ-105 liczy stawką WIERSZA (lista 23/8/5/0), więc reguł przybyło. Plik, nie skrypt w stronie: test
-// (tests/public/cena-netto.test.js) importuje DOKŁADNIE to, co wykonuje przeglądarka.
+// Liczy stawką WIERSZA (lista 23/8/5/0), więc reguł jest sporo. Plik, nie skrypt w stronie, bo skryptu w stronie
+// nie da się przetestować: test (tests/public/cena-netto.test.js) importuje DOKŁADNIE to, co wykonuje przeglądarka.
 //
-// Zasady, które zostają bez zmian:
-//  - brutto jest WARTOŚCIĄ PRZECHOWYWANĄ (domain/pozycje-reczne.js: parsujNowaPozycje — serwer przelicza z netto
+// Zasady:
+//  - brutto jest WARTOŚCIĄ PRZECHOWYWANĄ (domena/pozycje-reczne.js: parsujNowaPozycje — serwer przelicza z netto
 //    WYŁĄCZNIE przy pustym brutto). Przy wyłączonym skrypcie formularz działa dalej, operator wpisuje brutto;
-//  - arytmetyka przez grosze, dokładnie jak domain/vat.js (bruttoZNetto, nettoZBruttoDoPokazania);
+//  - arytmetyka przez grosze, dokładnie jak domena/vat.js (bruttoZNetto, nettoZBruttoDoPokazania);
 //  - stawka NIE jest wpisana tutaj — dojeżdża atrybutem `data-vat` formularza (domyślna z Ustawień) albo listą
 //    w wierszu. Druga kopia „23” w przeglądarce rozjechałaby się cicho z fakturą.
-// PRZ-105:
 //  - `data-wdt="1"` (nabywca z UE) = 0%, tak jak policzy dokument; ekran zakładania przestawia go na żywo
 //    z pola NIP (public/suma-podglad.js);
 //  - zmiana STAWKI zostawia brutto i przelicza netto (ten sam kierunek, co serwer); przy samym netto liczy brutto.
@@ -20,7 +18,7 @@
 
 const zaokr = (x) => (Math.round(x) / 100).toFixed(2);
 const liczba = (v) => Number(String(v ?? '').trim().replace(',', '.'));
-// PRZ-122.B07c: „zw” (zwolnienie — lista ma ją tylko przy TwojeFaktury) liczy się jak 0: netto = brutto, tak jak
+// „zw” (zwolnienie — lista ma ją tylko przy TwojeFaktury) liczy się jak 0: netto = brutto, tak jak
 // serwer (domena/vat.js). Bez tego `Number('zw')` = NaN i skrypt brał `data-vat` formularza (np. 23).
 const stawkaLiczbowa = (v) => (String(v ?? '').trim() === 'zw' ? 0 : Number(v));
 
@@ -30,7 +28,7 @@ export function stawkaWiersza(zasieg, formularz) {
   const lista = zasieg?.querySelector('select[name$="vat"]');
   const zListy = lista ? stawkaLiczbowa(lista.value) : NaN;
   if (Number.isFinite(zListy)) return zListy;
-  // PRZ-152.G2-03a: karta zamówienia — pozycja sklepowa ma stawkę tekstem (bez listy); serwer podaje ją w `data-stawka`.
+  // Karta zamówienia — pozycja sklepowa ma stawkę tekstem (bez listy); serwer podaje ją w `data-stawka`.
   const zWiersza = zasieg?.dataset?.stawka;
   if (zWiersza !== undefined && String(zWiersza).trim() !== '') {
     const n = stawkaLiczbowa(zWiersza);
@@ -65,7 +63,7 @@ export function przelicz(zdarzenie, formularz) {
     const b = liczba(brutto.value);
     netto.value = Number.isFinite(b) && String(brutto.value).trim() ? zaokr(Math.round(b * 100) / mnoznik) : '';
   };
-  // Recenzja PRZ-105: zmiana STAWKI liczy z pola, które operator wpisał OSTATNIO (znacznik na wierszu).
+  // Zmiana STAWKI liczy z pola, które operator wpisał OSTATNIO (znacznik na wierszu).
   // „Netto 100, potem 8%” ma dać brutto 108, a nie zostawić 123 policzone starą stawką. Bez znacznika
   // (wiersz z magazynu, formularz wczytany z serwera) brutto — wartość przechowywana — zostaje.
   const znacznik = zasieg.dataset ?? {};

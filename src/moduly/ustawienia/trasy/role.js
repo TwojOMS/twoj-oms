@@ -1,11 +1,11 @@
-// PRZ-068: ekran „Role i uprawnienia” — tylko administrator (flaga admin, nie ptaszek Ustawień).
+// Ekran „Role i uprawnienia” — tylko administrator (flaga admin, nie ptaszek Ustawień).
 import { EKRANY } from '../../../domena/ekrany.js';
 import { wylaczoneModuly } from '../../../oms/db/moduly-opcjonalne.js';
 import { nawigacjaUstawien } from '../nawigacja.js';
 import { listaRol, zapiszMacierz, dodajRole, zmienNazweRoli, usunRole, BladRoli, KLUCZE_DODATKOWE, odciskMacierzy } from '../role.js';
 import { stronaOdmowy } from '../../../core/web/odmowa.js';
 
-// PRZ-152.G13u1: nieznana rola — 404 w układzie OMS z powrotem na ekran ról (status i tekst bez zmian).
+// Nieznana rola — 404 w układzie OMS z powrotem na ekran ról (status i tekst bez zmian).
 const BRAK_ROLI = { tytul: 'Nie znaleziono roli', wroc: '/ustawienia/role', napisWroc: 'Wróć do ról i uprawnień' };
 
 const KOMUNIKATY = { macierz: 'Zapisano uprawnienia ról.', nowa: 'Dodano rolę.', nazwa: 'Zmieniono nazwę roli.', usunieto: 'Usunięto rolę.' };
@@ -15,7 +15,7 @@ const WIERSZE = [...EKRANY.map((e) => ({ klucz: e.klucz, etykieta: e.etykieta })
 
 export function registerRoleRoutes(app, { db, teraz }) {
   // `wlasnyUklad: true` — brak-dostepu.ejs to samodzielny dokument (patrz tylkoAdmin w trasy/konta.js).
-  // PRZ-083: gość demo (podglad-demo.js) ogląda Role — tylko GET; zapis blokuje już hak.
+  // Gość demo (podglad-demo.js) ogląda Role — tylko GET; zapis blokuje już hak.
   const tylkoAdmin = (req, reply) => (req.konto?.admin || (req.konto?.podgladDemo && req.method === 'GET') ? null
     : reply.code(403).view('brak-dostepu.ejs', { title: 'Brak dostępu', wlasnyUklad: true }));
   const widok = (req, reply, { blad = null, pola = {} } = {}) => reply.view('role.ejs', {

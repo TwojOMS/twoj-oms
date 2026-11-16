@@ -1,14 +1,14 @@
 // Jedna mapa kanalow raportowych na OBIE EPOKI: historie z Apilo i biezaca sprzedaz z OMS-u.
 //
-// ⚠️ POWOD ISTNIENIA: te same reguly zyly dotad w DWOCH miejscach i mowily o tym samym innym
-// jezykiem — konta i tagi Apilo w zewnetrznym repo raportow wlasciciela (`klasyfikacja.mjs`), kolumna `sklep`
-// w web/routes/api-sprzedaz.js. Dwie definicje kanalu to dwie rozne odpowiedzi na pytanie
-// „ile sprzedalismy przez Allegro".
+// ⚠️ POWÓD ISTNIENIA: te same reguły żyłyby w DWÓCH miejscach i mówiły o tym samym innym
+// językiem — konta i tagi Apilo w zewnętrznych raportach, kolumna `sklep`
+// w `moduly/api-panelu/trasy/api-sprzedaz.js`. Dwie definicje kanału to dwie różne odpowiedzi na pytanie
+// „ile sprzedaliśmy przez Allegro".
 //
-// ⚠️ TO NIE JEST TEN SAM SLOWNIK CO W `api-sprzedaz.js` I NIE WOLNO ICH UJEDNOLICAC. Tamten
-// endpoint oddaje 'SKLEP', 'SKLEP_INDYWIDUALNE' i 'ALLEGRO' CELOWO innymi nazwami, zeby
-// konsument w repo `raporty` nie mogl ich zsumowac z kanalami liczonymi z Apilo. Ten slownik
-// jest WEWNETRZNY — nie wychodzi zadnym endpointem.
+// ⚠️ TO NIE JEST TEN SAM SŁOWNIK CO W `api-sprzedaz.js` I NIE WOLNO ICH UJEDNOLICAĆ. Tamten
+// endpoint oddaje 'SKLEP', 'SKLEP_INDYWIDUALNE' i 'ALLEGRO' CELOWO innymi nazwami, żeby
+// zewnętrzny konsument raportów nie mógł ich zsumować z kanałami liczonymi z Apilo. Ten słownik
+// jest WEWNĘTRZNY — nie wychodzi żadnym endpointem.
 
 // Historia ma tylko klucz raportowy. Jawny typ wygrywa z nazwą; dla kanałów bez
 // definicji zachowujemy dawny prefiks (również dla archiwalnych kont Allegro).
@@ -31,7 +31,7 @@ function tagi(w) {
     return Array.isArray(t) ? t : [];
   } catch {
     // Uszkodzony JSON znaczy „nie wiemy, jakie tagi" — a nie „nie ma tagow". Traktujemy
-    // jak brak i zostawiamy to ostrzezeniu o zamowieniach bez tagu (Zadanie 10).
+    // jak brak i zostawiamy to ostrzezeniu o zamowieniach bez tagu.
     return [];
   }
 }
@@ -46,16 +46,15 @@ function tagi(w) {
  *  3. INDYWIDUALNE przed sklepem — zamowienia z panelu ofert wpadaja do tego samego
  *     WooCommerce co detal i bez reguly liczylyby sie jako sprzedaz sklepowa.
  *
- * ⚠️⚠️ KONTO RECZNE TO `RECZNE`, A NIE `INDYWIDUALNE` — i to jest poprawka po pomiarze
- * na danych produkcyjnych, nie szczegol nazewniczy. Pierwotna mapa mowila „INDYWIDUALNE =
- * konto reczne LUB pozycja zaslepki", a to sa DWIE ROZLACZNE POPULACJE o dwoch roznych granicach:
+ * ⚠️⚠️ KONTO RECZNE TO `RECZNE`, A NIE `INDYWIDUALNE` — i to nie jest
+ * szczegół nazewniczy. Mapa „INDYWIDUALNE = konto ręczne LUB pozycja zaślepki" sklejałaby
+ * DWIE ROZŁĄCZNE POPULACJE o dwóch różnych granicach:
  *   • zamowienia z panelu ofert: konto sklepu + pozycja zaslepki → w OMS-ie `indywidualne = 1`,
  *     z wlasna granica historii;
- *   • zamowienia reczne: osobne konto → w OMS-ie `sklep = 'reczne'`, z inna granica historii
- *     (kilkaset zamowien, rzad setek tysiecy zl).
- * Sklejone w jeden kanal daly „ten sam pieniadz po dwoch stronach granicy w dwoch roznych
- * kanalach": zaleznie od przyjetej granicy znikaly albo dublowaly sie kwoty rzedu tysiecy zl.
- * ZADNA data nie byla poprawna — dlatego kanaly sa dwa.
+ *   • zamowienia reczne: osobne konto → w OMS-ie `sklep = 'reczne'`, z inna granica historii.
+ * Sklejone w jeden kanal dalyby „ten sam pieniadz po dwoch stronach granicy w dwoch roznych
+ * kanalach": zaleznie od przyjetej granicy znikałyby albo dublowały się kwoty liczone w tysiącach złotych.
+ * ZADNA data nie bylaby poprawna — dlatego kanaly sa dwa.
  */
 export function kanalHistoryczny(w, klasyfikacja) {
   wymagajKlasyfikacji(klasyfikacja);
@@ -77,14 +76,13 @@ export function kanalHistoryczny(w, klasyfikacja) {
 export function kanalOms(w, klasyfikacja) {
   wymagajKlasyfikacji(klasyfikacja);
   if (w.indywidualne) return 'INDYWIDUALNE';
-  // ⚠️⚠️ B2B WCHODZI Z KOLUMNY `zamowienia.b2b` (21.08.2026) — do tego dnia kanal B2B byl po
-  // granicy z Apilo PUSTY, bo OMS nie mial czym oznaczyc hurtu. Znacznik podstawia sie z bazy
-  // stalych klientow przy zakladaniu zamowienia i od tej chwili rozstrzyga ZAMOWIENIE.
+  // ⚠️⚠️ B2B WCHODZI Z KOLUMNY `zamowienia.b2b` — bez niej kanał B2B byłby po
+  // granicy z Apilo PUSTY, bo OMS nie miałby czym oznaczyć hurtu. Znacznik podstawia sie z bazy
+  // stalych klientow przy zakladaniu zamowienia i od tej chwili rozstrzyga ZAMÓWIENIE.
   //
-  // ⚠️ KOLUMNA, A NIE ODCZYT TYPU KLIENTA Z BAZY — i to jest decyzja odwracajaca pierwszy
-  // plan tej funkcji (docs/superpowers/plans/2026-08-21-oms-baza-stalych-klientow.md, cz. II.5).
-  // Kanaly licza sie PRZY ODCZYCIE, wiec regula pytajaca baze klientow przepisywalaby historie
-  // wstecz: w dniu wdrozenia zamowienia tych klientow przeskoczylyby z „Reczne" do „B2B"
+  // ⚠️ KOLUMNA, A NIE ODCZYT TYPU KLIENTA Z BAZY — kanały liczą się
+  // PRZY ODCZYCIE, więc reguła pytająca bazę klientów przepisywałaby historię
+  // wstecz: w dniu wdrożenia zamówienia tych klientów przeskoczyłyby z „Reczne" do „B2B"
   // takze w miesiacach ZAMKNIETYCH, a kazda pozniejsza zmiana typu klienta robilaby to znowu,
   // po cichu. Kolumna usuwa cala te klase problemow zamiast ja obslugiwac — i jest zgodna
   // z reszta panelu, gdzie dane klienta sa MIGAWKA (klient_json, dostawa_json, chce_fakture).
@@ -96,8 +94,8 @@ export function kanalOms(w, klasyfikacja) {
   // wygrywalo, zamowienia zbiorcze wypadlyby z DROPSHIPPINGU i saldo okresu przestaloby sie
   // zgadzac z raportem.
   //
-  // ⚠️ WYLACZNIE dla `sklep = 'reczne'`. Sprzedaz przez sklep B ma wlasny kanal
-  // SKLEP_B i to on mowi, SKAD przyszly pieniadze; `B2B` w tym slowniku znaczy „sprzedaz
+  // ⚠️ WYLACZNIE dla `sklep = 'reczne'`. Sprzedaz przez sklep ma wlasny kanal
+  // z konfiguracji sklepow i to on mowi, SKAD przyszly pieniadze; `B2B` w tym slowniku znaczy „sprzedaz
   // hurtowa poza sklepem" (w historii importu: konto hurtowe / tag b2b). Sklejenie ich dawaloby dwa
   // kanaly opisujace ten sam pieniadz — patrz naglowek tego pliku.
   if (w.sklep === 'reczne') {
@@ -105,7 +103,7 @@ export function kanalOms(w, klasyfikacja) {
     return w.b2b ? 'B2B' : 'RECZNE';
   }
   const zeSklepu = klasyfikacja.sklepy.get(w.sklep);
-  // PRZ-108.04: numer zamówienia (nie dane klienta) + wskazówka, co sprawdzić — komunikat trafia na ekran panelu.
+  // Numer zamówienia (nie dane klienta) + wskazówka, co sprawdzić — komunikat trafia na ekran panelu.
   if (!zeSklepu) {
     const numer = w.numer ? ` ${w.numer}` : '';
     throw odmowa(`Raport nie zna tego zamówienia${numer}: nieznany sklep OMS: ${w.sklep}. Tego klucza sklepu nie ma w konfiguracji kanałów — sprawdź OMS_KANALY (Ustawienia → Integracje → Moje połączenia).`);

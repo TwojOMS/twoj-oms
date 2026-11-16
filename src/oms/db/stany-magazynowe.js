@@ -1,4 +1,4 @@
-// Zapytania stanów magazynowych (PRZ-091). Reguły — domena/stany-magazynowe.js; tu tylko baza.
+// Zapytania stanów magazynowych. Reguły — domena/stany-magazynowe.js; tu tylko baza.
 import { zuzycieZZamowien, zuzycieZGrup, kartaPozycji, planImportuOtwarcia, RODZAJE_RUCHU, STATUSY_WOO_BEZ_ROZCHODU } from '../../domena/stany-magazynowe.js';
 import { nalozNadpisaniaPozycji } from '../../domena/pozycje-reczne.js';
 
@@ -32,7 +32,7 @@ export function przelaczStany(db, { wlacz, konto = null, at = teraz() }) {
 
 /** Różne `karta_id` wierszy lustra o danym identyfikatorze (`kanal: null` = dowolny kanał). */
 export function kartyLustraZ(db) {
-  // D19/D23: jeden odczyt rejestru, oba tryby ofert. Konto to dokładnie zamowienia.sklep
+  // Jeden odczyt rejestru, oba tryby ofert. Konto to dokładnie zamowienia.sklep
   // (poller ERLI dostaje polaczenie.klucz), nigdy sam identyfikator produktu między kontami.
   const oferty = new Map((maRejestrOfert(db) ? db.prepare(
     "SELECT kanal, id_zewnetrzne, karta_id FROM oferty_kanalow",
@@ -69,8 +69,8 @@ export function zamowieniaOdGranicy(db, granica, { zPoprawkami = false, ids = nu
   const parametry = [granica, ...(doChwili ? [doChwili] : []), ...(ids ? [JSON.stringify(ids)] : [])];
   const zamowienia = db.prepare(`SELECT z.id, z.numer, z.sklep, z.anulowane, z.anulowane_recznie, z.status_woo, z.utworzone_at, z.pozycje_reczne_json
     FROM zamowienia z WHERE julianday(z.utworzone_at) >= julianday(?)${warunek} ORDER BY julianday(z.utworzone_at), z.id`).all(...parametry);
-  // ⚠️ JEDNO zapytanie o pozycje wszystkich tych zamówień, nie jedno na zamówienie — pomiar PRZ-091: 15 000 zamówień
-  // od granicy (500 dziennie × 30 dni) to 760 ms przy zapytaniu per zamówienie, a liczy się przy każdym otwarciu listy
+  // ⚠️ JEDNO zapytanie o pozycje wszystkich tych zamówień, nie jedno na zamówienie — przy kilkunastu tysiącach zamówień
+  // od granicy (miesiąc sprzedaży) zapytanie per zamówienie to blisko sekunda, a liczy się przy każdym otwarciu listy
   // Magazynu i karty zamówienia. Filtr daty po tym samym wyrażeniu, co indeks `zamowienia_julianday_utworzenia`.
   const wszystkie = db.prepare(`SELECT p.* FROM pozycje p JOIN zamowienia z ON z.id = p.zamowienie_id
     WHERE julianday(z.utworzone_at) >= julianday(?)${warunek} ORDER BY p.zamowienie_id, p.id`).all(...parametry);
@@ -170,7 +170,7 @@ export function historiaKarty(db, kartaId) {
     if (ilosc) zamowienia.push({ typ: 'zamowienie', zamowienie_id: zamowienie.id, numer: zamowienie.numer,
       sklep: zamowienie.sklep, ilosc: -ilosc, utworzono_at: zamowienie.utworzone_at });
   }
-  // D59: przepięcie oferty z tej karty albo na nią — wpis opisowy (ilość 0, bo zamówienia już liczą się na nowej karcie;
+  // Przepięcie oferty z tej karty albo na nią — wpis opisowy (ilość 0, bo zamówienia już liczą się na nowej karcie;
   // historia dalej sumuje się do stanu), z liczbą sztuk, które przeszły z ofertą wstecz.
   const przepiecia = maTabele(db, 'stany_przepiecia') ? db.prepare(`SELECT kanal, produkt_id, wariant_id, z_karty, na_karte,
       ilosc_wstecz, konto_login, utworzono_at, (SELECT nazwa FROM karty_produktow WHERE id = z_karty) AS z_nazwa,
@@ -190,7 +190,7 @@ function opisPrzepiecia(w, id) {
 }
 
 /**
- * D59: rozchód z zamówień od granicy, w których występuje ten produkt kanału (`oferta_id` albo `produkt_id`),
+ * Rozchód z zamówień od granicy, w których występuje ten produkt kanału (`oferta_id` albo `produkt_id`),
  * rozłożony na karty według BIEŻĄCEGO lustra i rejestru — ta sama reguła, co `stanyKart` (`zuzycieZZamowien`).
  * Różnica przed i po zmianie powiązania = ilość, którą przepięcie przenosi wstecz. Wyłączone stany → pusta mapa.
  */
@@ -266,7 +266,7 @@ function zapiszOtwarcieWTransakcji(db, { kartaId, ilosc, zrodlo, konto = null, a
       klucz: `otwarcie:${kartaId}:${granica}`, konto, at });
   }
   if (db.prepare('SELECT 1 FROM stany_otwarcia WHERE karta_id = ? AND granica = ?').get(kartaId, granica)) return { dopisano: false };
-  // Ruch otwarcia sprzed E4 (import PRZ-091) bez wiersza stany_otwarcia — jak w podglądzie importu: odmowa.
+  // Ruch otwarcia ze starszego importu bez wiersza stany_otwarcia — jak w podglądzie importu: odmowa.
   if (db.prepare(`SELECT 1 FROM ruchy_magazynowe WHERE karta_id = ? AND rodzaj = 'otwarcie'
     AND julianday(utworzono_at) >= julianday(?)`).get(kartaId, granica)) {
     throw new Error('Karta ma już stan otwarcia — zmień go korektą na karcie.');
@@ -281,7 +281,7 @@ function zapiszOtwarcieWTransakcji(db, { kartaId, ilosc, zrodlo, konto = null, a
   return { dopisano: true };
 }
 
-/** D52: także zero zapisuje znany stan. */
+/** Także zero zapisuje znany stan. */
 export function zapiszOtwarcie(db, dane) {
   db.exec('BEGIN IMMEDIATE');
   try {
@@ -358,12 +358,12 @@ export function stanKontynuacji(db) {
 }
 
 /**
- * Map po id przekazanego wiersza (bez id: po obiekcie wiersza). `od` jest jawne, nie wymaga kolumn E4.01.
+ * Map po id przekazanego wiersza (bez id: po obiekcie wiersza). `od` jest jawne, nie wymaga kolumn z migracji magazyn/0004.
  * Jeden odczyt grupuje pozycje zamówień od najstarszego okna; ruchy, powiązania i pollery są w tym samym SELECT.
  */
 export function wyjasnieniaOfert(db, wiersze) {
   if (!wiersze.length) return new Map();
-  // Wiersz bez prawidłowego `od` (oferta jeszcze bez pierwszej wysyłki, D53) nie wyznacza okna — dostaje zera niżej.
+  // Wiersz bez prawidłowego `od` (oferta jeszcze bez pierwszej wysyłki) nie wyznacza okna — dostaje zera niżej.
   const czasy = wiersze.map(w => Date.parse(w.od)).filter(Number.isFinite);
   const od = czasy.length ? new Date(Math.min(...czasy)).toISOString() : teraz();
   let dane;
@@ -451,7 +451,7 @@ export function wyjasnieniaOfert(db, wiersze) {
         if (sprzedaz && (w.regula !== 'zmienione' || (!p.anulowane && !p.wooBez))) sprzedaneOd += p.ile;
         if (zmienione && (p.anulowane || (w.regula === 'zmienione' && p.wooBez))) anulowaneOd += p.ile;
       }
-      // E4.13p4: własna korekta „Przyjmij stan kanału” tej oferty (`rozjazd:<id>:…`) już siedzi w jej S — nie jest wyjaśnieniem.
+      // Własna korekta „Przyjmij stan kanału” tej oferty (`rozjazd:<id>:…`) już siedzi w jej S — nie jest wyjaśnieniem.
       const wlasna = w.id != null ? `rozjazd:${w.id}:` : null;
       for (const r of ruchyKarty.get(kartaId) ?? []) if (r.at > odAt && !(wlasna && r.klucz.startsWith(wlasna))) wyjasnioneKarty += r.ile;
     }

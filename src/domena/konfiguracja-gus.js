@@ -1,9 +1,9 @@
-// PRZ-102.11 — klucz GUS (baza REGON, usługa BIR1.1) skonfigurowany w Ustawieniach. Wzór: inFakt z PRZ-093.10
-// (domena/konfiguracja-infakt.js) i kurierzy z PRZ-092/093.09.
+// Klucz GUS (baza REGON, usługa BIR1.1) skonfigurowany w Ustawieniach. Wzór: inFakt
+// (domena/konfiguracja-infakt.js) i kurierzy.
 //
 // Dla instalacji klientów Twojego OMS-u: klucz użytkownika BIR wpisuje się na ekranie zamiast do oms.env.
 // ⚠️ Gdy klucz jest w .env (GUS_KLUCZ), .env WYGRYWA i ekran tylko to pokazuje — instalacja skonfigurowana plikiem
-// (w tym produkcja właściciela) nie zmienia zachowania po tej zmianie.
+// nie zmienia zachowania.
 // Adres usługi NIE jest polem formularza: GUS_URL zostaje wyłącznie w pliku (adres testowy GUS-u do prób) i dotyczy
 // klucza z pliku i z ekranu tak samo; ekran go nie pokazuje.
 

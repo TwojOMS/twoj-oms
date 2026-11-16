@@ -1,6 +1,6 @@
 import type { Migracja } from '../../../core/kontrakty.ts';
 
-// PRZ-090 — karta produktu zamiast „wzoru”: rejestr produktów dla dowolnego sklepu, nie dla jednej branży.
+// Karta produktu zamiast „wzoru”: rejestr produktów dla dowolnego sklepu, nie dla jednej branży.
 //
 // ⚠️ WYŁĄCZNIE DOKŁADANIE. Tabela `wzory` i kolumna `produkty_sklepowe.wzor_id` ZOSTAJĄ w bazie i nikt ich już
 // nie czyta — strażnik migracji nie wpuszcza usuwania ani zmiany nazw, a stary obraz po wycofaniu wydania czyta dokładnie

@@ -1,7 +1,7 @@
-// Para tokenow OAuth kanalu (tabela `tokeny_kanalu`, patrz db/schema.sql).
+// Para tokenow OAuth kanalu (tabela `tokeny_kanalu`).
 //
 // ⚠️ TE WIERSZE SA POSWIADCZENIAMI. Nie wypisujemy ich do logu, nie wkladamy do komunikatu
-// bledu i nie oddajemy na ekran (niezmiennik 4.10 w docs/oms/PRZEWODNIK.md). `wczytajTokeny`
+// bledu i nie oddajemy na ekran (reguła: sekrety nie wychodzą). `wczytajTokeny`
 // oddaje CALY wiersz, wiec kazdy jego czytelnik odpowiada za to sam — do widoku sluzy
 // `stanDlaEkranu()` z allegro/tokeny.js.
 
@@ -29,7 +29,7 @@ export function sprawdzGeneracjeDostepu(db, kanal, oczekiwana) {
 // nie zadziala przy nastepnym odswiezeniu — i kanal zamilkby az do reki czlowieka.
 //
 // `ostatni_blad` gasnie przy KAZDYM udanym zapisie i to jest wyjscie ze stanu wymagajacego
-// uwagi (niezmiennik 4.9): kanal polaczony na nowo nie ma prawa dalej wygladac na zepsuty.
+// uwagi (reguła: każdy stan ma wyjście): kanal polaczony na nowo nie ma prawa dalej wygladac na zepsuty.
 export function zapiszTokeny(db, kanal, { accessToken, refreshToken, wygasaAt, refreshWygasaAt }, oczekiwanaGeneracja) {
   sprawdzGeneracjeDostepu(db, kanal, oczekiwanaGeneracja);
   db.prepare(`
@@ -51,7 +51,7 @@ export function zapiszTokeny(db, kanal, { accessToken, refreshToken, wygasaAt, r
 // w konieczne przejscie czlowieka przez device flow.
 //
 // ⚠️ `opis` MUSI byc tekstem, ktory sami napisalismy dla czlowieka — nigdy surowa
-// odpowiedzia serwera i nigdy z tokenem w srodku (niezmiennik 4.10).
+// odpowiedzia serwera i nigdy z tokenem w srodku (reguła: sekrety nie wychodzą).
 //
 // ⚠️ ZNACZNIK CZASU IDZIE RAZEM Z BLEDEM. Bez tego `zaktualizowane_at` zostawaloby z
 // ostatniego SUKCESU: operator widzialby swiezy blad obok daty sprzed trzech dni i uznal go

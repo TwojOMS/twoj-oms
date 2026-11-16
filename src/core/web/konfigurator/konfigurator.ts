@@ -1,6 +1,6 @@
 import type { KrokKonfiguratora } from '../../kontrakty.ts';
 
-/** PRZ-135.07b: wspólne dla kanałów (OpisKonfiguratora) i kurierów (OpisKuriera['konfigurator'] z krokami). */
+/** Wspólne dla kanałów (OpisKonfiguratora) i kurierów (OpisKuriera['konfigurator'] z krokami). */
 type KrokiKonfiguratora = Readonly<{ kroki: readonly KrokKonfiguratora[] }>;
 type SciezkaKonfiguratora = Readonly<{ sciezka: string }>;
 

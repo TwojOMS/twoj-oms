@@ -1,30 +1,30 @@
-<%# Odmowa dostepu do ekranu — DOKUMENT SAMODZIELNY (K1, recenzja 2026-09-12).
-    Furtka `wlasnyUklad` (ta sama, co /kampania — patrz layout-oms.ejs:5): straznik (K1
-    w straznik.js, `odmow`) wola ten widok z haka `onRequest`, ZANIM hak `preHandler`
-    w web/server.js zdazy policzyc `motyw`/`menu`/`sciezkaPowrotu` dla layout-oms.ejs.
-    Render przez layout wybuchal wiec na golej, niezdefiniowanej zmiennej `motyw` uzytej
-    w linii 9 layout-oms.ejs, a do przegladarki wyciekala bezwzgledna sciezka na dysku
-    razem ze zrodlem szablonu.
+<%# Odmowa dostępu do ekranu — DOKUMENT SAMODZIELNY.
+    Furtka `wlasnyUklad` (jak w odmowa-rdzenia.ejs i layout-oms.ejs): strażnik (`odmow`
+    w core/bezpieczenstwo/straznik.js) woła ten widok z hooka `onRequest`, ZANIM hook
+    `preHandler` w core/web/pipeline.js policzy `motyw`, menu i `sciezkaPowrotu` dla layout-oms.ejs.
+    Render przez layout kończyłby się błędem na niezdefiniowanej zmiennej `motyw`, a do przeglądarki
+    mogłaby trafić bezwzględna ścieżka na dysku razem ze źródłem szablonu. Z tras widok woła się
+    tak samo, a `motyw` wstawia im już hook `preHandler`.
 
-    ⚠️ TEN KOMENTARZ CELOWO NIE WYPISUJE ZNACZNIKOW SZABLONU WPROST — taki fragment
-    wewnatrz tego komentarza potrafi pomylic parser EJS, co samo w sobie jest dowodem NA
-    cala usterke K1.
+    ⚠️ TEN KOMENTARZ CELOWO NIE WYPISUJE ZNACZNIKÓW SZABLONU WPROST — taki fragment
+    wewnątrz tego komentarza potrafi pomylić parser EJS, co byłoby błędem renderu
+    tego ekranu.
 
-    Bez menu i paska ikon CELOWO, nie tylko dla prostoty: czlowiek bez uprawnienia do
-    ekranu nie ma po co widziec odnosnikow, ktorych i tak nie otworzy — ominiecie layoutu
-    nie kosztuje wiec niczego, co ten czlowiek powinien zobaczyc.
+    Bez menu i paska ikon CELOWO, nie tylko dla prostoty: człowiek bez uprawnienia do
+    ekranu nie ma po co widzieć odnośników, których i tak nie otworzy — ominięcie layoutu
+    nie kosztuje więc niczego, co ten człowiek powinien zobaczyć.
 
-    ⚠️ TRESC NIE MOZE ZDRADZAC, CZEGO DOTYCZYLA ODMOWA poza tym, co czlowiek i tak wie
-    (adres, na ktory wszedl) — zero sciezek na dysku, zero nazw plikow, zero zrodla
-    szablonu. Trasa dostaje tu `title` i `motyw`.
+    ⚠️ TREŚĆ NIE MOŻE ZDRADZAĆ, CZEGO DOTYCZYŁA ODMOWA poza tym, co człowiek i tak wie
+    (adres, na który wszedł) — zero ścieżek na dysku, zero nazw plików, zero źródła
+    szablonu. Wołający podaje `title`; reszta jest opcjonalna, ale `restart` wymaga `odswiez` ({ sekundy, adres }), a `modulWylaczony` wymaga `admin`.
 
-    ⚠️⚠️ N3 (druga fala 2026-09-12): POPRZEDNIA WERSJA TEGO KOMENTARZA TWIERDZILA, ZE
-    UHONOROWANIE MOTYWU „WYMAGALOBY TEGO SAMEGO HAKA, KTOREGO BRAK TU NAPRAWIAMY" — TO BYLO
-    NIEPRAWDZIWE. `motywZNaglowka(req.headers.cookie)` (src/oms/domain/motyw.js) jest czysta
-    funkcja naglowka `Cookie`, a `odmow(req, reply)` w straznik.js ma `req` w rece przez caly
-    czas — hak `preHandler` nie jest do niczego z tego potrzebny. Ominiecie layoutu dotyczy
-    WYLACZNIE menu/paska ikon (patrz akapit wyzej), nie motywu: stad `motyw` jest teraz
-    liczony w `odmow()` i przekazywany tutaj wprost, bez layoutu i bez tego haka. %>
+    ⚠️⚠️ Motyw czyta z ciasteczka funkcja `motywZNaglowka`
+    (domena/motyw.js) — czysta funkcja nagłówka `Cookie`,
+    wołana w `odmow()` z `req.headers.cookie`.
+    `odmow()` przekazuje wynik tutaj wprost jako `motyw`.
+    Ominięcie layoutu dotyczy WYŁĄCZNIE menu i paska ikon (patrz akapit wyżej),
+    nie motywu, więc do wyboru motywu nie jest potrzebny
+    hook `preHandler`. %>
 <!doctype html>
 <html lang="pl">
 <head>
@@ -34,10 +34,10 @@
   <title><%= title %></title>
   <% if (locals.odswiez) { %><meta http-equiv="refresh" content="<%= odswiez.sekundy %>; url=<%= odswiez.adres %>"><% } %>
   <%
-    // DWIE PALETY (N3, druga fala 2026-09-12), wartosci przepisane WPROST z korzenia
-    // `:root`/`html[data-motyw="ciemny"]` w layout-oms.ejs, zeby ekran odmowy nie wymyslal
-    // trzeciej wersji tych samych barw — operator ma przejsc z panelu na ten ekran bez
-    // wrazenia, ze trafil na inna strone.
+    // DWIE PALETY: ciemna powtarza wartości z `html[data-motyw="ciemny"]` w public/oms-uklad.css,
+    // jasna ma własne, cieplejsze barwy tła, tekstu i ramki (akcent h1 i linków to `--marka`
+    // z `:root`). Ekran odmowy ma być spójny z panelem, a jako dokument samodzielny
+    // nie ładuje jego arkuszy.
     const ciemny = motyw === 'ciemny';
   %>
   <style>
@@ -63,8 +63,8 @@
 <body>
   <div class="pusto">
     <% if (locals.restart) { %>
-    <%# PRZ-121.06: strona po „Uruchom OMS ponownie” — samodzielna, bo zaraz po niej proces się zamyka (arkusze
-        layoutu mogłyby już nie przyjść); odświeżenie wraca na ekran Moduł faktur. %>
+    <%# Strona po „Uruchom OMS ponownie” — samodzielna, bo zaraz po niej proces się zamyka (arkusze
+        layoutu mogłyby już nie przyjść); odświeżenie wraca na ekran Program do faktur. %>
     <h1>OMS uruchamia się ponownie</h1>
     <p>OMS uruchamia się ponownie — strona odświeży się za kilka sekund.</p>
     <p>Jeśli strona się nie odświeży, <a href="<%= odswiez.adres %>">otwórz ekran Program do faktur</a>.</p>

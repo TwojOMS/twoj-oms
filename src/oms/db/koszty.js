@@ -2,7 +2,7 @@
 // do KSeF tu nie ma i nie bedzie (wysylka zyje w services/wysylka-ksef.js).
 //
 // Ksztalt wiersza przyjmowany przez `zapiszKoszt` pochodzi WPROST z `naWiersz`
-// (domain/koszt-metadane.js) — jedynego miejsca, w ktorym odpowiedz KSeF zamienia sie
+// (domena/koszt-metadane.js) — jedynego miejsca, w ktorym odpowiedz KSeF zamienia sie
 // w ksztalt panelu. Drugiego mapowania tutaj CELOWO NIE MA.
 
 import { bladOperatora } from '../../domena/bledy.js';
@@ -11,11 +11,11 @@ import { nowyKluczReczny, RODZAJ_RECZNY } from '../../domena/koszt-reczny.js';
 
 const teraz = () => new Date().toISOString();
 
-// ⚠️⚠️ W TEJ TABELI LEZA DWA RODZAJE WIERSZY I TYLKO JEDEN NALEZY DO CZUWACZA (2026-08-13).
+// ⚠️⚠️ W TEJ TABELI LEZA DWA RODZAJE WIERSZY I TYLKO JEDEN NALEZY DO CZUWACZA.
 //
 // 'ksef'   — lustro KSeF-u: dokument przyszedl z metadanych i czuwacz nim rzadzi;
-// 'reczne' — wpisal go czlowiek, bo tego kosztu w KSeF NIE MA I NIE BEDZIE (Facebook, Google,
-//            Anthropic, zakupy zagraniczne, paragony).
+// 'reczne' — wpisal go czlowiek, bo tego kosztu w KSeF NIE MA I NIE BEDZIE (reklamy i usługi
+//            od dostawców zagranicznych, zakupy zagraniczne, paragony).
 //
 // Jedna tabela jest DECYZJA (suma miesiaca, rozbicie na kategorie i przyszly raport zarzadczy
 // maja miec jedna prawde o kosztach), a to jest jej cena: KAZDE zapytanie, ktore obsluguje
@@ -36,8 +36,8 @@ const ZRODLO_RECZNE = 'reczne';
 // nowosci przy pobieraniu — nie na porownywaniu list w kodzie.
 //
 // ⚠️ `w.netto`, `w.vat` i `w.brutto` to NAPISY („1067.00") i takie ida do bazy — kolumny sa
-// TEXT-em, bo suma kosztow liczy sie przez `grosze()`, nie na floatach (patrz schema.sql
-// i naWiersz). Zadnego `Number(...)` po drodze: przepuszczenie kwoty przez liczbe tutaj
+// TEXT-em, bo suma kosztow liczy sie przez `grosze()`, nie na floatach (patrz
+// `naWiersz`). Zadnego `Number(...)` po drodze: przepuszczenie kwoty przez liczbe tutaj
 // cofneloby cala te decyzje w jednym miejscu, ktorego nikt by juz nie szukal.
 export function zapiszKoszt(db, w) {
   const wynik = db.prepare(`
@@ -56,7 +56,7 @@ export function zapiszKoszt(db, w) {
     ZRODLO_KSEF,
   );
   if (wynik.changes === 1) return true;
-  // ⚠️⚠️ `changes === 0` MA DWA ZNACZENIA, A TYLKO JEDNO Z NICH JEST NIEGROZNE (recenzja, W1).
+  // ⚠️⚠️ `changes === 0` MA DWA ZNACZENIA, A TYLKO JEDNO Z NICH JEST NIEGROZNE.
   //
   // `INSERT OR IGNORE` polyka nie tylko kolizje klucza glownego („ten dokument juz mamy"), ale
   // takze NARUSZENIE `NOT NULL`: dokument z pustym `numer_dokumentu`, `data_trwalego_zapisu`,
@@ -85,11 +85,11 @@ export function zapiszKoszt(db, w) {
 // Kwoty wracaja stad jako NAPISY (kolumny TEXT) i tak maja trafic do sumowania: przez
 // `grosze()`, na liczbach calkowitych.
 //
-// ⚠️ ZLY MIESIAC ODMAWIA, ZAMIAST ODDAC PUSTA LISTE (recenzja, W2). '2026-6', '06/2026' czy
+// ⚠️ ZLY MIESIAC ODMAWIA, ZAMIAST ODDAC PUSTA LISTE. '2026-6', '06/2026' czy
 // `undefined` dawaly wczesniej zero wierszy, czyli zdanie „w tym miesiacu nie bylo kosztow" —
 // a to jest falsz, ktorego nikt nie ma jak zakwestionowac. Ta sama bramka i ten sam komunikat,
 // co przy `dokumenty()` i `proformy()` w services/faktury-widok.js; format sprawdza `zakresMiesiaca`
-// z domain/lista-faktur.js, a nie druga kopia tego samego wyrazenia regularnego.
+// z domena/lista-faktur.js, a nie druga kopia tego samego wyrazenia regularnego.
 //
 // ⚠️ ZAKRES, A NIE `substr(data_wystawienia, 1, 7)`. Dwa powody, oba realne:
 //   • `substr()` na kolumnie zabija indeks `idx_koszty_wystawienie` — kazde otwarcie zakladki
@@ -122,7 +122,7 @@ export const kosztPoNumerze = (db, ksefNumber) => db.prepare(
 ).get(String(ksefNumber ?? ''));
 
 // ⚠️⚠️ KOSZTY OTRZYMANE W MIESIACU — INNE KRYTERIUM NIZ `kosztyMiesiaca` WYZEJ, kryterium
-// biura rachunkowego (spec 2026-09-02). Paczka dla biura ma pokazac, co panel OTRZYMAL
+// biura rachunkowego. Paczka dla biura ma pokazac, co panel OTRZYMAL
 // w danym miesiacu, nie co sprzedawca WYSTAWIL: dokument z ostatnich dni miesiaca trafia
 // do KSeF (dostaje date trwalego zapisu) dopiero na poczatku kolejnego, i to KOLEJNY
 // miesiac ma go zobaczyc w paczce, mimo ze data wystawienia mowi inaczej.
@@ -185,7 +185,7 @@ export function zapiszKursor(db, iso) {
   `).run(iso, teraz());
 }
 
-// ⚠️⚠️ UDANY PRZEBIEG BEZ ANI JEDNEGO DOKUMENTU TEZ JEST UDANY (recenzja, W1).
+// ⚠️⚠️ UDANY PRZEBIEG BEZ ANI JEDNEGO DOKUMENTU TEZ JEST UDANY.
 //
 // `zapiszKursor` wyzej byl JEDYNYM zapisem `ostatnie_udane_at` i jedynym miejscem kasujacym
 // `ostatni_blad` — a wola sie go tylko wtedy, gdy przebieg cokolwiek przeczytal. Spokojna doba
@@ -214,7 +214,7 @@ export const stanKosztow = (db) => db.prepare('SELECT * FROM stan_kosztow WHERE 
 // pobieranie do podlogi historii — a przy powtarzajacym sie bledzie panel mielilby te sama
 // historie w kolko i nigdy nie doszedl do biezacych dokumentow.
 //
-// ⚠️ ZE ZNACZNIKIEM CZASU (recenzja, D4). Sama tresc bledu nie mowi, czy awaria jest sprzed
+// ⚠️ ZE ZNACZNIKIEM CZASU. Sama tresc bledu nie mowi, czy awaria jest sprzed
 // godziny, czy sprzed trzech tygodni — a to jest cala roznica miedzy „KSeF mial czkawke"
 // a „panel nie pobiera kosztow od miesiaca i nikt tego nie zauwazyl". Znacznik gasnie razem
 // z bledem przy najblizszym udanym przebiegu (`zapiszKursor` wyzej), zeby na ekranie nie
@@ -232,7 +232,7 @@ export function zapiszBladPobrania(db, tresc) {
 //
 // Wolane WYLACZNIE z czuwacza kosztow i wylacznie na odmowie DOTYCZACEJ DOKUMENTU (brak kwoty,
 // odrzucenie wiersza przez baze) — nigdy na awarii technicznej. Uzasadnienie calego rozstrzygniecia
-// stoi w naglowku services/czuwacz-kosztow.js i przy tabeli w schema.sql; tutaj tylko dwie rzeczy,
+// stoi przy odmowie w services/czuwacz-kosztow.js; tutaj tylko dwie rzeczy,
 // ktore musza byc widoczne z miejsca zapisu:
 //
 //  1. ZAPISUJEMY CALE SUROWE METADANE. Kursor przejechal obok tego dokumentu, wiec KSeF nie
@@ -277,7 +277,7 @@ export const odrzuconeKoszty = (db) => db.prepare(
 
 export const liczbaOdrzuconych = (db) => db.prepare('SELECT COUNT(*) c FROM koszty_odrzucone').get().c;
 
-// ⚠️⚠️ WYJSCIE Z KWARANTANNY — bez niego cala tabela jest pulapka jednokierunkowa (recenzja, W4).
+// ⚠️⚠️ WYJSCIE Z KWARANTANNY — bez niego cala tabela jest pulapka jednokierunkowa.
 //
 // Wolane po KAZDYM udanym zapisie kosztu o tym numerze, i to jest cale kryterium: dokument
 // lezy w `koszty` albo lezy w `koszty_odrzucone`, nigdy w obu naraz. Dwa powody, oba zmierzone:
@@ -303,7 +303,7 @@ export function usunOdrzucony(db, ksefNumber) {
 //
 // Czuwacz kosztow archiwizuje dokladnie te dokumenty, ktore nie maja jeszcze sciezki do pliku,
 // i to jest CALA ksiegowosc stanu „do ponowienia". Dzieki temu dokument, ktorego nie udalo sie
-// pobrac z KSeF albo zapisac na NAS-ie, wraca SAM przy najblizszym przebiegu — bez kolumny
+// pobrac z KSeF albo zapisać na dysku, wraca SAM przy najblizszym przebiegu — bez kolumny
 // „probowac ponownie", ktora trzeba by czyscic (i ktorej nikt by nie czyscil).
 //
 // ⚠️ NAJNOWSZE NAJPIERW. Nocny przebieg ma zwykle kilka swiezych dokumentow, a przy backfillu
@@ -315,8 +315,8 @@ export function usunOdrzucony(db, ksefNumber) {
 // Oddajemy CALY wiersz (`SELECT *`), bo `zarchiwizuj` bierze surowy wiersz tabeli `koszty` —
 // ten sam ksztalt, co `kosztyMiesiaca`. Drugiego mapowania nie ma i miec nie ma.
 //
-// ⚠️⚠️ `zrodlo = 'ksef'` NIE JEST TU OZDOBNIKIEM — to jest najwazniejszy warunek w tym pliku
-// (2026-08-13). Wiersz WPISANY RECZNIE tez ma `sciezka_xml IS NULL` i zawsze bedzie mial, bo
+// ⚠️⚠️ `zrodlo = 'ksef'` NIE JEST TU OZDOBNIKIEM — to jest najwazniejszy warunek w tym pliku.
+// Wiersz WPISANY RECZNIE tez ma `sciezka_xml IS NULL` i zawsze bedzie mial, bo
 // zadnego XML-a w KSeF dla niego nie ma. Bez tego warunku kazdy taki dokument wracalby do
 // kolejki KAZDEJ NOCY: przebieg pytalby KSeF o numer „RECZNY-…", dostawal odmowe, liczyl ja
 // do hamulca „trzy bledy z rzedu" — i tym samym blokowal archiwizacje dokumentow, ktore
@@ -342,12 +342,11 @@ export function zapiszSciezki(db, ksefNumber, { xml = null, pdf = null }) {
   ).run(xml, pdf, ksefNumber);
 }
 
-// ⚠️⚠️ RECZNE FAKTURY KOSZTOWE (2026-08-13) — koszty, ktorych w KSeF NIE MA I NIE BEDZIE:
-// Facebook, Google, Anthropic, zakupy zagraniczne, paragony. Do 13.08 bylo to swiadomie poza
-// zakresem (par. 8 specyfikacji); wlasciciel te decyzje zmienil.
+// ⚠️⚠️ RĘCZNE FAKTURY KOSZTOWE — koszty, których w KSeF NIE MA I NIE BĘDZIE: reklamy i usługi
+// od dostawców zagranicznych, zakupy zagraniczne, paragony.
 //
 // ⚠️ TEN SAM WIERSZ, TA SAMA TABELA, TE SAME KWOTY-NAPISY. Ksztalt przychodzi z
-// `naWierszReczny` (domain/koszt-reczny.js) — jedynego miejsca, ktore sprawdza, czy to, co
+// `naWierszReczny` (domena/koszt-reczny.js) — jedynego miejsca, ktore sprawdza, czy to, co
 // wpisal czlowiek, jest kosztem. Drugiej walidacji tutaj CELOWO NIE MA, tak samo jak nie ma
 // drugiego mapowania odpowiedzi KSeF.
 //
@@ -421,11 +420,11 @@ export function usunRecznyKoszt(db, klucz) {
 //
 // Zwykla droga jest jedna i zostaje jedyna dla wszystkich, ktorzy NIP maja: kategoria dobiera
 // sie po NIP-ie (db/kategorie-kosztow.js) i obejmuje wszystkie faktury tego sprzedawcy, takze
-// starsze. Google, Meta czy Anthropic nie maja jednak jak trafic do tamtej mapy — jej kluczem
+// starsze. Dostawcy zagraniczni nie mają jednak jak trafić do tamtej mapy — jej kluczem
 // GLOWNYM jest NIP — wiec bez tej drogi ich faktury zostawaly by w pasie „bez kategorii"
 // na zawsze, mimo ze operator doskonale wie, do czego naleza.
 //
-// ⚠️ REGULA PIERWSZENSTWA MIESZKA W JEDNYM MIEJSCU (domain/lista-kosztow.js), a nie tutaj:
+// ⚠️ REGULA PIERWSZENSTWA MIESZKA W JEDNYM MIEJSCU (domena/lista-kosztow.js), a nie tutaj:
 // kategoria dokumentu wygrywa z mapa po NIP-ie, bo jest bardziej szczegolowa. Ta funkcja
 // wylacznie zapisuje decyzje.
 //

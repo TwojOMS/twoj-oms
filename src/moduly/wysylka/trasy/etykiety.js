@@ -32,7 +32,7 @@ const adresPowrotuNaKarte = (req, id, opcje = {}) => adresKartyZamowienia(id, {
 
 const powrotKarty = (req) => bezpiecznyPowrotNaListe(req.query?.powrot ?? req.body?.powrot, config.definicje);
 
-// PRZ-152.G13 W1: wszystkie trasy przesyłek tutaj (poza kolejką druku czuwacza) woła karta zamówienia
+// Wszystkie trasy przesyłek tutaj (poza kolejką druku czuwacza) woła karta zamówienia
 // (formularz albo link „Pobierz PDF” w nowej karcie) — odmowa wraca na tę kartę.
 const naKarte = (req) => ({ wroc: adresPowrotuNaKarte(req, req.params.id), napisWroc: 'Wróć do zamówienia' });
 
@@ -126,7 +126,7 @@ app.post('/zamowienia/:id/przesylki/:przesylkaId/domknij', async (req, reply) =>
     return reply.redirect(adresPowrotuNaKarte(req, id));
   });
 
-// PRZ-117: „Spróbuj ponownie” przy notatce z numerem listu, która nie doszła do sklepu. Wysyła TĘ SAMĄ notatkę
+// „Spróbuj ponownie” przy notatce z numerem listu, która nie doszła do sklepu. Wysyła TĘ SAMĄ notatkę
 // jeszcze raz (services/notatka-nadania.js); nieudana próba odświeża ślad na karcie i nie jest błędem HTTP.
 app.post('/zamowienia/:id/przesylki/:przesylkaId/notatka', async (req, reply) => {
     const cel = paczkaZadania(req, reply);
@@ -275,7 +275,7 @@ app.get('/zamowienia/:id/przesylki/:przesylkaId/etykieta', async (req, reply) =>
       .send(createReadStream(sciezka));
   });
 
-// „Pobierz ZPL” (PRZ-152.G6z): gdy czuwacz albo komputer z drukarką nie działa, operator pobiera
+// „Pobierz ZPL”: gdy czuwacz albo komputer z drukarką nie działa, operator pobiera
 // plik ZPL, który już leży na serwerze, i wysyła go na Zebrę ręcznie (Zebra Setup Utilities →
 // Send File). Ścieżka WYŁĄCZNIE z bazy; plik leci strumieniem, bajt w bajt — ZPL bywa binarny
 // (grafiki ~DG), więc żadnej konwersji na tekst.

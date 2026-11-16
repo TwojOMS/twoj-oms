@@ -20,7 +20,7 @@
   <% if(w.typ==='POST_PURCHASE_ISSUE'){ %>
     <div class="m-external"><strong>To problem z zakupem — odpowiedz w Allegro.</strong><p>Dyskusje i reklamacje mają własne terminy. Panel takich wątków nie obsługuje.</p></div>
   <% } else { %>
-    <%# PRZ-101.03: „Wstaw szablon" — szablony własne z Ustawień. Bez JS to GET z ?szablon= (pole przychodzi wypełnione); %>
+    <%# „Wstaw szablon" — szablony własne z Ustawień. Bez JS to GET z ?szablon= (pole przychodzi wypełnione); %>
     <%# z JS (szablony-wiadomosci.js) treść wchodzi w miejsce kursora bez przeładowania, więc wybrane załączniki zostają. %>
     <% if (typeof szablony !== 'undefined' && szablony.length) { %>
       <form class="m-template" method="get" action="<%= adres %>" data-wstaw-szablon>

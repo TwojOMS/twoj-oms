@@ -1,6 +1,6 @@
 import type { Migracja } from '../../../core/kontrakty.ts';
 
-// PRZ-152.G10a — druk proformy (zgoda właściciela 05.11.2026 na tę migrację). Osobna tabela, a nie kolumna
+// Druk proformy. Osobna tabela, a nie kolumna
 // „rodzaj” w `kolejka_druku_faktur`: tamta ma `faktura_id NOT NULL REFERENCES faktury(id)`, a jej
 // przebudowa ruszałaby istniejące wiersze (nieaddytywna). Kolumny jak w kolejce faktur, z kolumnami
 // zajęcia od razu w definicji.

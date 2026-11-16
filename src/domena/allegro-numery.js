@@ -1,19 +1,17 @@
-// CZY PYTAC ALLEGRO O NUMERY LISTOW TEGO ZAMOWIENIA (25.08.2026).
+// CZY PYTAC ALLEGRO O NUMERY LISTOW TEGO ZAMOWIENIA.
 //
 // Numer listu paczki nadanej w panelu Allegro panel wylacznie CZYTA
-// (services/przesylki-allegro.js) — przy otwarciu karty, bo zapytania zbiorczego Allegro
+// (moduly/wysylka/services/przesylki-allegro.js) — przy otwarciu karty, bo zapytania zbiorczego Allegro
 // nie ma, a poller chodzacy po wszystkich zamowieniach robilby jedno zadanie NA KAZDE
 // otwarte zamowienie w KAZDYM przebiegu. Koszt ograniczony UWAGA CZLOWIEKA.
 //
-// ⚠️⚠️ DO 25.08.2026 WARUNEK BRZMIAL SAMO „dopoki zamowienie nie ma `wyslane_at`" i gubil
-// numery. Zmierzone na produkcji: 22 zamowienia Allegro oznaczone jako wyslane nie mialy
-// w panelu ANI JEDNEJ przesylki, a numery po stronie Allegro byly.
+// ⚠️⚠️ SAMO „dopóki zamówienie nie ma `wyslane_at`" GUBIŁO NUMERY. Zamówienia Allegro oznaczone
+// jako wysłane nie miały w panelu ANI JEDNEJ przesyłki, a numery po stronie Allegro były.
 //
-// Wzorcowy przypadek — zamowienie 1207: przesylka powstala w Allegro o 09:11:40, czlowiek
-// oznaczyl zamowienie jako wyslane o 09:12. DWADZIESCIA SEKUND. Okno zamknelo sie, zanim
-// ktokolwiek otworzyl karte. Ograniczenie bylo opisane, ale WASKO — jako „dosylka nadana
-// po oznaczeniu wysylki nie dojdzie" — podczas gdy w praktyce zjadalo takze numer PIERWSZEJ
-// paczki, gdy operator klika szybciej, niz panel zdazy zajrzec.
+// Wzorcowy przypadek: przesyłka powstała w Allegro, a człowiek oznaczył zamówienie jako wysłane
+// w ciągu kilkudziesięciu sekund. Okno zamknęło się, zanim ktokolwiek otworzył kartę. Ograniczenie
+// było opisane WĄSKO — jako „dosyłka nadana po oznaczeniu wysyłki nie dojdzie" — podczas gdy
+// w praktyce zjadało także numer PIERWSZEJ paczki, gdy operator klika szybciej, niż panel zdąży zajrzeć.
 
 import { dniKalendarzowe } from './etap-przesylki.js';
 

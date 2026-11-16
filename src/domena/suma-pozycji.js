@@ -1,7 +1,7 @@
 import { grosze, zl } from './kwoty.js';
 import { wysylkaEfektywna, wysylkaZeSklepu } from './wysylka-kwota.js';
 
-// ⚠️ `grosze` i `zl` MIESZKAJĄ TERAZ W `domain/kwoty.js` (07.08.2026) — tutaj są tylko
+// ⚠️ `grosze` i `zl` MIESZKAJĄ W `domena/kwoty.js` — tutaj są tylko
 // przepuszczone dalej. Powód jest jeden i opisany tam w całości: ten moduł musiał zacząć
 // pytać o efektywną kwotę wysyłki, a tamta ścieżka wraca do `pozycje-reczne.js`, który
 // czytał `grosze` STĄD — czyli powstałby cykl importów wokół arytmetyki pieniędzy.
@@ -27,7 +27,7 @@ export function wartoscPozycjiGrosze(p) {
 
 // Suma WSZYSTKICH pozycji PLUS wysylka, w groszach — DOKLADNIE tak, jak liczy ja bariera
 // arytmetyczna faktury. Wartosci sa EFEKTYWNE (po nadpisaniach recznych), bo warstwa odczytu
-// naklada je zanim ktokolwiek tu zajrzy (nalozNadpisaniaPozycji w domain/pozycje-reczne.js,
+// naklada je zanim ktokolwiek tu zajrzy (nalozNadpisaniaPozycji w domena/pozycje-reczne.js,
 // wolane w zLinii) — nie ma tu drugiej sciezki, ktora czytalaby wartosci sklepowe.
 export function sumaPozycjiZWysylkaGrosze(zamowienie) {
   const zaLinie = (zamowienie?.pozycje ?? []).reduce((acc, p) => acc + wartoscPozycjiGrosze(p), 0);
@@ -37,10 +37,9 @@ export function sumaPozycjiZWysylkaGrosze(zamowienie) {
 /**
  * Wartość LINII WYSYŁKI w groszach — cena efektywna × ilość efektywna.
  *
- * ⚠️ CZYTA NADPISANIE, a nie samą kolumnę `koszt_dostawy_brutto` (07.08.2026, prośba
- * właściciela: „wysyłka powinna być edytowalna tak samo jak produkty. Ilość oraz cena").
- * Wołanie `grosze(z.koszt_dostawy_brutto)` wprost — tak było do tego dnia — pokazywałoby
- * na karcie poprawioną kwotę, a do sumy i na fakturę brałoby sklepową.
+ * ⚠️ CZYTA NADPISANIE, a nie samą kolumnę `koszt_dostawy_brutto`: wysyłka jest edytowalna
+ * tak samo jak produkty (ilość i cena). Wołanie `grosze(z.koszt_dostawy_brutto)` wprost
+ * pokazywałoby na karcie poprawioną kwotę, a do sumy i na fakturę brałoby sklepową.
  *
  * `? :`, nie samo `grosze(...)`: brak kolumny (stara baza) i darmowa dostawa mają obie
  * dawać 0, a nie rzucać na pustej/NULL wartości — dokładnie tak, jak liczyła to bariera od
@@ -80,7 +79,7 @@ function wartoscSklepowaPozycjiGrosze(p) {
 //
 // Powód, dla którego `kwota_brutto` NIE MOŻE po prostu urosnąć, jest twardy: wpłata o źródle
 // 'sklep' podąża za tą kolumną przy każdej synchronizacji (zsynchronizujWplateSklepu
-// w db/platnosci.js). Gdyby ręczna pozycja ją podniosła, WPŁATA SKLEPOWA UROSŁABY RAZEM
+// w oms/db/platnosci.js). Gdyby ręczna pozycja ją podniosła, WPŁATA SKLEPOWA UROSŁABY RAZEM
 // Z NIĄ i niedopłata zniknęłaby z ekranu — panel przestałby pokazywać, że klient jest nam
 // winien pieniądze. To jest cały sens dopisywania pozycji, więc to jest miejsce, w którym
 // nie wolno się pomylić.
@@ -102,7 +101,7 @@ export function kwotaOczekiwanaGrosze(zamowienie) {
     0,
   );
   // ⚠️ WYSYŁKA MA TU SWÓJ WŁASNY CZŁON RÓŻNICOWY i bez niego cała ta poprawka nie działa
-  // (07.08.2026). Kwota dostawy jest częścią `kwota_brutto` ze sklepu, więc podniesienie jej
+  // Kwota dostawy jest częścią `kwota_brutto` ze sklepu, więc podniesienie jej
   // u nas podnosi lewą stronę bariery (`sumaPozycjiZWysylkaGrosze`) i NIC po prawej — czyli
   // każde zamówienie z poprawioną wysyłką wisiałoby z „suma pozycji nie zgadza się z kwotą
   // zamówienia" i nie dałoby się do niego wystawić faktury. Dokładnie ten sam człon, co przy
@@ -112,7 +111,7 @@ export function kwotaOczekiwanaGrosze(zamowienie) {
   // początku — czy dane ZE SKLEPU (pozycje + dostawa) sumują się do kwoty zamówienia
   // W SKLEPIE.
   const roznicaWysylki = wysylkaBruttoGrosze(zamowienie) - wysylkaBruttoSklepGrosze(zamowienie);
-  // PRZ-152.G2 — POZYCJA USUNIĘTA ZNACZNIKIEM (`pozycje_usuniete`, dokłada je zLinii) znika
+  // POZYCJA USUNIĘTA ZNACZNIKIEM (`pozycje_usuniete`, dokłada je zLinii) znika
   // z `pozycje`, a `kwota_brutto` ze sklepu dalej ją obejmuje. Odejmujemy jej wartość SKLEPOWĄ
   // (usunięta nie ma efektywnej). Bariera i tu NIE SŁABNIE: po dodaniu usuniętej z powrotem do
   // obu stron sprawdza to samo — czy linie ZE SKLEPU (wszystkie, także usunięte) i dostawa

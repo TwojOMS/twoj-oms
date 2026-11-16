@@ -6,13 +6,13 @@ import { ETYKIETY } from './status.js';
 
 // Filtry nad tabelą zamówień: zakres dat złożenia, metoda wysyłki, metoda płatności.
 // Cała reguła siedzi TUTAJ, w warstwie czystej — trasa dostaje gotową, przefiltrowaną
-// tablicę, dokładnie tak samo jak przy wyszukiwaniu (domain/szukanie.js).
+// tablicę, dokładnie tak samo jak przy wyszukiwaniu (domena/szukanie.js).
 //
-// ⚠️ FILTRY I FRAZA DZIAŁAJĄ RAZEM (warunek I), i to jest decyzja właściciela, nie
+// ⚠️ FILTRY I FRAZA DZIAŁAJĄ RAZEM (warunek I), i to jest decyzja produktu, nie
 // przypadek: „chcę poszukać klienta i zobaczyć jego zamówienia z określonego czasu".
 // Fraza zdejmuje WYŁĄCZNIE zakładkę statusu z panelu bocznego — bo tamta jest nawigacją
 // („co mam dziś do zrobienia"), a nie filtrem wpisanym świadomie. Szczegóły przy
-// składaniu listy w web/routes/zamowienia.js.
+// składaniu listy w moduly/zamowienia/lista.js.
 
 // Metody wysyłki, po których wolno filtrować. 'nieznana' JEST na liście, bo to nie jest
 // stan pusty, tylko realna wartość kolumny — zamówienie, którego metody panel nie rozpoznał,
@@ -40,7 +40,7 @@ function napis(surowy) {
   return s || null;
 }
 
-// ⚠️ FILTR POBRANIA USUNIETY 2026-08-04 (prosba wlasciciela) — jego miejsce zajal filtr
+// ⚠️ FILTR POBRANIA USUNIETY — jego miejsce zajal filtr
 // kanalu sprzedazy. Informacja o pobraniu NIE zniknela z panelu: dalej stoi w kolumnie
 // „Dostawa" (etykietaWysylki) i na karcie zamowienia. Zniknela wylacznie mozliwosc
 // zawezania listy po tym kryterium.
@@ -70,7 +70,7 @@ export function parsujFiltry(query = {}, definicje) {
 }
 
 /**
- * Numer strony listy z adresu (PRZ-051): dodatnia liczba całkowita zapisana cyframi, inaczej 1.
+ * Numer strony listy z adresu: dodatnia liczba całkowita zapisana cyframi, inaczej 1.
  * Śmieć to nieaktualny albo ręcznie popsuty link, a nie powód do błędu — pierwsza strona jest
  * jedynym bezpiecznym domyślnym widokiem. Sufit chroni przed OFFSET-em liczonym z liczby
  * spoza zakresu dokładnych liczb całkowitych.
@@ -95,7 +95,7 @@ export function pasujeDoFiltrow(z, filtry) {
 }
 
 /**
- * Wartości zamówienia, które czytają filtry — wyliczone RAZ (PRZ-051). Indeks listy zapisuje
+ * Wartości zamówienia, które czytają filtry — wyliczone RAZ. Indeks listy zapisuje
  * je przy zamówieniu i pyta `pasujaKlucze` z SQL-a, więc reguła filtrów istnieje w jednym
  * miejscu, a nie drugi raz jako WHERE obok tego pliku.
  */
@@ -127,7 +127,7 @@ export function pasujaKlucze(k, filtry) {
   }
   if (filtry?.wysylka && k.wysylka !== filtry.wysylka) return false;
   // ⚠️ KANAL SPRZEDAZY. „indywidualne" NIE jest wartoscia kolumny `sklep` — to znacznik
-  // wyliczony z surowej odpowiedzi sklepu (domain/indywidualne.js), bo takie zamowienia
+  // wyliczony z surowej odpowiedzi sklepu (domena/indywidualne.js), bo takie zamowienia
   // wpadaja do WooCommerce sklepu `sklep_a` razem ze zwyklymi.
   //
   // ⚠️ `?kanal=sklep_a` obejmuje TAKZE zamowienia indywidualne, i to jest decyzja, nie
@@ -139,8 +139,8 @@ export function pasujaKlucze(k, filtry) {
   } else if (filtry?.kanal && k.sklep !== filtry.kanal) {
     return false;
   }
-  // ⚠️ OBIE STRONY przez slownik (domain/metody-platnosci.js), nie porownanie surowych
-  // napisow: „BLIK" i „Blik" to od 22.08 jeden filtr, a stara zakladka z surowa nazwa
+  // ⚠️ OBIE STRONY przez slownik (domena/metody-platnosci.js), nie porownanie surowych
+  // napisow: „BLIK" i „Blik" to jeden filtr, a stara zakladka z surowa nazwa
   // („?platnosc=Przelew%20tradycyjny") dalej trafia, bo normalizacja sprowadza ja do tego
   // samego klucza, co nowy adres z pola wyboru.
   if (filtry?.platnosc
@@ -175,7 +175,7 @@ export function adresZFiltrami(filtry, { szukaj = null, status = null, wszystkie
   for (const klucz of ['od', 'do', 'wysylka', 'platnosc', 'kanal']) {
     if (filtry?.[klucz]) czesci.push([klucz, filtry[klucz]]);
   }
-  // Strona listy (PRZ-051) — za filtrami, bo należy do tego samego widoku; pierwsza nie
+  // Strona listy — za filtrami, bo należy do tego samego widoku; pierwsza nie
   // zostawia śladu w adresie, żeby „/" i „/?strona=1" nie były dwoma adresami jednej strony.
   const nrStrony = numerStrony(strona);
   if (nrStrony > 1) czesci.push(['strona', String(nrStrony)]);
@@ -200,7 +200,7 @@ export function adresZFiltrami(filtry, { szukaj = null, status = null, wszystkie
  * (`/` albo `/?…`), więc wszystko inne (inny ekran panelu, obcy host, `javascript:`)
  * znaczy, że wartość nie pochodzi z naszego formularza. Śmieć nie jest błędem do pokazania:
  * operator ma wrócić na listę, tylko bez zawężenia. Ta sama zasada, co przy `wroc` na
- * karcie wzoru (przewodnik OMS, 4.67).
+ * karcie wzoru (reguła „bezpieczny adres powrotu").
  */
 export function bezpiecznyPowrotNaListe(surowy, definicje, etykiety = ETYKIETY) {
   kanalyWidoku(definicje);
@@ -229,7 +229,7 @@ export function bezpiecznyPowrotNaListe(surowy, definicje, etykiety = ETYKIETY) 
     wszystkie: parametry.get('wszystkie') === '1',
     poTerminie: parametry.get('po_terminie') === '1',
     szukaj: napis(parametry.get('szukaj')),
-    // Powrót z karty wraca na TĘ stronę, z której operator kliknął (PRZ-051).
+    // Powrót z karty wraca na TĘ stronę, z której operator kliknął.
     strona: numerStrony(parametry.get('strona')),
   });
 }

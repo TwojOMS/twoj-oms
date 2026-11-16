@@ -1,12 +1,12 @@
 // CZY WOLNO ZMIENIC PRZYNALEZNOSC ZAMOWIENIA DO OKRESU ROZLICZENIOWEGO.
 //
-// ⚠️⚠️ TA SAMA REGULA RZADZI EKRANEM I TRASA — dokladnie jak `domain/kanal-stan.js`
-// (przewodnik 4.37). Rozjazd miedzy „czy pokazac przycisk" a „czy pozwolic na zadanie"
+// ⚠️⚠️ TA SAMA REGULA RZADZI EKRANEM I TRASA — dokladnie jak `domena/kanal-stan.js`
+// (reguła: ekran i trasa pytają tę samą funkcję). Rozjazd miedzy „czy pokazac przycisk" a „czy pozwolic na zadanie"
 // znaczy albo przycisk prowadzacy prosto w odmowe, albo wyjscie, o ktorym nikt nie wie.
 // Widok WOLA te funkcje, nigdy nie powtarza warunku.
 //
-// POWSTALA, BO PRZYNALEZNOSC DO OKRESU BYLA JEDYNYM STANEM BEZ WYJSCIA (niezmiennik 4.9).
-// Do 17.08.2026 `zamowienia.okres_rozliczeniowy_id` bylo zapisywane WYLACZNIE w `INSERT`
+// POWSTALA, BO PRZYNALEZNOSC DO OKRESU BYLA JEDYNYM STANEM BEZ WYJSCIA (reguła: każdy stan ma wyjście).
+// Dawniej `zamowienia.okres_rozliczeniowy_id` bylo zapisywane WYLACZNIE w `INSERT`
 // przy zakladaniu zamowienia — literowka w NIP-ie znaczyla, ze zamowienie po cichu wypada
 // i z faktury miesiecznej, i z raportu, a jedynym ratunkiem byl SQL na produkcji.
 import { stanFakturyOkresu } from './okres-rozliczeniowy.js';
@@ -44,7 +44,7 @@ export function wolnoOdpiac({ okres, teraz = Date.now() } = {}) {
  * Czy wolno dopisac zamowienie do okresu jego miesiaca.
  *
  * ⚠️ SAMA FUNKCJA NIE LICZY, DO KTOREGO OKRESU — od tego jest `przypiszDoOkresu`
- * (services/okres.js), ta sama, ktorej uzywa zakladanie zamowienia. Tutaj sa wylacznie
+ * (moduly/faktury/services/okres.js), ta sama, ktorej uzywa zakladanie zamowienia. Tutaj sa wylacznie
  * bariery, ktore musi znac TAKZE widok, zeby nie pokazac przycisku prowadzacego w odmowe.
  * Odmowa zamknietego miesiaca przychodzi juz z tamtej funkcji, tym samym zdaniem, ktore
  * operator zna z ekranu zakladania — i celowo NIE jest tu powtarzana.
@@ -62,7 +62,7 @@ export function wolnoPrzypisac({ zamowienie, faktura, klient } = {}) {
         + '. Dopisanie go do miesiąca oznaczałoby drugi dokument za tę samą sprzedaż.',
     };
   }
-  // ⚠️ PRZ-101.04: ZAMÓWIENIE SCALONE NIE WCHODZI DO OKRESU (recenzja, W1). Faktura okresu czyta
+  // ⚠️ ZAMÓWIENIE SCALONE NIE WCHODZI DO OKRESU. Faktura okresu czyta
   // `pobierzZamowienie` — same pozycje głównego; faktura grupy odmawia, bo główne „należy do okresu”,
   // a dołączone własnej mieć nie może: pozycje dołączonego nie trafiłyby na ŻADEN dokument. Dołączone
   // dopisane wprost — jego pozycje na fakturze okresu i drugi raz na fakturze grupy. Odwrotna
@@ -88,7 +88,7 @@ export function wolnoPrzypisac({ zamowienie, faktura, klient } = {}) {
     };
   }
   // Hurt do siedziby klienta dostaje fakture od razu, z terminem, i okres omija go
-  // z zalozenia (services/okres.js). Przycisk przy nim bylby zaproszeniem do pomylki.
+  // z zalozenia (moduly/faktury/services/okres.js). Przycisk przy nim bylby zaproszeniem do pomylki.
   if (zamowienie.do_siedziby_klienta) {
     return {
       wolno: false,

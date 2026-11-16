@@ -3,14 +3,14 @@ import { fileURLToPath } from 'node:url';
 import PDFDocument from 'pdfkit';
 import { bladOperatora } from '../../../domena/bledy.js';
 
-// Wydruki WEWNETRZNE z menu „Wydruki" (PRZ-084): „Lista produktów" (jednego zamowienia albo
+// Wydruki WEWNETRZNE z menu „Wydruki": „Lista produktów" (jednego zamowienia albo
 // zbiorcza do zaznaczonych) i „Zestawienie zamówień" (na wzor „order-shipping" z Apilo).
 // Kartki dla pakujacego, nie dla klienta — dlatego bez danych sprzedawcy i bez stopki
 // „nie jest faktura" ze specyfikacji, za to z numerem strony „X/Y" na kazdej kartce
 // (rozsypany plik ma sie dac poskladac).
 //
-// ⚠️ TEN MODUL TYLKO RYSUJE. Wiersze listy sklada domain/lista-produktow.js, dane zestawienia
-// domain/zestawienie-zamowien.js — kwoty przychodza juz policzone przez funkcje specyfikacji.
+// ⚠️ TEN MODUL TYLKO RYSUJE. Wiersze listy sklada domena/lista-produktow.js, dane zestawienia
+// domena/zestawienie-zamowien.js — kwoty przychodza juz policzone przez funkcje specyfikacji.
 //
 // ⚠️ Fonty: TE SAME pliki DejaVu, co specyfikacja (faktury/pdf/fonty). Wbudowana Helvetica nie ma
 // polskich znakow i pdfkit gubi je PO CICHU — kazdy napis idzie przez zwykly()/gruby().
@@ -141,7 +141,7 @@ function pustePole(doc, x, y) {
 }
 
 /**
- * Lista produktow jako PDF. Wejscie: ksztalt `listaProduktowZbiorcza` (domain/lista-produktow.js)
+ * Lista produktow jako PDF. Wejscie: ksztalt `listaProduktowZbiorcza` (domena/lista-produktow.js)
  * — `numery`, `wiersze` (`ilosc`, `nazwa`, `sku`, `zamowienia`), `razemPozycji`, `razemSztuk`.
  * Przy JEDNYM zamowieniu kolumna „W zamówieniach" znika (bylaby ta sama w kazdym wierszu).
  * ⚠️ Zadnej kwoty i zadnych danych klienta — wejscie ich nie niesie.
@@ -264,7 +264,7 @@ function rysujZamowienie(doc, z, lp, yStart) {
 
 /**
  * Zestawienie zamowien — bloki jeden pod drugim, ciagiem (jak w Apilo), NIE strona na
- * zamowienie. Wejscie: lista ksztaltow `daneZestawienia` (domain/zestawienie-zamowien.js).
+ * zamowienie. Wejscie: lista ksztaltow `daneZestawienia` (domena/zestawienie-zamowien.js).
  */
 export async function zbudujZestawieniePdf(listaDanych = [], { wydrukowano = '' } = {}) {
   if (!Array.isArray(listaDanych) || !listaDanych.length) {

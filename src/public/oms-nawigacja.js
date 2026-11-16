@@ -45,7 +45,7 @@ export function podlaczMenu(root = document) {
   };
 }
 
-// PRZ-152.G8 — „kopiuj numer" na karcie paczki. W HTML przycisk ma `hidden`: bez JS numer zaznacza się
+// „Kopiuj numer" na karcie paczki. W HTML przycisk ma `hidden`: bez JS numer zaznacza się
 // ręcznie. Clipboard API działa tylko w bezpiecznym kontekście (https, localhost); panel w sieci lokalnej
 // po http dostaje zapasowe `execCommand('copy')` na tymczasowym polu.
 const czasPotwierdzenia = 1500;

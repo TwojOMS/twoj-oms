@@ -1,6 +1,6 @@
 // Zapis i odczyt historii sprzedazy zaimportowanej z Apilo. Modul NICZEGO NIE LICZY
-// i niczego nie klasyfikuje — kanal rozstrzyga domain/kanaly-raportowe.js przy odczycie,
-// zeby zmiana reguly nie wymagala ponownego importu 2000 zamowien.
+// i niczego nie klasyfikuje — kanal rozstrzyga domena/kanaly-raportowe.js przy odczycie,
+// żeby zmiana reguły nie wymagała ponownego importu całej historii.
 
 const teraz = () => new Date().toISOString();
 
@@ -42,18 +42,18 @@ function sprawdzKlucz(zrodlo, apiloId) {
  * podwoilby RANKING PRODUKTOW i licznik sztuk, nie ruszajac sumy sprzedazy — czyli usterka
  * widoczna wylacznie w miejscu, na ktore nikt nie patrzy z kalkulatorem.
  *
- * ⚠️⚠️ CALY ZAPIS W JEDNEJ TRANSAKCJI (recenzja Zadania 3 przy budowie Zadania 5/import-apilo.js)
+ * ⚠️⚠️ CALY ZAPIS W JEDNEJ TRANSAKCJI
  * — to sa TRZY osobne polecenia (UPSERT naglowka → DELETE pozycji → INSERT pozycji), a w
  * `node:sqlite` kazdy `run()` poza jawna transakcja to WLASNY autocommit. Bez `BEGIN`/`COMMIT`
  * przerwanie procesu (albo blad jednej pozycji — np. NOT NULL na `ilosc` przy zamowieniu ze
  * smieciowymi danymi z Apilo) miedzy DELETE a petla INSERT zostawialoby naglowek BEZ pozycji
- * albo z ich CZESCIA. Zmierzone wprost (przed ta poprawka): druga proba zapisu na tym samym
+ * albo z ich CZESCIA. Zmierzone wprost, bez transakcji: druga proba zapisu na tym samym
  * `apilo_id`, w ktorej DRUGA z dwoch pozycji lamala NOT NULL, zostawiala w bazie NOWE (zle)
  * brutto naglowka RAZEM ze STARA pozycja skasowana i tylko PIERWSZA z nowych wstawiona — czyli
- * nie tylko zaniz ranking, ale i NIEZGODNA Z NICZYM sume zamowienia. Import historii (Zadanie 5)
+ * nie tylko zaniz ranking, ale i NIEZGODNA Z NICZYM sume zamowienia. Import historii
  * wznawia sie po awarii od kursora i odwiedza ten sam `apilo_id` ponownie, wiec dokladnie ten
  * scenariusz — druga proba zapisu na juz-czesciowo-zapisanym zamowieniu — jest tu regula, nie
- * wyjatkiem. `BEGIN IMMEDIATE`, nie `BEGIN`: ten sam powod, co przy migracjach w db/db.js — panel
+ * wyjatkiem. `BEGIN IMMEDIATE`, nie `BEGIN`: ten sam powód, co przy migracjach (src/core/baza.ts) — panel
  * (poller) potrafi pisac do tej samej bazy w tym samym momencie, wiec blokada ma byc wziete
  * OD RAZU, a nie dopiero przy pierwszym `INSERT`.
  */
@@ -102,8 +102,8 @@ export function historiaWOknie(db, od, doDnia) {
     'SELECT * FROM sprzedaz_historyczna_pozycje WHERE apilo_id IN'
     + ` (SELECT apilo_id FROM sprzedaz_historyczna WHERE dzien >= ? AND dzien <= ?)`,
   ).all(od, doDnia);
-  // Jedno zapytanie na pozycje zamiast N+1: raport roczny to ~2000 zamowien, czyli 2000
-  // zapytan przy naiwnym rozwiazaniu.
+  // Jedno zapytanie na pozycje zamiast N+1: raport roczny to tysiące zamówień, czyli tyle samo
+  // zapytań przy naiwnym rozwiązaniu.
   const wg = new Map();
   for (const p of pozycje) {
     if (!wg.has(p.apilo_id)) wg.set(p.apilo_id, []);
@@ -129,7 +129,7 @@ export const wszystkieGranice = (db) => db.prepare(
 ).all();
 
 /**
- * Pierwszy dzien, o ktorym wie ERA APILO dla sklepu A (konto 9).
+ * Pierwszy dzień, o którym wie ERA APILO dla podanego konta Apilo.
  *
  * ⚠️⚠️ SUFIT IMPORTU HISTORII SKLEPU MIERZY SIE TYM, NIE WPISUJE Z GLOWY. Sprzedaz sklepowa
  * z zakresu ery Apilo jest juz w tej tabeli; wciagnieta drugi raz z WooCommerce policzy sie

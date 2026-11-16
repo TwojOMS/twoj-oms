@@ -15,7 +15,7 @@ import { bezpiecznaNazwa } from '../../../domena/pliki.js';
 import { adresOdbiorcy } from '../../../domena/adres-odbiorcy.js';
 import { powodBrakuGotowosciNadania } from '../../../domena/gotowosc-nadania.js';
 // Kurier WSKAZANY przez czlowieka — potrzebny wylacznie zamowieniom z Allegro, ktorych
-// metody panel nie umie nadac sam. Patrz domain/kurier-nadania.js.
+// metody panel nie umie nadac sam. Patrz domena/kurier-nadania.js.
 import { metodaNadania, wymagaUmowyPobrania, powodUmowyPobrania, powodOdmowyZamiennika } from '../../../domena/kurier-nadania.js';
 import { czyPobranie, kwotaPobrania as kwotaPobraniaZamowienia } from '../../../domena/wysylka.js';
 import { przedplatyPrzedPobraniem, niedoplataPobrania, bladKwotyPobraniaZamowienia } from '../../../domena/platnosci.js';
@@ -33,18 +33,15 @@ import {
   dodajNotatkeZPowtorka, tekstNotatkiNadania, ponowNotatkeNadania, PREFIKS_NOTATKI,
 } from './notatka-nadania.js';
 
-// ⚠️ STAŁA PRZENIESIONA DO DOMENY 2026-08-17 (domain/ustawienia-panelu.js), bo od tego dnia
-// jest FALLBACKIEM ustawienia, a nie jedynym źródłem wartości. Re-eksport zostaje, bo czyta ją
-// stąd kilkanaście miejsc, w tym testy i scripts/demo-oms.js — przepisywanie wszystkich
-// importów przy okazji tej zmiany byłoby zmianą bez związku ze sprawą (ta sama decyzja,
-// co przy przeniesieniu `grosze`/`zl` do domain/kwoty.js).
+// ⚠️ STAŁA MIESZKA W DOMENIE (domena/szablony-paczek.js; ustawienia-panelu.js ją re-eksportuje), bo jest FALLBACKIEM ustawienia,
+// a nie jedynym źródłem wartości. Re-eksport zostaje, bo stąd czytają ją testy usługi nadania.
 //
 // ⚠️ TO NADAL NIE SĄ WYMIARY KARTONU — uzasadnienie 110×75×1 stoi przy definicji w domenie.
 // Tutaj wartość służy WYŁĄCZNIE jako punkt startowy dla wywołań spoza HTTP: trasy czytają
-// paczkę z ustawień (routes/zamowienia.js) i przekazują ją jawnie.
+// paczkę z ustawień (trasy/nadanie.js) i przekazują ją jawnie.
 export { PACZKA_DOMYSLNA } from '../../../domena/ustawienia-panelu.js';
 
-// PRZ-135: czy brak ZPL po nadaniu to fakt do logu — z opisu kuriera (WzA: etykieta PDF z wyboru, świadomy brak).
+// Czy brak ZPL po nadaniu to fakt do logu — z opisu kuriera (WzA: etykieta PDF z wyboru, świadomy brak).
 // Kurier spoza rejestru: jak dotąd (zapis „BRAK”). Bez rzucania — tu numer listu jest już przydzielony.
 /** @param {unknown} kurier */
 export const zplPrzyNadaniu = (kurier) => typeof kurier !== 'string' || !Object.hasOwn(MODULY_KURIEROW, kurier)
@@ -60,7 +57,7 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
   /**
    * OGON UDANEGO NADANIA: pliki etykiet → zapis przesyłki → log → notatka w sklepie.
    *
-   * Wydzielony w Zadaniu 6, bo od tej chwili prowadzą tu DWIE drogi: zwykłe nadanie
+   * Osobna funkcja, bo prowadzą tu DWIE drogi: zwykłe nadanie
    * i przycisk „Sprawdź ponownie" (sprawdzPonownie niżej), który dobiera numer i etykiety
    * przesyłki JUŻ UTWORZONEJ u kuriera. Dwie kopie tego kodu rozjechałyby się przy
    * pierwszej zmianie — a to jest miejsce, w którym numer listu trafia do bazy.
@@ -108,28 +105,22 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
 
     zakonczPrzesylke(db, przesylkaId, {
       numerListu: wynik.numerListu, etykietaSciezka: sciezka, etykietaZplSciezka: sciezkaZpl, surowa: wynik.surowa,
-      // Adres FAKTYCZNIE uzyty przy tym nadaniu — nie ten z zamowienia w sklepie, ktory
-      // od tej chwili moze byc juz nieaktualny (operator go poprawil). Bez tego panel
-      // przestalby wiedziec, dokad paczka NAPRAWDE pojechala (patrz komentarz przy
-      // kolumnie przesylki.adres_uzyty w schema.sql).
+      // Adres FAKTYCZNIE użyty przy tym nadaniu — nie ten z zamówienia w sklepie, który
+      // od tej chwili może być już nieaktualny (operator go poprawił). Bez tego panel
+      // przestałby wiedzieć, dokąd paczka NAPRAWDĘ pojechała.
       adresUzyty: adresUzytyJson,
     });
     dopiszLog(db, z.id, { akcja: 'nadanie', wynik: wynik.numerListu });
 
-    // ⚠️ NADANIE NIE ZMIENIA STATUSU — ani w panelu, ani w sklepie. To ta sama decyzja
-    // wlasciciela („po nadaniu paczki nie zmieniaj statusu"), tylko wreszcie wyrazona we
-    // wlasciwym miejscu: etykieta powstaje przy PAKOWANIU, a paczka wyjezdza z kurierem
-    // dzien pozniej. Statusem rzadzi fakt `wyslane_at`, ktory ustawia czlowiek, i DOPIERO
-    // ON jedzie do sklepu jako 'completed' (services/sync-sklep.js).
-    //
-    // Historycznie stalo tu `woo.ustawStatus(..., 'completed')` i zostalo 30.07 usuniete
-    // w odpowiedzi na te sama prosbe — wtedy blednie odczytana jako „nie zmieniaj statusu
-    // W SKLEPIE". Odesylanie statusu wrocilo 31.07, ale juz z innego wyzwalacza; TUTAJ ma
-    // go nie byc. Notatka z numerem listu zostaje: to osobna sprawa niz status.
+    // ⚠️ NADANIE NIE ZMIENIA STATUSU — ani w panelu, ani w sklepie: etykieta powstaje przy
+    // PAKOWANIU, a paczka wyjeżdża z kurierem dzień później. Statusem rządzi fakt
+    // `wyslane_at`, który ustawia człowiek, i DOPIERO ON jedzie do sklepu jako 'completed'
+    // (zamowienia/services/sync-sklep.js). Notatka z numerem listu zostaje: to osobna
+    // sprawa niż status.
     // ⚠️ ZAMOWIENIE RECZNE NIE ISTNIEJE W SKLEPIE. Jego `zrodlo_id` to WYLACZNIE pozycja
-    // we wlasnej serii numeracji (R/RRRR/NNN, patrz db/zamowienia-reczne.js), a NIE
-    // identyfikator zadnego zamowienia Woo — dokladnie ta sama pulapka, ktora Zadanie 2
-    // zalatalo w domain/sync-sklep.js (statusDlaSklepu patrzy na POCHODZENIE, nie na
+    // we wlasnej serii numeracji (R/RRRR/NNN, patrz oms/db/zamowienia-reczne.js), a NIE
+    // identyfikator zadnego zamowienia Woo — ta sama pułapka, którą obsługuje też
+    // domena/sync-sklep.js (statusDlaSklepu patrzy na POCHODZENIE, nie na
     // obecnosc `zrodlo_id`). Notatka wyslana pod ten numer trafialaby w przypadkowe cudze
     // zamowienie w Woo (albo w nic) i wracala jako blad synchronizacji, ktory nie opisuje
     // niczego prawdziwego — zamowienie wisialo na liscie „do zalatwienia" na zawsze.
@@ -150,14 +141,14 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
         wynik: `POMINIĘTO: brak konfiguracji sklepu „${z.sklep}" — notatka nie ma dokąd pojechać.`,
       });
     } else if (czyTylkoOdczyt(klienci[z.sklep])) {
-      // PRZ-149.04: sklep podłączony kluczem „Odczyt” — świadome pominięcie, nie awaria. Bez śladu
+      // Sklep podłączony kluczem „Odczyt” — świadome pominięcie, nie awaria. Bez śladu
       // `sync_woo_blad`, bo zegar ponowień i tak nie ma czego wysłać; karta mówi to sama (sklepTylkoOdczyt).
       dopiszLog(db, z.id, { akcja: 'sync-woo', wynik: `POMINIĘTO: ${TYLKO_ODCZYT}` });
     } else {
       // Paczka juz istnieje fizycznie, wiec awaria zapisu notatki NIE moze wycofac nadania —
       // numer listu i etykieta zostaja, notatke odsylamy „best effort".
       try {
-        // PRZ-117: jedna powtórka po chwilowym błędzie sieci (services/notatka-nadania.js).
+        // Jedna powtórka po chwilowym błędzie sieci (services/notatka-nadania.js).
         await dodajNotatkeZPowtorka(klienci[z.sklep], z.zrodlo_id, tekstNotatkiNadania(kurier, wynik.numerListu), { czekaj });
         dopiszLog(db, z.id, { akcja: 'sync-woo', wynik: 'OK' });
       } catch (przyczyna) {
@@ -177,27 +168,27 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
   // numeru kazde wywolanie celuje w to samo miejsce w indeksie, wiec drugie odbija sie
   // od bazy. Numeru NIE WOLNO tu wyliczac z bazy — wtedy dwa szybkie klikniecia dostalyby
   // numery 1 i 2 i obie paczki fizycznie by wyjechaly. Kto chce paczke nr 2, musi ja nazwac.
-  // ⚠️ `punktOdbioru` (Zadanie 7): kod paczkomatu POPRAWIONY na ekranie nadania, jak
+  // ⚠️ `punktOdbioru`: kod paczkomatu POPRAWIONY na ekranie nadania, jak
   // `adres` wyzej. Opcjonalny — wywolania spoza HTTP (testy, DPD) go nie podaja i wtedy
   // klient InPostu sam siega po `zamowienie.punkt_odbioru` (kurierzy/inpost.js). DPD ten
   // argument w ogole nie czyta, wiec przekazanie go zawsze jest bezpieczne.
-  // ⚠️ `kwotaPobrania` (Z4): kwota pobrania POPRAWIONA na ekranie nadania — TA SAMA rodzina
+  // ⚠️ `kwotaPobrania`: kwota pobrania POPRAWIONA na ekranie nadania — TA SAMA rodzina
   // co `adres` i `punktOdbioru`. Nadpisanie jest JEDNORAZOWE: leci do kuriera przy TYM
   // nadaniu i NIE ZAPISUJE SIE do zamowienia (ani do kolumny `kwota_pobrania`, ani do
   // `wysylka_reczna_json`) — trwala korekta ma swoje miejsce na karcie. Opcjonalne:
   // wywolania spoza formularza (nadanie zbiorcze, testy) go nie podaja i wtedy kwota
   // pochodzi z zamowienia, dokladnie jak dotad.
-  // ⚠️ `kurierWybrany` (2026-08-07): kurier WSKAZANY PRZEZ CZLOWIEKA na ekranie nadania.
+  // ⚠️ `kurierWybrany`: kurier WSKAZANY PRZEZ CZLOWIEKA na ekranie nadania.
   // Ma znaczenie WYLACZNIE dla zamowien z Allegro — tam panel nie zna kuriera, bo paczke
   // z tego kanalu nadaje sie etykieta kupiona w panelu Allegro, a nasza umowa wchodzi
   // dopiero przy dosylce albo zamienniku. Dla wszystkich pozostalych zamowien wartosc jest
-  // IGNOROWANA (domain/kurier-nadania.js) i nic sie dla nich nie zmienia.
+  // IGNOROWANA (domena/kurier-nadania.js) i nic sie dla nich nie zmienia.
   //
   // Wybor jest JEDNORAZOWY — dokladnie jak `punktOdbioru` i `kwotaPobrania` wyzej: leci
   // do kuriera przy TYM nadaniu i NIE zapisuje sie do zamowienia. Trwale przestawienie
   // metody ma swoje miejsce na karcie i jest CZYMS INNYM (klamaloby, ze klient wybral
   // nasze DPD, i wypisywalo zamowienie z siatek ochronnych kluczowanych metoda).
-  // ⚠️ `pobranieNaTejPaczce` (04.09.2026): jawna decyzja operatora, ze pobranie ma pojechac
+  // ⚠️ `pobranieNaTejPaczce`: jawna decyzja operatora, ze pobranie ma pojechac
   // na TEJ paczce, nawet gdy jej numer jest wiekszy od 1. Domyslne `kolejnosc === 1` to
   // DOKLADNIE dawne zachowanie — wolajacy spoza formularza (nadanie zbiorcze, testy) niczego
   // nie zauwaza. Uzasadnienie i granice: komentarz przy warunku <cod> w kurierzy/dpd.js.
@@ -215,7 +206,7 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
     if (!z) throw bladOperatora('Nie ma takiego zamówienia.');
 
     // ⚠️ Adres odbiorcy: TA linia jest cała ochrona przed edycją pozorną (patrz
-    // kurierzy/dpd.js i domain/adres-formularza.js). `adres` normalnie przychodzi z
+    // kurierzy/dpd.js i domena/adres-formularza.js). `adres` normalnie przychodzi z
     // formularza ekranu nadania (POST /zamowienia/:id/nadaj — operator mógł go poprawić
     // przed zatwierdzeniem) i idzie do klienta kuriera WPROST, bez ponownego czytania
     // z zamówienia. Fallback na adresOdbiorcy(z) zostaje WYŁĄCZNIE dla wywołań spoza HTTP
@@ -235,20 +226,20 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
     // TWARDA odmowa, nie samo ukrycie przycisku w widoku: karta w przegladarce pokazuje
     // stan sprzed sekund, a klient moze anulowac dokladnie wtedy, gdy operator ma ja otwarta.
     // Bez tej odmowy paczka do anulowanego zamowienia fizycznie by wyjechala, a nikt by sie
-    // nie zorientowal: nadanie NIE zmienia statusu zamowienia w sklepie (decyzja
-    // wlasciciela, patrz koniec funkcji), wiec karta zamowienia w Woo nie dostalaby ZADNEGO
-    // sygnalu, ze cos poszlo nie tak.
+    // nie zorientowal: nadanie NIE zmienia statusu zamówienia w sklepie (patrz
+    // dokonczNadanie), więc karta zamówienia w Woo nie dostałaby ŻADNEGO sygnału, że coś
+    // poszło nie tak.
     //
-    // CELOWO blokujemy WYLACZNIE anulowanie. Brak oplaty NIE blokuje nadania: to sklep B2B,
-    // wysylka na fakture z terminem platnosci jest normalna, a blokada zmuszalaby operatora
-    // do falszywego oznaczania wplat. Nieoplacone zamowienie dostaje OSTRZEZENIE w widoku.
+    // CELOWO blokujemy WYŁĄCZNIE anulowanie. Brak opłaty NIE blokuje nadania: w sprzedaży
+    // B2B wysyłka na fakturę z terminem płatności jest normalna, a blokada zmuszałaby
+    // operatora do fałszywego oznaczania wpłat. Nieoplacone zamowienie dostaje OSTRZEZENIE w widoku.
     if (z.anulowane) throw bladOperatora('Zamówienie jest anulowane — nie wolno go nadać.');
 
     // Czego zamowieniu BRAKUJE, zeby dalo sie je nadac (dzis: kod paczkomatu). Odmowa stoi
     // PRZED `rozpocznijPrzesylke`, wiec nieudana proba nie zostawia nawet wiersza w bazie —
     // nie ma czego odblokowywac, a operator dostaje zdanie mowiace, co uzupelnic.
     // TA SAMA funkcja rzadzi przyciskiem na karcie i ekranem nadania: panel ma nie
-    // proponowac akcji, ktora sam odrzuci (domain/gotowosc-nadania.js).
+    // proponowac akcji, ktora sam odrzuci (domena/gotowosc-nadania.js).
     // ⚠️ METODA, KTORA NAPRAWDE OBSLUZY TO NADANIE — liczona PRZED wszystkim innym, bo od
     // niej zalezy i to, czego zamowieniu brakuje (kod paczkomatu), i do kogo zadzwonimy.
     // Dla zamowienia spoza Allegro oddaje po prostu `z.metoda_wysylki`, wiec dla sklepow
@@ -265,19 +256,19 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
 
     // Odmowa PRZED dotknieciem kuriera: nieznana metoda nie ma prawa wygenerowac listu.
     const { nazwa, klient } = wybierzKuriera(metodaUzyta, kurierzy);
-    // ⚠️ PRZ-137.03 (D2, D3): ZAMIENNIK ZA POBRANIEM (paczka N > 1, zaznaczone pobranie na tej
+    // ⚠️ ZAMIENNIK ZA POBRANIEM (paczka N > 1, zaznaczone pobranie na tej
     // paczce) — decyduje KURIER, nie formularz: wolno tylko kurierowi z `pobranieNaDosylce`
     // (DPD, InPost) i — przy 'adapter' — z wlaczona umowa firmy. Zamiennik to zawsze pobranie
     // OMS-owe, wiec „pobranie ze sklepu" go nie zwalnia. Odmowa neutralna (bez „nadaj DPD"),
     // PRZED wierszem przesylki i przed kurierem.
-    // Paczka nr 1 zamowienia za pobraniem wiezie pobranie ZAWSZE (jak przed PRZ-137.03, gdy adapter
-    // InPostu pytal o `kolejnosc`): jawne `false` z wywolania spoza trasy nie robi z niej cichej przedplaty.
+    // Paczka nr 1 zamówienia za pobraniem wiezie pobranie ZAWSZE: jawne `false` z wywołania
+    // spoza trasy nie robi z niej cichej przedpłaty.
     if (kolejnosc === 1 && czyPobranie(z)) pobranieNaTejPaczce = true;
     if (kolejnosc > 1 && pobranieNaTejPaczce) {
       const odmowa = powodOdmowyZamiennika(z, metodaUzyta, { umowyPobrania });
       if (odmowa) throw bladOperatora(`${odmowa.charAt(0).toUpperCase()}${odmowa.slice(1)}. Panel niczego nie nadał.`);
     }
-    // ⚠️ PRZ-137.02 (D2): BARIERA UMOWY NA POBRANIE — PRZED `rozpocznijPrzesylke` i przed
+    // ⚠️ BARIERA UMOWY NA POBRANIE — PRZED `rozpocznijPrzesylke` i przed
     // kurierem, wiec odmowa nie zostawia wiersza i nie wysyla ani jednego zadania. Dotyczy
     // WYLACZNIE pobrania OMS-owego (reczne zamowienie, metoda albo pobranie zmienione na
     // karcie) u kuriera 'adapter' bez wlaczonej umowy firmy. Pobranie sprzedane przez sklep
@@ -290,12 +281,12 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
       const powod = powodUmowyPobrania(metodaUzyta);
       throw bladOperatora(`${powod.charAt(0).toUpperCase()}${powod.slice(1)}. Panel niczego nie nadał.`);
     }
-    // PRZ-137.04: przed utworzeniem przesyłki i kurierem; POST ani wywołanie spoza HTTP
+    // Przed utworzeniem przesyłki i kurierem; POST ani wywołanie spoza HTTP
     // nie mogą wysłać pełnego pobrania po przedpłacie. Nie zmniejszamy go po cichu.
-    // PRZ-145.01 (plan PRZ-137, E5-D1..E5-D4): jedna bariera dla ekranu i wywołań spoza HTTP.
+    // Jedna bariera dla ekranu i wywołań spoza HTTP:
     //  • kwotę pobrania (jawną albo z zamówienia) czyta `odczytajKwotePobrania` — ta sama
     //    funkcja co pole ekranu i hurt; żadna ścieżka nie woła `grosze()` na surowym napisie;
-    //  • niedopłata = KWOTA ZAMÓWIENIA minus wpłaty (`niedoplataPobrania`), nie wpisane K;
+    //  • niedopłata = KWOTA ZAMÓWIENIA minus wpłaty (`niedoplataPobrania`), nie wpisana kwota pobrania;
     //  • kwota poniżej niedopłaty jedzie tylko z potwierdzeniem BIEŻĄCEJ niedopłaty z ekranu.
     // Do kuriera idzie kwota znormalizowana (kropka), nie surowy napis z bazy.
     let kwotaDoKuriera = kwotaPobrania;
@@ -363,18 +354,16 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
 
     // Komentarz (dawny „powod dosylki") zapisujemy PO zajeciu miejsca w indeksie, a PRZED
     // wywolaniem kuriera: po pierwsze nie zasmieca logu przy odbitym dwukliku, po drugie
-    // zostaje w historii takze wtedy, gdy nadanie zaraz padnie. Od Zadania „adres
-    // edytowalny" pole jest dostepne przy KAZDYM nadaniu, nie tylko przy paczce N > 1 —
-    // ale wymuszamy wpis w logu TYLKO gdy paczka N > 1 (tam nadal ZAWSZE zostawiamy slad,
+    // zostaje w historii takze wtedy, gdy nadanie zaraz padnie. Wpis w logu wymuszamy
+    // TYLKO gdy paczka N > 1 (tam nadal ZAWSZE zostawiamy slad,
     // takze pusty, bo pytanie „po co byla druga paczka" pada najczesciej) albo gdy operator
     // faktycznie cos napisal. Pusty komentarz przy zwyklej pierwszej paczce nie ma czego
     // uzasadniac i NIE MA prawa zasmiecac logu wpisem „nie podano powodu" przy kazdym
     // zwyklym nadaniu.
     //
-    // ⚠️ POLE „KOMENTARZ" ZNIKNELO Z EKRANU NADANIA (Z5, decyzja wlasciciela 04.08) i to
-    // bylo SWIADOME — nigdy nie jechalo do kuriera, trafialo wylacznie do logu. Parametr
-    // zostaje, bo wolaja stad takze wywolania spoza formularza; z ekranu przychodzi dzis
-    // ZAWSZE `null`, wiec galaz `kolejnosc > 1` wpisuje do logu stale „nie podano powodu".
+    // ⚠️ POLA „KOMENTARZ" NIE MA NA EKRANIE NADANIA i to jest ŚWIADOME — nigdy nie jechało
+    // do kuriera, trafiało wyłącznie do logu. Parametr zostaje, bo wołają stąd także
+    // wywołania spoza formularza; z ekranu przychodzi ZAWSZE `null`, wiec galaz `kolejnosc > 1` wpisuje do logu stale „nie podano powodu".
     // I tak ma byc: slad „byla druga paczka" jest cenniejszy niz jego uzasadnienie, ktorego
     // nikt juz nie ma gdzie wpisac. Kto bedzie tedy szedl szukac pola w `nadaj.ejs` — nie
     // znajdzie go i to nie jest usterka.
@@ -388,16 +377,16 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
     }
 
     // ⚠️ KWOTA POBRANIA DO LOGU — PRZED wywolaniem kuriera, tak jak komentarz wyzej i
-    // z tego samego powodu, tylko o wieksza stawke. Nadpisanie kwoty NIE MA GORNEGO PROGU
-    // (swiadoma decyzja wlasciciela 04.08), wiec literowka „31033" zamiast „310,33"
-    // pojedzie do kuriera taka, jaka jest — a wtedy TEN WPIS jest jedynym miejscem, w
-    // ktorym po miesiacu widac, ile kurier mial zainkasowac. Kolumna `kwota_pobrania`
-    // odpowiedzi nie da: poller nadpisuje ja danymi ze sklepu co dwie minuty (przewodnik
-    // OMS, 4.7), a nadpisanie z tego ekranu i tak sie do niej nie zapisuje.
-    // Wpis pada PRZED nadaniem, zeby zostal takze wtedy, gdy nadanie padnie z paczka JUZ
-    // UTWORZONA u kuriera (stan `do_wyjasnienia` — wtedy pobranie fizycznie istnieje).
-    // PRZ-145.01 (E5-D4): kwota poniżej niedopłaty jedzie tylko z potwierdzeniem — wtedy
-    // potwierdzona niedopłata stoi w tym samym wpisie.
+    // z tego samego powodu, tylko o większą stawkę. Nadpisanie kwoty NIE MA GÓRNEGO PROGU
+    // (świadomie), więc literówka „31033" zamiast „310,33" pojedzie do kuriera taka, jaka
+    // jest — a wtedy TEN WPIS jest jedynym miejscem, w którym po miesiącu widać, ile kurier
+    // miał zainkasować. Kolumna `kwota_pobrania` odpowiedzi nie da: poller nadpisuje ją
+    // danymi ze sklepu przy każdej synchronizacji (reguła: dane ręczne obok danych sklepu),
+    // a nadpisanie z tego ekranu i tak się do niej nie zapisuje.
+    // Wpis pada PRZED nadaniem, żeby został także wtedy, gdy nadanie padnie z paczką JUŻ
+    // UTWORZONĄ u kuriera (stan `do_wyjasnienia` — wtedy pobranie fizycznie istnieje).
+    // Kwota poniżej niedopłaty jedzie tylko z potwierdzeniem — wtedy potwierdzona
+    // niedopłata stoi w tym samym wpisie.
     if (kwotaPobrania != null || potwierdzonaNd != null) {
       dopiszLog(db, zamowienieId, {
         akcja: 'nadanie.pobranie',
@@ -406,14 +395,14 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
       });
     }
 
-    // ⚠️⚠️ POBRANIE NA PACZCE N > 1 — OSOBNY WPIS, NIE DOPISEK DO POWYZSZEGO (04.09.2026).
+    // ⚠️⚠️ POBRANIE NA PACZCE N > 1 — OSOBNY WPIS, NIE DOPISEK DO POWYZSZEGO.
     // To jest odstepstwo od reguly „pobranie jedzie na paczce nr 1", ktore panel wykonuje
     // WYLACZNIE na wyrazna decyzje czlowieka, i za miesiac pytanie „dlaczego kurier
     // zainkasowal przy drugiej paczce" musi dac sie rozstrzygnac bez zgadywania. Wpis pada
     // PRZED wywolaniem kuriera, wiec zostaje takze wtedy, gdy nadanie padnie z paczka JUZ
     // utworzona u kuriera (stan 'do_wyjasnienia' — wtedy pobranie fizycznie istnieje).
     // Kwota jest w tresci, bo `kwota_pobrania` na zamowieniu odpowiedzi nie da: poller
-    // nadpisuje ja ze sklepu co dwie minuty, a nadpisanie z ekranu sie do niej nie zapisuje.
+    // nadpisuje ja ze sklepu przy kazdej synchronizacji, a nadpisanie z ekranu sie do niej nie zapisuje.
     if (pobranieNaTejPaczce && kolejnosc > 1) {
       dopiszLog(db, zamowienieId, {
         akcja: 'nadanie.pobranie',
@@ -431,15 +420,15 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
       });
     } catch (przyczyna) {
       const e = /** @type {import('../nadanie-typy.ts').BladNadania} */ (przyczyna);
-      // TRZY ROZNE AWARIE, trzy rozne wyjscia — dotad ladowaly w jednym worku (dwa od DPD).
+      // RÓŻNE AWARIE, każda z własnym wyjściem.
       //
-      // ⚠️ NOWY, TRZECI PRZYPADEK (InPost): wyjatek niesie `shipmentId`, ale nie niesie
+      // ⚠️ PRZYPADEK InPostu: wyjatek niesie `shipmentId`, ale nie niesie
       // numeru listu. Znaczy to, ze `POST /shipments` SIE UDAL — przesylka u kuriera
       // ISTNIEJE — a padlo dopiero odpytywanie o numer. Oznaczenie takiego wiersza jako
       // 'blad' (droga DPD, bo numeru nie ma) zwolniloby indeks czesciowy i pozwolilo nadac
       // DRUGA prawdziwa paczke, ktorej InPost nie odsieje po referencji. Patrz nizej.
-      // ⚠️⚠️ POBRANIE NIEPOTWIERDZONE PRZEZ KURIERA — WLASNE WYJSCIE, PRZED POZOSTALYMI
-      // (27.08.2026). Przesylka u kuriera ISTNIEJE, ale kurier NIE potwierdzil, ze zainkasuje
+      // ⚠️⚠️ POBRANIE NIEPOTWIERDZONE PRZEZ KURIERA — WLASNE WYJSCIE, PRZED POZOSTALYMI.
+      // Przesylka u kuriera ISTNIEJE, ale kurier NIE potwierdzil, ze zainkasuje
       // pieniadze (kurierzy/inpost.js). Bez tej galezi sprawa trafialaby — po samym
       // `shipmentId` — na 'w_trakcie' z przyciskiem „Sprawdz ponownie", a to klikniecie
       // dobiera numer i etykiety i KONCZY nadanie z pominieciem straznika. Panel zamknalby
@@ -539,7 +528,7 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
    * ⚠️ TA FUNKCJA NIE MA PRAWA UTWORZYĆ ŻADNEJ PRZESYŁKI. Woła WYŁĄCZNIE
    * `klient.sprawdzPrzesylke(id)`, czyli `GET` po zapisanym identyfikatorze — nigdy
    * `klient.nadaj()`. Dziesięć kliknięć pod rząd ma dać zero nowych paczek, bo InPost nie
-   * odsiewa duplikatów po referencji (spec, 4.4) i nikt by tego za nas nie złapał.
+   * odsiewa duplikatów po referencji i nikt by tego za nas nie złapał.
    *
    * Argumentem jest ID PRZESYŁKI, nie zamówienia — dokładnie jak przy odblokujPrzesylke
    * i domknijPrzesylke: zamówienie może mieć kilka paczek, a „pierwsza z brzegu"
@@ -629,7 +618,7 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
 
   // paczkaDomyslna wystawiona na zewnatrz, zeby ekran nadania (GET /zamowienia/:id/nadaj)
   // mogl nia wypelnic formularz — TA SAMA stala, nie druga kopia w widoku.
-  // PRZ-117: przycisk „Spróbuj ponownie” przy nieudanej notatce — tu, bo tylko nadanie ma klientów sklepów.
+  // Przycisk „Spróbuj ponownie” przy nieudanej notatce — tu, bo tylko nadanie ma klientów sklepów.
   const ponowNotatke = (/** @type {number} */ przesylkaId) => ponowNotatkeNadania({ db, klienci, klienciKanalow }, przesylkaId);
 
   const anulujNumerKanalu = (/** @type {number} */ id) => przekazNumerKanalu({ db, klienci, klienciKanalow }, id, true);

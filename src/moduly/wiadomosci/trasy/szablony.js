@@ -1,4 +1,4 @@
-// PRZ-101.03: Ustawienia → Szablony wiadomości — edycja czterech maili wbudowanych i szablony własne.
+// Ustawienia → Szablony wiadomości — edycja czterech maili wbudowanych i szablony własne.
 //
 // Kto może: strażnik po prefiksie `/ustawienia` wpuszcza tylko konto z uprawnieniem „ustawienia"; gościa demo
 // w podglądzie zatrzymuje na każdym POST-cie (core/bezpieczenstwo/podglad-demo.js). CSRF sprawdza wspólny hak
@@ -21,10 +21,10 @@ import { regulyUzywajaceSzablonu } from '../../automatyzacje/db/reguly.js';
 import { maDostepDoAdresu } from '../../../domena/ekrany.js';
 
 const ADRES = '/ustawienia/szablony-wiadomosci';
-// PRZ-102.17: sekcja „Zdania o płatności" na liście szablonów. Trasy statyczne — find-my-way stawia je przed `/:id`,
+// Sekcja „Zdania o płatności" na liście szablonów. Trasy statyczne — find-my-way stawia je przed `/:id`,
 // a żaden szablon nie ma id „zdania-platnosci" (wbudowane mają stałe nazwy, własne `wlasny-N`).
 const ZDANIA_ADRES = `${ADRES}/zdania-platnosci`;
-// PRZ-152.G13: odmowy w układzie OMS (status i tekst bez zmian); powrót na listę szablonów.
+// Odmowy w układzie OMS (status i tekst bez zmian); powrót na listę szablonów.
 const ODMOWA_SZABLONOW = { tytul: 'Nie ma takiego szablonu', napisWroc: 'Wróć do szablonów wiadomości', wroc: ADRES };
 
 const KOMUNIKATY = {
@@ -48,11 +48,13 @@ export function registerSzablonyWiadomosciRoutes(app, { db, oprawa, config = {},
   }
 
   function ekranEdycji(req, reply, s, { formularz = null, blad = null, podglad = null } = {}) {
-    return reply.view('ustawienia-szablon.ejs', { szerokosc: 'formularz',
+    // Ścieżkę do ekranu Użytkownicy dostaje tylko ten, kto go widzi (jak w ekranListy niżej).
+    const admin = Boolean(req.konto?.admin || req.konto?.podgladDemo);
+    return reply.view('ustawienia-szablon.ejs', { szerokosc: 'formularz', admin,
       nawigacja: nawigacja(req, reply),
       title: s.nowy ? 'Nowy szablon wiadomości' : `Szablon: ${s.nazwa}`,
       s, f: formularz ?? { nazwa: s.nazwa ?? '', temat: s.temat, tresc: s.tresc },
-      pola: polaSzablonu(s.rodzaj), maks: MAKS, blad, podglad,
+      pola: polaSzablonu(s.rodzaj, { admin }), maks: MAKS, blad, podglad,
       reguly: !s.wbudowany && !s.nowy ? regulySzablonu(s.id).map(r => ({ ...r,
         // Dziennik reguły ma dodatkową ochronę admina; gość demo może go tylko oglądać.
         adres: (req.konto?.admin || req.konto?.podgladDemo)
@@ -70,11 +72,11 @@ export function registerSzablonyWiadomosciRoutes(app, { db, oprawa, config = {},
     return reply.view('ustawienia-szablony.ejs', {
       nawigacja: nawigacja(req, reply),
       title: 'Szablony wiadomości',
-      // PRZ-174 B4a: ekran Użytkownicy jest tylko dla administratora, a szablony widzi każde konto z prawem „ustawienia".
+      // Ekran Użytkownicy jest tylko dla administratora, a szablony widzi każde konto z prawem „ustawienia".
       // Gość demo widzi Użytkowników w menu (modelNawigacjiUstawien: admin || podgladDemo), więc też dostaje ścieżkę.
       admin: Boolean(req.konto?.admin || req.konto?.podgladDemo),
       wbudowane: WBUDOWANE.map((id) => szablonDoEdycji(stan, id)),
-      // PRZ-101.06: maile do pracowników — osobna sekcja, żeby nikt nie pomylił ich z mailami do klientów.
+      // Maile do pracowników — osobna sekcja, żeby nikt nie pomylił ich z mailami do klientów.
       zespol: KONTA.map((id) => szablonDoEdycji(stan, id)),
       wlasne: stan.wlasne, maks: MAKS,
       komunikat: wpisane ? null : ((KOMUNIKATY[req.query?.zapisano] ?? '') + ostrzezenie || null),
@@ -86,7 +88,7 @@ export function registerSzablonyWiadomosciRoutes(app, { db, oprawa, config = {},
 
   app.get(ADRES, async (req, reply) => ekranListy(req, reply));
 
-  // PRZ-102.17: zapis wszystkich zdań naraz (wszystkie albo żadne). Odmowa → 400 z wpisanymi tekstami i powodem przy
+  // Zapis wszystkich zdań naraz (wszystkie albo żadne). Odmowa → 400 z wpisanymi tekstami i powodem przy
   // polu. Prawo „ustawienia" sprawdza strażnik po prefiksie `/ustawienia`, CSRF — wspólny hak.
   app.post(ZDANIA_ADRES, async (req, reply) => {
     const pola = req.body ?? {};

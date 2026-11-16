@@ -5,11 +5,11 @@ import { zlozZestawienieKosztow } from '../../../domena/paczka-dla-biura.js';
 import { kosztyOtrzymaneWMiesiacu, odrzuconeWMiesiacu } from '../../../oms/db/koszty.js';
 import { zbudujZestawieniePdf } from '../pdf/zestawienie-dla-biura-pdf.js';
 
-// Zestawienie KOSZTÓW miesiąca jako PDF (PRZ-086) — przycisk na zakładce KOSZTY. Dwie osobne
+// Zestawienie KOSZTÓW miesiąca jako PDF — przycisk na zakładce KOSZTY. Dwie osobne
 // części na jednym wydruku: faktury kosztowe z KSeF i faktury dopisane ręcznie.
 //
 // ⚠️ WYŁĄCZNIE LISTA, BEZ DOŁĄCZONYCH DOKUMENTÓW — tak samo jak zestawienie przychodów na FAKTURACH
-// (decyzja z 14.09.2026: „jedno wejście do PDF”, bez paczki z fakturami). Dzięki temu usługa
+// („jedno wejście do PDF”, bez paczki z fakturami). Dzięki temu usługa
 // czyta TYLKO BAZĘ: nie woła KSeF (limity 16/min i 64/h), nie woła inFaktu i działa także
 // w panelu bez sekcji KSEF_*. Pełna paczka z dokumentami zostaje pod `GET /faktury/paczka?czesc=koszty`.
 //
@@ -71,7 +71,7 @@ export function createZestawienieKosztow({
       throw bladOperatora(`Nie udało się przygotować zestawienia: liczba stron w stopce (${stron}) nie zgadza się z plikiem (${wynik.getPageCount()}).`);
     }
     // Tytuł dokumentu („Zestawienie kosztów — sierpień 2026”) ustawia sam rysunek PDF-a —
-    // nie dotykamy go tutaj (zestawienie przychodów miało takiego buga: `setTitle` zjadał miesiąc).
+    // nie dotykamy go tutaj (`setTitle` w tym miejscu zjadłby miesiąc z tytułu).
     return {
       bajty: Buffer.from(await wynik.save()),
       nazwa: `zestawienie-kosztow-${miesiac}.pdf`,

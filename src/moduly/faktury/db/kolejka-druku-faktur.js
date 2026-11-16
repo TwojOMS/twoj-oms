@@ -1,12 +1,12 @@
-// Warstwa bazy dla kolejki wydruku FAKTUR — Brother MFC-J6510DW po WiFi, druk przez
+// Warstwa bazy dla kolejki wydruku FAKTUR — zwykła drukarka (np. po WiFi), druk przez
 // sterownik Windows na komputerze z czuwaczem.
 //
-// ⚠️ DLACZEGO OSOBNO OD `db/kolejka-druku.js`, a nie jedna wspolna tabela: pelne uzasadnienie
-// stoi przy CREATE TABLE w schema.sql. W skrocie — na komputerze produkcyjnym chodzi STARY
-// czuwacz etykiet, ktory KAZDA pozycje z `/kolejka-druku` wysyla na Zebre w trybie RAW.
-// Wspolna tabela znaczylaby PDF-a wyslanego jako ZPL. Nowy adres stary skrypt nigdy nie wola.
+// ⚠️ DLACZEGO OSOBNO OD `wysylka/db/kolejka-druku.js`, a nie jedna wspólna tabela: uzasadnienie
+// stoi w nagłówku deploy/drukarka/czuwacz-faktur.ps1. W skrócie — czuwacz etykiet
+// (czuwacz-etykiet.ps1) KAŻDĄ pozycję z `/kolejka-druku` wysyła na drukarkę etykiet w trybie RAW.
+// Wspólna tabela znaczyłaby PDF-a wysłanego jako ZPL. Nowego adresu czuwacz etykiet nigdy nie woła.
 //
-// ⚠️ REGULA ODRACZANIA JEST WSPOLNA (`odroczenieMs` z domain/kolejka-druku-stan.js) — powiela
+// ⚠️ REGULA ODRACZANIA JEST WSPOLNA (`odroczenieMs` z domena/kolejka-druku-stan.js) — powiela
 // sie tu SQL, NIGDY regula. Druga kopia wykladniczego odroczenia rozjechalaby sie z pierwsza
 // przy pierwszej zmianie i jedna z kolejek zaczelaby dobijac sie do panelu co 5 sekund.
 import { bladOperatora } from '../../../domena/bledy.js';
@@ -41,8 +41,8 @@ export function dodajFaktureDoKolejki(db, fakturaId) {
  *
  * Cena tej decyzji jest znana: jesli tamto stanowisko zdazylo wydrukowac, ale nie zdazylo
  * potwierdzic, kartka wyjdzie DWA RAZY. Wybor jest swiadomy — papier jest odwracalny, brak
- * faktury u klienta nie jest. Piec minut to z zapasem wiecej, niz trwa pobranie PDF-u
- * z inFaktu i oddanie go do bufora wydruku (limit czuwacza to domyslnie 120 s).
+ * faktury u klienta nie jest. Pięć minut to z zapasem więcej, niż trwa pobranie PDF-u
+ * z programu fakturowego i oddanie go do bufora wydruku (limit czuwacza to domyślnie 120 s).
  */
 export const PROG_ZAJECIA_MS = 5 * 60 * 1000;
 
@@ -93,10 +93,10 @@ export function fakturyDoWziecia(db, opcje = {}) {
 /**
  * Zamowienie, ktorego faktury dotyczy pozycja kolejki.
  *
- * ⚠️ POTRZEBNE, BO PANEL NIE TRZYMA KOPII PDF-U. Dokument pobiera sie z inFaktu NA SWIEZO
- * przy kazdym zadaniu (services/faktura.js) — kolejka wskazuje wiec, KTORA fakture
- * wydrukowac, a tresc leci ta sama droga, co przy „Pobierz PDF". Kopia na dysku klamalaby
- * po korekcie: z drukarki wyszedlby dokument, ktorego juz nie ma w inFakcie.
+ * ⚠️ POTRZEBNE, BO PANEL NIE TRZYMA KOPII PDF-U. Dokument pobiera się z programu fakturowego
+ * NA ŚWIEŻO przy każdym zadaniu (services/faktura.js) — kolejka wskazuje więc, KTÓRĄ fakturę
+ * wydrukować, a treść leci tą samą drogą, co przy „Pobierz PDF". Kopia na dysku kłamałaby
+ * po korekcie: z drukarki wyszedłby dokument, którego już nie ma w programie fakturowym.
  */
 export function zamowienieDlaPozycji(db, id) {
   const w = db.prepare(`
@@ -134,7 +134,7 @@ export function oznaczBladDrukuFaktury(db, id, powod) {
 /**
  * JEDYNE wyjscie ze stanu „faktura ciagle sie nie drukuje" — panel nie ma prawa probowac
  * w nieskonczonosc, a czlowiek wie to, czego panel nie wie (drukarka odlaczona na stale).
- * Niezmiennik 4.9: panel nie moze wchodzic w stan, z ktorego nie umie wyjsc.
+ * Reguła „każdy stan ma wyjście”: panel nie może wchodzić w stan, z którego nie umie wyjść.
  */
 export function porzucFakture(db, id) {
   wymagajWiersza(db, id);

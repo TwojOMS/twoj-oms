@@ -7,10 +7,10 @@ import { oprawaTeraz } from '../podpis-maili.js';
 import { zdaniaPlatnosciTeraz } from '../zdania-platnosci.js';
 import { oznaczBladPoczty, opisBleduPocztyDoLogu } from '../poczta-ustawien.ts';
 
-// WYSYLKA POTWIERDZENIA PRZYJECIA ZAMOWIENIA (21.08.2026).
+// WYSYLKA POTWIERDZENIA PRZYJECIA ZAMOWIENIA.
 //
 // ⚠️ USLUGA NIE DECYDUJE, CZY WYSLAC — decyduje czlowiek, klikajac na ekranie PODGLADU.
-// Tresc sklada domena (domain/potwierdzenie-zamowienia.js) i to ona odmawia przy zamowieniu
+// Tresc sklada domena (domena/potwierdzenie-zamowienia.js) i to ona odmawia przy zamowieniu
 // anulowanym, bez adresu albo bez pozycji. Tutaj zostaje samo „wyslij i odnotuj".
 //
 // ⚠️ MAILA NIE DA SIE COFNAC. Dlatego: nigdy z jednego klikniecia (karta pokazuje podglad
@@ -18,7 +18,7 @@ import { oznaczBladPoczty, opisBleduPocztyDoLogu } from '../poczta-ustawien.ts';
 // a slad zostaje w TRZECH miejscach — w logu karty, w rejestrze `wiadomosci` i w kolumnie
 // `potwierdzenie_wyslane_at`, z ktorej ekran mowi „wyslano 21.08 o 12:40" zamiast pozwalac
 // wysylac w kolko bez sladu.
-// PRZ-102.10: `podpisPanelu()` — marka i stopka z Ustawień → Poczta (pola niezablokowane plikiem), czytane przy KAŻDEJ
+// `podpisPanelu()` — marka i stopka z Ustawień → Poczta (pola niezablokowane plikiem), czytane przy KAŻDEJ
 // wysyłce. Oprawa liczona raz przy starcie dawała stary podpis aż do restartu panelu.
 export function createPotwierdzenie({ db, mailer, sprzedawca = {}, oprawaPoczty = {}, podpisPanelu = null, teraz = () => new Date().toISOString() }) {
   const oprawaMailaTeraz = oprawaTeraz(oprawaPoczty, podpisPanelu);
@@ -29,9 +29,9 @@ export function createPotwierdzenie({ db, mailer, sprzedawca = {}, oprawaPoczty 
 
     // RZUCA przy odmowie domeny — trasa zamienia to na komunikat po polsku, tak samo jak
     // przy fakturze i proformie.
-    // PRZ-101.03: szablon z Ustawień → Szablony wiadomości, czytany przy każdej wysyłce (zmiana bez restartu).
+    // Szablon z Ustawień → Szablony wiadomości, czytany przy każdej wysyłce (zmiana bez restartu).
     // Bez zapisu — dzisiejsza treść co do znaku (szablony.js: droga `szablon: null`).
-    // PRZ-102.19: etykiety i stałe teksty (nagłówki, kolumny, „Pozdrawiamy,") z tej samej sekcji, czytane przy każdej wysyłce.
+    // Etykiety i stałe teksty (nagłówki, kolumny, „Pozdrawiamy,") z tej samej sekcji, czytane przy każdej wysyłce.
     const mail = mailPotwierdzenia(z, {
       oprawa, szablon: wczytajSzablonyWiadomosci(db).wbudowane.potwierdzenie ?? null, zdania: zdaniaPlatnosciTeraz(db),
     });
@@ -42,9 +42,9 @@ export function createPotwierdzenie({ db, mailer, sprzedawca = {}, oprawaPoczty 
         subject: mail.temat,
         // ⚠️ TEKST ZOSTAJE JAKO CZESC ALTERNATYWNA — klient pocztowy bez HTML-a dostaje
         // te sama tresc, tylko bez tabeli. Obie postacie wychodza z JEDNEGO modelu
-        // (domain/potwierdzenie-zamowienia.js), wiec nie moga pokazac roznych kwot.
+        // (domena/potwierdzenie-zamowienia.js), wiec nie moga pokazac roznych kwot.
         text: tekstZeStopka(mail.tekst, oprawa.footer),
-        // ⚠️ WLASNY RENDERER, a nie `renderMailHtml` (przebudowa 21.08.2026). Tamten rozpoznaje
+        // ⚠️ WLASNY RENDERER, a nie `renderMailHtml`. Tamten rozpoznaje
         // wzorce linii napisane pod maile z WYCENA (`3x Nazwa - 74,90zl brutto/szt`);
         // potwierdzenie ich nie spelnia, wiec wychodzilo z niego jako ciag akapitow — bez
         // tabeli, ktora mialo miec. Wspolna zostaje KOPERTA (wordmark, karta, stopka), czyli
@@ -59,7 +59,7 @@ export function createPotwierdzenie({ db, mailer, sprzedawca = {}, oprawaPoczty 
         akcja: 'potwierdzenie.blad',
         wynik: `BŁĄD wysyłki potwierdzenia do ${mail.do} (${ktoKlikal}): ${opisBleduPocztyDoLogu(e)}`,
       });
-      // PRZ-109.03: znacznik bledu transportu poczty — trasa karty pokaze zdanie z kodu nodemailera.
+      // Znacznik bledu transportu poczty — trasa karty pokaze zdanie z kodu nodemailera.
       throw oznaczBladPoczty(e);
     }
 

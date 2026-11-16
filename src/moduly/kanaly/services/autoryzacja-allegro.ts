@@ -14,10 +14,10 @@ type KodDevice={deviceCode:string;userCode:string;adres:string;odstepMs:number;n
 type Proba={id:string;klucz:string;sesjaId:string;aktor:Aktor;wersja:number;generacja:number;wygasa:number;state:string;verifier:string;app:AplikacjaWewnetrzna;adres:string;userAgent?:string;legacy?:boolean;device?:KodDevice;ponowna?:boolean};
 export type KandydatAllegro={probaId:string;klucz:string;sesjaId:string;aktor:Aktor;wersja:number;generacja:number;kontoId:string;login:string;tokeny:ParaTokenow;wygasa:number;sprawdzZakres:(odUtc:string)=>Promise<number>;ponowna?:boolean};
 export function createAutoryzacjaAllegro(o:{repozytorium:RepozytoriumKanalow;aplikacjaDlaInstalacji:(s:SrodowiskoAllegro)=>AplikacjaWewnetrzna|null;aplikacjaDevice?:(s:SrodowiskoAllegro)=>{clientId:string;clientSecret:string}|null;http:HttpAllegro;userAgent:string|(()=>string);teraz?:()=>Date;legacyDlaKanalu?:(klucz:string)=>{app:AplikacjaWewnetrzna;wolnoWiazac:boolean;userAgent?:string}|null;
- // PRZ-160 E3.02 (D42): czy aplikacja Device (panel) ma sprawdzone zakresy ofert. Tylko wtedy zapytanie
+ // Czy aplikacja Device (panel) ma sprawdzone zakresy ofert. Tylko wtedy zapytanie
  // /device prosi także o nie; bez znacznika prośba o nie skończyłaby się `invalid_scope` i zablokowała łączenie.
  zakresyOfert?:(s:SrodowiskoAllegro,clientId:string)=>boolean;
- // PRZ-160 E3d.01: czy połączone konto z panelu może przejść ponowną zgodę („Połącz ponownie z Allegro”)
+ // Czy połączone konto z panelu może przejść ponowną zgodę („Połącz ponownie z Allegro”)
  // bez zrywania połączenia. Próba i kandydat żyją wtedy tylko w pamięci, jak dla env.
  ponownieDlaPanelu?:(klucz:string)=>boolean}){
  const userAgent=()=>typeof o.userAgent==='function'?o.userAgent():o.userAgent;

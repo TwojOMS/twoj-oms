@@ -1,12 +1,12 @@
-// PRZ-105: domyślna stawka VAT firmy (Ustawienia → Firma), bez migracji i bez pamięci podręcznej — wzór
-// ksef-konsumenckie.js. Bez zmiennej w pliku konfiguracji: żadna dotąd nie istniała, więc zasada PRZ-092
-// „plik wygrywa” nie ma tu czego chronić. Bez wpisu (i przy wpisie spoza listy) — STAWKA_VAT, czyli 23:
-// instalacja, która niczego nie kliknie, wystawia faktury dokładnie jak przed PRZ-105.
+// Domyślna stawka VAT firmy (Ustawienia → Firma), bez migracji i bez pamięci podręcznej — wzór
+// ksef-konsumenckie.js. Bez zmiennej w pliku konfiguracji, więc zasada „plik wygrywa”
+// nie ma tu czego chronić. Bez wpisu (i przy wpisie spoza listy) — STAWKA_VAT, czyli 23:
+// instalacja, która niczego nie kliknie, wystawia faktury ze stawką 23%.
 import { STAWKA_VAT, czyStawkaVat } from '../../../domena/vat.js';
 
 const KLUCZ = 'vat.stawka_domyslna';
 
-// PRZ-122.B07a: „zw” jako domyślna wyłącznie z flagą `{ zw: true }` (program wbudowany). Bez flagi zapisane „zw”
+// „zw” jako domyślna wyłącznie z flagą `{ zw: true }` (program wbudowany). Bez flagi zapisane „zw”
 // czyta się jak każdy wpis spoza listy — STAWKA_VAT — więc przy inFakcie nie dojdzie do faktury.
 export function czytajStawkeDomyslna(db, opcje) {
   const w = db?.prepare('SELECT wartosc FROM ustawienia WHERE klucz = ?').get(KLUCZ)?.wartosc;

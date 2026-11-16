@@ -1,22 +1,22 @@
-// BEZPIECZNIK ODPYTYWANIA `GET /order/checkout-forms/{id}/invoices` (spec 2026-08-28).
+// BEZPIECZNIK ODPYTYWANIA `GET /order/checkout-forms/{id}/invoices`.
 //
-// ⚠️⚠️ TA REGULA COFA CZESC DECYZJI Z 06.08.2026, i to swiadomie. `domain/sprawy-karty.js`
+// ⚠️⚠️ TA REGULA COFA CZESC WCZESNIEJSZEJ DECYZJI, i to swiadomie. `domena/sprawy-karty.js`
 // mowi: „ODPYTYWANIA W CZUWACZU NIE RUSZAMY — gdy Allegro naprawi zasob, stan zacznie sie
 // rozstrzygac SAM". Ta intencja ZOSTAJE. Zmienia sie WYLACZNIE czestotliwosc: panel dowie sie
-// o naprawie w ciagu doby, a nie w ciagu godziny. Powod: raport „Bledy techniczne" Allegro
-// pokazal 6225 wywolan tego zasobu zakonczonych 400, a od 1.09.2026 art. 3.12 regulaminu
-// pozwala odjac za to punkty jakosci sprzedazy.
+// o naprawie w ciagu doby, a nie w ciagu godziny. Powód: raport „Błędy techniczne" Allegro
+// pokazał tysiące wywołań tego zasobu zakończonych 400, a art. 3.12 regulaminu Allegro
+// pozwala odjąć za to punkty jakości sprzedaży.
 //
 // ⚠️ BEZPIECZNIK JEST NA KANALE, NIE NA FAKTURZE — bo 400 jest wlasnoscia ENDPOINTU, nie
-// zamowienia (zmierzone 05.08: smieciowy UUID daje TO SAMO 400, a ten sam smiec na zasobie
+// zamowienia (zmierzone: smieciowy UUID daje TO SAMO 400, a ten sam smiec na zasobie
 // nadrzednym daje 422, czyli 400 powstaje PRZED sprawdzeniem identyfikatora). Pytanie osmiu
 // roznych faktur raz na dobe daloby osiem identycznych porazek zamiast jednej odpowiedzi.
 //
 // ⚠️ SYGNALEM „ZASOB ZYJE" JEST NIEPUSTA LISTA, a nie kod HTTP — i dlatego klient zostaje
 // nietkniety. Pytamy wylacznie o faktury, ktore SAMI wyslalismy (`allegro_invoice_id IS NOT
 // NULL` jest czescia warunku kolejki), wiec dzialajacy zasob MUSI oddac co najmniej nasz wpis.
-// Alternatywa — przepuszczanie kodu 400 przez `pobierzFakturyZamowienia` — ruszalaby 27
-// asercji w 7 plikach testow po to, zeby dowiedziec sie tego samego.
+// Alternatywa — przepuszczanie kodu 400 przez `pobierzFakturyZamowienia` — ruszalaby
+// asercje w wielu plikach testow po to, zeby dowiedziec sie tego samego.
 
 // ⚠️ PROG WIEKSZY NIZ JEDEN, i to nie jest ostroznosc na wyrost: dzialajacy zasob moze raz oddac
 // pustke w wyscigu z wlasnym indeksowaniem po stronie Allegro. Licznik rosnie PER WIERSZ, wiec
@@ -46,10 +46,10 @@ export function wolnoPytac(stan, teraz) {
 }
 
 /**
- * Nowy stan kanalu po odpowiedzi. Czysta funkcja — zapis nalezy do db/stan-weryfikacji.js.
+ * Nowy stan kanalu po odpowiedzi. Czysta funkcja — zapis nalezy do oms/db/stan-weryfikacji.js.
  *
  * ⚠️ NIEPUSTA ODPOWIEDZ ZAMYKA BEZPIECZNIK I ZERUJE LICZNIK. To jest jedyne wyjscie z tego
- * stanu i dokladnie to, czego chce komentarz z 06.08: pierwszy dowod, ze zrodlo zyje, przywraca
+ * stanu i dokladnie to, czego chce komentarz w `sprawy-karty.js`: pierwszy dowod, ze zrodlo zyje, przywraca
  * pelne zachowanie bez zmiany w kodzie.
  */
 export function poOdpowiedzi(stan, { pusta }, teraz) {

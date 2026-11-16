@@ -20,13 +20,13 @@ const NAZWY_OPLAT = [NAZWA_OBSLUGI, NAZWA_KURIERA];
  * (operator poprawia „klient nadaje sam"). Warunek na sama biezaca nazwe przepuscilby
  * obsluge obok istniejacej uslugi kurierskiej i klient zaplacilby dwa razy.
  *
- * O TYM, CZY oplata sie nalezy, rozstrzyga WYLACZNIE domain/oplata-obslugi.js — tutaj nie
+ * O TYM, CZY oplata sie nalezy, rozstrzyga WYLACZNIE domena/oplata-obslugi.js — tutaj nie
  * ma ani jednego progu i ani jednej kwoty.
  */
 export function doklejOplate({
   db, zamowienieId, nip, etykietaKlienta, bezWysylki, wartoscTowaruGr, zw = false,
 }) {
-  // PRZ-122.B07c: `zw` (program wbudowany) — domyślna „zw” firmy zwolnionej trafia też na opłatę; bez flagi jak dotąd.
+  // `zw` (program wbudowany) — domyślna „zw” firmy zwolnionej trafia też na opłatę; bez flagi jak dotąd.
   const opcjeZw = { zw };
   const klient = warunkiDostawy(klientPoNip(db, nip));
   // Warunki każdego stałego klienta, niezależnie od rozliczenia miesięcznego.
@@ -42,7 +42,7 @@ export function doklejOplate({
   // `bezWysylki` przechodzi PRZEZ ten serwis, a nie ZATRZYMUJE sie w nim — drugi warunek
   // tutaj byłby drugą regułą opłaty, cichszą od tej w domenie i rozjeżdżającą się z nią
   // przy pierwszej zmianie. Serwis przekazuje FAKT („nie ma wysyłki"), decyzję podejmuje
-  // wyłącznie domain/oplata-obslugi.js.
+  // wyłącznie domena/oplata-obslugi.js.
   const oplata = oplataDlaZamowienia({ etykietaKlienta, bezWysylki, wartoscTowaruGr, klient });
   if (!oplata) return null;
 
@@ -57,7 +57,7 @@ export function doklejOplate({
   // wyglada wiersz o zrodle 'reczna' (i ktore odswieza `zmienione_at` zamowienia).
   dodajPozycjeReczna(db, zamowienieId, {
     nazwa: oplata.nazwa, sku: null, ilosc: 1, cena_brutto: kwota, brutto_linii: kwota,
-    // PRZ-105: opłata dostaje stawkę domyślną z chwili doklejenia i ją zachowuje.
+    // Opłata dostaje stawkę domyślną z chwili doklejenia i ją zachowuje.
     vat: czytajStawkeDomyslna(db, opcjeZw),
   }, opcjeZw);
 

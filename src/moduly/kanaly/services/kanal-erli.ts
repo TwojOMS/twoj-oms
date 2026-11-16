@@ -1,4 +1,4 @@
-// PRZ-157.04 — fabryka kanału ERLI dla rejestru kanałów (D9: typ z kanaly_sprzedazy.typ).
+// Fabryka kanału ERLI dla rejestru kanałów (D9: typ z kanaly_sprzedazy.typ).
 // Konfiguracja połączenia: wiersz `erli:<klucz kanału>` w `konfiguracja_integracji`
 // (ustawienia `{adresApi, domyslnyCzasWysylki}`, sekret `{kluczApi}`) — ten sam kształt zapisuje kreator (zmiana 11).
 // Klucz API trafia wyłącznie do nagłówka klienta; nie do błędów, logu ani stanu pollera.

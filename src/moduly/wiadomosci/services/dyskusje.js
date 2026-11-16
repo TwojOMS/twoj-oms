@@ -1,6 +1,6 @@
 // DYSKUSJE I REKLAMACJE — odczyt `GET /sale/issues` do lustra.
 //
-// ⚠️⚠️ RUSZTOWANIE NA DWA MIESIACE, budowane ze swiadomoscia, ze zniknie. Od 28.10.2026 Allegro
+// ⚠️⚠️ TYMCZASOWE RUSZTOWANIE, budowane ze swiadomoscia, ze zniknie. Od 28.10.2026 Allegro
 // wprowadza Problemy z zakupem do Centrum wiadomosci jako typ watku POST_PURCHASE_ISSUE,
 // obslugiwany WYLACZNIE przez `/messaging`. Wtedy ten plik, `pobierzSprawy` w kliencie i tabela
 // `allegro_sprawy` maja zostac SKASOWANE, a nie zostac „na wszelki wypadek". Alternatywa dla
@@ -18,7 +18,7 @@ import { kanalZWiadomosciami } from '../../../domena/moduly-kanalow.ts';
 export const STATUSY_OTWARTE = ['DISPUTE_ONGOING', 'DISPUTE_UNRESOLVED', 'CLAIM_SUBMITTED'];
 
 export function createOdswiezanieSpraw({ db, klienci = {}, brakiKanalu = () => [], teraz = () => new Date() }) {
-  // ⚠️ KLUCZ TO PARA (kanal, issue_id), nie samo `issue_id`. Mamy dwa konta Allegro i nic nie
+  // ⚠️ KLUCZ TO PARA (kanal, issue_id), nie samo `issue_id`. Kont Allegro moze byc kilka i nic nie
   // gwarantuje rozlacznosci identyfikatorow miedzy nimi — sklejenie pokazaloby jeden spor
   // zamiast dwoch.
   const wpis = db.prepare(`
@@ -36,14 +36,14 @@ export function createOdswiezanieSpraw({ db, klienci = {}, brakiKanalu = () => [
     const bledy = [];
     let zapisane = 0;
     for (const [nazwa, klient] of Object.entries(klienci)) {
-      // PRZ-157.12b: mapa kanałów niesie też klientów ERLI — oni nie mają spraw Allegro.
+      // Mapa kanałów niesie też klientów ERLI — oni nie mają spraw Allegro.
       if (!kanalZWiadomosciami(nazwa)) continue;
   // ⚠️⚠️ NIE WOLAMY ZASOBU, DO KTOREGO KANAL NIE MA UPRAWNIENIA. Bez tego panel wdrozony
-  // PRZED przewiazaniem kanalow strzela 403 przy kazdym przebiegu — okolo 1150 nieudanych
+  // PRZED przewiazaniem kanalow strzela 403 przy kazdym przebiegu — ponad tysiac nieudanych
   // wywolan na dobe prosto do raportu „Bledy techniczne" Allegro. Zakresy wchodza do tokenu
   // wylacznie przy autoryzacji, wiec ten stan trwa az do przewiazania, nie mija sam.
   // ⚠️ Pusta lista brakow znaczy „nie wiem" i przepuszcza — nie wnioskujemy z niewiedzy
-  // (ta sama zasada, co w domain/uprawnienia-kanalu.js).
+  // (ta sama zasada, co w domena/uprawnienia-kanalu.js).
       if (brakiKanalu(nazwa).includes('allegro:api:disputes')) continue;
       // ⚠️ IZOLACJA NA KANAL. Przed przewiazaniem kanalow o `allegro:api:disputes` ten zasob
       // odda 403 na obu kontach — przebieg ma to zniesc i oddac bledy, a nie odrzucic

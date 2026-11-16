@@ -1,4 +1,4 @@
-// Klasyfikacja zamówienia dla listy (PRZ-051) — to, co panel boczny i filtry muszą wiedzieć
+// Klasyfikacja zamówienia dla listy — to, co panel boczny i filtry muszą wiedzieć
 // o KAŻDYM zamówieniu, żeby policzyć zakładki i wybrać stronę bez czytania całej bazy.
 //
 // ⚠️ ŻADNEJ WŁASNEJ REGUŁY. Status liczy `wyliczStatus`, listę roboczą `doZrobienia`, termin

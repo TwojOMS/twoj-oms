@@ -1,4 +1,4 @@
-// PRZ-083 (właściciel 15.10): Ustawienia w demo publicznym do OBEJRZENIA przez gościa — nic do zapisania.
+// Ustawienia w demo publicznym do OBEJRZENIA przez gościa — nic do zapisania.
 //
 // Wpinany w pipeline.js WYŁĄCZNIE, gdy instancja ma konto gościa demo (kontoDemo ≠ null, a to wymaga OMS_TRYB=proba —
 // src/core/demo.ts). Na produkcji ten hak nie istnieje. Działa PO strażniku (req.konto już jest):

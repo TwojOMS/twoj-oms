@@ -2,7 +2,7 @@ import { bladOperatora } from './bledy.js';
 
 // Podsumowanie VAT na PROFORMĘ — jeden wiersz na stawkę plus wiersz sumy.
 //
-// ⚠️ ŚWIADOME ODSTĘPSTWO OD ZASADY REPO. Przewodnik OMS (4.5) mówi wprost: „netto bierzemy
+// ⚠️ ŚWIADOME ODSTĘPSTWO OD ZASADY REPO. Reguła „netto ze źródła" mówi wprost: „netto bierzemy
 // wprost z WooCommerce, nigdy przez dzielenie brutta przez 1,23". To NIE jest przeoczenie
 // ani miejsce do „posprzątania" — powód tamtego zakazu po prostu tu nie zachodzi.
 //
@@ -11,12 +11,12 @@ import { bladOperatora } from './bledy.js';
 // zastępowaniem wartości źródłowej przybliżeniem — a dzielenie i mnożenie z powrotem
 // produkowało rozjazd o grosze, o który panel rozbijał się na barierze arytmetycznej faktury.
 //
-// Tutaj kierunek jest ODWROTNY i innej drogi NIE MA. Proforma powstaje w całości w panelu
-// (patrz plan 2026-08-04-oms-faktura-proforma), a panel ma dla tego dokumentu WYŁĄCZNIE
+// Tutaj kierunek jest ODWROTNY i innej drogi NIE MA. Proforma powstaje w całości w panelu,
+// a panel ma dla tego dokumentu WYŁĄCZNIE
 // brutto — bo brutto jest tym, co wpisał operator i co klient ma przelać. Netto nie istnieje
 // tu nigdzie indziej, więc nie ma czego zgubić ani z czym się rozjechać. Ta sama granica, co
-// w domain/vat.js: odstępstwo obowiązuje w TYM JEDNYM module i nie wolno go rozciągać na
-// pozycje ze sklepu ani na fakturę VAT — tam podatek liczy dalej inFakt.
+// w domena/vat.js: odstępstwo obowiązuje w TYM JEDNYM module i nie wolno go rozciągać na
+// pozycje ze sklepu ani na fakturę VAT — tam podatek liczy dalej program faktur.
 //
 // Kwoty w groszach, na liczbach całkowitych. Zero floatów poza jednym dzieleniem niżej.
 
@@ -33,9 +33,9 @@ import { bladOperatora } from './bledy.js';
  * w pamięci — odejmowanie czyni niezgodność NIEMOŻLIWĄ, a nie „rzadką".
  *
  * PRZYPIS, żeby następna osoba nie szukała po omacku: przy stawkach 0/5/8/23% obie formuły
- * dają DOKŁADNIE te same liczby (sprawdzone mutacją na całym zakresie 1–200 000 gr,
- * 2026-08-04). Przy tych mianownikach iloraz nigdy nie trafia w równą połowę, więc nie ma
- * gdzie się rozjechać. Rozjazd pojawia się dopiero przy stawce, gdzie remis jest możliwy
+ * dają DOKŁADNIE te same liczby (sprawdzone mutacją na całym zakresie 1–200 000 gr).
+ * Przy tych mianownikach iloraz nigdy nie trafia w równą połowę, więc nie ma gdzie się rozjechać.
+ * Rozjazd pojawia się dopiero przy stawce, gdzie remis jest możliwy
  * (20%, 3 gr: netto 3 + VAT 1 = 4 zamiast 3), bo `Math.round` zaokrągla wtedy W GÓRĘ po obu
  * stronach naraz. Stawka jest tu DANĄ, nie stałą, więc reguła obowiązuje dla każdej — i tak
  * właśnie jest napisany test niezmiennika. To NIE jest powód, żeby wrócić do dzielenia
@@ -66,14 +66,14 @@ function groszeZPozycji(s, i) {
   return gr;
 }
 
-// Stawka przychodzi z `services` jako `tax_symbol` — dziś zawsze napis „23" (STAWKA_VAT),
+// Stawka przychodzi z `services` jako `tax_symbol` — napis stawki pozycji („23", „8"…),
 // ale liczbę też przyjmujemy, bo synonim nie jest powodem, żeby odmówić dokumentu.
 //
 // „zw", „np" i inne symbole NIE są tu obsługiwane celowo: panel takich pozycji nie wystawia,
 // a zgadnięcie, że „zw" znaczy 0%, wydrukowałoby klientowi wymyśloną stawkę na dokumencie.
 // Gdyby kiedyś były potrzebne, ma to być ŚWIADOMA zmiana z testem.
 //
-// PRZ-122.B07a — ta świadoma zmiana: „zw” WYŁĄCZNIE z flagą `zw` (program wbudowany, który drukuje adnotację
+// Ta świadoma zmiana: „zw” WYŁĄCZNIE z flagą `zw` (program wbudowany, który drukuje adnotację
 // i podstawę zwolnienia). Wtedy wynikiem jest napis 'zw', nie liczba: osobny wiersz „zw” (netto = brutto, VAT 0),
 // nigdy sklejony z wierszem 0%. Bez flagi „zw” to odmowa jak dotąd.
 function stawkaZPozycji(s, i, zw) {
@@ -91,7 +91,7 @@ function stawkaZPozycji(s, i, zw) {
 /**
  * Tabela „Podsumowanie VAT" z proformy.
  *
- * Wejście: `services` z `domain/pozycje-faktury.js` — `{ gross_price, tax_symbol }`,
+ * Wejście: `services` z `domena/pozycje-faktury.js` — `{ gross_price, tax_symbol }`,
  * grosze i stawka. Pozostałe pola pozycji (nazwa, ilość) tego podsumowania nie dotyczą.
  *
  * Wyjście: TABELA GOTOWA DO WYDRUKU, w kolejności wierszy dokumentu — jeden wiersz na
@@ -109,7 +109,7 @@ function stawkaZPozycji(s, i, zw) {
  * modułu. Zamówienie bez pozycji odrzuca wcześniej `sprawdzSumeDokumentu`, i tam jest na to
  * właściwe miejsce — komunikat o pustym zamówieniu ma paść raz, nie w dwóch modułach.
  *
- * PRZ-122.B07a: `{ zw: true }` — wiersz „zw” (stawka 'zw', VAT 0) na końcu, po stawkach liczbowych.
+ * `{ zw: true }` — wiersz „zw” (stawka 'zw', VAT 0) na końcu, po stawkach liczbowych.
  */
 export function podsumowanieVat(services = [], { zw = false } = {}) {
   const bruttoWgStawki = new Map();

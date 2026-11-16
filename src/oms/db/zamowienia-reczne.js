@@ -12,7 +12,7 @@ const zl = (gr) => (gr / 100).toFixed(2);
  *
  * UWAGA: Wynik jest wazny WYLACZNIE w transakcji, ktora od razu wstawia zamowienie z tym
  * numerem. Dwa rownoczesne klikniecia policza to samo; rozstrzyga dopiero indeks unikalny
- * `zamowienia_numer_reczny` (schema.sql) — dokladnie tak, jak numer kolejnej paczki.
+ * `zamowienia_numer_reczny` (moduly/rdzen/migracje/0001-baseline.sql) — dokladnie tak, jak numer kolejnej paczki.
  */
 export function nastepnyNumerReczny(db, rok) {
   const wiersze = db.prepare(
@@ -27,27 +27,27 @@ export function nastepnyNumerReczny(db, rok) {
  *
  * `zrodlo_id` (kolumna NOT NULL) dostaje wartosc z `zrodloIdReczne(rok, kolejny)`, NIE sama
  * pozycje w roku — dzieki temu NIE RUSZAMY schematu (unikalnosc `(sklep, zrodlo_id)` dalej
- * dziala, kolizja z numerem sklepu jest niemozliwa, bo `sklep` jest inny: 'reczne' vs 'pro'),
+ * dziala, kolizja z numerem sklepu jest niemozliwa, bo `sklep` jest inny: 'reczne' zamiast klucza kanału sklepu),
  * a JEDNOCZESNIE zrodlo_id nie zderza sie miedzy latami (patrz komentarz przy
- * zrodloIdReczne w domain/numeracja.js — recenzja calej galezi, C2). Sama pozycja (1, 2, 3...)
+ * zrodloIdReczne w domena/numeracja.js). Sama pozycja (1, 2, 3...)
  * zerowalaby sie razem z licznikiem serii i pierwsze zamowienie nowego roku zderzyloby sie
  * z pierwszym zamowieniem roku poprzedniego.
  *
- * Numer i wstawienie w JEDNEJ transakcji, tak samo jak numer kolejnej paczki (przesylki.js):
+ * Numer i wstawienie w JEDNEJ transakcji, tak samo jak numer kolejnej paczki (moduly/wysylka/db/przesylki.js):
  * dwa rownoczesne klikniecia „Nowe zamowienie" licza ten sam numer, ale indeks unikalny
  * `zamowienia_numer_reczny` przepusci tylko pierwszy INSERT.
  *
- * `okresRozliczeniowyId` przychodzi Z ZEWNATRZ (services/okres.js), a nie jest tu liczony:
+ * `okresRozliczeniowyId` przychodzi Z ZEWNATRZ (moduly/faktury/services/okres.js), a nie jest tu liczony:
  * rozstrzygniecie „czy ten NIP jest rozliczany zbiorczo" wymaga konfiguracji, a warstwa bazy
  * jej nie zna i ma nie znac. Domyslne `null` to normalny stan tysiecy zamowien spoza
  * rozliczenia zbiorczego.
  */
 export function utworzZamowienieReczne(db, dane = {}, okresRozliczeniowyId = null) {
   // ⚠️ ZNACZNIK CZASU PRZYCHODZI Z ZEWNATRZ, jesli wolajacy go poda — i to nie jest zaczep
-  // testowy, tylko poprawka o pieniadze (recenzja koncowa galezi, D4). Trasa zakladania
-  // zamowienia (web/routes/zamowienia.js) liczy okres rozliczeniowy z WLASNEGO odczytu
-  // zegara, a ta funkcja wpisywala `utworzone_at` z WLASNEGO `teraz()`. Dwa niezalezne
-  // odczyty na przelomie miesiaca daja zamowienie w LIPCOWYM okresie z SIERPNIOWA data
+  // testowy, tylko poprawka o pieniadze. Trasa zakladania zamowienia
+  // (moduly/zamowienia/reczne.js) liczy okres rozliczeniowy ze swojego odczytu zegara;
+  // gdyby ta funkcja wpisywała `utworzone_at` z własnego `teraz()`, dwa niezalezne
+  // odczyty na przelomie miesiaca dałyby zamowienie w LIPCOWYM okresie z SIERPNIOWA data
   // zlozenia — czyli pozycje na fakturze nie tego miesiaca, ktorego data widnieje
   // na zamowieniu. Znacznik ma byc policzony RAZ i przekazany dalej.
   //
@@ -73,14 +73,14 @@ export function utworzZamowienieReczne(db, dane = {}, okresRozliczeniowyId = nul
     `).run(
       zrodloIdReczne(rok, kolejny), numer,
       JSON.stringify(dane.klient ?? null), JSON.stringify(dane.dostawa ?? null),
-      // ⚠️ Pobranie jedzie WLASNA kolumna (2026-08-01) — bez tego zamowienie telefoniczne
+      // ⚠️ Pobranie jedzie WLASNA kolumna — bez tego zamowienie telefoniczne
       // przyjete „za pobraniem" wpadaloby do bazy jako przedplacone i kurier nie mialby
       // czego zainkasowac. Kwote przeliczy zaraz przeliczKwoteRecznego (pozycji jeszcze nie ma).
       dane.metoda_wysylki ?? METODA_DOMYSLNA, dane.pobranie ? 1 : 0, dane.kwota_pobrania ?? null,
-      // ⚠️ KOD PACZKOMATU idzie do KOLUMNY, nie do nadpisania (07.08.2026). Przy zamówieniu
+      // ⚠️ KOD PACZKOMATU idzie do KOLUMNY, nie do nadpisania. Przy zamówieniu
       // ręcznym nie ma sklepu, który mógłby ją przepisać — to MY jesteśmy tu źródłem — więc
       // kolumna jest właściwym miejscem, dokładnie jak `metoda_wysylki` obok. Ręczna korekta
-      // kodu z karty i tak wygra przy odczycie (domain/wysylka.js: punktOdbioru).
+      // kodu z karty i tak wygra przy odczycie (domena/wysylka.js: punktOdbioru).
       dane.punkt_odbioru ?? null,
       dane.chce_fakture ? 1 : 0, dane.nip ?? null,
       dane.koszt_dostawy_brutto ?? '0.00', dane.metoda_platnosci ?? null,
@@ -96,14 +96,14 @@ export function utworzZamowienieReczne(db, dane = {}, okresRozliczeniowyId = nul
       // Zamowienie do siedziby klienta ma `okres_rozliczeniowy_id = NULL` — dokladnie tak
       // samo, jak zamowienie, ktore z okresu wypadlo przez pomylke. Bez tej kolumny jedno
       // od drugiego nie da sie odroznic, a to sa pieniadze: do siedziby fakturujemy OD RAZU,
-      // z terminem platnosci (spec §3), i nic w panelu nie mialoby o tym pojecia.
+      // z terminem platnosci, i nic w panelu nie mialoby o tym pojecia.
       //
       // Idzie z `dane`, a nie osobnym argumentem jak `okresRozliczeniowyId`: to zwykle pole
       // formularza (jak `pobranie` czy `chce_fakture`), do ktorego odczytania nie trzeba
       // konfiguracji — a warstwa `db/` konfiguracji nie zna i ma nie znac.
       dane.hurt ? 1 : 0,
       // ⚠️ ZNACZNIK MUSI ISC TUTAJ, nie byc dopisany pozniej. `uzupelnijIndywidualne`
-      // (db.js) przy KAZDYM otwarciu bazy robi
+      // (oms/db/uzupelnienia-zamowien.js) przy KAZDYM otwarciu bazy robi
       // `UPDATE ... SET indywidualne = 0 WHERE indywidualne IS NULL AND surowe_json IS NULL`,
       // a zamowienie reczne surowe_json nie ma — wiec znacznik dopisany „za chwile"
       // wyzerowalby sie przy najblizszym restarcie kontenera. Cicho, bez bledu.
@@ -111,7 +111,7 @@ export function utworzZamowienieReczne(db, dane = {}, okresRozliczeniowyId = nul
       // Domyslnie 0: zwykle zamowienie telefoniczne indywidualnym nie jest.
       dane.karta_id ?? null, dane.indywidualne ? 1 : 0,
       // ⚠️ KANAL RAPORTOWY ZAPISUJE SIE RAZEM Z ZAMOWIENIEM, a nie „za chwile" — to jest
-      // migawka decyzji podjetej w chwili zakladania (patrz `kanalOms` i schema.sql).
+      // migawka decyzji podjetej w chwili zakladania (patrz `kanalOms` w domena/kanaly-raportowe.js).
       // Dopisany pozniej osobnym UPDATE-em zostawialby okno, w ktorym zamowienie hurtowe
       // liczy sie jako reczne, a raport odswiezony w tym oknie mowilby nieprawde.
       dane.b2b ? 1 : 0,
@@ -119,9 +119,9 @@ export function utworzZamowienieReczne(db, dane = {}, okresRozliczeniowyId = nul
       // sie tam tak samo, ale w bazie tylko jedna z tych postaci jest zdaniem „nie wiadomo".
       dane.termin_platnosci ?? null,
       // Rabat jest juz WLICZONY w ceny pozycji; ta kolumna niesie wylacznie wiedze, ile go
-      // bylo — do pokazania na karcie i do przeliczenia po zmianie (domain/rabat.js).
+      // bylo — do pokazania na karcie i do przeliczenia po zmianie (domena/rabat.js).
       Number(dane.rabat_procent) || 0,
-      // PRZ-104: ręczna data wysyłki („najpóźniej do”) albo NULL = standardowy termin.
+      // Ręczna data wysyłki („najpóźniej do”) albo NULL = standardowy termin.
       dane.termin_wysylki_reczny ?? null,
     );
     db.exec('COMMIT');
@@ -141,16 +141,16 @@ export function zapiszKosztDostawyRecznego(db, id, koszt) {
 /**
  * Kwota zamowienia recznego IDZIE ZA POZYCJAMI — nie ma sklepu, ktory by ja narzucil.
  * Wolac po KAZDEJ zmianie pozycji albo kosztu dostawy, inaczej bariera arytmetyczna
- * (przewodnik 4.5) zablokuje fakture.
+ * (reguła: bariera sumy faktury) zablokuje fakture.
  *
  * ⚠️ KWOTA POBRANIA IDZIE ZA NIA — I TO SA PIENIADZE, KTORE INKASUJE KURIER. Ekran
- * zakladania nie ma osobnego pola na kwote pobrania (decyzja wlasciciela 2026-08-01:
- * „wyjdzie sama po dodaniu produktow"), wiec liczy ja panel — dokladnie tak, jak robi to
- * sklep (domain/mapowanie.js: `kwota_pobrania = total`). Przeliczana TUTAJ, razem z kwota
+ * zakladania nie ma osobnego pola na kwote pobrania (kwota wychodzi sama po dodaniu
+ * produktow), wiec liczy ja panel — dokladnie tak, jak robi to
+ * sklep (domena/mapowanie.js: `kwota_pobrania = total`). Przeliczana TUTAJ, razem z kwota
  * zamowienia, a nie raz przy zakladaniu: wpisana raz zestarzalaby sie przy pierwszej
  * dopisanej pozycji i kurier zainkasowalby za malo.
  *
- * ⚠️ DWA MIEJSCA, NIE JEDNO — i pomylenie ich gubi pobranie po cichu (recenzja 2026-08-01):
+ * ⚠️ DWA MIEJSCA, NIE JEDNO — i pomylenie ich gubi pobranie po cichu:
  *
  *  1. KOLUMNA `kwota_pobrania` nalezy do KOLUMNY `pobranie`, wiec pytamy o nia
  *     `pobranieZeSklepu` (wartosc SUROWA), a NIE o pobranie efektywne. Pierwsza wersja
@@ -160,14 +160,15 @@ export function zapiszKosztDostawyRecznego(db, id, koszt) {
  *     DPD przy pustej kwocie po prostu nie wstawia <cod> — paczka jedzie jak przedplacona,
  *     kurier nie inkasuje nic i nigdzie nie ma bledu.
  *  2. NADPISANIE `wysylka_reczna_json` niesie WLASNA kwote i to ona wygrywa przy odczycie
- *     (domain/wysylka.js: kwotaPobrania). Przy zamowieniu RECZNYM odswiezamy takze ja —
- *     bo regula wlasciciela brzmi „kwota pobrania wychodzi z sumy" i nie ma wyjatku dla
+ *     (domena/wysylka.js: kwotaPobrania). Przy zamowieniu RECZNYM odswiezamy takze ja —
+ *     bo regula produktu brzmi „kwota pobrania wychodzi z sumy" i nie ma wyjatku dla
  *     pobrania wlaczonego z karty. Bez tego kwota wpisana przy zmianie metody zostawala
  *     przy starej sumie i kurier inkasowal tyle, ile zamowienie bylo warte PRZED dopisaniem
  *     pozycji.
  *
- * Bez pobrania jedno i drugie wraca do NULL — niezerowa kwota przy zwyklej wysylce znaczy
- * dla DPD „zainkasuj" (kurierzy/dpd.js: <cod>), a klient juz zaplacil przelewem. Zero tez
+ * Bez pobrania kolumna wraca do NULL, a nadpisanie bez pobrania nie jest przepisywane — jego
+ * kwote i tak pomija odczyt (domena/wysylka.js: kwotaPobrania). Niezerowa kwota przy zwyklej
+ * wysylce znaczy dla DPD „zainkasuj" (oms/kurierzy/dpd.js: <cod>), a klient juz zaplacil przelewem. Zero tez
  * zapisujemy jako NULL: „pobranie na 0,00" to nie pobranie, tylko stan, ktory DPD po cichu
  * pomija (wymaga kwoty > 0), a karta pokazywalaby „za pobraniem" bez ani zlotowki.
  */

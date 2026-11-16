@@ -140,7 +140,7 @@ export async function pobierzZdjecie(adres, { limitCzasuMs = 15000, limitBajtow 
     timer = setTimeout(() => {
       controller.abort();
       void reader?.cancel().catch(() => {});
-      // `chwilowy` — przebieg treści ofert ponawia taki błąd (PRZ-160.06b).
+      // `chwilowy` — przebieg treści ofert ponawia taki błąd.
       reject(Object.assign(new Error('Przekroczono czas pobierania zdjęcia.'), { chwilowy: true }));
     }, limitCzasuMs);
   });
@@ -159,7 +159,7 @@ export async function pobierzZdjecie(adres, { limitCzasuMs = 15000, limitBajtow 
       }
       if (!res.ok) {
         await res.body?.cancel();
-        // `status` rozróżnia błąd chwilowy (429, 5xx) od trwałego (404, 410…) przy ponawianiu (PRZ-160.06b).
+        // `status` rozróżnia błąd chwilowy (429, 5xx) od trwałego (404, 410…) przy ponawianiu.
         throw Object.assign(new Error(`HTTP ${res.status} przy pobieraniu zdjęcia.`), { status: res.status });
       }
       if (Number(res.headers.get('content-length')) > limitBajtow) {

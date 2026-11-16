@@ -1,4 +1,4 @@
-// PRZ-093.09: Ustawienia → Integracje → Kurier InPost. Wzór: trasy/ustawienia-dpd.js (PRZ-092).
+// Ustawienia → Integracje → Kurier InPost. Wzór: trasy/ustawienia-dpd.js.
 //
 // Dostęp: strażnik po prefiksie `/ustawienia` wpuszcza tylko konto z uprawnieniem „ustawienia”, a gościa demo
 // zatrzymuje na każdym POST-cie (core/bezpieczenstwo/podglad-demo.js) — tu tych blokad nie powtarzamy.
@@ -17,7 +17,7 @@ const KURIER = 'inpost'; // jeden literał nazwy kuriera w pliku (scripts/strazn
 const KOMUNIKATY = { zapisano: 'Zapisano dane kuriera InPost.', odlaczono: 'Kurier InPost został odłączony. Token usunięty z OMS-u, umowa na pobranie w InPoście wyłączona.',
   'pobranie-tak': 'Umowa na pobranie w InPoście: włączona.', 'pobranie-nie': 'Umowa na pobranie w InPoście: wyłączona.' };
 const PUSTY = { nazwa: 'InPost', organizacja: '', paczkomatNadawczy: '' };
-// PRZ-135.T2.03: data ostatniej zmiany przełącznika (stan liczy umowyPobraniaFirmy — ta sama reguła co nadanie).
+// Data ostatniej zmiany przełącznika (stan liczy umowyPobraniaFirmy — ta sama reguła co nadanie).
 const KLUCZ_POBRANIA = 'wysylka.umowa_pobrania.inpost';
 function umowaPobrania(db) {
   let zmienionoAt = null;
@@ -39,7 +39,7 @@ export function registerUstawieniaInpostRoutes(app, { db, kurierInpost }) {
       pobranie: umowaPobrania(db),
     });
   }
-  // PRZ-152.G13: strona OMS z powrotem na ekran InPost; tekst stały — token z pliku konfiguracji nie trafia na stronę.
+  // Strona OMS z powrotem na ekran InPost; tekst stały — token z pliku konfiguracji nie trafia na stronę.
   const zEnv = (reply) => stronaOdmowy(reply, 409, 'Kurier InPost jest ustawiony w pliku konfiguracji (oms.env) — tam go zmień. Formularz niczego nie zapisał.',
     { tytul: 'Kurier InPost jest ustawiony w pliku konfiguracji', wroc: ADRES, napisWroc: 'Wróć do ustawień InPost' });
 
@@ -72,7 +72,7 @@ export function registerUstawieniaInpostRoutes(app, { db, kurierInpost }) {
     }
   });
 
-  // ⚠️ PIENIĄDZE (PRZ-135.T2): włącza WYŁĄCZNIE pole o wartości dokładnie „tak” (zaznaczony checkbox) — brak pola
+  // ⚠️ PIENIĄDZE: włącza WYŁĄCZNIE pole o wartości dokładnie „tak” (zaznaczony checkbox) — brak pola
   // i każda inna wartość zapisują „nie”. Działa też przy InPoście w .env: to ustawienie firmy, nie dane konta ShipX.
   app.post(`${ADRES}/pobranie`, async (req, reply) => {
     const wlaczone = req.body?.umowa === 'tak';
@@ -81,7 +81,7 @@ export function registerUstawieniaInpostRoutes(app, { db, kurierInpost }) {
   });
 
   // Odłączenie działa także przy InPoście w .env: token zapisany z ekranu, zanim ktoś dopisał InPost do pliku, musi dać się usunąć.
-  // PRZ-135.T2 (D1): odłączenie wyłącza też umowę na pobranie — nowe konto to może być nowa umowa.
+  // Odłączenie wyłącza też umowę na pobranie — nowe konto to może być nowa umowa.
   app.post(`${ADRES}/odlacz`, async (_req, reply) => {
     usunKonfiguracjeIntegracji(db, KURIER);
     zapiszUmowePobrania(db, KURIER, false);

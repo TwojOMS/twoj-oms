@@ -1,7 +1,7 @@
-<%# PRZ-102.12 → PRZ-108.06: sekcja automatu wysyłki do KSeF, przeniesiona znak w znak z ekranu inFaktu na
-    Ustawienia → Automatyzacje (zmienił się tylko adres formularza). Co poleci, rozstrzyga ta sama reguła co
-    „zaznacz wszystkie” na ekranie Faktur (domena/wysylka-ksef.js), a wysyła ta sama usługa co przycisk.
-    Wejście: `automat` (trasy/automat-ksef-ekran.js → modelAutomatuKsef) i `konsumenckie`. %>
+<%# Sekcja automatu wysyłki do KSeF na
+    Ustawienia → Automatyzacje. Co poleci, rozstrzyga reguła
+    `doZaznaczeniaWszystkich` (domena/wysylka-ksef.js), a wysyła ta sama usługa co przycisk.
+    Wejście: `automat` (moduly/faktury/trasy/automat-ksef-ekran.js → modelAutomatuKsef). %>
 <section class="ust-sekcja" id="ksef-automat">
   <h2>Automatyczna wysyłka do KSeF</h2>
   <p id="ksef-automat-stan" class="aut-stan">

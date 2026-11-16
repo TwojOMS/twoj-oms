@@ -3,7 +3,7 @@ import { rozbijNipUe } from '../../domena/wdt.js';
 
 // WERYFIKACJA NUMERU VAT-UE W VIES — warunek stawki 0% przy WDT (art. 42 ust. 1 pkt 1
 // ustawy o VAT). Publiczne REST API Komisji, bez klucza; kształt odpowiedzi zmierzony
-// 26.08.2026 na żywym numerze Alfatrendu.
+// na żywym numerze.
 //
 // ⚠️ USŁUGA NIGDY NIE RZUCA i oddaje jeden z TRZECH wyników — a nie dwóch:
 //   'wazny'       → isValid true; log zamówienia dostaje nazwę, datę i numer konsultacji.
@@ -12,7 +12,7 @@ import { rozbijNipUe } from '../../domena/wdt.js';
 // Rozróżnienie „niewazny"/„niedostepny" jest sednem: VIES regularnie pada per państwo
 // i wtedy TEŻ oddaje isValid false — odmowa na tej podstawie blokowałaby fakturowanie
 // na czas cudzej awarii. Decyzję, co z „niedostepny", podejmuje wołający
-// (services/faktura.js: wystawia i zapisuje ostrzeżenie do logu).
+// (moduly/faktury/services/wdt-faktury.js: przepuszcza wystawienie i zapisuje ostrzeżenie do logu).
 //
 // ⚠️ `requesterMemberStateCode` + `requesterNumber` (NIP sprzedawcy) idą w zapytaniu
 // CELOWO: dopiero z nimi VIES oddaje `requestIdentifier` — urzędowy numer konsultacji,
@@ -35,7 +35,7 @@ export function createVies({ fetchImpl, http = transport({ fetchImpl }), nipSprz
 
     let dane;
     try {
-      // PRZ-108.10: NIP może przyjść funkcją (NIP z Ustawień → Firma) — czytany przy każdym zapytaniu, bez restartu.
+      // NIP może przyjść funkcją (NIP z Ustawień → Firma) — czytany przy każdym zapytaniu, bez restartu.
       const nip = typeof nipSprzedawcy === 'function' ? nipSprzedawcy() : nipSprzedawcy;
       const p = new URLSearchParams({ requesterMemberStateCode: 'PL', requesterNumber: String(nip ?? '') });
       const res = await http(`${baseUrl}/${czesci.kraj}/vat/${czesci.numer}?${p.toString()}`, {

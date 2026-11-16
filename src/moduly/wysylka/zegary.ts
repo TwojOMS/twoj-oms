@@ -2,7 +2,7 @@ import type { Zegar } from '../../core/kontrakty.ts';
 import { odmianaNazwyProgramu } from '../../domena/nazwa-programu.js';
 
 type Puls = { ok: (n: string) => void; blad: (n: string, e: unknown) => void };
-// PRZ-118.09: `program` — usługa `infakt` modułu faktur (klient albo program); jego nazwa w logu rozliczania pobrań
+// `program` — usługa `infakt` modułu faktur (klient albo program); jego nazwa w logu rozliczania pobrań
 // (bez programu albo bez opisu — inFakt, jak przed zmianą).
 export function zegarPrzesylek(o: { czuwacz: { przebieg: () => Promise<any> }; odstepMs: number;
   puls: Puls; log: (...tekst: string[]) => void; program?: unknown }): Zegar {

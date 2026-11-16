@@ -33,22 +33,25 @@ import { odczytajWydanie, sprawdzNajnowsze } from './aktualizacje.ts';
 import { transport } from '../../integracje/transport.js';
 import { registerLogoRoutes } from './trasy/logo.js';
 import { registerKopieRoutes } from './trasy/kopie.js';
+import { adresFirmyZEnv, type AdresFirmy } from '../../core/adres-firmy.ts';
+import { zrodloAdresuFirmy } from '../../oms/db/adres-firmy.js';
 import { MODULY_KURIEROW, type KluczKuriera } from '../../domena/moduly-kurierow.ts';
 
-/** PRZ-135 D6: kurierzy z własnym konfiguratorem (umowa własna, z metodami nadania), w kolejności rejestru. */
+/** Kurierzy z własnym konfiguratorem (umowa własna, z metodami nadania), w kolejności rejestru. */
 const kurierzyWlasni = () => Object.values(MODULY_KURIEROW).filter((opis) => opis.umowa === 'wlasna' && opis.metody.length > 0);
 
-/** Usługa modułu wysyłki z kurierem z Ustawień i klucz w konfiguracja_integracji — rejestr nie ma na to pól
- *  (właściciel rejestru: 04a), więc mapa zostaje tu, po kluczach rejestru. */
+/** Usługa modułu wysyłki z kurierem z Ustawień i klucz w konfiguracja_integracji — rejestr nie ma na to pól,
+ *  więc mapa zostaje tu, po kluczach rejestru. */
 const KONFIGURACJA_KURIEROW: Partial<Record<KluczKuriera, { usluga: string; integracja: string }>> = {
   dpd: { usluga: 'kurierDpd', integracja: 'dpd' },
   inpost: { usluga: 'kurierInpost', integracja: 'inpost' },
 };
 
 /** Zachowane ustawienia, konta, logowanie i wspólna rama panelu. */
-export const modulUstawienia: ModulOms<{ adresPanelu: string | null }> = {
+export const modulUstawienia: ModulOms<{ adresPanelu: string | null; nadawca: AdresFirmy }> = {
   nazwa:'ustawienia',wersja:'1.0.0',wymaga:['rdzen','web','kanaly','marketing'],
-  konfiguracja:(env)=>({ adresPanelu: adresPaneluZEnv(env.OMS_ADRES_PANELU) }),migracje:[migracjaRol,migracjaEmailILinkow],
+  // `nadawca` — adres firmy z pliku; ekran logowania bierze z niego (albo z Ustawień) nazwę firmy.
+  konfiguracja:(env)=>({ adresPanelu: adresPaneluZEnv(env.OMS_ADRES_PANELU), nadawca: adresFirmyZEnv(env) }),migracje:[migracjaRol,migracjaEmailILinkow],
   uprawnienia:[{klucz:'ustawienia',etykieta:'Ustawienia',role:['administrator']}],
   menu:[{dzial:'ustawienia',etykieta:'Ustawienia',adres:'/ustawienia',uprawnienie:'ustawienia',kolejnosc:100}],
   zbuduj:ctx=>{
@@ -58,8 +61,8 @@ export const modulUstawienia: ModulOms<{ adresPanelu: string | null }> = {
         throw e;
       }
     };
-    const wynikRol = synchronizujRole(ctx.db, { teraz: ctx.teraz }); // PRZ-068: synchronicznie, przed pierwszym zapytaniem (patrz plan §0.5)
-    const opisRol = opisSynchronizacjiRol(wynikRol); // loginy i klucze ról, bez danych wrażliwych (recenzja D8 r1)
+    const wynikRol = synchronizujRole(ctx.db, { teraz: ctx.teraz }); // Synchronicznie, przed pierwszym zapytaniem
+    const opisRol = opisSynchronizacjiRol(wynikRol); // loginy i klucze ról, bez danych wrażliwych
     if (opisRol) ctx.log(opisRol);
     const widokIntegracji=createWidokIntegracji({
       db:ctx.db,reklamy:ctx.usluga('marketing','reklamy'),
@@ -77,20 +80,20 @@ export const modulUstawienia: ModulOms<{ adresPanelu: string | null }> = {
         const klucze:Record<string,string>={...Object.fromEntries(kurierzy.map((k)=>[k.id,k.integracja])),infakt:'infakt',fakturownia:'fakturownia',ksef:'ksef',gus:'gus',smtp:'poczta'};
         const uslugi:Record<string,any>={...Object.fromEntries(kurierzy.map((k)=>[k.id,opcjonalna('wysylka',k.usluga)])),
           infakt:opcjonalna('faktury','konfiguracjaInfaktu'),fakturownia:opcjonalna('faktury','konfiguracjaFakturowni'),ksef:opcjonalna('koszty','zrodloKsef'),gus:opcjonalna('zamowienia','konfiguracjaGus'),smtp:pocztaOpcjonalna(ctx.usluga)()};
-        // B1: atrapa nie podłącza — ten sam warunek co ekran usługi (zapis albo plik konfiguracji).
+        // Atrapa nie podłącza — ten sam warunek co ekran usługi (zapis albo plik konfiguracji).
         return Object.entries(klucze).map(([id,klucz])=>({id,...stanIntegracji({usluga:uslugi[id],zapisany:zapisane.has(klucz)})}));
       },
     });
     const lacznosc = { sprawdz: () => import('../../oms/services/lacznosc.js').then(async ({ sprawdzLacznosc }) => {
       return sprawdzLacznosc({ cele: celeDiagnostyki(ctx.usluga) as any });
     }) };
-    // PRZ-080: piaskownica i produkcja na jednym gospodarzu — nazwa ciasteczka z trybu modułu web.
+    // Piaskownica i produkcja na jednym gospodarzu — nazwa ciasteczka z trybu modułu web.
     const nazwaCiasteczka = nazwaCiasteczkaOms(ctx.usluga<{proba?:boolean}>('web','config')?.proba);
-    // PRZ-094.04: adres panelu do linków w mailach — OMS_ADRES_PANELU wygrywa; bez niego zapis z Ustawień → Integracje →
+    // Adres panelu do linków w mailach — OMS_ADRES_PANELU wygrywa; bez niego zapis z Ustawień → Integracje →
     // Poczta wychodząca, czytany przy każdym mailu (zmiana bez restartu).
     const adresPanelu = () => ctx.konfiguracja.adresPanelu ?? adresPaneluZZapisu(wczytajKonfiguracjeIntegracji(ctx.db, 'adres_panelu'));
     const mailer = mailerOpcjonalny(ctx.usluga);
-    // PRZ-099: /app/wydanie.json (tylko obraz z paczki klienta) + GitHub Releases na kliknięcie; limit 10 s, bez ponowień.
+    // /app/wydanie.json (tylko obraz z paczki klienta) + GitHub Releases na kliknięcie; limit 10 s, bez ponowień.
     const aktualizacje = {
       wydanie: () => odczytajWydanie(new URL('../../../wydanie.json', import.meta.url)),
       sprawdz: () => sprawdzNajnowsze({ http: transport({ limitCzasuMs: 10_000 }) }),
@@ -101,7 +104,8 @@ export const modulUstawienia: ModulOms<{ adresPanelu: string | null }> = {
     registerLogoRoutes(app,{db:ctx.db});
     registerKopieRoutes(app,{konfiguracja:()=>opcjonalna('zdrowie','konfiguracjaKopii')?.()??{},teraz:ctx.teraz,
       nadzor:()=>ctx.usluga<()=>any>('zdrowie','kopie')()});
-    registerLogowanieRoutes(app,{db:ctx.db,config:ctx.usluga('web','config')});
+    const adresFirmy = zrodloAdresuFirmy({ db: ctx.db, zPliku: ctx.konfiguracja.nadawca });
+    registerLogowanieRoutes(app,{db:ctx.db,config:ctx.usluga('web','config'),firma:()=>adresFirmy.adres()?.nazwa ?? null});
     registerUstawieniaPocztyRoutes(app,{db:ctx.db,adresPaneluZEnv:ctx.konfiguracja.adresPanelu,poczta:pocztaOpcjonalna(ctx.usluga),mailer,podpis:podpisOpcjonalny(ctx.usluga),log:ctx.log});
     registerKontaRoutes(app,{db:ctx.db,teraz:ctx.teraz,adresPanelu,mailer,
       loginSerwisowy:ctx.usluga<{auth?:{user?:string}}>('web','config')?.auth?.user??null,nazwaCiasteczka});

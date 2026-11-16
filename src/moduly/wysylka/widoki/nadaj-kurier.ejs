@@ -1,27 +1,27 @@
-<%# EKRAN WYBORU KURIERA — stoi PRZED ekranem nadania i wylacznie dla zamowien z Allegro. %>
+<%# EKRAN WYBORU KURIERA — stoi PRZED ekranem nadania, dla zamówień z Allegro (gdy panel nie ma drogi domyślnej albo operator o ekran poprosi), a dla zamówień z ERLI na jawną prośbę o inną umowę. %>
 <%#                                                                                        %>
-<%# ⚠️ PO CO OSOBNY EKRAN, A NIE POLE W FORMULARZU NADANIA. Od kuriera zalezy KSZTALT       %>
-<%# calego formularza: DPD chce wagi i trzech wymiarow, paczkomat — wagi, gabarytu A/B/C    %>
-<%# i kodu automatu. Panel nie ma JavaScriptu (jedyny wyjatek to przeliczanie ceny pozycji  %>
-<%# recznych), wiec przelaczanie pol na zywo odpada, a pokazanie OBU zestawow naraz         %>
-<%# znaczyloby formularz, w ktorym polowa pol jest ozdoba — czyli dokladnie to klamstwo,    %>
-<%# ktorego ten ekran ma nie powielac.                                                      %>
+<%# ⚠️ PO CO OSOBNY EKRAN, A NIE POLE W FORMULARZU NADANIA. Od kuriera zależy KSZTAŁT       %>
+<%# całego formularza: DPD chce wagi i trzech wymiarów, paczkomat — wagi, gabarytu A/B/C    %>
+<%# i kodu automatu. Ekrany panelu działają bez skryptów (są tylko drobne dodatki, np.      %>
+<%# przeliczanie ceny pozycji ręcznych), więc przełączanie pól na żywo odpada, a pokazanie OBU zestawów naraz %>
+<%# znaczyłoby formularz, w którym połowa pól jest ozdobą — czyli dokładnie to kłamstwo,    %>
+<%# którego ten ekran ma nie powielać.                                                      %>
 <%#                                                                                         %>
-<%# ⚠️ TO NIE JEST ZDJECIE BARIERY. Paczke z Allegro nadaje sie etykieta kupiona w panelu   %>
-<%# Allegro — nasza umowa wchodzi WYLACZNIE przy dosylce albo zamienniku za zgubiona.       %>
-<%# Panel nadal odmawia nadania bez wskazania (domain/kurier-nadania.js: metodaNadania),    %>
-<%# a odmowa zyje w domenie, nie tutaj: ten ekran tylko daje czlowiekowi sposob, zeby        %>
-<%# wskazanie wyrazic. Do 07.08.2026 karta pokazywala „Nadaj paczke", ekran wypelnial       %>
-<%# komplet pol, a odmowa padala dopiero po zapakowaniu paczki.                             %>
+<%# ⚠️ TO NIE JEST ZDJĘCIE BARIERY. Paczkę z Allegro nadaje się etykietą kupioną przez Allegro %>
+<%# (domyślnie „Wysyłam z Allegro"; gdy panel usługi nie zna — w panelu Allegro). Nasza umowa wchodzi %>
+<%# WYŁĄCZNIE przy dosyłce albo zamienniku za zgubioną. Panel nadal odmawia nadania bez wskazania, %>
+<%# gdy nie ma drogi domyślnej (domena/kurier-nadania.js: metodaNadania), a odmowa żyje w domenie, nie tutaj: %>
+<%# ten ekran tylko daje człowiekowi sposób, żeby wskazanie wyrazić. Dawniej karta pokazywała %>
+<%# „Nadaj paczkę", ekran wypełniał komplet pól, a odmowa padała dopiero po zapakowaniu paczki. %>
 
 <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Czym nadać paczkę nr " + (kolejnosc) + "?", opisHtml: include('_naglowek-opis-nadaj-kurier.ejs')}) %>
 
-<%# ⚠️⚠️ TEKST PRZEPISANY 19.09.2026, BO KLAMAL. Poprzedni mowil, ze panel kupuje etykiete %>
-<%# „tylko wtedy, gdy swiadomie kazesz mu uzyc naszej umowy" — czyli ODRADZAL droge %>
-<%# wlasciwa. Od 18.09 panel kupuje przewoz u Allegro sam (niezmiennik 4.105), a ten ekran %>
-<%# zszedl z przeplywu: staje wylacznie przy usludze nieznanej albo na jawna prosbe %>
-<%# o dosylke. Zgloszenie właściciela: przeczytal ten komunikat jako odmowe, choc przycisk %>
-<%# „Wysylam z Allegro" stal tuz pod nim. %>
+<%# ⚠️⚠️ TEKST NIE MOŻE ODRADZAĆ DROGI WŁAŚCIWEJ. Panel kupuje przewóz u Allegro sam %>
+<%# (reguła: bariera na identyfikatorze usługi), a ten ekran zszedł z przepływu: staje %>
+<%# wyłącznie przy usłudze nieznanej albo na jawną prośbę o dosyłkę. Komunikat „tylko wtedy, %>
+<%# gdy świadomie każesz mu użyć naszej umowy" brzmiał jak odmowa, choć przycisk %>
+<%# „Wysyłam z Allegro" stał tuż pod nim — dlatego tekst ma zachęcać do tej drogi, %>
+<%# a nie jej zniechęcać. %>
 <p class="pasek-uwaga">
   To zamówienie przyszło z <strong><%= kanal %></strong>, a kupujący wybrał
   „<%= nazwaDostawy(z) %>".
@@ -45,9 +45,9 @@
 
 <section class="panel">
   <div class="panel-glowa">
-    <%# ⚠️ NAGLOWEK NIE MOWI JUZ „Nasza umowa": od 18.09 pierwsza pozycja na liscie to %>
-    <%# „Wysylam z Allegro", ktore nasza umowa NIE JEST. Naglowek twierdzacy inaczej %>
-    <%# podpisywalby przycisk kupujacy przewoz u Allegro jako nasz platny przewoz. %>
+    <%# ⚠️ NAGŁÓWEK NIE MÓWI „Nasza umowa": na liście jest też „Wysyłam z Allegro", %>
+    <%# które nasza umowa NIE JEST. Nagłówek twierdzący inaczej %>
+    <%# podpisywałby przycisk kupujący przewóz u Allegro jako nasz płatny przewóz. %>
     <h2>Czym nadać</h2>
   </div>
   <div class="panel-cialo">

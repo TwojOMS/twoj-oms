@@ -1,4 +1,4 @@
-// PRZ-157.04 — kanał sprzedaży ERLI dla wspólnego pollera (`createPoller`).
+// Kanał sprzedaży ERLI dla wspólnego pollera (`createPoller`).
 //
 // Tor importu (D1):
 //  - główny: `POST /orders/changes/_search` (500 najstarszych nieprzeczytanych zmian) + `mark-read`;

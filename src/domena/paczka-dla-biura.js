@@ -1,6 +1,6 @@
 import { grosze } from './kwoty.js';
 
-// Paczka dla biura rachunkowego (spec 2026-09-02, Czesc D) — CZYSTA domena: z trzech list
+// Paczka dla biura rachunkowego — CZYSTA domena: z trzech list
 // (sprzedaz z inFaktu, korekty z inFaktu, koszty z bazy) robi wiersze zestawienia, flagi
 // „z pogranicza", sumy per waluta i kolejnosc stron. Zadnego I/O, zadnego zapytania.
 //
@@ -72,9 +72,9 @@ const kontrahentZ = (d) => String(d?.client_company_name ?? '').trim()
 // kwoty do ostrzezenia zbiorczego. Dwie kopie tego zdania rozjechalyby sie przy pierwszej
 // poprawce jezykowej i ostrzezenie paczki po cichu przestaloby sie pojawiac.
 const UWAGA_BRAK_KWOTY = 'brak kwoty w inFakcie — sprawdź fakturę';
-// Uwaga kosztu wpisanego ręcznie — jedna stała, bo zestawienie kosztów (PRZ-086) ją z wierszy zdejmuje.
+// Uwaga kosztu wpisanego ręcznie — jedna stała, bo zestawienie kosztów ją z wierszy zdejmuje.
 const UWAGA_PAPIER = 'dokument papierowy poza KSeF — dołącz oryginał';
-// PRZ-126.C06: dokument bez numeru KSeF wszedł do paczki PODGLĄDEM (program wbudowany, `podgladPdf`) — znacznik
+// Dokument bez numeru KSeF wszedł do paczki PODGLĄDEM (program wbudowany, `podgladPdf`) — znacznik
 // `bezNumeruKsef` stawia usługa paczki dopiero po pobraniu bajtów. Bez znacznika (inFakt) — dawne „bez KSeF”.
 export const UWAGA_PODGLAD = 'bez numeru KSeF — w paczce podgląd';
 
@@ -97,7 +97,7 @@ function wierszSprzedazy(d, miesiac, numeryPoId) {
     // Korekta bez wskazania pierwotnej faktury jest dla ksiegowej bezuzyteczna. Trzy zrodla,
     // w tej kolejnosci:
     // 1. `corrected_invoice_number` — encja korekty inFaktu NIESIE numer faktury pierwotnej
-    //    (sprawdzone na zywym koncie 2026-08-14; po tym polu szuka tez services/korekta.js).
+    //    (sprawdzone na zywym koncie; po tym polu szuka tez moduly/zwroty/services/korekta.js).
     //    Jest pierwsze, bo dziala takze dla korekty do faktury spoza tej paczki.
     // 2. numer z TEJ paczki po `parent_id` — porownanie PO NAPISACH, bo inFakt potrafi oddac
     //    `id` liczba, a `parent_id` napisem; mapa po surowych wartosciach chybialaby po cichu.
@@ -106,7 +106,7 @@ function wierszSprzedazy(d, miesiac, numeryPoId) {
     const pierwotna = wskazany || numeryPoId.get(String(d.parent_id ?? ''));
     uwagi.push(pierwotna ? `korekta do ${pierwotna}` : `korekta do faktury id ${d.parent_id ?? '?'}`);
   }
-  // PRZ-126.C09d (Z5): zamiana faktury przy złym NIP-ie (program wbudowany) — stara, KOR do zera i nowa idą do okresu
+  // Zamiana faktury przy złym NIP-ie (program wbudowany) — stara, KOR do zera i nowa idą do okresu
   // sprzedaży starej; każda dostaje tę samą uwagę z numerem STAREJ. Tylko tekst — kwoty i kolejność bez zmian.
   const zastapiona = d.zastapiona_przez ? d.number : (d.zastepujaca ? d.corrected_invoice_number : d.zastepuje);
   if (zastapiona) uwagi.push(`zamiana faktury ${zastapiona} (błędny NIP) — rozlicz w tym okresie`);
@@ -211,7 +211,7 @@ const liczebnik = (n, jeden, kilka, wiele) => {
 };
 
 /**
- * Zestawienie KOSZTÓW miesiąca w dwóch osobnych częściach (PRZ-086): faktury kosztowe z KSeF
+ * Zestawienie KOSZTÓW miesiąca w dwóch osobnych częściach: faktury kosztowe z KSeF
  * i faktury dopisane ręcznie. Zbudowane na `zlozPaczke`, żeby wiersze, uwagi, kryterium daty
  * (dzień otrzymania) i ostrzeżenie o kwarantannie były DOKŁADNIE te same co w pliku kosztowym
  * paczki — dwie definicje „co jest kosztem miesiąca” rozjechałyby się przy pierwszej zmianie.
@@ -230,7 +230,7 @@ export function zlozZestawienieKosztow({ miesiac, koszty = [], kwarantanna = 0 }
   const ksef = czesc(false);
   // ⚠️ „dołącz oryginał” znika Z WIERSZY części ręcznej i staje RAZ pod jej nagłówkiem
   // (`opisRecznych`): w osobnej części dotyczy każdego wiersza bez wyjątku, a powtórzone
-  // w wąskiej kolumnie Uwagi rozpychało każdy wiersz do czterech linii (piaskownica 15.10).
+  // w wąskiej kolumnie Uwagi rozpychało każdy wiersz do czterech linii.
   const reczne = czesc(true).map((w) => ({ ...w, uwagi: w.uwagi.filter((u) => u !== UWAGA_PAPIER) }));
   return {
     miesiac,

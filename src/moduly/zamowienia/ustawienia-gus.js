@@ -1,4 +1,4 @@
-// PRZ-102.11: Ustawienia → Integracje → GUS (dane firm po NIP). Wzór: faktury/trasy/ustawienia-infakt.js (PRZ-093.10).
+// Ustawienia → Integracje → GUS (dane firm po NIP). Wzór: faktury/trasy/ustawienia-infakt.js.
 //
 // Dostęp: strażnik po prefiksie `/ustawienia` wpuszcza tylko konto z uprawnieniem „ustawienia”, a gościa demo
 // zatrzymuje na każdym POST-cie (core/bezpieczenstwo/podglad-demo.js) — tu tych blokad nie powtarzamy.
@@ -24,7 +24,7 @@ export function registerUstawieniaGusRoutes(app, { db, konfiguracjaGus }) {
       zapisano: KOMUNIKATY[req.query?.zapisano] ?? null,
     });
   }
-  // PRZ-152.G13: odmowa w układzie OMS, z powrotem na ekran GUS (status i tekst bez zmian).
+  // Odmowa w układzie OMS, z powrotem na ekran GUS (status i tekst bez zmian).
   const zEnv = (reply) => stronaOdmowy(reply, 409,
     'Klucz GUS jest ustawiony w pliku konfiguracji (oms.env, GUS_KLUCZ) — tam go zmień. Formularz niczego nie zapisał.', { wroc: EKRAN_GUS });
 

@@ -6,12 +6,12 @@
 //
 // Kazda z czterech wartosci jest walidowana NIEZALEZNIE i musi byc liczba WIEKSZA OD
 // ZERA. Wartosc nieliczbowa, ujemna albo zerowa to ZAWSZE odmowa z czytelnym komunikatem
-// — NIGDY ciche podstawienie wartosci domyslnej. Przed ta poprawka trasa HTTP w ogole nie
+// — NIGDY ciche podstawienie wartosci domyslnej. Dawniej trasa HTTP w ogole nie
 // przekazywala formularza dalej, wiec KAZDA paczka jechala jako 1 kg / 40x30x10 cm — DPD
 // rozlicza po wadze i gabarycie, wiec to byly realne pieniadze, nie kosmetyka.
 const ETYKIETY_POL = { waga: 'waga', dlugosc: 'długość', szerokosc: 'szerokość', wysokosc: 'wysokość' };
 
-// ⚠️ WYEKSPORTOWANA 2026-08-17 dla ekranu ustawień (domain/ustawienia-panelu.js). Ta sama
+// ⚠️ WYEKSPORTOWANA dla ekranu ustawień (domena/ustawienia-panelu.js). Ta sama
 // reguła musi rządzić formularzem nadania i formularzem wartości domyślnych — druga kopia
 // rozjechałaby się na przecinku dziesiętnym albo na zerze, czyli dokładnie tam, gdzie boli.
 export function liczbaDodatnia(surowa) {
@@ -45,16 +45,16 @@ export function parsujPaczke(dane) {
 }
 
 // ---------------------------------------------------------------------------------
-// GABARYT PACZKOMATU (Zadanie 7, InPost)
+// GABARYT PACZKOMATU (InPost)
 //
-// InPost NIE PRZYJMUJE wymiarow — przyjmuje SZABLON skrytki (kurierzy/inpost.js:
+// InPost NIE PRZYJMUJE wymiarow — przyjmuje SZABLON skrytki (oms/kurierzy/inpost.js:
 // SZABLONY_GABARYTU: A→small, B→medium, C→large). Wymiary ponizej sa ZMIERZONE na zywym
-// koncie (rozpoznanie, sekcja 4.1) i istnieja WYLACZNIE do pokazania operatorowi, ktora
+// koncie i istnieja WYLACZNIE do pokazania operatorowi, ktora
 // litera to jaka skrzynka — dokladnie jak w formularzu Apilo, ktory operator zna z
 // pamieci: nikt nie pamieta liter, ale kazdy rozpozna wymiary swojej paczki.
 //
-// ⚠️ Domyslne wymiary panelu (110×75×1 cm, PACZKA_DOMYSLNA w domain/ustawienia-panelu.js —
-// od 17.08.2026 sa FALLBACKIEM ustawienia operatora, a nie jedyna wartoscia) sa dla
+// ⚠️ Domyslne wymiary panelu (110×75×1 cm, PACZKA_DOMYSLNA w domena/szablony-paczek.js —
+// sa FALLBACKIEM ustawienia operatora, a nie jedyna wartoscia) sa dla
 // PLASKIEJ paczki wielkoformatowej i NIE MIESZCZA SIE w zadnej skrytce automatu —
 // dlatego gabaryt jest WYBOREM ze skonczonego zbioru, nigdy polem tekstowym z domyslna
 // wartoscia.
@@ -68,8 +68,8 @@ export const GABARYTY_PACZKOMATU = {
 /**
  * Parsowanie wagi i gabarytu z formularza ekranu nadania — WYLACZNIE dla `inpost_paczkomat`.
  *
- * Osobna funkcja od parsujPaczke, NIE galaz w tamtej: brief Zadania 7 wymaga, zeby sciezka
- * DPD zostala „dokladnie jak dzis, ani jednej zmiany" — a rozgalezienie wewnatrz jednej
+ * Osobna funkcja od parsujPaczke, NIE galaz w tamtej: sciezka
+ * DPD ma zostac „dokladnie jak dzis, ani jednej zmiany" — a rozgalezienie wewnatrz jednej
  * funkcji jest dokladnie tym rodzajem zmiany, ktora najlatwiej przez przypadek dotyka
  * kodu, ktorego nie wolno ruszac.
  *

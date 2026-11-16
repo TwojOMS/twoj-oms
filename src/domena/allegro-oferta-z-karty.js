@@ -1,24 +1,25 @@
-// PRZ-160 E3.06 — oferta Allegro z karty: błędy, ostrzeżenia, dokładne żądanie POST /sale/product-offers
-// i droga produktu. Czysta funkcja bez bazy i sieci; wejście składa E3.06b, używają jej podgląd i pętla.
+// Oferta Allegro z karty: błędy, ostrzeżenia, dokładne żądanie POST /sale/product-offers
+// i droga produktu. Czysta funkcja bez bazy i sieci; wejście składa
+// `moduly/magazyn/services/tresc-oferty-allegro.js`, używają jej podgląd i pętla.
 import { brakiUstawienOfert } from './erli-oferty-ustawienia.js';
 import { bezIlosciKanalu, OSTRZEZENIE_BRAK_STANU } from './erli-produkt.js';
 import { dobierzCennik, regulyKonta } from './cennik-dostaw.js';
 import { cenaZNarzutem, kwotaDziesietna } from './cena-kanalu.js';
 import { poprawneSekcje, sekcjeDlaAllegro } from './opis-sekcje.js';
 
-/** Problemy pętli Allegro zapisywane w rejestrze (§4.0) — jedno miejsce na kształty. */
+/** Problemy pętli Allegro zapisywane w rejestrze — jedno miejsce na kształty. */
 export const PROBLEMY_ALLEGRO = Object.freeze({
   'wiele-produktow': produkty => ({ kod: 'wiele-produktow', produkty }),
   'parameter-mismatch': (produktId, parametr) => ({ kod: 'parameter-mismatch', produktId, parametr }),
   duplikat: oferty => ({ kod: 'duplikat', oferty }),
   walidacja: bledy => ({ kod: 'walidacja', bledy }),
   aktywacja: tekst => ({ kod: 'aktywacja', tekst }),
-  // `tekst` = powód, dla którego pętla nie wznowiła wyprzedanej oferty (D41) — decyzja zapadła, czeka na człowieka.
+  // `tekst` = powód, dla którego pętla nie wznowiła wyprzedanej oferty — decyzja zapadła, czeka na człowieka.
   zakonczona: (sztuk, tekst) => (tekst ? { kod: 'zakonczona', sztuk, tekst } : { kod: 'zakonczona', sztuk }),
   'brak-w-allegro': () => ({ kod: 'brak-w-allegro' }),
   'bez-potwierdzenia': () => ({ kod: 'bez-potwierdzenia' }),
   komenda: (rodzaj, tekst) => ({ kod: 'komenda', rodzaj, tekst }),
-  // E3.26a: Allegro nie zakończyło oferty (ENDED) po MAKS_PROB_ZDJECIA próbach — pętla przestaje próbować.
+  // Allegro nie zakończyło oferty (ENDED) po MAKS_PROB_ZDJECIA próbach — pętla przestaje próbować.
   zdejmowanie: tekst => ({ kod: 'zdejmowanie', tekst }),
 });
 
@@ -29,14 +30,14 @@ export const LIMIT_ZDJEC = 16;
 export const LIMIT_INFORMACJI_BEZPIECZENSTWA = 5000;
 /** Miejsce zdjęcia, które pętla wgra przed wysyłką; `podstawWgraneZdjecia` wstawia adres z Allegro. */
 export const ZNACZNIK_WGRANIA = 'oms-zdjecie:';
-// [A1] „Znak & jest encjonowany jako &amp; dlatego zajmuje 5 miejsc w tytule”. Inne znaki — niepotwierdzone.
+// „Znak & jest encjonowany jako &amp; dlatego zajmuje 5 miejsc w tytule”. Inne znaki — niepotwierdzone.
 const ENCJE_NAZWY = { '&': 5 };
-// Dozwolone `delivery.handlingTime` (dokumentacja; P13 tylko potwierdza) — dni → wartość ISO 8601.
+// Dozwolone `delivery.handlingTime` (wg dokumentacji Allegro) — dni → wartość ISO 8601.
 export const CZASY_WYSYLKI = Object.freeze([
   [0, 'PT0S'], [1, 'PT24H'], [2, 'P2D'], [3, 'P3D'], [4, 'P4D'], [5, 'P5D'], [7, 'P7D'], [10, 'P10D'],
   [14, 'P14D'], [21, 'P21D'], [30, 'P30D'], [60, 'P60D'],
 ]);
-// Zwolnienie z VAT (stawka karty `zw`). Niepotwierdzone — brak przykładu e3-dok-*; P13/E3.17 sprawdza.
+// Zwolnienie z VAT (stawka karty `zw`). Niepotwierdzone przykładem z dokumentacji Allegro.
 export const VAT_ZW_ALLEGRO = Object.freeze({ exemption: 'MONEY_EQUIVALENT', rate: 'zw' });
 const STAWKI = new Set(['23', '8', '5', '0']);
 const PRZELICZNIKI = {
@@ -79,7 +80,7 @@ function maWartosc(p) {
 }
 
 /**
- * @param {object} wejscie kształty §4.0 — opis pól w teście `tests/domena/allegro-oferta-z-karty.test.js`
+ * @param {object} wejscie kształty wejścia — opis pól w teście `tests/domena/allegro-oferta-z-karty.test.js`
  * @returns {{bledy: {kod: string, tekst: string, adres?: string}[], ostrzezenia: {kod: string, tekst: string}[],
  *   zadanie: object | null, droga: 'katalog-id'|'ean'|'nowy'|null, doWgrania: object[]}}
  */
@@ -102,7 +103,7 @@ export function ofertaAllegroZKarty(wejscie) {
     blad('nazwa', `Nazwa dla Allegro ma ${dlugosc} znaków po zamianie encji (& liczy się jak 5) — dozwolone 1–${LIMIT_NAZWY}. Skróć ją na karcie (sekcja Allegro).`);
   }
 
-  // Kategoria (D33): nadpisanie → import → mapa (główna, potem pierwsza zmapowana) → błąd.
+  // Kategoria: nadpisanie → import → mapa (główna, potem pierwsza zmapowana) → błąd.
   const kategorieKarty = lista(wejscie?.kategorieKarty).length ? wejscie.kategorieKarty
     : [karta.kategoria_glowna].filter(Boolean);
   const zMapy = nazwa => mapaKategorii.find(m => m.kategoriaKarty === nazwa)?.kategoriaAllegroId;
@@ -130,7 +131,7 @@ export function ofertaAllegroZKarty(wejscie) {
   }
   const zgodnaZImportem = Boolean(kategoria) && kategoria === kategoriaImportu;
 
-  // Droga produktu (D34). Wybór katalogu przychodzi z pętli; podgląd nie używa sieci.
+  // Droga produktu. Wybór katalogu przychodzi z pętli; podgląd nie używa sieci.
   const ean = napis(karta.ean);
   const produktId = napis(katalog?.produktId) || napis(kartaAllegro?.produkt_id)
     || (zgodnaZImportem ? napis(daneImportu?.produkt_id) : '');
@@ -206,7 +207,7 @@ export function ofertaAllegroZKarty(wejscie) {
     if (regula?.pole === 'ean') {
       blad('gtin', `Kategoria „${nazwaKategorii}” wymaga parametru „${p.nazwa}” dla nowego produktu — uzupełnij EAN na karcie albo przypisz regułę w Magazyn → Kategorie Allegro.`);
     } else if (regula?.pole === 'marka' && marka) {
-      // Błąd mapy marki (brak, kategoria) już zgłoszony; zostaje marka zmapowana na „bez marki” (D36).
+      // Błąd mapy marki (brak, kategoria) już zgłoszony; zostaje marka zmapowana na „bez marki”.
       if (!bledy.some(b => b.kod === 'marka' || b.kod === 'marka-kategoria')) {
         blad('marka', `Marka „${marka}” jest przypisana w Allegro jako „bez marki”, a kategoria ${nazwaKategorii} wymaga parametru „${p.nazwa}” — wybierz wartość w Magazyn → Marki.`, ADRES_MAREK);
       }
@@ -217,12 +218,12 @@ export function ofertaAllegroZKarty(wejscie) {
       blad('parametr', `Uzupełnij parametr „${p.nazwa}” — na karcie (sekcja Allegro) albo regułą w Magazyn → Kategorie.`, ADRES_KATEGORII);
     }
   }
-  // „Stan” zawsze w parameters[] (D33, 1.2) — domyślnie „Nowy”, gdy żadne źródło go nie dało.
+  // „Stan” zawsze w parameters[] — domyślnie „Nowy”, gdy żadne źródło go nie dało.
   const stanWProdukcie = parametryProduktu.findIndex(p => napis(p.id) === PARAMETR_STAN);
   if (stanWProdukcie >= 0) parametryOferty.push(...parametryProduktu.splice(stanWProdukcie, 1));
   if (!parametryOferty.some(p => napis(p.id) === PARAMETR_STAN)) parametryOferty.unshift({ id: PARAMETR_STAN, valuesIds: [STAN_NOWY] });
 
-  // Zdjęcia (D32): kolejność galerii, najwyżej 16.
+  // Zdjęcia: kolejność galerii, najwyżej 16.
   const wgrane = new Map(lista(wgraneZdjecia).map(w => [w.zdjecie_id, w]));
   const posortowane = [...zdjecia].sort((a, b) => (a.kolejnosc ?? 0) - (b.kolejnosc ?? 0));
   if (!posortowane.length) blad('zdjecia', 'Dodaj co najmniej jedno zdjęcie na karcie produktu.');
@@ -286,15 +287,15 @@ export function ofertaAllegroZKarty(wejscie) {
     }
   }
 
-  // Ustawienia konta, cena (D45), ilość (D14), dostawa, VAT.
-  // Cennik dobrany do rozmiaru (E3d.02, D5–D6); brak cennika konta zgłaszają braki ustawień. E3d.02-03: wyjątek
+  // Ustawienia konta, cena, ilość, dostawa, VAT.
+  // Cennik dobrany do rozmiaru; brak cennika konta zgłaszają braki ustawień. Wyjątek
   // z karty wystarcza także na koncie bez reguł — jak w ERLI (`produktErliZKarty`).
   const dostawa = dobierzCennik({ karta, reguly: regulyKonta(ustawienia), wyjatek: wejscie?.wyjatekCennika });
   const braki = brakiUstawienOfert(ustawienia, 'allegro').filter(b => !(b === 'cennik dostaw' && dostawa.cennik));
   if (braki.length) blad('ustawienia', `Uzupełnij w konfiguratorze konta ${nazwaKonta}: ${braki.join(', ')}.`);
   if (dostawa.odmowa?.kod === 'brak-wymiarow') blad('cennik', dostawa.odmowa.tekst);
   // Wyjątek z karty spoza bieżącej listy cenników konta (zniknął po „Pobierz z Allegro”) — odmowa tylko przy tworzeniu
-  // oferty (podgląd i zatwierdzenie, `tworzenie: true`); cena, ilość i wznowienie żywej oferty idą bez niej (E3d.02-03p3).
+  // oferty (podgląd i zatwierdzenie, `tworzenie: true`); cena, ilość i wznowienie żywej oferty idą bez niej.
   const listaCennikow = Array.isArray(ustawienia.slowniki?.cenniki) ? ustawienia.slowniki.cenniki : [];
   if (wejscie?.tworzenie === true && dostawa.powod?.rodzaj === 'wyjatek' && !listaCennikow.some(p => p?.id === dostawa.cennik)) {
     blad('cennik', 'Cennik z karty nie istnieje już na koncie Allegro — wybierz inny');
@@ -303,7 +304,7 @@ export function ofertaAllegroZKarty(wejscie) {
   if (cena.bledy.includes('cena')) blad('cena', 'Ustaw cenę brutto większą od zera na karcie, w całkowitej liczbie groszy.');
   if (cena.bledy.includes('narzut')) blad('narzut', `Ustaw nieujemny, całkowity narzut w konfiguratorze konta ${nazwaKonta}.`);
   if (cena.bledy.includes('zakres')) blad('cena', 'Cena z narzutem przekracza bezpieczny zakres — zmniejsz cenę lub narzut.');
-  // E4.06 (D47): `ilosc` = wynik iloscDlaKanalu; null (poza „brak-stalej”) → bez pola ilości i bez błędu.
+  // `ilosc` = wynik iloscDlaKanalu; null (poza „brak-stalej”) → bez pola ilości i bez błędu.
   const bezIlosci = bezIlosciKanalu(ilosc);
   const stock = ilosc ? ilosc.ilosc : ustawienia.stalaIlosc;
   if (!bezIlosci && stock != null && (!Number.isSafeInteger(stock) || stock < 0)) blad('ilosc', 'Stała liczba sztuk musi być całkowita i nieujemna.');
@@ -317,7 +318,7 @@ export function ofertaAllegroZKarty(wejscie) {
   else if (STAWKI.has(vat)) taxSettings = { subject: 'GOODS', rates: [{ rate: `${vat}.00`, countryCode: 'PL' }] };
   else if (vat) blad('vat', `Stawka VAT „${vat}” nie jest obsługiwana w Allegro — ustaw 23, 8, 5, 0 albo zw.`);
 
-  // GPSR (D35).
+  // GPSR.
   const pozycja = {};
   const przypisanie = marka ? producenciMarek.find(x => napis(x.marka) === marka) : null;
   const producentKonta = () => {
@@ -333,7 +334,7 @@ export function ofertaAllegroZKarty(wejscie) {
     pozycja.responsibleProducer = { type: 'ID', id: napis(przypisanie.producentId) };
     if (napis(przypisanie.osobaOdpowiedzialnaId)) pozycja.responsiblePerson = { id: napis(przypisanie.osobaOdpowiedzialnaId) };
   } else if (droga === 'katalog-id') {
-    // Bez przypisania pole pomijamy — Allegro bierze dane GPSR z produktu (A2).
+    // Bez przypisania pole pomijamy — Allegro bierze dane GPSR z produktu.
   } else if (!marka) producentKonta();
   else blad('producent', `Przypisz producenta marki ${marka} na koncie ${nazwaKonta} (Ustawienia → Integracje → Moje połączenia, przy koncie Allegro → krok Oferty).`);
 
@@ -350,7 +351,7 @@ export function ofertaAllegroZKarty(wejscie) {
     else pozycja.safetyInformation = { type: 'TEXT', description: tekst };
   }
 
-  // external.id (D31) i D43.
+  // `external.id` — znak instalacji i numer karty.
   const znak = napis(znakInstalacji);
   if (!znak) blad('znak-instalacji', 'Brak znaku instalacji OMS — sygnatury oferty nie da się nadać.');
   const czynne = lista(ofertyKarty).filter(o => (o.zrodlo === 'lustro'

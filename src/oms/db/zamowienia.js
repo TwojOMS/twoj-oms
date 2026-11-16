@@ -25,7 +25,7 @@ const teraz = () => new Date().toISOString();
 // Porzadek pozycji jest CZESCIA REGULY, nie kosmetyka widoku — z dwoch powodow naraz:
 //
 //  1. numer porzadkowy pozycji jest ZAPASOWYM kluczem recznych nadpisan (kluczPozycji
-//     w domain/pozycje-reczne.js), wiec nieustalona kolejnosc znaczylaby inne przypisanie
+//     w domena/pozycje-reczne.js), wiec nieustalona kolejnosc znaczylaby inne przypisanie
 //     poprawek przy kazdym odczycie;
 //  2. pozycje SKLEPOWE dostaja przy kazdej synchronizacji nowe, WYZSZE `id` (DELETE + INSERT),
 //     wiec samo ORDER BY id wypychaloby pozycje dopisana recznie na POCZATEK tabeli co dwie
@@ -38,16 +38,16 @@ const PORZADEK_POZYCJI = "ORDER BY CASE WHEN zrodlo = 'reczna' THEN 1 ELSE 0 END
 //
 // Formularz zakupowy Allegro zdjecia nie niesie, wiec przy zapisie nie ma czego wpisac —
 // a wpisanie go tam POZNIEJ nie mialoby sensu, bo poller kasuje i wstawia pozycje sklepowe
-// co dwie minuty (przewodnik OMS, 4.7) i adres przepadalby przy kazdej synchronizacji.
-// Adres mieszka wiec w pamieci podrecznej kluczowanej OFERTA (`zdjecia_ofert`, patrz
-// db/schema.sql i db/zdjecia-ofert.js), a odczyt dokleja go tutaj.
+// co dwie minuty (reguła: dane ręczne obok danych sklepu) i adres przepadalby przy kazdej
+// synchronizacji. Adres mieszka wiec w pamieci podrecznej kluczowanej OFERTA (`zdjecia_ofert`,
+// patrz moduly/rdzen/migracje/0001-baseline.sql i oms/db/zdjecia-ofert.js), a odczyt dokleja go tutaj.
 //
 // ⚠️ ZLACZENIE ZEWNETRZNE (LEFT JOIN) i osobna nazwa kolumny (`zdjecie_oferty`), a nie
 // COALESCE wprost na `zdjecie_url`. Dwa powody:
 //   * COALESCE w SELECT-cie oddawalby DWIE kolumny o tej samej nazwie (`p.*` juz niesie
 //     `zdjecie_url`), a ktora z nich wygra przy budowaniu obiektu wiersza, jest sprawa
 //     sterownika — na taki szczegol nie wolno stawiac miniatur w calym panelu;
-//   * regula „ktore zrodlo wygrywa" ma stac w DOMENIE (zdjeciePozycji w domain/miniatury.js),
+//   * regula „ktore zrodlo wygrywa" ma stac w DOMENIE (zdjeciePozycji w domena/miniatury.js),
 //     a nie w napisie SQL — dokladnie tak samo, jak reszta regul tej karty.
 //
 // ⚠️ SKLEPOM TO NIC NIE ZMIENIA. Pozycje z WooCommerce maja `oferta_id` puste, wiec
@@ -66,9 +66,9 @@ function wiersz(db, sklep, zrodloId) {
 
 // ---------------------------------------------------------------------------------
 // ⚠️ BRAK DANYCH U ZRODLA NIE KASUJE DANYCH U NAS — niezmiennik dodany przy Allegro
-// (Etap 4, spec 5.4; przewodnik OMS 4.7a). Allegro udostepnia dane osobowe kupujacego przez
+// (reguła: pustka u źródła nie kasuje). Allegro udostepnia dane osobowe kupujacego przez
 // OGRANICZONY CZAS, a poller nadpisuje `klient_json`/`dostawa_json` co dwie minuty
-// (przewodnik 4.7). Bez tej reguly w dniu, w ktorym Allegro przestanie oddawac dane, panel
+// (reguła: dane ręczne obok danych sklepu). Bez tej reguly w dniu, w ktorym Allegro przestanie oddawac dane, panel
 // SKASOWALBY adres z karty zamowienia — byc moze takiego, ktore wlasnie czeka na wysylke.
 //
 // ⚠️ TA WARSTWA CELOWO NIE WIE, „CO ZNACZY PUSTY ADRES", i to jest sedno tej reguly.
@@ -78,18 +78,18 @@ function wiersz(db, sklep, zrodloId) {
 // kanalu naraz. Skanowanie pol bloku w tym miejscu bylo bledem, ktory kosztowalby sklep:
 // `country` jest dla Allegro naszym domyslem, a dla WooCommerce prawdziwa dana sklepu, wiec
 // jedna regula musialaby o jednym z kanalow klamac. Zamrozony nieaktualny `shipping` Woo
-// rozbraja `brakujacePolaAdresu` (domain/adres-odbiorcy.js) — jedyny bezpiecznik przed
+// rozbraja `brakujacePolaAdresu` (domena/adres-odbiorcy.js) — jedyny bezpiecznik przed
 // nadaniem paczki bez adresu — i podstawia na ekranie nadania wiarygodny STARY adres.
 //
 // Rozpoznanie „koperta z wyzerowanymi polami to brak adresu" nalezy do KANALU i mieszka
-// w `adresPanelu` (domain/allegro-mapowanie.js): tam wiadomo, ze `country` wpisujemy sami,
+// w `adresPanelu` (domena/allegro-mapowanie.js): tam wiadomo, ze `country` wpisujemy sami,
 // a `email`/`phone` sa doklejane z `buyer`/`delivery`, wiec blok nigdy nie sklada sie
 // z samego adresu. Mapowanie oddaje wtedy `null` i regula ponizej po prostu go przepuszcza.
 //
 // ⚠️ Dotyczy WYLACZNIE `klient_json` i `dostawa_json`. `kwota_brutto`, `status_woo` czy `nip`
 // przychodzace puste to AWARIA ZRODLA, a nie brak danych osobowych, i maja byc WIDOCZNE —
 // zamrozenie ich na ostatniej niepustej wartosci ukryloby zepsuty kanal. (`nip`
-// i `punkt_odbioru` sa jawnym dlugiem — przewodnik OMS 4.7a.)
+// i `punkt_odbioru` są jawnym długiem tej reguły.)
 //
 // ⚠️ Tylko sciezka UPDATE. Przy INSERT nie ma czego chronic, a zamiana pustki na `NULL`
 // zabralaby mozliwosc odroznienia „zrodlo nie ma adresu" od „adres jeszcze nie doczytany".
@@ -102,11 +102,11 @@ export function zapiszZamowienie(db, sklep, z, surowe) {
   // Kupony to dana SKLEPU jak uwagi czy status — poller odswieza ja przy kazdej
   // synchronizacji (kupon zdjety z zamowienia w sklepie ma tu zniknac). NULL, nie '[]',
   // dla zamowienia bez kuponow: kanaly bez tego pojecia (Allegro, reczne) i zamowienia
-  // bez kodu maja wygladac identycznie — patrz domain/kupony.js.
+  // bez kodu maja wygladac identycznie — patrz domena/kupony.js.
   const kuponyJson = z.kupony?.length ? JSON.stringify(z.kupony) : null;
   // Skad przyszlo zamowienie — dana SKLEPU jak kupony i uwagi, wiec poller ja odswieza.
   // ⚠️ NULL, gdy sklep atrybucji nie zapisal: to „nie wiemy", a nie „wejscie bezposrednie"
-  // (patrz domain/atrybucja.js). Kanaly bez tego pojecia (Allegro, reczne) maja tu NULL
+  // (patrz domena/atrybucja.js). Kanaly bez tego pojecia (Allegro, reczne) maja tu NULL
   // zawsze i tak ma zostac.
   const atrybucjaJson = z.atrybucja ? JSON.stringify(z.atrybucja) : null;
 
@@ -125,14 +125,14 @@ export function zapiszZamowienie(db, sklep, z, surowe) {
       // `platnosci`), ta kolumna trzyma juz WYLACZNIE surowe `date_paid` sklepu i sluzy
       // JEDYNIE do zbudowania wplaty zrodla 'sklep' ponizej. Wartosc, ktora czyta reszta
       // panelu, powstaje przy ODCZYCIE, z listy wplat (zLinii) — czyli tak samo jak status
-      // (przewodnik OMS, 4.1). Praca czlowieka lezy w wierszach `platnosci` o zrodle
+      // (reguła: status wynika z faktów). Praca czlowieka lezy w wierszach `platnosci` o zrodle
       // 'reczna', ktorych synchronizacja NIE DOTYKA (patrz db/platnosci.js).
       //
       // ⚠️ Z DOKLADNIE tego samego powodu nie ma tu `dostawa_reczna_json`,
       // `klient_reczny_json` ani `chce_fakture_reczne`. Poprawione dane klienta NIE
       // nadpisuja `klient_json`/`dostawa_json`/`chce_fakture` — te dalej naleza do sklepu
       // i maja sie odswiezac — tylko leza OBOK, polowo, i wygrywaja dopiero przy odczycie
-      // (domain/dane-reczne.js). Dopisanie ktorejkolwiek z tych trzech kolumn do listy
+      // (domena/dane-reczne.js). Dopisanie ktorejkolwiek z tych trzech kolumn do listy
       // ponizej kasowaloby prace czlowieka co dwie minuty.
       //
       // ⚠️ TAK SAMO `anulowane_recznie` i `wysylka_reczna_json` (reczna korekta stanu).
@@ -142,7 +142,7 @@ export function zapiszZamowienie(db, sklep, z, surowe) {
       // i recznie ustawione pobranie przy najblizszym przebiegu pollera.
       //
       // ⚠️ `indywidualne` JEST tutaj i to jest odwrotnosc powyzszych: to fakt SKLEPU,
-      // liczony z surowej odpowiedzi (domain/indywidualne.js), wiec ma sie odswiezac przy
+      // liczony z surowej odpowiedzi (domena/indywidualne.js), wiec ma sie odswiezac przy
       // kazdej synchronizacji — oferta moze dojsc do zamowienia juz po jego zlozeniu.
       // Pominiecie go tutaj zamraza znacznik na wartosci z PIERWSZEJ synchronizacji,
       // czyli zamowienie z panelu policzyloby sie w zlym kanale raportu na zawsze.
@@ -207,7 +207,7 @@ export function zapiszZamowienie(db, sklep, z, surowe) {
 // Pozycje SKLEPOWE sa podmieniane w calosci: zamowienie edytowane w sklepie ma miec u nas
 // swoj aktualny stan, a nie sume wszystkich wersji.
 //
-// ⚠️ WARUNEK PRZY DELETE JEST CALA OCHRONA POZYCJI DOPISANYCH RECZNIE (przewodnik OMS, 4.7).
+// ⚠️ WARUNEK PRZY DELETE JEST CALA OCHRONA POZYCJI DOPISANYCH RECZNIE (reguła: dane ręczne obok danych sklepu).
 // Bez niego „klient chce dodatkowy szablon i musi doplacic" znikaloby z karty w ciagu dwoch
 // minut — razem z pieniedzmi, ktorych panel przestalby sie od klienta domagac. Ta sama
 // granica i ten sam wzorzec, co przy wplatach (zsynchronizujWplateSklepu w db/platnosci.js).
@@ -222,7 +222,7 @@ function zapiszPozycje(db, zamowienieId, pozycje) {
   // ⚠️ `zrodlo` jest wpisane W ZAPYTANIU ('sklep'), a nie podane argumentem — przy dokladaniu
   // kolumny latwo policzyc znaki zapytania „po kolumnach" i przesunac WSZYSTKIE wartosci
   // o jedna. Dzis: 15 kolumn = 14 znakow zapytania + 1 wpisana na sztywno ('sklep'),
-  // i dokladnie 14 argumentow `.run()` (PRZ-091 doklada `wariant_id` na koncu).
+  // i dokladnie 14 argumentow `.run()` (`wariant_id` na koncu).
   const ins = db.prepare(
     'INSERT INTO pozycje (zamowienie_id, nazwa, sku, ilosc, cena_brutto, cena_netto, brutto_linii, netto_linii, vat,'
     + " zrodlo, zrodlo_id, zdjecie_url, produkt_id, oferta_id, wariant_id) VALUES (?,?,?,?,?,?,?,?,?,'sklep',?,?,?,?,?)",
@@ -233,7 +233,7 @@ function zapiszPozycje(db, zamowienieId, pozycje) {
       p.brutto_linii ?? null, p.netto_linii ?? null, p.vat, p.zrodlo_id ?? null,
       p.zdjecie_url ?? null, p.produkt_id ?? null,
       // ⚠️ Identyfikator oferty Allegro idzie TEDY, a nie osobnym UPDATE-em obok. Poller
-      // kasuje i wstawia pozycje sklepowe co dwie minuty (przewodnik OMS, 4.7), wiec
+      // kasuje i wstawia pozycje sklepowe co dwie minuty (reguła: dane ręczne obok danych sklepu), wiec
       // cokolwiek dopisane obok mapowania znika przy najblizszym przebiegu — dopisek
       // wygladalby na dzialajacy dokladnie do pierwszej synchronizacji po wdrozeniu.
       p.oferta_id ?? null,
@@ -250,7 +250,7 @@ function zapiszPozycje(db, zamowienieId, pozycje) {
 //  - pozycja ZE SKLEPU nalezy do sklepu, wiec jej poprawka mieszka OBOK, w
 //    `pozycje_reczne_json`, i wygrywa dopiero przy odczycie (zLinii nizej).
 //
-// Zapis kwot idzie ZAWSZE przez domain/pozycje-reczne.js (parsujNowaPozycje /
+// Zapis kwot idzie ZAWSZE przez domena/pozycje-reczne.js (parsujNowaPozycje /
 // parsujEdycjePozycji): to tam ilosc i cena zamieniaja sie w wartosci znormalizowane,
 // a `brutto_linii` liczy sie w groszach. Te funkcje przyjmuja gotowy wynik i nic nie licza.
 // ---------------------------------------------------------------------------------
@@ -265,17 +265,17 @@ export function dodajPozycjeReczna(
   },
   opcje,
 ) {
-  // PRZ-105: stawka VAT pozycji (lista 23/8/5/0). NULL = „domyślna z Ustawień w chwili wystawiania”
-  // (domain/vat.js: stawkaPozycji) — tak zostają pozycje sprzed PRZ-105. Spoza listy = odmowa.
-  // PRZ-122.B07c: `opcje` = `{ zw: true }` (program wbudowany) dopuszcza „zw”; bez nich jak dotąd.
+  // Stawka VAT pozycji (lista 23/8/5/0). NULL = „domyślna z Ustawień w chwili wystawiania”
+  // (domena/vat.js: stawkaPozycji) — tak zostają pozycje ze starszych wersji. Spoza listy = odmowa.
+  // `opcje` = `{ zw: true }` (program wbudowany) dopuszcza „zw”; bez nich jak dotąd.
   if (vat !== null && !czyStawkaVat(vat, opcje)) throw bladOperatora(`Nieznana stawka VAT „${vat}”.`);
   // ⚠️ `produkt_id` i `wariant_id` SA OPCJONALNE i domyslnie puste — pozycja wpisana z reki
   // przy telefonie nie ma zadnego produktu w sklepie i NULL jest o niej prawda. Wypelnia je
-  // wylacznie „dodaj z magazynu" (21.08.2026): tam operator wskazal konkretny wiersz lustra,
+  // wylacznie „dodaj z magazynu": tam operator wskazal konkretny wiersz lustra,
   // wiec panel wie i ktory produkt, i ktory ROZMIAR poszedl.
   // ⚠️ `cena_katalogowa` to CENA SPRZED RABATU, nie druga cena do zaplaty. Wypelnia ja
   // wylacznie „dodaj z magazynu"; NULL znaczy „pozycja wpisana z reki", czyli kwota juz
-  // uzgodniona — i taka pozycja jest dla przeliczenia rabatem niewidzialna (domain/rabat.js).
+  // uzgodniona — i taka pozycja jest dla przeliczenia rabatem niewidzialna (domena/rabat.js).
   db.prepare(
     'INSERT INTO pozycje (zamowienie_id, nazwa, sku, ilosc, cena_brutto, cena_netto, brutto_linii, netto_linii, vat,'
     + " zrodlo, zrodlo_id, produkt_id, wariant_id, cena_katalogowa) VALUES (?,?,?,?,?,NULL,?,NULL,?,'reczna',NULL,?,?,?)",
@@ -286,7 +286,7 @@ export function dodajPozycjeReczna(
 }
 
 // Wiersz szukamy po PARZE (id pozycji, id zamowienia) — tak samo jak przy wplatach: w swiezej
-// bazie liczniki AUTOINCREMENT roznych tabel zbiegaja sie (przewodnik OMS, 6.3), wiec sam
+// bazie liczniki AUTOINCREMENT roznych tabel zbiegaja sie, wiec sam
 // `id` przepuscilby pomylke argumentu w trasie i pozwolil poprawic CUDZA pozycje.
 function pozycjaZamowienia(db, zamowienieId, pozycjaId) {
   const p = db.prepare('SELECT * FROM pozycje WHERE id = ? AND zamowienie_id = ?').get(pozycjaId, zamowienieId);
@@ -295,13 +295,13 @@ function pozycjaZamowienia(db, zamowienieId, pozycjaId) {
 }
 
 /** Edycja pozycji DOPISANEJ RECZNIE — wprost w wierszu, bo jest nasza w calosci. */
-// PRZ-122.B07c: `opcje` = `{ zw: true }` (program wbudowany) dopuszcza stawkę „zw” — nową i zostawioną bez zmian.
+// `opcje` = `{ zw: true }` (program wbudowany) dopuszcza stawkę „zw” — nową i zostawioną bez zmian.
 export function zapiszPozycjeReczna(db, zamowienieId, pozycjaId, { nazwa, ilosc, cena_brutto, brutto_linii, vat }, opcje) {
   const p = pozycjaZamowienia(db, zamowienieId, pozycjaId);
   if (p.zrodlo !== 'reczna') {
     throw bladOperatora('Pozycji ze sklepu nie zapisuje się wprost — poprawka mieszka obok, jako nadpisanie.');
   }
-  // PRZ-105: `vat` nieobecny (np. przeliczenie rabatu) = stawka bez zmian; obecny musi być z listy.
+  // `vat` nieobecny (np. przeliczenie rabatu) = stawka bez zmian; obecny musi być z listy.
   const stawka = vat === undefined ? p.vat : vat;
   if (stawka !== null && stawka !== undefined && !czyStawkaVat(stawka, opcje)) throw bladOperatora(`Nieznana stawka VAT „${stawka}”.`);
   db.prepare('UPDATE pozycje SET nazwa = ?, ilosc = ?, cena_brutto = ?, brutto_linii = ?, vat = ? WHERE id = ?')
@@ -310,7 +310,7 @@ export function zapiszPozycjeReczna(db, zamowienieId, pozycjaId, { nazwa, ilosc,
   return { ...p, nazwa, ilosc, cena_brutto, brutto_linii, vat: stawka ?? null };
 }
 
-// WYJSCIE ze stanu, w ktory panel sam pozwala wejsc (przewodnik OMS, 4.9): omylkowo dopisana
+// WYJSCIE ze stanu, w ktory panel sam pozwala wejsc (reguła: każdy stan ma wyjście): omylkowo dopisana
 // pozycja podnosi kwote oczekiwana od klienta i kaze panelowi pokazywac niedoplate, ktorej
 // nie ma. Bez tej drogi jedynym wyjsciem bylby SQL na produkcji.
 //
@@ -339,24 +339,6 @@ export function zapiszNadpisaniaPozycji(db, id, mapa) {
     .run(mapa ? JSON.stringify(mapa) : null, teraz(), id);
 }
 
-// ⚠️ JEDYNA droga zapisu recznych faktow statusu — i to jest cala tresc tej funkcji.
-//
-// Wczesniej byly tu DWIE: `oznacz()` z biala lista kolumn (bo nazwa kolumny byla
-// interpolowana) i `oznaczZwrot()`. Zniknely razem z osobnymi przyciskami „Oznacz
-// w realizacji" / „Oznacz zwrot": dopoki istnialy dwie drogi zapisu tych samych faktow,
-// odmowy pilnujace granic (nie da sie ustawic „Wyslane", nie da sie odanulowac zamowienia
-// anulowanego w sklepie) obowiazywalyby tylko na jednej z nich.
-//
-// WSZYSTKIE CZTERY POLA JEDNYM UPDATE-em, dokladnie z tego samego powodu co data wplaty
-// razem ze znacznikiem recznosci: awaria miedzy dwoma osobnymi zapisami (pelny dysk,
-// restart procesu) zostawialaby stan, ktorego nikt nie chcial — zwrot bez powodu albo
-// anulowanie przy niewyczyszczonym zwrocie. Komplet faktow liczy domena
-// (faktyDlaStatusu w domain/status-reczny.js), tutaj jest wylacznie zapis.
-//
-// `anulowane` (kolumna ze sklepu) CELOWO NIE JEST tu ruszana: reczne anulowanie zapisuje
-// sie WYLACZNIE w `anulowane_recznie`, a wartosc efektywna powstaje przy odczycie jako suma
-// logiczna obu (zLinii). Zapis do kolumny sklepowej zostalby i tak zdmuchniety przez
-// najblizsza synchronizacje, a po drodze skasowalby fakt przyslany przez sklep.
 /**
  * Oznaczenie zamówienia jako wysłanego — WYŁĄCZNIE gdy nie było jeszcze oznaczone.
  *
@@ -375,12 +357,13 @@ export function oznaczWyslane(db, id, kiedy = teraz()) {
 }
 
 /**
- * PRZ-101.04: „wysłane” zamówienia GŁÓWNEGO przechodzi na jego dołączone (domena/scalanie.js).
+ * „wysłane” zamówienia GŁÓWNEGO przechodzi na jego dołączone (domena/scalanie.js).
  *
  * ⚠️ TU, W WARSTWIE ZAPISU, a nie w trasach: fakt `wyslane_at` zapisują dziś trzy trasy (karta,
  * zmiana masowa, przesyłka ręczna) przez DWIE funkcje tego pliku (`oznaczWyslane`,
  * `zapiszFaktyStatusu`). Przeniesienie w każdej trasie osobno to trzy miejsca do zapomnienia.
- * Odesłanie statusu dołączonych do sklepu robi `odeslijStatus` głównego (services/sync-sklep.js).
+ * Odesłanie statusu dołączonych do sklepu robi `odeslijStatus` głównego
+ * (moduly/zamowienia/services/sync-sklep.js).
  *
  * Dołączone ma DOKŁADNIE stan głównego: cofnięcie „Wysłane” na głównym cofa je też na dołączonych
  * (`tylkoPuste: false`). `scalone_do = ?` w warunku — dotykamy wyłącznie zamówień nadal dołączonych.
@@ -390,7 +373,7 @@ function przeniesWyslaneNaDolaczone(db, glowneId, { tylkoPuste = false } = {}) {
   const w = db.prepare('SELECT * FROM zamowienia WHERE id = ?').get(glowneId);
   const ids = idsDolaczonych(w);
   if (!ids.length) return;
-  // ⚠️ ANULOWANE DOŁĄCZONE POMIJAMY (recenzja, W3) — warunek `anulowaneEfektywnie`, ten sam, co
+  // ⚠️ ANULOWANE DOŁĄCZONE POMIJAMY — warunek `anulowaneEfektywnie`, ten sam, co
   // `d.anulowane` w `sprawdzCzlonkowGrupy`: paczka grupy nie wiezie pozycji anulowanego zamówienia,
   // więc „wysłane” byłoby nieprawdą. Sprawa zostaje na głównym (`uwagaDolaczonychAnulowanych`).
   const nieanulowane = db.prepare(`SELECT id, anulowane, anulowane_recznie FROM zamowienia WHERE id IN (${ids.map(() => '?').join(',')}) AND scalone_do = ?`)
@@ -418,12 +401,30 @@ export function zapiszBladSyncSklepu(db, id, opis) {
 }
 
 // Odswiezenie stanu realizacji POZA pollerem. Konieczne, bo Allegro nie podbija `updatedAt`
-// przy zmianie tego pola (zmierzone 05.08.2026), wiec poller takiego zamowienia nie odczyta
+// przy zmianie tego pola (zmierzone), wiec poller takiego zamowienia nie odczyta
 // ponownie NIGDY, a kolumna zostaje nieaktualna na zawsze.
 export function zapiszStanRealizacji(db, id, status) {
   db.prepare('UPDATE zamowienia SET status_realizacji = ? WHERE id = ?').run(status ?? null, id);
 }
 
+// ⚠️ JEDYNA droga zapisu KOMPLETU recznych faktow statusu (reczny wybor z listy) — i to jest cala
+// tresc tej funkcji. Obok stoi tylko `oznaczWyslane` (wyzej): doklada sam `wyslane_at` przy
+// rejestracji paczki, wylacznie gdy jest pusty, i niczego innego nie rusza.
+//
+// Druga droga zapisu tego samego kompletu znaczylaby, ze odmowy pilnujace granic (nie da sie
+// ustawic „Wyslane", nie da sie odanulowac zamowienia anulowanego w sklepie) obowiazywalyby
+// tylko na jednej z nich.
+//
+// WSZYSTKIE PIĘĆ PÓL JEDNYM UPDATE-em, dokladnie z tego samego powodu co data wplaty
+// razem ze znacznikiem recznosci: awaria miedzy dwoma osobnymi zapisami (pelny dysk,
+// restart procesu) zostawialaby stan, ktorego nikt nie chcial — zwrot bez powodu albo
+// anulowanie przy niewyczyszczonym zwrocie. Komplet faktow liczy domena
+// (faktyDlaStatusu w domena/status-reczny.js), tutaj jest wylacznie zapis.
+//
+// `anulowane` (kolumna ze sklepu) CELOWO NIE JEST tu ruszana: reczne anulowanie zapisuje
+// sie WYLACZNIE w `anulowane_recznie`, a wartosc efektywna powstaje przy odczycie jako suma
+// logiczna obu (zLinii). Zapis do kolumny sklepowej zostalby i tak zdmuchniety przez
+// najblizsza synchronizacje, a po drodze skasowalby fakt przyslany przez sklep.
 export function zapiszFaktyStatusu(db, id, { w_realizacji_at, wyslane_at, zwrot_at, zwrot_powod, anulowane_recznie, status_wlasny = null, zachowaj_status_wlasny = false, kto = null }) {
   db.exec('SAVEPOINT zapis_statusu');
   try {
@@ -444,7 +445,7 @@ export function zapiszFaktyStatusu(db, id, { w_realizacji_at, wyslane_at, zwrot_
           .run(id, status_wlasny, teraz(), kto);
       } else if (!zachowaj_status_wlasny) db.prepare('DELETE FROM zamowienia_status_wlasny WHERE zamowienie_id = ?').run(id);
     } else if (status_wlasny) throw new Error('Brak migracji statusów własnych.');
-    // PRZ-101.04: „wysłane” głównego przechodzi na dołączone — w tym samym savepoincie, atomowo.
+    // „wysłane” głównego przechodzi na dołączone — w tym samym savepoincie, atomowo.
     przeniesWyslaneNaDolaczone(db, id);
     db.exec('RELEASE zapis_statusu');
   } catch (e) {
@@ -503,8 +504,8 @@ export function zapiszNadpisaniaFaktury(db, id, nadpisania, chceFaktureReczne) {
 // JEDYNE wyjscie ze stanu, z ktorego panel sam by nie wyszedl — ta sama zasada, co przy
 // zawieszonej fakturze i zawieszonym nadaniu. Bez tego literowka zapisana raz zostawalaby
 // na karcie na zawsze, bo sklep juz nigdy by jej nie przebil.
-// Reczne nadpisanie METODY WYSYLKI (i kwoty pobrania) — patrz komentarz przy kolumnie
-// `wysylka_reczna_json` w schema.sql i przy sprawdzZmianeMetody w domain/wysylka.js.
+// Reczne nadpisanie METODY WYSYLKI (i kwoty pobrania) — patrz komentarz przy
+// sprawdzZmianeMetody w domena/wysylka.js.
 //
 // Metoda i kwota ida tu JEDNA WARTOSCIA, wiec niezmiennik „pobranie zawsze z kwota" jest
 // niemozliwy do zlamania nawet przez awarie w polowie zapisu — nie ma polowy. Bramka na
@@ -527,9 +528,9 @@ export function przywrocMetodeWysylkiZeSklepu(db, id) {
 }
 
 /**
- * Komentarz wewnętrzny — nasza notatka przy zamówieniu (2026-08-21).
+ * Komentarz wewnętrzny — nasza notatka przy zamówieniu.
  *
- * ⚠️ `null` KASUJE i tak ma być: normalizacja w domenie (domain/komentarz-wewnetrzny.js)
+ * ⚠️ `null` KASUJE i tak ma być: normalizacja w domenie (domena/komentarz-wewnetrzny.js)
  * oddaje `null` dla pustego pola, więc wyczyszczenie textarea zdejmuje notatkę zamiast
  * zapisywać pusty napis, który na karcie wyglądałby jak notatka.
  *
@@ -542,10 +543,10 @@ export function zapiszKomentarzWewnetrzny(db, id, komentarz) {
 }
 
 /**
- * Odnotowanie, że potwierdzenie przyjęcia zamówienia POSZŁO do klienta (2026-08-21).
+ * Odnotowanie, że potwierdzenie przyjęcia zamówienia POSZŁO do klienta.
  *
- * ⚠️ Zapis idzie DOPIERO po udanej wysyłce (services/potwierdzenie.js) — karta twierdząca
- * „wysłano" przy mailu, którego nigdy nie było, jest gorsza niż brak śladu.
+ * ⚠️ Zapis idzie DOPIERO po udanej wysyłce (moduly/wiadomosci/services/potwierdzenie.js) —
+ * karta twierdząca „wysłano" przy mailu, którego nigdy nie było, jest gorsza niż brak śladu.
  */
 export function oznaczPotwierdzenieWyslane(db, id, kiedy = teraz()) {
   db.prepare('UPDATE zamowienia SET potwierdzenie_wyslane_at = ?, zmienione_at = ? WHERE id = ?')
@@ -553,16 +554,16 @@ export function oznaczPotwierdzenieWyslane(db, id, kiedy = teraz()) {
 }
 
 /**
- * USTALENIA HANDLOWE zamówienia: kanał B2B, uzgodniony termin płatności, rabat (2026-08-21).
+ * USTALENIA HANDLOWE zamówienia: kanał B2B, uzgodniony termin płatności, rabat.
  *
  * ⚠️ TRZY POLA JEDNYM ZAPISEM, bo są jedną decyzją operatora — tak samo jak są jednym paskiem
  * na karcie. Trzy osobne trasy znaczyłyby trzy osobne wpisy w dzienniku dla jednego kliknięcia
  * i stan pośredni po awarii w połowie.
  *
  * ⚠️ SAM ZAPIS RABATU NICZEGO NIE PRZELICZA — ceny leżą w pozycjach. Przeliczeniem zajmuje się
- * `services/rabat.js`, który woła to DOPIERO po zapisaniu nowych cen: kolumna i pozycje mają
- * opisywać ten sam stan, a odwrotna kolejność zostawiałaby po awarii zamówienie z rabatem
- * 30% w nagłówku i cenami sprzed rabatu w tabeli.
+ * `moduly/zamowienia/services/rabat.js`, który woła to DOPIERO po zapisaniu nowych cen:
+ * kolumna i pozycje mają opisywać ten sam stan, a odwrotna kolejność zostawiałaby po awarii
+ * zamówienie z rabatem 30% w nagłówku i cenami sprzed rabatu w tabeli.
  */
 export function zapiszUstaleniaHandlowe(db, id, { b2b, termin_platnosci: termin, rabat_procent: rabat }) {
   db.prepare(
@@ -571,8 +572,8 @@ export function zapiszUstaleniaHandlowe(db, id, { b2b, termin_platnosci: termin,
 }
 
 /**
- * PRZ-104: ręczna data wysyłki (`RRRR-MM-DD`) albo `null` = standardowy termin.
- * ⚠️ `wyslane_at IS NULL` W WARUNKU — blokada po wysyłce (decyzja właściciela 21.10.2026) stoi też
+ * Ręczna data wysyłki (`RRRR-MM-DD`) albo `null` = standardowy termin.
+ * ⚠️ `wyslane_at IS NULL` W WARUNKU — blokada po wysyłce stoi też
  * tutaj, nie tylko w trasie: paczka nadana między odczytem karty a kliknięciem nie przepuści
  * zmiany. Oddaje `true`, gdy zapis się odbył.
  */
@@ -595,19 +596,20 @@ export function przywrocDaneZeSklepu(db, id) {
 //
 //  - adres ma DWOCH czytelnikow i jedzie do kuriera JAWNIE, jako osobny argument `adres`;
 //  - `anulowane`, `metoda_wysylki` i `kwota_pobrania` czyta z wiersza wiele miejsc naraz —
-//    wyliczStatus, doZrobienia, services/nadanie.js, services/faktura.js, kurierzy/dpd.js,
+//    wyliczStatus, doZrobienia, moduly/wysylka/services/nadanie.js,
+//    moduly/faktury/services/faktura.js, oms/kurierzy/dpd.js,
 //    lista i karta. Pojedyncze POMINIETE wywolanie znaczyloby tam paczke nadana do
 //    zamowienia anulowanego recznie albo pobranie zainkasowane drugi raz od klienta.
 //    Nakladanie w warstwie odczytu jest jedynym sposobem, zeby nikt nie mogl zapomniec.
 //
-// Regula mieszka w domenie (domain/wysylka.js, domain/status-reczny.js) — TU jest wylacznie
+// Regula mieszka w domenie (domena/wysylka.js, domena/status-reczny.js) — TU jest wylacznie
 // miejsce jej zastosowania. Wartosci ze sklepu NIE GINA: leza obok, w kolumnach `_sklep`,
 // bo karta musi umiec pokazac „zmienione recznie" i zaproponowac przywrocenie.
 //
 // `wyliczStatus` pozostaje NIETKNIETY: doklada mu sie fakty, nie zmienia regule.
 //
 // ⚠️ TU TEZ powstaje `oplacone_at` — JAKO FAKT WYLICZANY Z LISTY WPLAT, a nie jako kolumna
-// do przestawiania. Ta sama zasada, co przy statusie (przewodnik OMS, 4.1): zamowienie jest
+// do przestawiania. Ta sama zasada, co przy statusie (reguła: status wynika z faktów): zamowienie jest
 // oplacone, gdy suma wplat pokrywa jego kwote, i niesie date tej wplaty, ktora prog
 // przekroczyla. Cofniecie faktu (usuniecie omylkowej wplaty) cofa „oplacone" SAMO.
 //
@@ -629,14 +631,14 @@ export function przywrocDaneZeSklepu(db, id) {
 // Pozycje wczytujemy TUTAJ (a nie u czytelnika), zeby nie istniala droga odczytu zamowienia
 // z pozycjami surowymi. `pozycjeSurowe` przyjmujemy z zewnatrz wylacznie dlatego, ze lista
 // zamowien pobiera je JEDNYM zapytaniem dla wszystkich wierszy naraz. Wplaty — z tego samego
-// powodu (PRZ-051): pytanie o nie przy kazdym wierszu bylo polowa kosztu listy.
+// powodu: pytanie o nie przy kazdym wierszu bylo polowa kosztu listy.
 function zLinii(db, w, pozycjeSurowe = null, platnosciSurowe = null) {
   if (!w) return null;
   const platnosci = platnosciSurowe ?? platnosciZamowienia(db, w.id);
   const surowe = pozycjeSurowe ?? db.prepare(`${POZYCJE_ZE_ZDJECIEM} WHERE p.zamowienie_id = ? ${PORZADEK_POZYCJI}`)
     .all(w.id).map(zZdjeciemOferty);
   const pozycje = nalozNadpisaniaPozycji(surowe, w.pozycje_reczne_json);
-  // PRZ-152.G2 — pozycje sklepowe usunięte znacznikiem: nakładka ich nie oddaje, a kwota
+  // Pozycje sklepowe usunięte znacznikiem: nakładka ich nie oddaje, a kwota
   // oczekiwana (kwotaOczekiwanaGrosze) odejmuje stąd ich sklepową wartość. TYLKO TU.
   const pozycje_usuniete = pozycjeUsuniete(surowe, w.pozycje_reczne_json);
   // Liczona RAZ: czyta ja piec pol obiektu ponizej, a kazde wywolanie na nowo parsuje ten
@@ -654,27 +656,27 @@ function zLinii(db, w, pozycjeSurowe = null, platnosciSurowe = null) {
     pobranie_sklep: w.pobranie,
     kwota_pobrania_sklep: w.kwota_pobrania,
     metoda_wysylki: metodaWysylki(w),
-    // Pobranie jest OSOBNA wartoscia od rodzaju dostawy (domain/wysylka.js) — od 2026-08-01.
+    // Pobranie jest OSOBNA wartoscia od rodzaju dostawy (domena/wysylka.js).
     pobranie: czyPobranie(w) ? 1 : 0,
     kwota_pobrania: kwotaPobrania(w),
     // ⚠️ Kod paczkomatu nakladamy TUTAJ z dokladnie tego samego powodu, co metode i pobranie:
-    // czyta go naraz karta, ekran nadania i (od Zadania 6) klient InPostu, a jedno pominiete
+    // czyta go naraz karta, ekran nadania i klient InPostu, a jedno pominiete
     // wywolanie znaczyloby paczke nadana pod adres ze sklepu mimo recznej korekty — czyli
     // przesylke lezaca w paczkomacie, po ktora nikt nie przyjdzie.
     punkt_odbioru_sklep: w.punkt_odbioru,
     punkt_odbioru_opis_sklep: w.punkt_odbioru_opis,
     punkt_odbioru: punktOdbioru(w),
     punkt_odbioru_opis: punktOdbioruOpis(w),
-    // ⚠️ KOSZT DOSTAWY TEZ JEST WARTOSCIA EFEKTYWNA (od 07.08.2026) — reczna poprawka ceny
+    // ⚠️ KOSZT DOSTAWY TEZ JEST WARTOSCIA EFEKTYWNA — reczna poprawka ceny
     // i liczby paczek lezy w `pozycje_reczne_json` pod kluczem `wysylka`, bo kolumny ponizej
-    // poller przepisuje co dwie minuty (domain/wysylka-kwota.js).
+    // poller przepisuje co dwie minuty (domena/wysylka-kwota.js).
     //
     // Kolumna `koszt_dostawy_brutto` niesie teraz WARTOSC CALEJ LINII (cena × ilosc), bo
     // dokladnie tak czytali ja wszyscy dotychczasowi czytelnicy: jako „ile kosztuje dostawa
     // tego zamowienia". Cena za sztuke i liczba paczek stoja obok, w polach `wysylka_*`.
     //
     // ⚠️ Wartosci `_sklep` MUSZA tu byc, i to nie dla wygody widoku: to po nich funkcje
-    // z domain/wysylka-kwota.js poznaja, ze patrza na wiersz PO nakladce, i nie licza jej
+    // z domena/wysylka-kwota.js poznaja, ze patrza na wiersz PO nakladce, i nie licza jej
     // drugi raz na wlasnym wyniku. Bez nich cena podniesiona raz rosla by przy kazdym
     // odczycie, a czlon roznicowy w `kwotaOczekiwanaGrosze` wychodzilby zerowy — czyli
     // bariera arytmetyczna faktury przepuscilaby kwote, ktorej nikt nie zatwierdzil.
@@ -733,10 +735,10 @@ function bezpiecznaDataPokrycia(platnosci, zamowienie) {
 // Odszukanie zamowienia po numerze WIDOCZNYM dla operatora — to, co stoi na karcie i na
 // liscie (`R/2026/003` albo numer sklepowy), nigdy wewnetrzny `id` z bazy. Formularz
 // zakladania dosylki ma przyjmowac dokladnie to, co operator widzi, a nie zgadywany
-// identyfikator, ktorego nigdzie na ekranie nie ma (finding recenzji Zadania 5/7).
+// identyfikator, ktorego nigdzie na ekranie nie ma.
 //
 // Numery sklepowe i numery serii recznej to DWIE ROZNE PRZESTRZENIE bez wspolnego
-// ograniczenia unikalnosci w bazie: `zamowienia_numer_reczny` (schema.sql) pilnuje
+// ograniczenia unikalnosci w bazie: `zamowienia_numer_reczny` (moduly/rdzen/migracje/0001-baseline.sql) pilnuje
 // WYLACZNIE serii `R/RRRR/NNN`, kolumna `numer` sama w sobie nie ma globalnego UNIQUE.
 // Kolizja miedzy dwiema przestrzeniami jest dzis NIEOSIAGALNA (formaty sie nie pokrywaja),
 // ale funkcja i tak liczy WSZYSTKIE trafienia zamiast brac pierwsze z brzegu — pomylka
@@ -750,9 +752,9 @@ export function znajdzZamowieniaPoNumerze(db, numer) {
  * Powiazanie dosylki z zamowieniem pierwotnym. `null` KASUJE powiazanie.
  *
  * Ustawiane z karty, a nie przy zakladaniu: ekran „Nowe zamowienie" stracil to pole
- * 2026-08-01 (decyzja wlasciciela — formularz mial byc krotki), wiec bez tej trasy
+ * (formularz mial byc krotki), wiec bez tej trasy
  * dosylka nie mialaby jak pokazac sie przy zamowieniu, ktorego dotyczy, i reklamacja
- * policzylaby sie drugi raz jako sprzedaz (patrz domain/dosylka.js).
+ * policzylaby sie drugi raz jako sprzedaz (patrz domena/dosylka.js).
  */
 export function ustawZamowienieZrodlowe(db, id, zrodloweId) {
   db.prepare('UPDATE zamowienia SET zamowienie_zrodlowe_id = ?, zmienione_at = ? WHERE id = ?')
@@ -760,11 +762,10 @@ export function ustawZamowienieZrodlowe(db, id, zrodloweId) {
 }
 
 // ⚠️⚠️ FAKTURA CZYTANA RAZEM Z REZERWACJA WYSYLKI DO KSeF, i to nie jest ozdobnik. Predykat
-// „czeka na numer KSeF" (domain/ksef-oczekiwanie.js) ma OD 06.08.2026 druga galaz: dokument,
+// „czeka na numer KSeF" (domena/ksef-oczekiwanie.js) ma druga galaz: dokument,
 // ktorego wysylke do KSeF zlecil panel. Faktem tej galezi jest wiersz w `wysylki_ksef` — po
 // stronie SQL-a czyta go czuwacz, po stronie predykatu MUSI przyjsc tutaj, bo inaczej te same
-// dwie postacie jednej reguly odpowiadalyby ROZNIE na to samo zamowienie (dokladnie ten rozjazd,
-// ktory zamknela recenzja Partii 2, W4+W5).
+// dwie postacie jednej reguly odpowiadalyby ROZNIE na to samo zamowienie.
 //
 // LEFT JOIN, nie osobne zapytanie: kolumna ma byc na fakturze zawsze — takze wtedy, gdy panel
 // tego dokumentu nie wysylal (wtedy pusta). `w.uuid = f.infakt_uuid` przy pustym UUID-zie nie
@@ -779,7 +780,7 @@ const FAKTURA_ZAMOWIENIA = `${FAKTURA_BEZ_WARUNKU} WHERE f.zamowienie_id = ?`;
 const fakturaZamowienia = (db, zamowienieId) => db.prepare(FAKTURA_ZAMOWIENIA).get(zamowienieId) ?? null;
 
 /**
- * PRZ-101.04 (recenzja, W3): numery DOŁĄCZONYCH anulowanych, dla każdego głównego z `glowne`
+ * Numery DOŁĄCZONYCH anulowanych, dla każdego głównego z `glowne`
  * (`Map<id głównego, numery[]>`). Anulowane EFEKTYWNIE (`anulowaneEfektywnie`, sklep albo ręcznie) —
  * ten sam warunek, co `d.anulowane` w `sprawdzCzlonkowGrupy` (faktura grupy). Czyta `z.dolaczone_anulowane`:
  * lista robocza (`uwagaDolaczonychAnulowanych`), karta i gotowość nadania.
@@ -813,7 +814,7 @@ export function pobierzZamowienie(db, id) {
   // zeby nie bylo dwoch niezaleznych zrodel tej samej prawdy na jednym obiekcie.
   z.zwroty = zwrotyZamowienia(db, id);
   z.ma_zwrot = z.zwroty.length > 0;
-  // PRZ-101.04: numer głównego do odmów i przekierowania dołączonego („faktura w zamówieniu głównym N”).
+  // Numer głównego do odmów i przekierowania dołączonego („faktura w zamówieniu głównym N”).
   if (z.scalone_do) z.scalone_do_numer = db.prepare('SELECT numer FROM zamowienia WHERE id = ?').get(z.scalone_do)?.numer ?? null;
   return z;
 }
@@ -834,11 +835,10 @@ function przesylkiZamowienia(db, zamowienieId) {
     .all(zamowienieId);
 }
 
-// Kolumna „Produkty" na liście (Zadanie „strona główna") potrzebuje pozycji KAZDEGO
-// zamówienia. JEDNO zapytanie z IN (...), a nie petla z zapytaniem per wiersz — przy
-// jednym kanale to niewidoczne, ale wzorzec zostaje na lata (brief zadania wprost tego
-// zada). Pusta lista identyfikatorow dostaje pusta mape bez dotykania bazy: `IN ()`
-// jest poprawnym SQL-em, ale nie ma po co go wysylac.
+// Kolumna „Produkty" na liście potrzebuje pozycji KAZDEGO zamówienia. JEDNO zapytanie
+// z IN (...), a nie petla z zapytaniem per wiersz — przy jednym kanale to niewidoczne, ale
+// wzorzec zostaje na lata. Pusta lista identyfikatorow dostaje pusta mape bez dotykania bazy:
+// `IN ()` jest poprawnym SQL-em, ale nie ma po co go wysylac.
 //
 // Porzadek jest DOKLADNIE ten sam, co przy odczycie pojedynczego zamowienia
 // (PORZADEK_POZYCJI): lista i karta musza numerowac pozycje identycznie, bo numer porzadkowy
@@ -857,7 +857,7 @@ function pozycjeDlaZamowien(db, ids) {
   return mapa;
 }
 
-// ⚠️ PORCJE IDENTYFIKATOROW (PRZ-051). `IN (?, ?, …)` z kompletem tabeli wpadal przy 32 767
+// ⚠️ PORCJE IDENTYFIKATOROW. `IN (?, ?, …)` z kompletem tabeli wpadal przy 32 767
 // zamowieniach w limit zmiennych `node:sqlite` (32 766) i lista przestawala sie otwierac
 // bledem SQL. 500 to rzad wielkosci ponizej limitu, a koszt porcji (szesc zapytan) rozklada
 // sie na 500 wierszy — wiecej nie daje juz mierzalnego zysku.
@@ -865,7 +865,7 @@ const PORCJA_ID = 500;
 
 // Porzadek listy: najnowsze pierwsze, a przy rownej dacie WIEKSZY identyfikator pierwszy.
 // Bez drugiego klucza kolejnosc wierszy z ta sama data byla przypadkowa — a przy stronicowaniu
-// (PRZ-051) przypadkowa kolejnosc znaczy wiersz pokazany na dwoch stronach albo na zadnej.
+// przypadkowa kolejnosc znaczy wiersz pokazany na dwoch stronach albo na zadnej.
 // Ten sam porzadek trzyma indeks listy (oms/db/indeks-listy.js).
 export function porzadekListy(a, b) {
   if (a.utworzone_at !== b.utworzone_at) return a.utworzone_at < b.utworzone_at ? 1 : -1;
@@ -922,7 +922,7 @@ export function zamowieniaPoId(db, ids, { bezSurowych = false, naBlad = null } =
       // Pusta lista, nie null/undefined — zeby widok nie musial rozrozniac „bez pozycji"
       // od „nie wiem". Pozycje i wplaty ida PRZEZ zLinii, zeby lista widziala je z nalozonymi
       // nadpisaniami dokladnie tak samo, jak karta.
-      // ⚠️ `naBlad` (PRZ-051): wiersz, ktorego nie da sie odczytac (np. reczny SQL zostawil
+      // ⚠️ `naBlad`: wiersz, ktorego nie da sie odczytac (np. reczny SQL zostawil
       // zly JSON w kolumnie), NIE MOZE zabrac reszty porcji — indeks listy i strona listy
       // dostaja pozostale zamowienia, a uszkodzone ida do wolajacego z przyczyna. Bez `naBlad`
       // wyjatek leci dalej jak dotad (karta, akcje masowe: tam odmowa jest wlasciwa).
@@ -941,7 +941,7 @@ export function zamowieniaPoId(db, ids, { bezSurowych = false, naBlad = null } =
       // Naglowki zwrotow (nie sama flaga) — uzasadnienie przy `listaZamowien`.
       z.zwroty = zwrotyMapa.get(w.id) ?? [];
       z.ma_zwrot = z.zwroty.length > 0;
-      // PRZ-101.04: ta sama wartość, co na karcie (`pobierzZamowienie`) — inaczej lista robocza
+      // Ta sama wartość, co na karcie (`pobierzZamowienie`) — inaczej lista robocza
       // i karta odpowiadałyby różnie na pytanie „czy jest tu robota”.
       if (idsDolaczonych(w).length) z.dolaczone_anulowane = anulowaneDolaczoneMapa.get(w.id) ?? [];
       zamowienia.push(z);
@@ -962,7 +962,7 @@ export function numeryZamowien(db, ids) {
 }
 
 export function listaZamowien(db) {
-  // ⚠️ PORCJAMI, NIE JEDNYM `IN` NA CALA TABELE (PRZ-051): `zamowieniaPoId` dzieli
+  // ⚠️ PORCJAMI, NIE JEDNYM `IN` NA CALA TABELE: `zamowieniaPoId` dzieli
   // identyfikatory na porcje, a dzieci (pozycje, wplaty, przesylki, faktura, zwroty) czyta
   // jednym zapytaniem na porcje — wczesniej przesylki, faktura i wplaty szly osobnym
   // zapytaniem na KAZDY wiersz (N+1, kompilacja SQL na wiersz).
@@ -985,11 +985,11 @@ export function listaZamowien(db) {
  * @param {{akcja: string, wynik?: string | null}} wpis
  */
 export function dopiszLog(db, zamowienieId, { akcja, wynik = null }) {
-  // ⚠️ `kto` NIE JEST PARAMETREM — bierze sie z kontekstu zadania (domain/kontekst-zadania.js).
-  // Powod stoi w tamtym pliku: 194 wywolania tej funkcji, z czego 102 w trasach. Dolozenie
-  // parametru znaczyloby 102 reczne poprawki. Poza zadaniem (czuwacze, zegary) kontekstu
+  // ⚠️ `kto` NIE JEST PARAMETREM — bierze sie z kontekstu zadania (domena/kontekst-zadania.js).
+  // Powod stoi w tamtym pliku: okolo dwustu wywolan tej funkcji, z czego okolo polowy w trasach.
+  // Dolozenie parametru znaczyloby setke recznych poprawek. Poza zadaniem (czuwacze, zegary) kontekstu
   // nie ma i wpis nalezy do automatu — stad `?? 'automat'`, a NIE `?? null`: `null` jest
-  // zarezerwowany wylacznie dla wpisow SPRZED wdrozenia kont (patrz DOLOZ w db/db.js).
+  // zarezerwowany wylacznie dla wpisow SPRZED wdrozenia kont (kolumna `kto` tabeli `log` w moduly/rdzen/migracje/0001-baseline.sql).
   db.prepare('INSERT INTO log (zamowienie_id, at, akcja, wynik, kto) VALUES (?,?,?,?,?)')
     .run(zamowienieId, teraz(), akcja, wynik, ktoTeraz() ?? 'automat');
 }
@@ -1015,7 +1015,7 @@ export function ostatniWpisLogu(db, zamowienieId, akcja) {
 export const WPISOW_HISTORII_NA_STRONE = 50;
 
 /**
- * HISTORIA ZMIAN zamowienia — wpisy `log`, NAJNOWSZE PIERWSZE, jedna strona (PRZ-094.18).
+ * HISTORIA ZMIAN zamowienia — wpisy `log`, NAJNOWSZE PIERWSZE, jedna strona.
  *
  * ⚠️⚠️ TABELA `log` NIE MA INDEKSU PO `zamowienie_id` (migracja 0001), wiec KAZDE wywolanie to
  * pelny skan. Dlatego wola to WYLACZNIE karta rozwinieta swiadomie (`?historia=N`); zwinieta
@@ -1042,7 +1042,7 @@ export function historiaLogu(db, zamowienieId, { strona = 1, naStrone = WPISOW_H
 }
 
 /**
- * ZAMOWIENIA TEGO PODMIOTU — historia stalego klienta (21.08.2026).
+ * ZAMOWIENIA TEGO PODMIOTU — historia stalego klienta.
  *
  * ⚠️⚠️ DOPASOWANIE PO NIP-IE, NIGDY PO MAILU ANI PO NAZWIE. Ta sama zasada, co przy
  * „Zapamietaj tego klienta" (`klientPoNip`) i przy klientach zbiorczych: mail jest
@@ -1083,7 +1083,7 @@ export function zamowieniaPoNip(db, nip) {
        FROM zamowienia WHERE id IN (${placeholdery}) ORDER BY utworzone_at DESC`,
   ).all(...ids);
   // ⚠️ `ma_zwrot` I `anulowane` MUSZA BYC POLICZONE TAK SAMO, JAK NA LISCIE I NA KARCIE —
-  // czyta je `wyliczStatus` (domain/status.js), a to jedyne miejsce, ktore rozstrzyga status.
+  // czyta je `wyliczStatus` (domena/status.js), a to jedyne miejsce, ktore rozstrzyga status.
   // Wiersz bez `ma_zwrot` oddalby „wyslane" dla zamowienia, ktore wlasnie wrocilo;
   // `anulowane` prosto z kolumny pomijaloby anulowanie RECZNE (`anulowane_recznie`).
   const zwrotyMapa = zwrotyDlaZamowien(db, ids);
@@ -1094,19 +1094,19 @@ export function zamowieniaPoNip(db, nip) {
   }));
 }
 
-// BACKFILL DAT BEZ `Z` — druga polowa naprawy z domain/mapowanie.js (utcSklepu, audyt
-// 22.08.2026). Kanaly Woo pisaly `utworzone_at`/`oplacone_at` czasem LOKALNYM sklepu,
-// wiec 53 produkcyjne wiersze staly obok allegrowego UTC-Z i kazde porownanie dat miedzy
-// kanalami klamalo o 2 h (trzy zamowienia z UJEMNYM czasem do nadania).
+// BACKFILL DAT BEZ `Z` — druga polowa naprawy z domena/mapowanie.js (utcSklepu). Kanaly Woo
+// pisaly `utworzone_at`/`oplacone_at` czasem LOKALNYM sklepu, wiec kilkadziesiat produkcyjnych
+// wierszy stalo obok allegrowego UTC-Z i kazde porownanie dat miedzy kanalami klamalo o 2 h
+// (kilka zamowien z UJEMNYM czasem do nadania).
 //
 // ⚠️ CHODZI PRZY KAZDYM STARCIE KONTENERA (bootstrap, obok wyczyscBladStatusuBezSledzenia),
 // wiec jest SAMOWYGASAJACY: predykat `NOT LIKE '%Z'` przestaje trafiac w wiersz w chwili,
 // w ktorej go naprawi — po jednym przebiegu na produkcji nie zostaje nic do roboty
-// (pulapka migracji bez granicy: przewodnik, „Migracje bazy chodza przy KAZDYM starcie").
+// (migracja bez granicy chodzi przy KAZDYM starcie, wiec musi sama przestac trafiac).
 //
 // ⚠️ ZRODLEM JEST `surowe_json.date_created_gmt` / `date_paid_gmt` — PRAWDA SKLEPU, nie
 // arytmetyka stref (ten projekt przejechal sie na czasie Warszawy dwa razy). Zmierzone
-// na produkcji przed napisaniem tej funkcji: wszystkie 53 nagie wiersze maja GMT w surowym
+// na produkcji przed napisaniem tej funkcji: wszystkie nagie wiersze maja GMT w surowym
 // JSON-ie. Wiersz bez GMT zostaje NIETKNIETY i policzony w `pominiete` — zgadnieta strefa
 // tworzylaby date, ktorej nikt nigdy nie widzial.
 // ⚠️ WYLACZNIE SKLEPY WOO (lista z konfiguracji, jak `bezSledzenia` przy statusie kuriera).

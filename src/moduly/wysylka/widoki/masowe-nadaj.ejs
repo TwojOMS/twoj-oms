@@ -18,10 +18,10 @@
   <div class="panel-glowa panel-glowa--groza"><h2>Nadanie zbiorcze — operacja nieodwracalna</h2></div>
   <div class="panel-cialo">
     <% if (paczka) { %>
-      <%# Domyslne wymiary sa TA SAMA wartoscia, co na ekranie pojedynczego nadania — %>
-      <%# od 17.08.2026 z USTAWIEN panelu (domain/ustawienia-panelu.js: domyslnaPaczka), %>
-      <%# nie ze stalej w kodzie. Od PRZ-070 to wybor WSTEPNY wierszy DPD — kazdy wiersz %>
-      <%# ma wlasna liste szablonow, wiec ten akapit mowi, od czego startuje tabela nizej. %>
+      <%# Domyślne wymiary są TĄ SAMĄ wartością, co na ekranie pojedynczego nadania — %>
+      <%# z USTAWIEŃ panelu (domena/ustawienia-panelu.js: domyslnaPaczka), nie ze stałej w kodzie. %>
+      <%# To wybór WSTĘPNY wierszy DPD — każdy wiersz ma własną listę szablonów, więc ten %>
+      <%# akapit mówi, od czego startuje tabela niżej. %>
       <p class="domyslne">
         <span>Szablon domyślny: <b><%= nazwaSzablonu %></b></span>
         <span>Waga: <b><%= paczka.waga %> kg</b></span>
@@ -32,9 +32,9 @@
 
     <% if (wiersze.length) { %>
       <h3 class="wynik-naglowek">Pójdzie do kuriera — <%= wiersze.length %></h3>
-      <%# ⚠️ FORMULARZ OBEJMUJE TABELE: od PRZ-070 rozmiar paczki wybiera czlowiek W WIERSZU, %>
-      <%# wiec pola wierszy sa czescia zatwierdzenia. Nazwy pol niosa identyfikator zamowienia %>
-      <%# (`szablon_<id>`) — trasa czyta kazdy wiersz po jego id, nigdy po kolejnosci. %>
+      <%# ⚠️ FORMULARZ OBEJMUJE TABELĘ: rozmiar paczki wybiera człowiek W WIERSZU, %>
+      <%# więc pola wierszy są częścią zatwierdzenia. Nazwy pól niosą identyfikator zamówienia %>
+      <%# (`szablon_<id>`) — trasa czyta każdy wiersz po jego id, nigdy po kolejności. %>
       <form method="post" action="/zamowienia/masowe/nadaj" class="nadanie-formularz">
         <%# Na telefonie tabela (ok. 700 px) przewija sie SAMA — panel ma `overflow: hidden` %>
         <%# i bez tego ucinalby kolumny Rozmiar i Pobranie, czyli to, co tu najwazniejsze. %>
@@ -48,7 +48,7 @@
               <tr>
                 <td><b><%= w.numer %></b><input type="hidden" name="id" value="<%= w.id %>"></td>
                 <td>
-                  <%# Zawartosc paczki — rozmiar wybiera sie pod nia (decyzja właściciela 14.10). %>
+                  <%# Zawartość paczki — rozmiar wybiera się pod nią. %>
                   <% if (w.produkty.length) { %>
                     <ul class="produkty-hurtem">
                       <% w.produkty.forEach(function (p) { %>
@@ -66,7 +66,7 @@
                 <td>
                   <% if (w.rozmiar.pole === 'szablon') { %>
                     <select name="szablon_<%= w.id %>" aria-label="Szablon paczki zamówienia <%= w.numer %>" class="oms-pole">
-                      <%# PRZ-157.12r: Przesyłki Erli — wymiary z kroku 4 kreatora ERLI jako wybór wstępny. %>
+                      <%# Przesyłki Erli — wymiary z kreatora ERLI jako wybór wstępny. %>
                       <% if (w.rozmiar.kanal) { %>
                         <option value="<%= w.rozmiar.szablon %>" selected>Wymiary z ustawień ERLI (<%= w.rozmiar.kanal.dlugosc %> × <%= w.rozmiar.kanal.szerokosc %> × <%= w.rozmiar.kanal.wysokosc %> cm, <%= w.rozmiar.kanal.waga %> kg)</option>
                       <% } %>
@@ -75,7 +75,7 @@
                       <% }); %>
                     </select>
                   <% } else if (w.rozmiar.pole === 'gabaryt') { %>
-                    <%# Paczkomat nie zna wymiarow, tylko litere skrytki (domain/paczka.js). %>
+                    <%# Paczkomat nie zna wymiarow, tylko litere skrytki (domena/paczka.js). %>
                     <select name="gabaryt_<%= w.id %>" aria-label="Gabaryt paczkomatu zamówienia <%= w.numer %>" class="oms-pole">
                       <% ['A', 'B', 'C'].forEach(function (g) { %>
                         <option value="<%= g %>"<%= g === w.rozmiar.gabaryt ? ' selected' : '' %>><%= g %></option>
@@ -113,8 +113,8 @@
         <input type="hidden" name="powrot" value="<%= powrot %>">
         <div class="stopka-edycji">
           <% if (nadawanieDziala) { %>
-            <%# Dwa przyciski, kazdy z WLASNA wartoscia `zatwierdzenie` — jak na karcie %>
-            <%# (nadaj.ejs): trasa rozpoznaje „drukuj" po wartosci, nie po obecnosci pola. %>
+            <%# Dwa przyciski, każdy z WŁASNĄ wartością `zatwierdzenie` — jak na karcie %>
+            <%# (nadaj.ejs): trasa rozpoznaje „nadaj_i_drukuj" po wartości, nie po obecności pola. %>
             <button class="btn btn--groza" type="submit" name="zatwierdzenie" value="nadaj">
               Nadaj <%= ilePaczek(wiersze.length) %>
             </button>

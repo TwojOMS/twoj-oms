@@ -1,7 +1,6 @@
-// REJESTR WIADOMOŚCI WYSŁANYCH DO KLIENTA (22.08.2026).
+// REJESTR WIADOMOŚCI WYSŁANYCH DO KLIENTA.
 //
-// ⚠️ JEDYNA WARSTWA ZAPYTAŃ tej tabeli — usługi i trasy nie piszą SQL-a same. Uzasadnienie
-// samej tabeli (dlaczego rejestr, a nie kolumna per temat) stoi przy niej w schema.sql.
+// ⚠️ JEDYNA WARSTWA ZAPYTAŃ tej tabeli — usługi i trasy nie piszą SQL-a same.
 //
 // ⚠️ TEN MODUŁ NICZEGO NIE ROZSTRZYGA. Nie wie, czy wolno wysłać, nie zna nazw tematów
 // i nie sprawdza duplikatów — powtórna wysyłka jest tu DOZWOLONA z założenia (klient prosi

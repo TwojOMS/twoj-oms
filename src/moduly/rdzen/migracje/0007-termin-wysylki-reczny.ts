@@ -1,7 +1,7 @@
 import type { Migracja } from '../../../core/kontrakty.ts';
 
-// PRZ-104 — ręczna data wysyłki („najpóźniej do”, decyzja właściciela 21.10.2026): dzień `RRRR-MM-DD`
-// albo NULL = standardowy termin (domena/termin-wysylki.js). Kolumna NASZA — poller jej nie zna
+// Ręczna data wysyłki („najpóźniej do”): dzień `RRRR-MM-DD`
+// albo NULL = standardowy termin (src/domena/termin-wysylki.js). Kolumna NASZA — poller jej nie zna
 // (UPDATE w `zapiszZamowienie` wymienia kolumny z nazwy), więc synchronizacja ze sklepem jej nie ruszy.
 //
 // ⚠️ W RDZENIU, a nie w module zamówień: czytają ją reguła terminu, indeks listy i statystyki,

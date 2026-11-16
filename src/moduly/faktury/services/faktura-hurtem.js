@@ -5,34 +5,24 @@ import { wariantFakturyHurtem } from '../../../domena/masowe.js';
 /**
  * Ile czasu wolno zajac calej partii, zanim petla przestanie ZACZYNAC nowe faktury.
  *
- * ⚠️ SPROSTOWANIE 12.08.2026. Stalo tu, ze „limit pojedynczego zadania HTTP do panelu to
- * 60 s" i ze budzet ma zdazyc przed nim. TO BYLA NIEPRAWDA i caly budzet czasu stal na niej
- * przez trzy zadania:
+ * ⚠️ PANEL NIE MA LIMITU CZASU NA ŻĄDANIE PRZYCHODZĄCE, więc budżet NIE służy zdążeniu przed nim:
  *
- *  - `web/server.js` ustawia `requestTimeout: 0` — czyli BRAK limitu — i robi to JAWNIE,
- *    z komentarzem tlumaczacym dlaczego: nadanie do paczkomatu trwa okolo 150 s w jednym
- *    zadaniu i ma prawo trwac. Panel nie ma wiec kurka, przed ktorym trzeba by zdazyc.
- *  - 60 s w tym module to `LIMIT_ZADANIA_MS` w infakt/client.js — limit WYCHODZACY, na
- *    POJEDYNCZE wywolanie do inFaktu. Z zadaniem przychodzacym do panelu nie ma zwiazku.
- *  - `PROG_ZAWIESZONEJ_FAKTURY_MS`, na ktory powolywal sie spec, mowi wylacznie „trzy
- *    zadania HTTP do inFaktu" i o zadnym limicie panelu nie wspomina.
- *  - W repo nie ma odwrotnego proxy — kontener jest wystawiony wprost na LAN, wiec nie ma
- *    tez limitu narzuconego z zewnatrz.
+ *  - serwer panelu stoi na `requestTimeout: 0` (core/aplikacja.ts) — czyli BRAK limitu.
+ *  - 60 s w tym module to `LIMIT_ZADANIA_MS` w infakt/client.js — limit WYCHODZĄCY, na
+ *    POJEDYNCZE wywołanie do inFaktu. Z żądaniem przychodzącym do panelu nie ma związku.
  *
- * Skutek tamtej pomylki byl konkretny: przy trzech wywolaniach do inFaktu na fakture partia
- * 25 zamowien przekraczala 45 s i RUTYNOWO dzielila sie na dwie-trzy rundy „nietknietych" —
- * w funkcji, o ktora wlasciciel poprosil slowami „chcialbym wystawic kilka fv na raz".
+ * Budżet liczony pod nieistniejący limit 60 s dzieliłby partię 25 zamówień (trzy wywołania
+ * do inFaktu na fakturę) na dwie-trzy rundy „nietkniętych”.
  *
- * ⚠️ MECHANIZM BUDZETU MIMO TO ZOSTAJE, tylko z INNEGO POWODU niz wpisany pierwotnie. Nie
- * chodzi o to, zeby zdazyc przed limitem, ktorego nie ma, tylko o to, zeby CZLOWIEK PATRZACY
- * W EKRAN dostal wynik w rozsadnym czasie — z lista tego, co powstalo, i tego, czego partia
- * nie dotknela — zamiast nieokreslonego czekania i urwanego zadania. Budzet chroni operatora,
- * nie serwer.
+ * ⚠️ MECHANIZM BUDŻETU MIMO TO ZOSTAJE. Nie chodzi o to, zeby zdazyc przed limitem, ktorego
+ * nie ma, tylko o to, zeby CZLOWIEK PATRZACY W EKRAN dostal wynik w rozsadnym czasie —
+ * z lista tego, co powstalo, i tego, czego partia nie dotknela — zamiast nieokreslonego
+ * czekania i urwanego zadania. Budzet chroni operatora, nie serwer.
  *
- * ⚠️ SKAD 150 s: tyle modul JUZ akceptuje w jednym zadaniu przy nadaniu do paczkomatu (patrz
- * komentarz przy `requestTimeout` w web/server.js). Skoro tamta operacja ma prawo tyle trwac,
- * to partia faktur tez — a operator ma wtedy realna szanse zmiescic komplet zaznaczenia
- * w jednej rundzie, zamiast powtarzac ja trzy razy.
+ * ⚠️ SKĄD 150 s: tyle panel JUŻ akceptuje w jednym żądaniu przy nadaniu hurtem (patrz
+ * `BUDZET_NADANIA_HURTEM_MS` w moduly/wysylka/services/nadanie-hurtem.js). Skoro tamta
+ * operacja ma prawo tyle trwac, to partia faktur tez — a operator ma wtedy realna szanse
+ * zmiescic komplet zaznaczenia w jednej rundzie, zamiast powtarzac ja trzy razy.
  *
  * ⚠️ Dlaczego nie sufit liczby wyliczony z pomiaru: taki sufit zaklada, ze jutro inFakt
  * odpowiada tak szybko jak dzis. Partia mieszczaca sie we wtorek urwalaby sie w srode.
@@ -48,7 +38,7 @@ export const BUDZET_HURTU_MS = 150_000;
 export function createFakturaHurtem({ faktura, teraz = () => Date.now() }) {
   /**
    * @param zamowienia wiersze listy, JUZ przepuszczone przez `podzielDoFaktury`
-   *   (domain/masowe.js) i ustawione od najstarszego. Ta funkcja NICZEGO nie odsiewa —
+   *   (domena/masowe.js) i ustawione od najstarszego. Ta funkcja NICZEGO nie odsiewa —
    *   podzial jest domenowy i pokazal go czlowiekowi ekran podgladu. Druga kopia tamtej
    *   reguly rozjechalaby sie z ekranem, ktory operator zatwierdzil.
    *
@@ -59,8 +49,7 @@ export function createFakturaHurtem({ faktura, teraz = () => Date.now() }) {
    * @param start znacznik czasu, OD KTOREGO liczy sie budzet. Trasa ma podac moment
    *   PRZYJSCIA ZADANIA, a nie chwile wejscia w petle: budzet mierzy CZEKANIE CZLOWIEKA,
    *   a czlowiek czeka takze przez te sekundy, w ktorych trasa wczytywala liste i liczyla
-   *   podzial. (Do 12.08.2026 stalo tu, ze liczy sie stamtad „60 s kurka HTTP" — panel nie
-   *   ma kurka na zadanie przychodzace, patrz sprostowanie przy `BUDZET_HURTU_MS` wyzej.)
+   *   podzial.
    *
    *   ⚠️ DLACZEGO OSOBNY ARGUMENT, A NIE SPRYTNY ZEGAR: kuszace jest kazac wstrzykiwac
    *   `teraz`, ktory sam oddaje uplyw od poczatku zadania. Wtedy jednak trasa podajaca
@@ -103,9 +92,9 @@ export function createFakturaHurtem({ faktura, teraz = () => Date.now() }) {
         // podatkowy powstaje w dniu zaplaty (art. 19a ust. 8), przy pobraniu — w dniu wydania.
         // Bez tego pola bledna bylaby KAZDA faktura z tej drogi. Regula siedzi w domenie.
         //
-        // PRZ-070 (14.10.2026): wariant z TEJ SAMEJ reguly, ktora podzial pokazal na podgladzie
+        // Wariant z TEJ SAMEJ reguły, ktora podzial pokazal na podgladzie
         // („zaplacone" albo „przy odbiorze"). Zamowienie bez prawa do faktury hurtem (`powod`)
-        // dostaje dawny wariant „zaplacone" — i `wystaw()` odmowi samo, jak dotad.
+        // dostaje wariant „zapłacone” — i `wystaw()` odmówi samo.
         const wariant = wariantFakturyHurtem(z);
         const w = await faktura.wystaw(z.id, {
           termin: wariant.termin ?? ZAPLACONE,
@@ -114,7 +103,7 @@ export function createFakturaHurtem({ faktura, teraz = () => Date.now() }) {
         wystawione.push({ id: z.id, numer: z.numer, numerFaktury: w?.numer ?? null });
       } catch (e) {
         // Jedna faktura, ktorej nie da sie wystawic, NIE PRZERYWA partii — ta sama zasada,
-        // co przy pozostalych akcjach masowych modulu (domain/masowe.js). Powod idzie na
+        // co przy pozostalych akcjach masowych modulu (domena/masowe.js). Powod idzie na
         // ekran w calosci: komunikaty `bladOperatora` sa pisane do czlowieka, nie do logu.
         bledy.push({ id: z.id, numer: z.numer, powod: e?.message ?? 'Nieznany błąd.' });
       }

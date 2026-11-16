@@ -7,21 +7,21 @@ import { modulZamowienia, umiejetnosciZamowienia } from './moduly-kanalow.ts';
 import { konfliktNumeruErli, KONFLIKT_NUMERU_ERLI } from './erli-numer.js';
 import { czekaNaKsef as czekaNaKsefDom, czekaNaKsefDluzejNizDobe } from './ksef-oczekiwanie.js';
 import { NAZWA_ZAPASOWA } from './nazwa-programu.js';
-// ⚠️ `weryfikacjaNierozstrzygnieta` STAL TU DO 06.08.2026 i zniknal razem z wyciszona uwaga
-// „Allegro nie potwierdzilo przyjecia pliku" (uzasadnienie przy tamtym miejscu, nizej).
-// Predykat ZOSTAJE w domain/allegro-faktura.js — uzywa go zapytanie czuwacza i to on ma
-// odzyc razem z ta sprawa, gdy `GET .../invoices` zacznie odpowiadac.
+// ⚠️ `weryfikacjaNierozstrzygnieta` nie jest tu używany — zniknął razem z wyciszoną uwagą
+// „Allegro nie potwierdziło przyjęcia pliku" (uzasadnienie przy tamtym miejscu, niżej).
+// Predykat ZOSTAJE w domena/allegro-faktura.js obok swojej postaci SQL, której używa
+// zapytanie czuwacza, i ma ożyć razem z tą sprawą, gdy `GET .../invoices` zacznie odpowiadać.
 
-// Pasek „Do zalatwienia" na karcie zamowienia. Zbiera w JEDNO miejsce sprawy, ktore do tej
-// pory byly rozsypane po calej karcie jako osiem identycznie wygladajacych `.uwaga` — od
-// „faktura do wyjasnienia w KSeF" po „zamowienie nieoplacone", ktore przy B2B jest norma.
+// Pasek „Do załatwienia" na karcie zamówienia. Zbiera w JEDNO miejsce sprawy, które inaczej
+// byłyby rozsypane po całej karcie jako identycznie wyglądające `.uwaga` — od
+// „faktura do wyjaśnienia" po „zamówienie nieopłacone", które przy B2B jest normą.
 //
-// ⚠️ NIC tu nie jest liczone od nowa. Kazda sprawa pochodzi z funkcji, ktora juz istnieje
-// i juz rzadzi czyms innym: `sprawyZamowienia` trzyma zamowienie na liscie roboczej,
-// `stanFaktury` blokuje ponowne wystawienie, `saldoWplat` wylicza `oplacone_at`,
-// `podsumowaniePozycji` odpowiada tej samej arytmetyce, co bariera faktury. Gdyby pasek
-// liczyl cokolwiek sam, rozjechalby sie z nimi przy pierwszej zmianie reguly — i zaczalby
-// klamac o tym, czy jest co robic, dokladnie tam, gdzie operator na to patrzy najpierw.
+// ⚠️ NIC tu nie jest liczone od nowa. Każda sprawa pochodzi z funkcji, która już istnieje
+// i już rządzi czymś innym: `sprawyZamowienia` daje zdania sekcji przesyłek na karcie,
+// `stanFaktury` stoi za odmową ponownego wystawienia, `saldoWplat` liczy saldo sekcji
+// płatności, `podsumowaniePozycji` odpowiada tej samej arytmetyce, co bariera faktury. Gdyby
+// pasek liczył cokolwiek sam, rozjechałby się z nimi przy pierwszej zmianie reguły — i zaczął
+// kłamać o tym, czy jest co robić, dokładnie tam, gdzie operator na to patrzy najpierw.
 //
 // Pasek NIE ZASTEPUJE ostrzezen w sekcjach. Pelne instrukcje (co zrobic z dokumentem w KSeF,
 // dlaczego nie wolno ponowic nadania) zostaja przy przycisku, ktorego dotycza. Pasek mowi
@@ -36,11 +36,11 @@ const UWAGA = 'uwaga';
  * Lista spraw do zalatwienia. Kazda: { klucz, waga, tekst, kotwica }.
  * Pusta tablica = zamowienie czyste (karta nie renderuje wtedy paska w ogole).
  *
- * NIGDY nie rzuca: uszkodzone dane maja pokazac karte bez paska, a nie zamiast karty
- * pokazac 500 — dokladnie ta sama zasada, co przy `podsumowaniePozycji` na liscie.
+ * NIGDY nie rzuca: uszkodzone dane mają pokazać kartę bez paska, a nie zamiast karty
+ * pokazać 500 — dokładnie ta sama zasada, co przy `podsumowaniePozycji` (domena/tabela-pozycji.js).
  */
 export function sprawyKarty(zamowienie, teraz = Date.now(), { nazwa = NAZWA_ZAPASOWA, gdzie = `w ${nazwa.miejscownik}` } = {}) {
-  // PRZ-118.09: `nazwa` = odmiana nazwy programu fakturowego (domyślnie inFakt — domena/nazwa-programu.js).
+  // `nazwa` = odmiana nazwy programu fakturowego (domyślnie inFakt — domena/nazwa-programu.js).
   if (!zamowienie) return [];
   const sprawy = [];
 
@@ -77,49 +77,39 @@ export function sprawyKarty(zamowienie, teraz = Date.now(), { nazwa = NAZWA_ZAPA
       });
     }
 
-    // ⚠️ „CZEKA NA KSEF" TO STAN, W KTORYM PANEL UTKNALBY NA ZAWSZE (niezmiennik 4.9).
-    // Dokument, ktorego wlasciciel nigdy nie wysle (pomylka, korekta, urlop), zostawia
-    // kupujacego bez faktury — a panel milczy, bo z jego punktu widzenia „wszystko czeka":
-    // faktura JEST wystawiona, wiec zaden istniejacy warunek wyzej sie nie odzywa.
+    // ⚠️ „CZEKA NA KSEF" TO STAN, W KTÓRYM PANEL UTKNĄŁBY NA ZAWSZE (reguła: każdy stan ma wyjście).
+    // Dokument, którego nikt nie wyśle (pomyłka, korekta, nieobecność), zostawia kupującego
+    // bez faktury — a panel milczy, bo z jego punktu widzenia „wszystko czeka": faktura JEST
+    // wystawiona, więc żaden istniejący warunek wyżej się nie odzywa.
     //
-    // Doba, bo wlasciciel wysyla do KSeF w ciagu dnia: 24 h mijaja dopiero wtedy, gdy cos
-    // naprawde stanelo.
+    // Doba, bo dokumenty wysyła się do KSeF w ciągu dnia: 24 h mijają dopiero wtedy, gdy coś
+    // naprawdę stanęło.
     //
-    // ⚠️⚠️ TEKST WSKAZUJE WYJSCIA, KTORE ISTNIEJA DZISIAJ (recenzja Partii 2, K4). Do
-    // 06.08.2026 stalo tu „albo wyslij go do Allegro bez numeru" przy przycisku, ktorego
-    // NIE BYLO w kodzie — niezmiennik 4.9 („panel nie zostawia stanu bez wyjscia") byl wiec
-    // spelniony WYLACZNIE NAPISEM: czlowiek czytal instrukcje, szukal przycisku i nie
-    // znajdowal go. K4 to zdanie usunela „do czasu, az przycisk powstanie".
+    // ⚠️⚠️ TEKST WSKAZUJE TYLKO WYJŚCIA, KTÓRE ISTNIEJĄ. Zdanie odsyłające do przycisku, którego
+    // w kodzie nie ma, spełnia regułę „każdy stan ma wyjście" WYŁĄCZNIE NAPISEM: człowiek czyta
+    // instrukcję, szuka przycisku i go nie znajduje.
     //
-    // Przycisk POWSTAL (Zadanie 11: trasa POST /zamowienia/:id/faktura-allegro-bez-ksef
-    // i furtka na karcie), wiec zdanie wraca — i musi wrocic, bo od tej chwili milczenie
-    // o nim jest tym samym bledem odwroconym: sprawa pokazywalaby JEDNO wyjscie z DWOCH,
-    // a to drugie jest jedynym, ktore czlowiek moze wykonac BEZ wlasciciela i bez inFaktu.
+    // ⚠️⚠️ SPRAWA STOI NA WYNIKU PYTANIA CZUWACZA (`ksef_odczyt = 'ok'`), A NIE NA UPŁYWIE
+    // DOBY. Sam czas nie jest żadnym dowodem: przy zatrzymanym czuwaczu albo niedostępnym
+    // inFakcie KAŻDA faktura starsza niż doba zapalałaby BLOKADĘ „wyślij dokument do KSeF"
+    // komuś, kto JUŻ GO WYSŁAŁ. Panel oskarżałby wtedy człowieka o własną ślepotę.
     //
-    // ⚠️⚠️ SPRAWA STOI NA WYNIKU PYTANIA CZUWACZA (`ksef_odczyt = 'ok'`), A NIE NA UPLYWIE
-    // DOBY — poprawka z recenzji Partii 2 (K1). Sam czas nie jest zadnym dowodem: przy
-    // zdechlym czuwaczu albo niedostepnym inFakcie KAZDA allegrowa faktura starsza niz doba
-    // zapalalaby BLOKADE „wyslij dokument do KSeF" wlascicielowi, ktory JUZ GO WYSLAL. Panel
-    // oskarzalby wtedy czlowieka o wlasna slepote — a to jest dokladnie ta klasa usterki,
-    // ktora Partia 1 zamknela commitem 1cf1554.
+    // 'ok' znaczy: PYTALIŚMY i inFakt ODPOWIEDZIAŁ, że numeru KSeF tam nie ma. NULL („nikt nie
+    // pytał") i 'blad' („pytanie nie doszło") nie znaczą NIC i sprawy nie zapalają.
     //
-    // 'ok' znaczy: PYTALISMY i inFakt ODPOWIEDZIAL, ze numeru KSeF tam nie ma. NULL („nikt nie
-    // pytal") i 'blad' („pytanie nie doszlo") nie znacza NIC i sprawy nie zapalaja.
+    // ⚠️ ZAKRES BIERZEMY ZE WSPÓLNEJ DEFINICJI (domena/ksef-oczekiwanie.js) — TEJ SAMEJ,
+    // której używa zapytanie czuwacza. Własna kopia byłaby SZERSZA: zapalałaby blokadę przy
+    // fakturze bez numeru dokumentu (o którą czuwacz nie zapyta nigdy, więc tekst szedłby
+    // z pustą luką: „Faktura  czeka na KSeF od …") i przy zamówieniu ANULOWANYM, które ma już
+    // swoją własną blokadę niżej.
     //
-    // ⚠️ ZAKRES BIERZEMY ZE WSPOLNEJ DEFINICJI (domain/ksef-oczekiwanie.js) — TEJ SAMEJ,
-    // ktorej uzywa zapytanie czuwacza. Wlasna kopia stala tu do 06.08.2026 i byla SZERSZA:
-    // zapalala blokade przy fakturze bez numeru dokumentu (o ktora czuwacz nie zapyta nigdy,
-    // wiec tekst szedl z pusta luka: „Faktura  czeka na KSeF od …") i przy zamowieniu
-    // ANULOWANYM, ktore ma juz swoja wlasna blokade nizej.
+    // ⚠️ ZAKRES OBEJMUJE TAKŻE dokument, którego wysyłkę do KSeF zlecił PANEL, choćby ze sklepu.
+    // Faktura sklepowa, której nikt z panelu nie wysłał, dalej nie jest żadną sprawą — nie ma
+    // DOKĄD pojechać i numeru nie dostanie nigdy, więc blokada przy niej świeciłaby przy KAŻDEJ
+    // fakturze sklepowej. Umiejętność kanału siedzi we wspólnym warunku oczekiwania na KSeF.
     //
-    // ⚠️ ZAKRES POSZERZYL SIE 06.08.2026 razem z zakresem czuwacza: obejmuje TAKZE dokument,
-    // ktorego wysylke do KSeF zlecil PANEL, choćby ze sklepu. Faktura sklepowa, ktorej nikt
-    // z panelu nie wyslal, dalej nie jest zadna sprawa — nie ma DOKAD pojechac i numeru nie
-    // dostanie nigdy, wiec blokada przy niej swiecilaby przy KAZDEJ fakturze sklepowej.
-    // Umiejętność kanału siedzi we wspólnym warunku oczekiwania na KSeF.
-    //
-    // ⚠️ TRESC sprawy rozne gałęzie maja ROZNA (patrz nizej): wyjscia, ktore panel wskazuje,
-    // sa przy fakturze allegrowej inne niz przy sklepowej.
+    // ⚠️ TREŚĆ sprawy różne gałęzie mają RÓŻNĄ (patrz niżej): wyjścia, które panel wskazuje,
+    // są przy fakturze allegrowej inne niż przy sklepowej.
     const oczekujaca = czekaNaKsefDom(zamowienie);
     const odczyt = zamowienie.faktura?.ksef_odczyt;
     const numerFaktury = zamowienie.faktura?.numer ?? '';
@@ -134,44 +124,41 @@ export function sprawyKarty(zamowienie, teraz = Date.now(), { nazwa = NAZWA_ZAPA
         waga: BLOKADA,
         tekst: `Faktury ${numerFaktury} NIE MA JUŻ w ${nazwa.miejscownik} — dokument został tam skasowany, `
           + 'więc numeru KSeF nikt już nie przyniesie, a panel nie wystawi drugiej. '
-          // ⚠️ ODNOTOWANIE PRZENIESIONE NA ZAKLADKE FAKTURY (01.09.2026, prosba właściciela). Zdanie
-          // musi kierowac TAM, gdzie ta akcja stoi dzisiaj — sprawa odsylajaca do przycisku,
-          // ktorego na karcie juz nie ma, jest gorsza niz brak sprawy.
+          // ⚠️ ODNOTOWANIE STOI NA ZAKŁADCE FAKTURY. Zdanie musi kierować TAM, gdzie ta akcja
+          // jest — sprawa odsyłająca do przycisku, którego na karcie nie ma, jest gorsza niż
+          // brak sprawy.
           + 'Jeśli to ty ją skasowałeś, odnotuj to w zakładce Faktury („Faktura skasowana '
           + `w ${nazwa.miejscownik}”) — zamówienie zwolni się do ponownego wystawienia.`,
         kotwica: '#faktura',
       });
     } else if (odczyt === 'ok' && czekaNaKsefDluzejNizDobe(zamowienie, teraz)
       && !(umiejetnosciZamowienia(zamowienie).plikFaktury && zamowienie.chce_fakture)) {
-      // ⚠️ PRZ-126 (F03): Allegro BEZ zadania faktury, zleconej przez panel, tez idzie tutaj —
-      // kupujacy na nia nie czeka, a wysylki do Allegro bez numeru `wolnoWyslacDoAllegro` odmawia.
-      // ⚠️⚠️ DOKUMENT, KTOREGO WYSYLKE DO KSeF ZLECIL PANEL, A NUMERU NIE MA OD DOBY. Od
-      // 06.08.2026 `czekaNaKsef` obejmuje TAKZE takie faktury (poszerzony zakres czuwacza,
-      // domain/ksef-oczekiwanie.js) — a sprawa musi wtedy mowic CO INNEGO niz przy Allegro.
+      // ⚠️ Allegro BEZ żądania faktury, zlecone przez panel, też idzie tutaj — kupujący na nią
+      // nie czeka, a wysyłkę takiej faktury do Allegro `wolnoWyslacDoAllegro` i tak zatrzymuje.
+      // ⚠️⚠️ DOKUMENT, KTÓREGO WYSYŁKĘ DO KSeF ZLECIŁ PANEL, A NUMERU NIE MA OD DOBY. `czekaNaKsef`
+      // obejmuje TAKŻE takie faktury (domena/ksef-oczekiwanie.js) — a sprawa musi wtedy mówić
+      // CO INNEGO niż przy Allegro.
       //
-      // Zdanie allegrowe nizej („kupujacy jej jeszcze nie ma", „wyslij przyciskiem do Allegro")
-      // byloby tu podwojnie nieprawdziwe: przy fakturze sklepowej nikt na nia u kupujacego nie
-      // czeka, a przycisku wysylki do Allegro na tej karcie NIE MA. Sprawa wskazujaca wyjscie,
-      // ktorego nie ma, jest stanem bez wyjscia (niezmiennik 4.9) — dokladnie tym, przed czym
-      // bronila recenzja Partii 2 (K4).
+      // Zdanie allegrowe niżej („kupujący jej jeszcze nie ma") byłoby tu podwójnie nieprawdziwe:
+      // przy fakturze sklepowej nikt na nią u kupującego nie czeka, a przycisku wysyłki do Allegro
+      // na tej karcie NIE MA. Sprawa wskazująca wyjście, którego nie ma, jest stanem bez wyjścia
+      // (reguła: każdy stan ma wyjście).
       //
-      // ⚠️ PANEL SAM NICZEGO NIE PONOWI i to jest cala tresc tej sprawy: drugie zgloszenie tego
-      // samego dokumentu byloby duplikatem u organu, po ktorym zostaje wylacznie korekta
-      // (db/wysylki-ksef.js). Jedynym nastepnym krokiem jest CZLOWIEK w inFakcie.
+      // ⚠️ PANEL SAM NICZEGO NIE PONOWI i to jest cała treść tej sprawy: drugie zgłoszenie tego
+      // samego dokumentu byłoby duplikatem u organu, po którym zostaje wyłącznie korekta
+      // (moduly/faktury/db/wysylki-ksef.js). Jedynym następnym krokiem jest CZŁOWIEK w inFakcie.
       //
-      // ⚠️⚠️ CZAS LICZYMY OD ZLECENIA WYSYLKI (`ksef_zlecona_at`), A NIE OD WYSTAWIENIA
-      // DOKUMENTU — i to dotyczy TAK SAMO daty w zdaniu, JAK I progu doby, ktory te sprawe
-      // w ogole zapala. Podmiotem tego zdania jest WYSYLKA Z PANELU, a nie faktura: do poprawki
-      // stala tu `utworzona_at` i zdanie wskazywalo moment, w ktorym panel jeszcze niczego nie
-      // zlecil. Zakladka faktur jest MIESIECZNA, wiec wlasciciel wysyla dokumenty z zeszlego
-      // miesiaca — czekanie bylo przez to zawyzane o TYGODNIE. Kolumna przychodzi na tym samym
-      // obiekcie (`zlecona_at` z `wysylki_ksef`, doklada ja db/zamowienia.js) i przy tej galezi
-      // jest ZAWSZE wypelniona: to ona wpuscila zamowienie do `czekaNaKsef`.
+      // ⚠️⚠️ DATĘ W ZDANIU BIERZEMY Z ZLECENIA WYSYŁKI (`ksef_zlecona_at`), A NIE Z WYSTAWIENIA
+      // DOKUMENTU. Podmiotem tego zdania jest WYSYŁKA Z PANELU, a nie faktura. Zakładka faktur
+      // jest MIESIĘCZNA, więc wysyłanie dokumentów z zeszłego miesiąca to zwykły tryb pracy —
+      // licząc od wystawienia, czekanie byłoby zawyżone o TYGODNIE. Kolumna przychodzi na tym
+      // samym obiekcie (`zlecona_at` z `wysylki_ksef`, dokłada ją oms/db/zamowienia.js) i przy tej
+      // gałęzi jest ZAWSZE wypełniona: to ona wpuściła zamówienie do `czekaNaKsef`.
       //
-      // ⚠️⚠️ PROG DOBY POPRAWIONY 06.08.2026 (recenzja calosci, Finding 2): `czekaNaKsefDluzej-
-      // NizDobe` liczyl czas od WYSTAWIENIA, wiec faktura z zeszlego miesiaca dostawala te
-      // blokade DWIE MINUTY po najzupelniej normalnej wysylce — czyli przy wiekszosci wysylek.
-      // Zdanie mowilo prawde („panel zlecil o 10:05"), a blokada obok niego byla falszem.
+      // ⚠️⚠️ PRÓG DOBY: `czekaNaKsefDluzejNizDobe` liczy od PÓŹNIEJSZEGO z dwóch stempli
+      // (wystawienie, zlecenie wysyłki). Licząc od samego wystawienia, faktura z zeszłego
+      // miesiąca dostawałaby tę blokadę chwilę po najzupełniej normalnej wysyłce — zdanie
+      // mówiłoby prawdę („panel zlecił o 10:05"), a blokada obok niego byłaby fałszem.
       sprawy.push({
         klucz: 'ksef',
         waga: BLOKADA,
@@ -183,9 +170,9 @@ export function sprawyKarty(zamowienie, teraz = Date.now(), { nazwa = NAZWA_ZAPA
         kotwica: '#faktura',
       });
     } else if (odczyt === 'ok' && czekaNaKsefDluzejNizDobe(zamowienie, teraz)) {
-      // ⚠️ PROG DOBY BIERZEMY ZE WSPOLNEJ DEFINICJI (domain/ksef-oczekiwanie.js) — TEJ SAMEJ,
-      // ktora rzadzi widocznoscia furtki „bez numeru KSeF" na karcie. Wlasna kopia liczby
-      // znaczylaby przycisk pokazany wczesniej (albo pozniej) niz sprawa, ktora go zapowiada.
+      // ⚠️ PRÓG DOBY BIERZEMY ZE WSPÓLNEJ DEFINICJI (domena/ksef-oczekiwanie.js,
+      // `czekaNaKsefDluzejNizDobe`) — własna kopia liczby rozjechałaby się z nią przy pierwszej
+      // zmianie.
       //
       // ⚠️ DATA W ZDANIU TO WYSTAWIENIE DOKUMENTU i tak ma zostac: przy fakturze allegrowej
       // podmiotem jest FAKTURA, ktora czeka na numer od chwili powstania (kupujacy jej nie ma).
@@ -193,10 +180,9 @@ export function sprawyKarty(zamowienie, teraz = Date.now(), { nazwa = NAZWA_ZAPA
       // wiec gdy panel zlecil wysylke takiej faktury przed chwila, blokada milczy przez dobe
       // OD TEJ WYSYLKI — bo dopiero ona jest tym, na co teraz czekamy.
       //
-      // ⚠️ `ksef_odczyt === 'ok'` ZOSTAJE TYLKO PRZY SPRAWIE, nie przy furtce — i to jest
-      // roznica merytoryczna (patrz komentarz przy czekaNaKsefDluzejNizDobe): sprawa OSKARZA
-      // wlasciciela o niewyslanie dokumentu, wiec musi stac na dowodzie od czuwacza; przycisk
-      // niczego nie zarzuca, a znikniety przy zdechlym czuwaczu bylby stanem bez wyjscia.
+      // ⚠️ `ksef_odczyt === 'ok'` jest warunkiem SPRAWY, nie samego progu (`czekaNaKsefDluzejNizDobe`
+      // o odczyt nie pyta): sprawa OSKARŻA człowieka o niewysłanie dokumentu, więc musi stać
+      // na dowodzie od czuwacza.
       sprawy.push({
         klucz: 'ksef',
         waga: BLOKADA,
@@ -208,23 +194,21 @@ export function sprawyKarty(zamowienie, teraz = Date.now(), { nazwa = NAZWA_ZAPA
       });
     }
 
-    // ⚠️⚠️ WYSLANIE FAKTURY DO ALLEGRO NIE JEST KONCEM OPERACJI (Zadanie 10). Allegro sprawdza
-    // plik antywirusem, a REJECTED znaczy, ze kupujacy faktury NIE MA — mimo ze `allegro_wyslana_at`
-    // jest wypelnione, log karty mowi „plik wyslany", a przycisk wysylki odmawia ponowienia
-    // („dokument juz u kupujacego"). Bez tej sprawy panel twierdzilby, ze kupujacy fakture dostal.
+    // ⚠️⚠️ WYSŁANIE FAKTURY DO ALLEGRO NIE JEST KOŃCEM OPERACJI. Allegro sprawdza plik
+    // antywirusem, a REJECTED znaczy, że kupujący faktury NIE MA — mimo że `allegro_wyslana_at`
+    // jest wypełnione, log karty mówi „plik wysłany", a przycisk wysyłki odmawia ponowienia
+    // („kupujący ma ją na koncie"). Bez tej sprawy panel twierdziłby, że kupujący fakturę dostał.
     //
-    // ⚠️ ZAKRES BIERZEMY ZE WSPOLNEJ DEFINICJI (domain/allegro-faktura.js) — TEJ SAMEJ, ktorej
-    // uzywa zapytanie czuwacza. Wlasna kopia warunku rozjechalaby sie z nim przy pierwszej zmianie
-    // reguly, dokladnie tak jak rozjechala sie kopia warunku KSeF (recenzja Partii 2, W4+W5).
+    // ⚠️ WARUNEK TO GOŁE `REJECTED` — TEN SAM, przy którym `wolnoWyslacDoAllegro`
+    // (domena/allegro-faktura.js) przepuszcza ponowienie. Zakres czuwacza
+    // (`WARUNEK_WERYFIKACJA_NIEROZSTRZYGNIETA_SQL`) go nie obejmuje: REJECTED jest stanem końcowym.
     const fa = zamowienie.faktura;
     if (fa?.allegro_weryfikacja === 'REJECTED') {
       sprawy.push({
         klucz: 'faktura-allegro',
         waga: BLOKADA,
-        // ⚠️ SPRAWA WSKAZUJE WYJSCIE, KTORE NAPRAWDE ISTNIEJE (recenzja Partii 3, K2). Do
-        // 06.08.2026 kazala „wyslac jeszcze raz", a `wolnoWyslacDoAllegro` odmawiala — pasek
-        // kazal ponowic, panel odmawial, przycisku nie bylo. Teraz odmowa ustepuje przy
-        // REJECTED, wiec sprawa moze NAZWAC przycisk, ktory na tej karcie jest.
+        // ⚠️ SPRAWA WSKAZUJE WYJŚCIE, KTÓRE NAPRAWDĘ ISTNIEJE: przy REJECTED `wolnoWyslacDoAllegro`
+        // nie odmawia ponowienia, więc sprawa może NAZWAĆ przycisk, który na tej karcie jest.
         tekst: `Allegro ODRZUCIŁO plik faktury ${fa.numer ?? ''} — kupujący jej NIE MA, `
           + `mimo że panel plik wysłał. Sprawdź dokument ${gdzie} i wyślij go jeszcze raz `
           + 'przyciskiem „Wyślij plik faktury do Allegro jeszcze raz” na tej karcie — '
@@ -232,52 +216,41 @@ export function sprawyKarty(zamowienie, teraz = Date.now(), { nazwa = NAZWA_ZAPA
         kotwica: '#faktura',
       });
     }
-    // ⚠️⚠️ TU BYLA UWAGA „Allegro od … nie potwierdzilo przyjecia pliku faktury" (Zadanie 10),
-    // zapalana przy `weryfikacjaNierozstrzygnieta` po dobie od `allegro_wyslana_at`.
-    // WYCISZONA 06.08.2026 decyzja wlasciciela — i to NIE jest sprzatanie, tylko cofniecie
-    // decyzji podjetej na hipotezie, ktora pomiar obalil.
+    // ⚠️⚠️ NIE MA TU UWAGI „Allegro od … nie potwierdziło przyjęcia pliku faktury", zapalanej
+    // przy `weryfikacjaNierozstrzygnieta` po dobie od `allegro_wyslana_at` — jest WYCISZONA.
     //
-    // Zadanie 10 stalo na §2.2 notatki `docs/superpowers/notatki/2026-08-05-allegro-zapis-
-    // rozpoznanie.md`: `GET /order/checkout-forms/{id}/invoices` oddawal 400 na kazdym naszym
-    // zamowieniu, ale zostawaly DWIE hipotezy — „zasob nie dziala" oraz „400 znaczy: zamowienie
-    // nie ma ANI JEDNEJ faktury". Przy tej drugiej `WAITING` bylby stanem PRZEJSCIOWYM (zasob
-    // ozywa, gdy faktura powstanie), a uwaga po dobie — rzadkim, sensownym sygnalem.
+    // `GET /order/checkout-forms/{id}/invoices` oddaje 400 także na zamówieniu, które fakturę
+    // JUŻ MA. Zasób jest dla nas niedostępny, więc `allegro_weryfikacja` NIE WYJDZIE Z `WAITING`
+    // nigdy — a uwaga zapalałaby się przy KAŻDEJ wysłanej fakturze i zostawała na zawsze. Pasek,
+    // na którym wisi wpis przy każdym zamówieniu, przestaje być narzędziem.
     //
-    // POMIAR Z 06.08.2026, na pierwszej PRAWDZIWEJ fakturze wyslanej do Allegro: ten sam GET,
-    // na zamowieniu, ktore fakture JUZ MA, dalej oddaje 400. Druga hipoteza OBALONA. Zasob jest
-    // dla nas niedostepny, wiec `allegro_weryfikacja` NIE WYJDZIE Z `WAITING` nigdy — a uwaga
-    // zapalalaby sie przy KAZDEJ wyslanej fakturze i zostawala na zawsze. Pasek, na ktorym
-    // wisi wpis przy kazdym zamowieniu, przestaje byc narzedziem: to dokladnie to, przed czym
-    // ostrzegal komentarz stojacy tu wczesniej.
+    // ⚠️ ODPYTYWANIA W CZUWACZU NIE RUSZAMY (moduly/faktury/services/czuwacz-ksef.js) — gdy Allegro naprawi
+    // zasób, stan zacznie się rozstrzygać SAM. WYCISZONA JEST SPRAWA NA PASKU, nie pętla.
     //
-    // ⚠️ ODPYTYWANIA W CZUWACZU NIE RUSZAMY (services/czuwacz-ksef.js) — gdy Allegro naprawi
-    // zasob, stan zacznie sie rozstrzygac SAM. WYCISZONA JEST SPRAWA NA PASKU, nie petla.
+    // CO MA SIĘ STAĆ, GDY ZASÓB ZACZNIE ODPOWIADAĆ: pierwsza faktura, która wyjdzie z `WAITING`
+    // na `ACCEPTED` albo `REJECTED`, jest dowodem, że źródło żyje. Wtedy — i dopiero wtedy —
+    // ta uwaga ma tu wrócić (waga UWAGA, nie blokada: `PUT .../file` się udał, więc brakuje
+    // potwierdzenia, a nie pliku), bo `WAITING` znowu będzie znaczył „jeszcze nie wiadomo",
+    // a nie „nigdy się nie dowiemy".
     //
-    // CO MA SIE STAC, GDY ZASOB ZACZNIE ODPOWIADAC: pierwsza faktura, ktora wyjdzie z `WAITING`
-    // na `ACCEPTED` albo `REJECTED`, jest dowodem, ze zrodlo zyje. Wtedy — i dopiero wtedy —
-    // ta uwaga ma tu wrocic w postaci sprzed wyciszenia (waga UWAGA, nie blokada: `PUT .../file`
-    // sie udal, wiec brakuje potwierdzenia, a nie pliku), bo `WAITING` znowu bedzie znaczyl
-    // „jeszcze nie wiadomo", a nie „nigdy sie nie dowiemy".
-    //
-    // ⚠️ `REJECTED` WYZEJ ZOSTAJE BLOKADA i wyciszenie go NIE DOTYCZY: przychodzi z odpowiedzi
-    // na `PUT .../file`, a nie z zepsutego odczytu, i znaczy, ze kupujacy faktury NIE MA.
+    // ⚠️ `REJECTED` WYŻEJ ZOSTAJE BLOKADĄ i wyciszenie go NIE DOTYCZY: przychodzi z odpowiedzi
+    // na `PUT .../file`, a nie z zepsutego odczytu, i znaczy, że kupujący faktury NIE MA.
   } catch { /* jw. */ }
 
   try {
-    // 3. ANULOWANIE PO NADANIU ALBO PO WYSTAWIENIU FAKTURY. Sam status „Anulowane" wyglada
-    //    jak sprawa zamknieta, a paczka moze byc w drodze, a dokument czekac w inFakcie na
-    //    wieczorna wysylke do KSeF.
+    // 3. ANULOWANIE PO NADANIU ALBO PO WYSTAWIENIU FAKTURY. Sam status „Anulowane" wygląda
+    //    jak sprawa zamknięta, a paczka może być w drodze, a dokument czekać w inFakcie na
+    //    wysyłkę do KSeF.
     if (zamowienie.anulowane && zamowienie.status_woo !== 'cancelled' && modulZamowienia(zamowienie).typ === 'erli') {
       sprawy.push({ klucz: 'anulowanie-kanalu', waga: UWAGA, tekst: 'Zamówienie anulowane w OMS — anuluj w panelu ERLI.', kotwica: '#status' });
     }
     if (anulowaneWymagaUwagi(zamowienie)) {
-      // ⚠️⚠️ TYM SAMYM PREDYKATEM, CO `anulowaneWymagaUwagi` — poprawka po recenzji
-      // 13.09.2026. Tamta funkcja liczy od 13.09 wyłącznie paczki NIEUKRYTE
-      // (`przesylkaUkryta`), a ten wybór treści został na gołej liczbie wierszy przesyłek.
-      // Skutek: zamówienie anulowane z JEDYNĄ paczką UKRYTĄ i wiszącą fakturą słusznie
-      // zostaje sprawą — ale z powodu FAKTURY — a karta pisała „anulowane po nadaniu paczki"
-      // i kotwiczyła w `#przesylka`. Operator trafiał w jedyną rzecz, którą człowiek już
-      // zamknął, i mógł nie dojść do dokumentu wymagającego korekty w KSeF. Drugi czytelnik
+      // ⚠️⚠️ TYM SAMYM PREDYKATEM, CO `anulowaneWymagaUwagi`. Tamta funkcja liczy wyłącznie
+      // paczki NIEUKRYTE (`przesylkaUkryta`); wybór treści na gołej liczbie wierszy przesyłek
+      // znaczyłby, że zamówienie anulowane z JEDYNĄ paczką UKRYTĄ i wiszącą fakturą słusznie
+      // zostaje sprawą — ale z powodu FAKTURY — a karta pisze „anulowane po nadaniu paczki"
+      // i kotwiczy w `#przesylka`. Operator trafiałby w jedyną rzecz, którą człowiek już
+      // zamknął, i mógłby nie dojść do dokumentu wymagającego korekty w KSeF. Drugi czytelnik
       // tego samego predykatu MUSI go wołać, a nie mieć własnej, uproszczonej wersji.
       //
       // ⚠️ `przesylkaUkryta`, NIE goła kolumna `ukryta_at`: ukrycie WYGASA, gdy u kuriera
@@ -305,14 +278,13 @@ export function sprawyKarty(zamowienie, teraz = Date.now(), { nazwa = NAZWA_ZAPA
     // ⚠️ Przy pobraniu niedoplata NIE JEST sprawa — kurier zainkasuje przy doreczeniu.
     // Nadplata i blad arytmetyki zostaja: te znacza cos rownie zle przy kazdej metodzie.
     //
-    // ⚠️ TAK SAMO PRZY ROZLICZENIU ZBIORCZYM (spec 2026-08-01 §8) — i tu stawka jest wyzsza.
-    // Zamowienie nalezace do okresu rozliczeniowego NIE MA WLASNYCH PIENIEDZY: klient placi
-    // RAZ, za caly miesiac, a wplata siedzi na okresie (tabela `platnosci_okresu`). Bez tego
-    // warunku KAZDE z kilkudziesieciu zamowien miesiaca melduje „Niedopłata 100.00 zł
-    // z 100.00 zł" — na zawsze, bo tych pieniedzy na zamowieniu nigdy nie bedzie. Spec nazwal
-    // ten skutek wprost („zatruwałoby statusy"): pasek spraw jest jedynym miejscem, w ktorym
-    // operator szuka prawdziwych blokad, a kilkadziesiat stalych falszywych alarmow miesiecznie
-    // po prostu go wylacza.
+    // ⚠️ TAK SAMO PRZY ROZLICZENIU ZBIORCZYM — i tu stawka jest wyższa. Zamówienie należące
+    // do okresu rozliczeniowego NIE MA WŁASNYCH PIENIĘDZY: klient płaci RAZ, za cały miesiąc,
+    // a wpłata siedzi na okresie (tabela `platnosci_okresu`). Bez tego warunku KAŻDE zamówienie
+    // okresu melduje „Niedopłata 100.00 zł z 100.00 zł" — na zawsze, bo tych pieniędzy na
+    // zamówieniu nigdy nie będzie. Pasek spraw jest jedynym miejscem, w którym operator szuka
+    // prawdziwych blokad, a dziesiątki stałych fałszywych alarmów miesięcznie po prostu go
+    // wyłączają.
     //
     // NADPLATA i BLAD ARYTMETYKI ZOSTAJA takze tutaj: to nie sa „brakujace pieniadze, ktore
     // przyjda z okresem", tylko pieniadze, ktore NAPRAWDE wpłynęły na to zamowienie (albo
@@ -358,9 +330,9 @@ export function sprawyKarty(zamowienie, teraz = Date.now(), { nazwa = NAZWA_ZAPA
   } catch { /* jw. */ }
 
   try {
-    // 6. ROZJAZD ZE SKLEPEM. Panel mowi „Wyslane", sklep dalej „W trakcie realizacji" —
-    //    czyli klient nie dostal maila i widzi u siebie nieaktualny stan. Blokada, bo panel
-    //    sam z tego nie wyjdzie: ponowienie wymaga kliknięcia (POST /sync-sklep).
+    // 6. ROZJAZD ZE SKLEPEM. Panel mówi „Wysłane", sklep dalej „W trakcie realizacji" —
+    //    czyli klient nie dostał maila i widzi u siebie nieaktualny stan. Blokada, bo panel
+    //    sam z tego nie wyjdzie: ponowienie wymaga kliknięcia (POST /zamowienia/:id/sync-sklep).
     if (zamowienie.sync_woo_blad) {
       // ⚠️ BRZMIENIE PO KANALE, NIE PO NAZWIE KOLUMNY. Slad bledu siedzi w jednej kolumnie
       // (`sync_woo_blad`), bo pasek „Do zalatwienia" jest jeden — ale „nie dojechal do

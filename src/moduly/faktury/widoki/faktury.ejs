@@ -1,17 +1,17 @@
-<%# Zakladka FAKTURY (spec 2026-08-06). Trzy pasy: nieoplacone z terminem, faktury miesiaca
+<%# Zakladka FAKTURY. Trzy pasy: nieoplacone z terminem, faktury miesiaca
     z filtrem, proformy panelu.
 
     ⚠️ WIDOK NICZEGO NIE LICZY I NICZEGO NIE ROZSTRZYGA. Dni do terminu, stan KSeF, kwoty
-    w zlotowkach i suma naleznosci przychodza policzone (domain/lista-faktur.js,
-    services/faktury-widok.js, web/routes/faktury.js) — dokladnie ta sama zasada, co przy
+    w zlotowkach i suma naleznosci przychodza policzone (domena/lista-faktur.js,
+    moduly/faktury/services/faktury-widok.js, moduly/faktury/trasy/faktury.js) — dokladnie ta sama zasada, co przy
     liscie zamowien i karcie okresu. Druga kopia arytmetyki tutaj rozjechalaby sie z pierwsza
     przy pierwszej zmianie, a chodzi o pieniadze.
 
-    ⚠️ ZADNEJ KOLUMNY O WPLATACH Z PANELU (spec §4.1, decyzja wlasciciela 06.08.2026).
+    ⚠️ ZADNEJ KOLUMNY O WPLATACH Z PANELU.
     O tym, czy dokument jest zaplacony, mowi WYLACZNIE inFakt — jego `status`. Panel ma
     dane po temu, ale druga prawda o pieniadzach obok pierwszej zostalaby tu na zawsze.
-    (Do 10.08.2026 stalo tu `left_to_pay` i to bylo zle pole: oznaczenie zaplaty w inFakcie
-    go nie zeruje. Regula: `czekaNaPrzelew` w domain/lista-faktur.js.) %>
+    (Nie `left_to_pay`: oznaczenie zapłaty w inFakcie
+    go nie zeruje. Reguła: `czekaNaPrzelew` w domena/lista-faktur.js.) %>
 
 <%
   const nazwaMiesiaca = (m) => MIESIACE[m - 1] ?? `miesiąc ${m}`;
@@ -20,7 +20,7 @@
   const opisMiesiaca = (m) => `${nazwaMiesiaca(Number(m.slice(5, 7)))} ${m.slice(0, 4)}`;
   // Liczebnik po polsku ma TRZY formy, nie dwie: „1 dokument", „3 dokumenty",
   // „5 dokumentów". Wariant dwuformowy pisalby „3 dokumentów" — a ten napis stoi w naglowku
-  // pasa dlugow, ktory wlasciciel czyta codziennie.
+  // pasa dlugow, ktory sprzedawca czyta codziennie.
   // ⚠️ 12, 13, 14 IDA DO FORMY MNOGIEJ mimo koncowek 2/3/4 („12 dokumentów", nie
   // „12 dokumenty") — stad wyjatek na reszcie z dzielenia przez 100.
   const ile = (n, jeden, kilka, wiele) => {
@@ -54,17 +54,17 @@
 <section class="panel panel--groza prz065-powierzchnia prz065-naleznosci" id="naleznosci">
   <div class="panel-glowa panel-glowa--groza">
     <h2>Nieopłacone — termin płatności</h2>
-    <%# Dopisek „N dokumentów · pozostało do zapłaty X zł" zdjęty 14.10.2026 (PRZ-074): to samo
+    <%# Bez dopisku „N dokumentów · pozostało do zapłaty X zł": to samo
         stoi w wierszu „Razem" pod tabelą. Przy błędzie inFaktu ekran i tak nie pokazuje zera —
         wiersz „Razem" rysuje się wyłącznie przy niepustej liście, a pusty mówi „Nie wiadomo". %>
   </div>
   <div class="panel-cialo">
-    <%# PRZ-118.07: program fakturowy bez zdolności `nieoplacone` — zdanie zamiast tabeli. Ani „nie udało się”
+    <%# Program fakturowy bez zdolności `nieoplacone` — zdanie zamiast tabeli. Ani „nie udało się”
         (to nie awaria), ani pusta tabela („nikt nie zalega” byłoby fałszem). %>
     <% if (locals.brakNieoplaconych) { %>
       <p class="pusto-sekcja"><%= brakNieoplaconych %></p>
     <% } else { %>
-    <%# ⚠️ WLASNA AWARIA, OSOBNA OD LISTY FAKTUR MIESIACA (recenzja Zadania 7, Finding 1).
+    <%# ⚠️ WLASNA AWARIA, OSOBNA OD LISTY FAKTUR MIESIACA.
         Ten pas czyta `nieoplacone()` z inFaktu — inne zapytanie niz `dokumenty()` pod spodem —
         wiec jego porazka nie ma prawa zgasic pasa, ktory akurat dziala (ten sam wzorzec, co
         przy `bladProform` nizej). %>
@@ -88,7 +88,7 @@
               <td title="<%= nabywca(d) %>"><%= skrocFormePrawna(nabywca(d)) %></td>
               <td class="liczba"><%= d.pozostaloZl %> zł</td>
               <td><%- include('_powiazanie-dokumentu.ejs', { d }) %></td>
-              <%# ⚠️ RODZAJ I NUMER JADA W ADRESIE — trasa (routes/faktury.js) rozstrzyga po nich,
+              <%# ⚠️ RODZAJ I NUMER JADA W ADRESIE — trasa (moduly/faktury/trasy/faktury.js) rozstrzyga po nich,
                   ktory zasob inFaktu odpytac i jak nazwac plik; zgadywanie po tresci numeru
                   byloby niebezpieczne (patrz komentarz przy trasie). %>
               <td><a class="btn btn--maly" href="/faktury/<%= encodeURIComponent(d.uuid) %>/pdf?rodzaj=<%= encodeURIComponent(d.rodzaj) %>&numer=<%= encodeURIComponent(d.number) %>" target="_blank" rel="noopener noreferrer">PDF</a></td>
@@ -120,14 +120,14 @@
 <section class="panel prz065-powierzchnia" id="dokumenty">
   <div class="panel-glowa">
     <h2>Faktury</h2>
-    <%# `bladDokumentow` jest WLASNY dla tego pasa (recenzja Zadania 7, Finding 1) — awaria
+    <%# `bladDokumentow` jest WLASNY dla tego pasa — awaria
         sekcji nieoplaconych obok nie ma tu nic do rzeczy. %>
     <span class="dopisek">
       <%= opisMiesiaca(miesiac) %> · <% if (bladDokumentow) { %>nie wiadomo<% } else { %><%= ile(dokumenty.length, 'dokument', 'dokumenty', 'dokumentów') %><% } %>
     </span>
   </div>
   <div class="panel-cialo">
-    <%# ⚠️ WLASNA AWARIA, OSOBNA OD PASA NIEOPLACONYCH (recenzja Zadania 7, Finding 1). Ten
+    <%# ⚠️ WLASNA AWARIA, OSOBNA OD PASA NIEOPLACONYCH. Ten
         pas czyta `dokumenty()` — inne zapytanie do inFaktu niz `nieoplacone()` wyzej — wiec
         jego porazka nie ma prawa zgasic pasa dlugu ani proform pod spodem. %>
     <% if (bladDokumentow) { %>
@@ -151,7 +151,7 @@
           <span>Licz miesiąc wg</span>
           <%# ⚠️ WARTOSCI TO NAZWY POL inFAKTU (`invoice_date`/`sale_date`) — usluga ma dla
               nich biala liste, bo nieznana nazwa pola NIE wywala zapytania, tylko po cichu
-              zdejmuje ograniczenie dat (patrz komentarz w services/faktury-widok.js). %>
+              zdejmuje ograniczenie dat (patrz komentarz w moduly/faktury/services/faktury-widok.js). %>
           <select name="pole">
             <option value="invoice_date" <%= pole === 'invoice_date' ? 'selected' : '' %>>daty wystawienia</option>
             <option value="sale_date" <%= pole === 'sale_date' ? 'selected' : '' %>>daty sprzedaży</option>
@@ -179,12 +179,12 @@
             z wysylka tego formularza (drugi `<button type="submit">` skladalby paczke
             z pol filtra, a `formaction` z GET-em zgubilby miesiac w chwili zmiany pola).
 
-            ⚠️ PRZYCISK WYLACZNIE Z USLUGA (`mozliwaPaczka`): panel bez inFaktu ma zakladke
+            ⚠️ PRZYCISK WYLACZNIE Z USLUGA (`mozliweZestawieniePrzychodow`): panel bez inFaktu ma zakladke
             pusta celowo i nie ma z czego zlozyc paczki — ta sama zasada, co przy przycisku
             archiwum nizej i przy „Odśwież teraz" na zakladce KOSZTY.
 
             `title` mowi, co jest w srodku I ZE TO POTRWA: trasa jest synchroniczna, wiec
-            przegladarka stoi az do konca (uzasadnienie przy trasie w routes/faktury.js).
+            przegladarka stoi az do konca (trasa `/faktury/zestawienie-przychodow` w moduly/faktury/trasy/faktury.js).
 
             PDF celowo niesie WYŁĄCZNIE zestawienie przychodów: bez dołączonych faktur i korekt.
             Dzięki temu pobranie nie czyta ich PDF-ów z inFaktu. %>
@@ -194,7 +194,7 @@
       </div>
     </form>
 
-    <%# ——— Archiwum PDF-ow na NAS-ie (spec 2026-09-02) ————————————————————————————————
+    <%# ——— Archiwum PDF-ów sprzedaży ————————————————————————————————
         Linia stanu + przycisk WYMUSZONEGO przebiegu. Stoi TU, a nie w osobnym pasie: dotyczy
         dokladnie tych dokumentow, ktore widac w tabeli nizej.
 
@@ -207,7 +207,7 @@
         wprost, ze archiwum jest wylaczone. %>
     <%# Blad swieci jak kazda inna blokada w panelu; udany przebieg jest cichy — to nie jest
         operacja nieodwracalna, tylko dopisanie plikow. `komunikatZly` liczy trasa
-        (routes/faktury.js, stala PREFIKS_BLEDU_ARCHIWUM) — widok nie powtarza dopasowania
+        (moduly/faktury/trasy/faktury.js, stala PREFIKS_BLEDU_ARCHIWUM) — widok nie powtarza dopasowania
         przedrostka, zeby obie warstwy nie rozjechaly sie przy pierwszej zmianie tresci. %>
     <% if (typeof komunikat === 'string' && komunikat) { %>
       <% if (komunikatZly) { %>
@@ -216,7 +216,7 @@
         <p class="pasek-info"><%= komunikat %></p>
       <% } %>
     <% } %>
-    <%# PRZ-152.G15: drugie zgłoszenie dokumentu, którego wysyłkę panel już zlecił — 303 z trasy wysyłki tutaj. %>
+    <%# Drugie zgłoszenie dokumentu, którego wysyłkę panel już zlecił — 303 z trasy wysyłki tutaj. %>
     <% if (locals.odmowaKsef) { %>
       <p class="pasek-uwaga" id="ksef-odmowa"><%= odmowaKsef %></p>
     <% } %>
@@ -235,9 +235,9 @@
         <input type="hidden" name="typ" value="<%= typ %>">
         <input type="hidden" name="platnosc" value="<%= platnosc %>">
         <%# Czas trwania jest NAZWANY, bo przycisk potrafi myslec minutami: budzet jednego
-            przebiegu to 10 minut (services/czuwacz-archiwum-sprzedazy.js), a przegladarka
-            czeka bez ani jednego znaku na ekranie — panel nie ma JavaScriptu. Od 14.10.2026
-            (PRZ-074, prośba właściciela) opis siedzi w podpowiedzi przycisku, nie w zdaniu obok. %>
+            przebiegu to 10 minut (moduly/faktury/services/czuwacz-archiwum-sprzedazy.js), a przegladarka
+            czeka bez ani jednego znaku na ekranie — panel nie ma JavaScriptu.
+            Opis siedzi w podpowiedzi przycisku, nie w zdaniu obok. %>
         <button class="btn btn--drugi btn--maly" type="submit"
           title="Przegląda ostatnie 3 miesiące w <%= nazwaProgramu.miejscownik %> i dopisuje brakujące PDF-y do archiwum (rok / miesiąc). Do 10 minut.">Archiwizuj teraz</button>
       </form>
@@ -246,7 +246,7 @@
 
     <form method="post" action="/faktury/ksef/podglad">
       <%# ⚠️ MIESIAC I POLE JADA Z FORMULARZEM. Ekran podgladu przelicza zbior PONOWNIE
-          z na nowo pobranej listy (domain/wysylka-ksef.js) — bez tych dwoch pol nie ma jak
+          z na nowo pobranej listy (domena/wysylka-ksef.js) — bez tych dwoch pol nie ma jak
           odtworzyc, na ktora liste operator patrzyl, gdy zaznaczal. %>
       <input type="hidden" name="miesiac" value="<%= miesiac %>">
       <input type="hidden" name="pole" value="<%= pole %>">
@@ -278,15 +278,15 @@
                     (sklada go trasa, z zachowaniem miesiaca i pola daty), a NIE pole wyboru
                     w naglowku ze skryptem — dzieki temu dziala bez JavaScriptu. Zaznacza
                     wszystkie wiersze z UUID, które mają pole wyboru.
-                    Ten sam wzorzec, co nad listą zamówień (lista.ejs). %>
+                    Ten sam wzorzec, co nad listą zamówień (moduly/zamowienia/widoki/lista.ejs). %>
                 <% if (zaznaczWszystkie) { %>
                   <a class="zaznacz-wszystkie" href="<%= adresOdznaczWszystkie %>" aria-label="Odznacz wszystkie faktury na liście">odznacz</a>
                 <% } else { %>
                   <a class="zaznacz-wszystkie" href="<%= adresZaznaczWszystkie %>" aria-label="Zaznacz wszystkie dokumenty z listy">zaznacz</a>
                 <% } %>
               </th>
-              <%# „Wystawiona" i „Sprzedaż" scalone w jedną kolumnę (PRZ-074, 14.10.2026): tabela
-                  wystawała o 153 px przy 1280 px szerokości, a obie daty są zwykle te same. %>
+              <%# „Wystawiona" i „Sprzedaż" w jednej kolumnie: osobno tabela
+                  wystawała poza ekran przy 1280 px szerokości, a obie daty są zwykle te same. %>
               <th>Numer</th><th>Zamówienie</th><th>Data</th>
               <th>Nabywca</th><th class="liczba">Netto</th><th class="liczba">Brutto</th><th>Płatność</th><th>KSeF</th><th></th>
             </tr>
@@ -346,7 +346,7 @@
                         przy niej sensu, wiec panel nie udaje, ze ma. %>
                     <span class="znacznik znacznik--cichy">—</span>
                   <% } else if (d.stanZaplaty === 'zastapiona') { %>
-                    <%# PRZ-126.C09d: faktura zastąpiona przy złym NIP-ie — saldo 0, ale nie „zapłacona" (wpłaty przeszły
+                    <%# Faktura zastąpiona przy złym NIP-ie — saldo 0, ale nie „zapłacona" (wpłaty przeszły
                         na nową). Odnośnik do nowej, gdy wolno tam wejść. %>
                     <%_ const zast = d.zastapiona_przez; -%>
                     <%_ if (zast.dokumentId && mozeAdres(`/faktury/twojefaktury/${zast.dokumentId}`)) { -%>
@@ -370,11 +370,11 @@
                 <td><% if (d.wKsef) { %><span class="znacznik znacznik--ok">KSeF</span><%
                   // „brak” tylko przy dokumencie, którego nikt nie wysłał; „czeka na numer”, błąd i odmowa zostają puste.
                   %><% } else if (d.stanKsef === 'brak' && (!d.stanDokumentu || d.stanDokumentu.ksef === 'brak')) { %><span class="znacznik znacznik--cichy">brak</span><%
-                  // PRZ-152.G15: panel zlecił wysyłkę, numeru jeszcze nie ma — plakietka z chwilą zlecenia (błąd i odmowa dalej puste).
+                  // Panel zlecił wysyłkę, numeru jeszcze nie ma — plakietka z chwilą zlecenia (błąd i odmowa dalej puste).
                   %><% } else if (d.stanKsef === 'wyslana_czeka' && d.ksefZleconaAt && (!d.stanDokumentu || ['brak', 'czeka'].includes(d.stanDokumentu.ksef))) { %><span class="znacznik znacznik--cichy">Zlecono do KSeF <%= kiedyZlecenia(d.ksefZleconaAt) %></span><% } %></td>
                 <%# ⚠️ RODZAJ I NUMER JADA W ADRESIE — dokladnie ta sama zasada, co przy pasie
                     nieoplaconych wyzej; korekta jest INNYM zasobem inFaktu niz faktura VAT
-                    (routes/faktury.js), wiec trasa musi wiedziec, ktory to dokument. %>
+                    (moduly/faktury/trasy/faktury.js), wiec trasa musi wiedziec, ktory to dokument. %>
                 <td><a class="btn btn--maly" href="/faktury/<%= encodeURIComponent(d.uuid) %>/pdf?rodzaj=<%= encodeURIComponent(d.rodzaj) %>&numer=<%= encodeURIComponent(d.number) %>" target="_blank" rel="noopener noreferrer">PDF</a></td>
               </tr>
             <% }); %>
@@ -415,7 +415,7 @@
     <span class="dopisek">seria PF/ — dokumenty panelu, <%= opisMiesiaca(miesiac) %></span>
   </div>
   <div class="panel-cialo">
-    <%# ⚠️ WLASNA AWARIA, OSOBNA OD inFAKTU (Finding 2, recenzja Zadania 7). Proformy sa
+    <%# ⚠️ WLASNA AWARIA, OSOBNA OD inFAKTU. Proformy sa
         LOKALNE (baza panelu, nie inFakt), wiec ich awaria nie ma nic wspolnego z pasem
         wyzej — a milczenie wygladaloby jak pusty miesiac, nie jak usterka bazy. %>
     <% if (bladProform) { %>
@@ -439,7 +439,7 @@
               <td>
                 <%# ⚠️ Uniewazniona proforma ZOSTAJE na liscie — klient dostal taki dokument
                     mailem i moze go miec przed soba, wiec ekran musi umiec powiedziec „ten
-                    juz nie obowiazuje" (uzasadnienie w services/faktury-widok.js). %>
+                    juz nie obowiazuje" (uzasadnienie w moduly/faktury/services/faktury-widok.js). %>
                 <% if (p.uniewazniona_at) { %>
                   <span class="znacznik znacznik--cichy">unieważniona <%= fmtDataCzasKrotko(p.uniewazniona_at) %></span>
                 <% } else { %>
@@ -465,9 +465,9 @@
   </div>
 </section>
 
-<%# ——— ODNOTOWANIE SKASOWANIA FAKTURY W inFAKCIE (przeniesione z karty 01.09.2026) ————————
-    Prosba właściciela: „na co dzien jest to nieuzywane — chyba ani razu nie skorzystalem". Na karcie
-    zamowienia zajmowalo miejsce przy KAZDEJ fakturze; tutaj stoi zwiniete, na koncu zakladki.
+<%# ——— ODNOTOWANIE SKASOWANIA FAKTURY W inFAKCIE ————————
+    Na co dzień ta akcja jest nieużywana. Na karcie
+    zamówienia zajmowałaby miejsce przy KAŻDEJ fakturze; tutaj stoi zwinięte, na końcu zakładki.
 
     ⚠️⚠️ LISTA IDZIE Z BAZY PANELU, NIE Z inFAKTU — dokument skasowany w inFakcie znika
     z listy pobieranej na zywo, wiec akcja przy TAMTYM wierszu byla by niedostepna dokladnie

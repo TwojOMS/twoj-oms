@@ -12,14 +12,14 @@ import { czyKanalRaportowyAllegro } from './kanaly-raportowe.js';
 // Rachunek zarzadczy: „ile z tego zostaje", a nie „ile sprzedalismy".
 //
 // ⚠️⚠️ TO NIE JEST WYNIK KSIEGOWY i ekran ma to pisac wprost. Pelna ksiegowosc prowadzi biuro
-// księgowe i jego liczby sa wiazace. Pomiar na I polroczu 2026 pokazal, ze sprzedaz liczona
-// po dacie ZAMOWIENIA jest wyzsza od przychodu w KPiR (ksiegowanego po dacie WYSTAWIENIA
-// faktury) o ok. 2,5% po odjeciu zwrotow i duplikatow.
+// księgowe i jego liczby sa wiazace. Sprzedaż liczona po dacie
+// ZAMÓWIENIA bywa wyższa od przychodu w KPiR (księgowanego po dacie WYSTAWIENIA faktury)
+// — o kilka procent po odjęciu zwrotów i duplikatów.
 
 /**
- * ⚠️ PODLOGA: kosztow sprzed 2026 NIE MA I NIE BEDZIE — KSeF ruszyl na dobre w maju 2026,
- * a podloga historii kosztow to 1.01.2026. Rachunek za 2025 bylby zyskiem zawyzonym
- * o niewidoczne wydatki, wiec go NIE OFERUJEMY.
+ * ⚠️ PODŁOGA: kosztów sprzed podłogi danych (ustawianej per instalacja: panel Finanse →
+ * Kompletność danych albo OMS_RAPORTY_PODLOGA_KOSZTOW) panel nie zna. Rachunek za wcześniejszy
+ * okres byłby zyskiem zawyżonym o niewidoczne wydatki, więc go NIE OFERUJEMY.
  */
 export const PODLOGA = null;
 
@@ -28,15 +28,12 @@ export const PODLOGA = null;
  * `zwrotyWOkresie` czyta wylacznie tabele `zwroty`, ktora zaczela sie zapelniac dopiero od tego
  * dnia. Dla zakresu konczacego sie WCZESNIEJ pusty wynik `zwrotyWOkresie` nie znaczy „zwrotow
  * nie bylo", tylko „panel ich nie widzial" — ekran ma pokazac „brak danych", NIGDY 0,00 zl.
- * Ta sama zasada, co przy DROPSHIPPING za 2025 (domain/kanaly-raportowe.js).
  */
 export const PODLOGA_ZWROTOW = null;
 
 /**
  * ⚠️ PROG POKRYCIA. Podzial na zmienne i stale policzony z jednej trzeciej wydatkow dalby
- * prog rentownosci, w ktory dałoby sie uwierzyc — a bylby zmysleniem. To naprawilo cichy
- * blad w repo `raporty`: Q2 i polrocze rysowaly rozbicie z samego czerwca, opisujac je jako
- * rozbicie CALEGO okresu.
+ * prog rentownosci, w ktory dałoby sie uwierzyc — a bylby zmysleniem.
  */
 const PROG_POKRYCIA = 95;
 
@@ -50,16 +47,16 @@ const gr = (s) => (s ? grosze(s, 'kwota') : 0);
 const sumaNetto = (wiersze) => wiersze.reduce((s, w) => s + w.nettoGrosze, 0);
 
 // ⚠️⚠️ KATEGORIA DOKUMENTU WYGRYWA Z MAPA PO NIP-IE — i ta regula ma JEDNO miejsce
-// (`kategoriaWiersza` w domain/lista-kosztow.js), z ktorego korzysta zarowno zakladka KOSZTY,
+// (`kategoriaWiersza` w domena/lista-kosztow.js), z ktorego korzysta zarowno zakladka KOSZTY,
 // jak i ten rachunek. Trzecia kopia znaczylaby, ze ekran kosztow i rozbicie w rachunku
 // pokazuja dwie rozne kategorie tego samego dokumentu — bez zadnego bledu.
 //
-// Co to naprawilo (2026-08-14): koszty dopisane recznie — Google, Meta, Anthropic, czyli
-// dokladnie te, ktorych w KSeF nie ma i dla ktorych pole kategorii dokumentu w ogole powstalo
-// — wchodzily tutaj jako „Nieprzypisane"/„drobne", bo mapa po NIP-ie ich nie zna (jej kluczem
-// glownym jest NIP, a oni polskiego NIP-u nie maja). Suma kosztow byla poprawna, wiec nic nie
-// krzyczalo; nieprawdziwe bylo ROZBICIE i wszystko, co z niego wynika — prog rentownosci
-// i marza po kosztach zmiennych, czyli liczby, na ktorych zapada decyzja operatora.
+// Bez tej reguły koszty dopisane ręcznie — zagraniczni dostawcy, czyli dokładnie te, których
+// w KSeF nie ma i dla których pole kategorii dokumentu w ogóle powstało — wchodziłyby tutaj jako
+// „Nieprzypisane"/„drobne", bo mapa po NIP-ie ich nie zna (jej kluczem głównym jest NIP, a oni
+// polskiego NIP-u nie mają). Suma kosztów byłaby poprawna, więc nic by nie krzyczało; nieprawdziwe
+// byłoby ROZBICIE i wszystko, co z niego wynika — próg rentowności i marża po kosztach zmiennych,
+// czyli liczby, na których zapada decyzja operatora.
 function kosztyOkresu(db, miesiace) {
   let netto = 0;
   const wgKategorii = new Map();
@@ -96,7 +93,7 @@ function rachunekMiesiaca(db, miesiac, regulySprzedazy, sprzedaz) {
   // WLASNYM miesiacem tej funkcji, a miesiace kafelkuja zakres bez dziur i bez nakladania sie
   // (`koniecMiesiaca`) — wiec kazdy zwrot wpada do DOKLADNIE JEDNEGO miesiecznego okna, tego,
   // w ktorym faktycznie nastapil, i suma miesiecy zgadza sie z rachunkiem calego okresu co do
-  // grosza. Netto liczy `zwrotyWOkresie` sama (nettoZ) — DRUGI RAZ tej arytmetyki tu nie ma,
+  // grosza. Netto liczy `zwrotyWOkresie` sama (`nettoZamowieniaGrosze`) — DRUGI RAZ tej arytmetyki tu nie ma,
   // inaczej zwrot zdejmowalby inna kwote netto, niz dodala sprzedaz.
   const zwrotyNetto = sumaNetto(zwrotyWOkresie(db, { od, do: doDnia }, regulySprzedazy));
   const przychod = sumaNetto(sprzedaz.filter(w => w.dzien >= od && w.dzien <= doDnia)) - zwrotyNetto;
@@ -154,14 +151,14 @@ function* liczRachunek(db, { od, do: doDnia }, { regulySprzedazy = {}, podlogaKo
   const koniecOdczytu = miesiace.length >= 2 ? koniecMiesiaca(miesiace.at(-1)) : doDnia;
   const sprzedaz = yield { od: poczatekOdczytu < poczatekRoku ? poczatekOdczytu : poczatekRoku, do: koniecOdczytu };
   // ⚠️⚠️ PROWIZJA ALLEGRO WYLACZNIE DLA PELNEGO MIESIACA KALENDARZOWEGO, a nie dla „zakresu,
-  // ktory miesci sie w jednym miesiacu" (2026-08-14). Zakres 5–20 czerwca ma jeden miesiac na
+  // ktory miesci sie w jednym miesiacu". Zakres 5–20 czerwca ma jeden miesiac na
   // liscie, wiec warunek `miesiace.length === 1` wpuszczal do rachunku prowizje za CALY
   // czerwiec przy sprzedazy z szesnastu dni — wskaznik „prowizja / sprzedaz Allegro"
   // wychodzil absurdalnie wysoki i wygladal wiarygodnie. To ta sama rodzina bledu, co
   // faktura prowizyjna dotyczaca miesiaca poprzedniego (patrz `prowizjaAllegroZaMiesiac`):
   // licznik i mianownik z DWOCH roznych okresow.
   //
-  // Rozpoznanie robi `nazwaOkresu` (domain/okresy-raportu.js), a nie wlasne porownanie dat:
+  // Rozpoznanie robi `nazwaOkresu` (domena/okresy-raportu.js), a nie wlasne porownanie dat:
   // oddaje 'RRRR-MM' DOKLADNIE wtedy, gdy zakres pokrywa sie z pelnym miesiacem (kwartal
   // wychodzi jako '2026-Q2', rok jako '2026', zakres dowolny jako 'od – do').
   const pelnyMiesiac = /^\d{4}-\d{2}$/.test(nazwaOkresu({ od, do: doDnia })) ? miesiace[0] : null;
@@ -178,7 +175,7 @@ function* liczRachunek(db, { od, do: doDnia }, { regulySprzedazy = {}, podlogaKo
   // ustawy o VAT. Wariant „cofnij zwrot do miesiaca sprzedazy" dawalby rachunek zmieniajacy
   // sie PO zamknieciu miesiaca i rozjezdzalby sie z KPiR.
   //
-  // Netto liczone TA SAMA regula co sprzedaz (nettoZ w sprzedaz-okresu.js, wewnatrz
+  // Netto liczone TA SAMA regula co sprzedaz (`nettoZamowieniaGrosze` z domena/netto-zamowienia.js, wewnatrz
   // zwrotyWOkresie) — inaczej zwrot zdejmowalby inna kwote netto, niz dodala sprzedaz.
   const zwroty = zwrotyWOkresie(db, { od, do: doDnia }, regulySprzedazy);
   const zwrotyNettoGrosze = sumaNetto(zwroty);
@@ -244,8 +241,8 @@ function* liczRachunek(db, { od, do: doDnia }, { regulySprzedazy = {}, podlogaKo
     // ⚠️ TO JEST INNA LICZBA NIZ `zwrotyGrosze` NIZEJ. `zwrotyNettoGrosze` liczy sie z
     // prawdziwych wierszy tabeli `zwroty` (ta sama funkcja, co na ekranie sprzedazy) i JUZ
     // wszedl w `przychodNettoGrosze` wyzej — po to tu stoi, zeby ekran mogl pokazac, skad
-    // wzięła się różnica. `zwrotyGrosze` to osobne, reczne pole z `dane_miesieczne`
-    // (Zadanie 13), ktorego rachunek NIE odejmuje — patrz komentarz przy tamtym polu.
+    // wzięła się różnica. `zwrotyGrosze` to osobne, reczne pole z `dane_miesieczne`,
+    // ktorego rachunek NIE odejmuje — patrz komentarz przy tamtym polu.
     zwrotyNettoGrosze,
     kosztyNettoGrosze: koszty.nettoGrosze,
     wynikGrosze,
@@ -256,12 +253,12 @@ function* liczRachunek(db, { od, do: doDnia }, { regulySprzedazy = {}, podlogaKo
     // ⚠️ VAT STOI OSOBNO, POZA RACHUNKIEM. To pieniadz przechodni, nie zysk — mylenie tego
     // jest klasycznym bledem.
     vatGrosze: dane.suma.vat7Grosze,
-    // ⚠️ POLE RECZNE (Zadanie 13, `dane_miesieczne.zwroty_brutto`) — NIE to samo, co
+    // ⚠️ POLE RECZNE (`dane_miesieczne.zwroty_brutto`) — NIE to samo, co
     // `zwrotyNettoGrosze` wyzej. To liczy operator z KPiR i rachunek go NIE odejmuje (patrz
     // karta „Zwroty wg KPiR" na ekranie /finanse, przemianowana wlasnie dlatego, ze
     // mylila sie z ponizsza); `zwrotyNettoGrosze` liczy sie z prawdziwych wierszy `zwroty`
     // i JUZ jest odjete od `przychodNettoGrosze` — TAKZE w `rachunekMiesiaca` i w `dochodRoku`
-    // (podstawa podatku), poprawka po Zadaniu 11.
+    // (podstawa podatku).
     zwrotyGrosze: dane.suma.zwrotyGrosze,
     brakujaceDane: dane.brakujace,
     pokrycieKosztow,
@@ -271,7 +268,7 @@ function* liczRachunek(db, { od, do: doDnia }, { regulySprzedazy = {}, podlogaKo
     roznicaPrzychodu,
     podatek,
     // Sekcja „miesiac po miesiacu" od DWOCH miesiecy wzwyz: suma kwartalu mowi „ile",
-    // ale nie „kiedy". W Q1 2026 sam marzec dal wiecej niz styczen i luty razem.
+    // ale nie „kiedy". Jeden miesiąc kwartału potrafi dać więcej niż dwa pozostałe razem.
     miesiacami: miesiace.length >= 2 ? miesiacami : null,
     // ⚠️ WSKAZNIKI WYLACZNIE PRZY `kosztyZnane` — policzone z niepelnych kosztow sa dokladnie
     // tym zmysleniem, przed ktorym broni prog 95%: prog rentownosci z jednej trzeciej wydatkow
@@ -300,7 +297,7 @@ function* liczRachunek(db, { od, do: doDnia }, { regulySprzedazy = {}, podlogaKo
   };
 }
 
-// PRZ-093.07: nowa instalacja widzi to zdanie na FINANSACH, zanim ktokolwiek ustawi podłogę —
+// Nowa instalacja widzi to zdanie na FINANSACH, zanim ktokolwiek ustawi podłogę —
 // więc wskazuje panel oraz alternatywę w pliku. Treść w stałej, żeby linia odczytu
 // w `rachunekOkresu` nie przesuwała się przy każdej zmianie słów.
 const BRAK_PODLOGI_KOSZTOW = 'Nie ustawiono podłogi danych kosztów rachunku zarządczego.'

@@ -1,4 +1,4 @@
-// STANY MAGAZYNOWE (PRZ-091, decyzje właściciela 17.10.2026) — reguły czyste, bez bazy i bez HTTP.
+// STANY MAGAZYNOWE — reguły czyste, bez bazy i bez HTTP.
 //
 // ⚠️⚠️ ROZCHÓD Z ZAMÓWIEŃ JEST WYLICZANY, A NIE ZAPISYWANY RUCHEM. Pozycje zamówień z kanałów są przy każdym
 // odczycie kasowane i wstawiane od nowa (oms/db/zamowienia.js, `zapiszPozycje`), zamówienie bywa poprawiane ręcznie
@@ -25,14 +25,13 @@ const napis = (x) => (x === null || x === undefined ? '' : String(x).trim());
 /**
  * Statusy WooCommerce, w których zamówienia NIE MA jako zakupu: nieudana płatność, kosz, szkic koszyka.
  * ⚠️ `refunded` CELOWO NIE: zwrot pieniędzy nie oznacza, że towar wrócił — stan rośnie dopiero po przyjęciu
- * (korekta na karcie), tak jak w planie stanów (wiki „Twój OMS — stany magazynowe i zwroty”). `pending` też nie:
- * decyzja „rozchód od razu przy zamówieniu”.
+ * (korekta na karcie). `pending` też nie: rozchód następuje od razu przy zamówieniu.
  */
 export const STATUSY_WOO_BEZ_ROZCHODU = Object.freeze(['failed', 'trash', 'checkout-draft']);
 
 /**
  * Czy zamówienie zdejmuje towar. Anulowane (w kanale albo ręcznie przy panelu) — nie; w statusie Woo bez zakupu — nie.
- * ⚠️ Anulowanie: ten sam warunek co `czyAnulowane` w domena/status-reczny.js (suma logiczna obu kolumn).
+ * ⚠️ Anulowanie: ten sam warunek co `anulowaneEfektywnie` w domena/status-reczny.js (suma logiczna obu kolumn).
  * Ten sam warunek stoi w SQL grup (oms/db/stany-magazynowe.js) — pilnuje go test na obu drogach.
  */
 export function zamowienieZdejmuje(z) {
@@ -62,7 +61,7 @@ export function kartaPozycji(p, kanal, kartyLustra) {
     : { kanal: p?.zrodlo === 'reczna' ? null : kanal, produktId: produkt, wariantId: wariant };
   // ⚠️ WIERSZ LUSTRA BEZ KARTY TEŻ SIĘ LICZY (`null`). Identyfikator pasujący do dwóch wierszy, z których jeden ma kartę,
   // a drugi nie (dwa sklepy z tym samym numerem produktu, wariant bez karty), nie jest jednoznaczny — wybranie jedynej
-  // karty zdejmowałoby z niej towar cicho, a lista „bez karty” milczałaby (recenzja PRZ-091).
+  // karty zdejmowałoby z niej towar cicho, a lista „bez karty” milczałaby.
   const wszystkie = [...new Set(kartyLustra(zapytanie).map((k) => (k === null || k === undefined ? null : Number(k))))];
   const karty = wszystkie.filter((k) => k !== null);
   if (karty.length === 1 && wszystkie.length === 1) return { kartaId: karty[0] };
@@ -105,8 +104,8 @@ export function zuzycieZZamowien(zamowienia, kartyLustra) {
 
 /**
  * Zużycie z GRUP pozycji zsumowanych w bazie (kanał, źródło, produkt, wariant, oferta → Σ ilości, liczba pozycji).
- * Ta sama reguła `kartaPozycji`, rozstrzygana RAZ na grupę zamiast raz na pozycję — pomiar PRZ-091: 15 000 zamówień
- * od granicy liczone pozycja po pozycji to 280–760 ms przy każdym otwarciu listy i karty zamówienia.
+ * Ta sama reguła `kartaPozycji`, rozstrzygana RAZ na grupę zamiast raz na pozycję — pomiar: kilkanaście tysięcy zamówień
+ * od granicy liczone pozycja po pozycji to rząd setek milisekund przy każdym otwarciu listy i karty zamówienia.
  * Grupy dostają wyłącznie zamówienia zdejmujące towar i bez ręcznych poprawek (te liczy `zuzycieZZamowien`).
  * @returns {{ zuzycie: Map<number, number>, bezKarty: number }} `bezKarty` — liczba POZYCJI bez karty
  */

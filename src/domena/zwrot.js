@@ -11,7 +11,7 @@ import { NAZWA_ZAPASOWA } from './nazwa-programu.js';
 import { NAZWA_DOSTAWY } from './pozycje-faktury.js';
 
 // Regula zwrotu. Modul jest CZYSTY: dostaje zamowienie i cialo formularza, oddaje gotowy
-// ksztalt do zapisu albo odmowe po polsku. Bazy nie dotyka (to db/zwroty.js), a trasa
+// ksztalt do zapisu albo odmowe po polsku. Bazy nie dotyka (to oms/db/zwroty.js), a trasa
 // nie liczy tu niczego u siebie.
 
 const tekst = (s) => {
@@ -20,46 +20,46 @@ const tekst = (s) => {
 };
 
 // ⚠️ PRZECINEK DZIESIETNY. DOKLADNIE ta sama normalizacja, co w `parsujWplate`
-// (domain/platnosci.js) — i z tego samego, spisanego tam powodu: „przecinek dziesietny to to,
+// (domena/platnosci.js) — i z tego samego, spisanego tam powodu: „przecinek dziesietny to to,
 // co czlowiek w Polsce naprawde wpisuje […] odrzucanie go tutaj byloby niespojnoscia w obrebie
-// jednego panelu". Tak samo robia `parsujKosztReczny`, `parsujCeneBrutto` i dane miesieczne.
+// jednego panelu". Tak samo robią `kwotaGr` (domena/koszt-reczny.js) i `parsujCeneBrutto`
+// (domena/pozycje-reczne.js).
 //
 // ⚠️⚠️ TO JEST EKRAN, NA KTORYM OPERATOR PRZEPISUJE KWOTE Z ALLEGRO — a tam kwota stoi
-// Z PRZECINKIEM. Zmierzone przed poprawka (recenzja 2026-08-15): `kwota: '310,33'` konczylo
-// sie komunikatem „Kwota nie jest liczbą" i prawdziwego zwrotu nie dalo sie zapisac wcale.
+// Z PRZECINKIEM. Bez tej normalizacji `kwota: '310,33'` kończyła się komunikatem
+// „Kwota nie jest liczbą” i prawdziwego zwrotu nie dało się zapisać wcale.
 //
 // Normalizacja NICZEGO NIE PRZEPUSZCZA: `grosze()` dalej odmawia wszystkiemu, co nie jest
 // liczba — zmienia sie wylacznie separator, tak jak w tamtym module.
 //
 // ⚠️ `typeof === 'string'`, a NIE `String(...)` — dokladnie jak `kwotaGr` w
-// domain/koszt-reczny.js. Owiniecie wszystkiego w `String()` zamienialoby wartosc logiczna
-// z formularza w napis „true", ktorego `grosze()` juz nie sparsuje; straznik z Zadania 1
-// (tests/oms/zwrot-domena.test.js) pilnuje dokladnie tego, ze taka wartosc ma przejsc przez
+// domena/koszt-reczny.js. Owiniecie wszystkiego w `String()` zamienialoby wartosc logiczna
+// z formularza w napis „true", ktorego `grosze()` juz nie sparsuje; strażnik
+// (tests/domena/zwrot-domena.test.js) pilnuje dokladnie tego, ze taka wartosc ma przejsc przez
 // `grosze()/zl()`, a nie odbic sie o wlasna normalizacje.
 //
-// ⚠️ EKSPORTOWANA od 2026-08-15 (przebudowa ekranu zwrotu na dwa kroki). Podpowiedzi kwot na
-// kroku 1 i suma liczona przez serwer (domain/zwrot-formularz.js) czytaja DOKLADNIE TE SAMA
-// normalizacje — druga kopia znaczylaby, ze „310,33" przechodzi tam, gdzie sie odbija, albo
-// odwrotnie. Brief tej przebudowy mowi to wprost: „jest juz normalizacja — uzyj jej, nie pisz
-// drugiej".
+// ⚠️ EKSPORTOWANA (dwa kroki ekranu zwrotu). Podpowiedzi kwot na
+// kroku 1 i suma liczona przez serwer (domena/zwrot-formularz.js) czytaja DOKLADNIE TE SAMA
+// normalizacje — druga kopia znaczyłaby, że „310,33” przechodzi tam, gdzie tu się odbija, albo
+// odwrotnie.
 export const normalizujKwote = (surowa) => (typeof surowa === 'string' ? surowa.trim().replace(',', '.') : surowa);
 
 const kwotaPusta = (surowa) => surowa === null || surowa === undefined
   || (typeof surowa === 'string' && surowa.trim() === '');
 
-// `parsujHurtPozycji` (domain/pozycje-reczne.js) zszywa rownolegle tablice i odmawia CALEGO
+// `parsujHurtPozycji` (domena/pozycje-reczne.js) zszywa rownolegle tablice i odmawia CALEGO
 // zapisu, gdy ktoras jest krotsza. Tutaj jest tak samo i z tego samego powodu: przesuniecie
 // o jeden przypisaloby ilosc z pozycji A do pozycji B — czyli zwrocilo nie ten szablon.
 //
-// ⚠️ EKSPORTOWANA od 2026-08-15 (dwa kroki ekranu zwrotu): krok 2 i „Wstecz — popraw" czytaja
-// TE SAMA tablice wierszy, co zapis (domain/zwrot-formularz.js). Drugi czytnik rownoleglych
+// ⚠️ EKSPORTOWANA (dwa kroki ekranu zwrotu): krok 2 i „Wstecz — popraw" czytaja
+// TE SAMA tablice wierszy, co zapis (domena/zwrot-formularz.js). Drugi czytnik rownoleglych
 // tablic rozjechalby sie przy pierwszej zmianie nazw pol formularza.
 /**
  * Jedno pole formularza jako TABLICA — przegladarka wysyla pojedynczy wiersz jako wartosc,
  * a kilka wierszy jako tablice, i kazdy czytelnik rownoleglych tablic musi to widziec tak samo.
  *
- * ⚠️ EKSPORTOWANA od 2026-08-15 (naprawa „kwota podaza za iloscia"): krok 2 czyta jeszcze jedna
- * rownolegla tablice — `pozycja_kwota_propozycja` (domain/zwrot-formularz.js). Druga kopia tego
+ * ⚠️ EKSPORTOWANA (naprawa „kwota podaza za iloscia"): krok 2 czyta jeszcze jedna
+ * rownolegla tablice — `pozycja_kwota_propozycja` (domena/zwrot-formularz.js). Druga kopia tego
  * jednego wyrazenia rozjechalaby sie przy pierwszej zmianie ksztaltu ciala.
  */
 export const listaPolaFormularza = (body, pole) => (Array.isArray(body?.[pole])
@@ -84,8 +84,8 @@ export function wierszeFormularzaZwrotu(body) {
 /**
  * Ile SZTUK i za ile GROSZY danej pozycji wrocilo we WCZESNIEJSZYCH zwrotach.
  *
- * ⚠️ EKSPORTOWANA i liczaca TAKZE KWOTY od 2026-08-15 (dwa kroki ekranu zwrotu). Bariera sztuk
- * nizej potrzebuje samych sztuk, ale podpowiedz kwoty na kroku 1 (domain/zwrot-formularz.js)
+ * ⚠️ EKSPORTOWANA i liczaca TAKZE KWOTY (dwa kroki ekranu zwrotu). Bariera sztuk
+ * nizej potrzebuje samych sztuk, ale podpowiedz kwoty na kroku 1 (domena/zwrot-formularz.js)
  * musi wiedziec, ile ZLOTOWEK z tej linii juz wrocilo — inaczej drugi zwrot czesciowy
  * proponowalby kwote policzona od pelnej wartosci linii. Jedna funkcja, bo „co juz wrocilo"
  * jest JEDNYM faktem: dwa liczniki tego samego rozjechalyby sie przy pierwszej zmianie
@@ -141,10 +141,9 @@ export function sumaZwroconejDostawyGrosze(zwroty) {
 }
 
 /**
- * ⚠️⚠️ ODMOWA DLA CALEGO ZAMOWIENIA — JEDNO ZDANIE, DWA MIEJSCA (drobiazg 2, recenzja
- * 2026-08-15).
+ * ⚠️⚠️ ODMOWA DLA CALEGO ZAMOWIENIA — JEDNO ZDANIE, DWA MIEJSCA.
  *
- * Do tego dnia regula zyla WYLACZNIE wewnatrz `parsujZwrot`, wiec ekran nowego zwrotu rysowal
+ * Dawniej regula zyla WYLACZNIE wewnatrz `parsujZwrot`, wiec ekran nowego zwrotu rysowal
  * zamowieniu anulowanemu pelny, wypelniony formularz — z podsumowaniem, podpowiedziami sztuk
  * i kwot — i odmawial dopiero PO kliknieciu „Zarejestruj zwrot", na ekranie bez zadnych pol.
  * Ekran ma o tym powiedziec OD RAZU, ale nie ma prawa miec na to WLASNEGO zdania: czlowiek,
@@ -190,14 +189,14 @@ export function parsujZwrot(z, body, { dzis }) {
   }
   if (kwotaGr < 0 || dostawaGr < 0) return odmowa('Kwota zwrotu nie może być ujemna.');
 
-  // ⚠️⚠️ SUFIT ZWROTU DOSTAWY (drobiazg 4, recenzja 2026-08-15). `kwota_dostawy` nie miala
-  // ZADNEGO ogranicznika od gory — zmierzone: recznie sklecony POST zapisywal zwrot dostawy
+  // ⚠️⚠️ SUFIT ZWROTU DOSTAWY. `kwota_dostawy` nie miala
+  // ZADNEGO ogranicznika od gory — przyklad: recznie sklecony POST zapisywal zwrot dostawy
   // 139,00 zl przy dostawie 19,00 zl. Bariera laczna nizej tego NIE LAPIE, bo kwota zamowienia
   // jest zwykle wielokrotnie wieksza od kosztu dostawy.
   //
-  // Skutek nie jest kosmetyczny: `paryKorekty` (domain/korekta-pozycje.js) sklada korekte
+  // Skutek nie jest kosmetyczny: `paryKorekty` (domena/korekta-pozycje.js) sklada korekte
   // z linii DOSTAWY z zamowienia i odmawia dokumentu na kwote, ktorej w tym zamowieniu nie ma —
-  // czyli zwrot zostaje nierozliczalny, a wyjsciem jest `UPDATE` na produkcyjnej bazie.
+  // czyli zwrot zostaje nierozliczalny, a wyjściem jest ręczny `UPDATE` na bazie.
   //
   // ⚠️ Miara to `wysylkaBruttoGrosze` — wartosc EFEKTYWNA (po recznej poprawce wysylki), TA SAMA,
   // ktora stoi na karcie, w kwocie oczekiwanej i w linii „Dostawa" na fakturze. Kolumna
@@ -249,24 +248,23 @@ export function parsujZwrot(z, body, { dzis }) {
   }
 
   if (!pozycje.length && dostawaGr === 0) {
-    // M1: to JEDYNY komunikat, jaki operator dostanie w tej sytuacji — ma byc zdaniem po polsku.
+    // To JEDYNY komunikat, jaki operator dostanie w tej sytuacji — ma byc zdaniem po polsku.
     return odmowa('Zwrot musi obejmować co najmniej jedną pozycję albo zwrot kosztu dostawy — wpisz ilość przy pozycji lub kwotę dostawy.');
   }
   if (kwotaGr === 0 && dostawaGr === 0) return odmowa('Kwota zwrotu musi być większa od zera.');
 
-  // ⚠️⚠️ BARIERA SPÓJNOŚCI KWOTY (znalezisko recenzji, przeoczone przy poprzedniej fali
-  // napraw — 2026-08-15). `kwota` (kwota łączna zwrotu za pozycje) i suma `pozycja_kwota` są
-  // DWIEMA liczbami, które operator wpisuje RĘCZNIE, niezależnie od siebie — do tego dnia
-  // `parsujZwrot` nie sprawdzał między nimi żadnej relacji. Zmierzone: `kwota: '79.00'` z
-  // jedną pozycją na `99.00` przechodziło BEZ SŁOWA — `zwrotyWOkresie` (raport,
-  // domain/agregacja-sprzedazy.js) czyta `zwroty.kwota` i zdejmuje z przychodu 79,00 zł, a
-  // `paryKorekty` (domain/korekta-pozycje.js) składa dokument korekty w inFakcie z
-  // `zwroty_pozycje.kwota`, czyli na 99,00 zł. Rozjazd między KPiR a rejestrem VAT, niewidoczny
-  // na żadnym ekranie panelu (formularz świadomie nie ma podglądu sumy — zero JavaScriptu na
-  // ekranie zwrotu, patrz zwrot.ejs), więc pomyłka jest naturalna, nie egzotyczna.
+  // ⚠️⚠️ BARIERA SPÓJNOŚCI KWOTY. `kwota` (kwota łączna zwrotu za pozycje) i suma `pozycja_kwota` są
+  // DWIEMA liczbami, które operator wpisuje RĘCZNIE, niezależnie od siebie. Przykład bez tej
+  // bariery: `kwota: '79.00'` z jedną pozycją na `99.00` przechodzi BEZ SŁOWA — `zwrotyWOkresie`
+  // (raport, domena/sprzedaz-okresu.js) czyta `zwroty.kwota` i zdejmuje z przychodu 79,00 zł, a
+  // `paryKorekty` (domena/korekta-pozycje.js) składa dokument korekty w inFakcie z
+  // `zwroty_pozycje.kwota`, czyli na 99,00 zł. Rozjazd między KPiR a rejestrem VAT. Sumę
+  // pokazuje dopiero krok 2 ekranu zwrotu (liczy ją serwer, bez JavaScriptu — domena/zwrot-formularz.js,
+  // widok moduly/zwroty/widoki/zwrot-podglad.ejs), a drugą kartę, back+resubmit i ręczny POST
+  // łapie dopiero ta bariera.
   //
-  // ⚠️ KWOTA ZOSTAJE EDYTOWALNA — decyzja właściciela brzmi „kwotę przepisujesz z Allegro i to
-  // ONA jest prawdą" (patrz komentarz przy polu w zwrot.ejs). Ta bariera pilnuje WYŁĄCZNIE
+  // ⚠️ KWOTA ZOSTAJE EDYTOWALNA — „kwotę przepisujesz z Allegro i to ONA jest prawdą”
+  // (patrz komentarz przy polu w moduly/zwroty/widoki/zwrot-podglad.ejs). Ta bariera pilnuje WYŁĄCZNIE
   // spójności obu liczb, a nie narzuca arytmetyki: gdy Allegro oddało inną kwotę niż suma
   // pozycji, to KWOTY PRZY POSZCZEGÓLNYCH POZYCJACH są tym, co operator poprawia, żeby się
   // zgadzały z kwotą z Allegro — nie odwrotnie. Komunikat mówi to wprost.
@@ -292,14 +290,14 @@ export function parsujZwrot(z, body, { dzis }) {
   // wysyla pieniedzy, ale ta kwota idzie WPROST do raportu i do korekty. Liczona po WSZYSTKICH
   // wczesniejszych zwrotach tego zamowienia.
   //
-  // ⚠️⚠️ MIARA TO `kwotaOczekiwanaGrosze`, A NIE KOLUMNA `kwota_brutto` (recenzja 2026-08-15).
-  // Panel ma na „kwote zamowienia" JEDNA funkcje (domain/suma-pozycji.js) i to ona rzadzi
+  // ⚠️⚠️ MIARA TO `kwotaOczekiwanaGrosze`, A NIE KOLUMNA `kwota_brutto`.
+  // Panel ma na „kwote zamowienia" JEDNA funkcje (domena/suma-pozycji.js) i to ona rzadzi
   // saldem wplat, bariera arytmetyczna faktury i ostrzezeniem pod tabela pozycji. `kwota_brutto`
   // jest kolumna SKLEPU i CELOWO nie rosnie od naszych dopiskow — komentarz w
-  // domain/pozycje-faktury.js opisuje wprost, ze porownywanie z nia „kazaloby barierze odmawiac
-  // KAZDEMU zamowieniu z dopisana pozycja". Zmierzone: zamowienie 100,00 zl + dopisana doplata
+  // domena/pozycje-faktury.js opisuje wprost, ze porownywanie z nia „kazaloby barierze odmawiac
+  // KAZDEMU zamowieniu z dopisana pozycja". Przykład przy mierze z kolumny: zamowienie 100,00 zl + dopisana doplata
   // 50,00 zl, faktura na 150,00 zl, klient oddaje wszystko → „Suma zwrotów (150,00 zł) przekracza
-  // kwotę zamówienia (100,00 zł)" i PRAWDZIWEGO ZWROTU NIE DALO SIE ZAPISAC.
+  // kwotę zamówienia (100,00 zł)" i PRAWDZIWEGO ZWROTU NIE DAŁOBY SIĘ ZAPISAĆ.
   //
   // `try` jest tu z tego samego powodu, co przy kwotach wyzej: `kwotaOczekiwanaGrosze` chodzi po
   // pozycjach i rzuca `bladOperatora` przy pozycji bez ceny. Ta funkcja NIGDY nie rzuca — oddaje
@@ -330,12 +328,12 @@ export function parsujZwrot(z, body, { dzis }) {
 }
 
 /**
- * ⚠️⚠️ TOZSAMOSC ZWROTU — po niej `dodajZwrot` (db/zwroty.js) poznaje POWTORNE WYSLANIE tego
+ * ⚠️⚠️ TOZSAMOSC ZWROTU — po niej `dodajZwrot` (oms/db/zwroty.js) poznaje POWTORNE WYSLANIE tego
  * samego formularza. Bariery liczy `parsujZwrot` POZA transakcja, wiec bez tego sita back +
  * ponowne zatwierdzenie (albo dwuklik, albo dwie otwarte karty) dawalo DRUGI IDENTYCZNY ZWROT:
- * suma zwrotow sie podwaja, a raport zdejmuje kwote z przychodu DWA RAZY. Specyfikacja nazywa
- * „back+resubmit i dwie otwarte karty" znana droga do drugiego dokumentu i przy korekcie obrona
- * jest (`zarezerwujKorekte`) — przy rejestracji jej nie bylo.
+ * suma zwrotow sie podwaja, a raport zdejmuje kwote z przychodu DWA RAZY. Back+resubmit i dwie
+ * otwarte karty to znana droga do drugiego dokumentu. Przy korekcie broni przed nią
+ * `zarezerwujKorekte`, przy rejestracji — to sito.
  *
  * Zwrot to TEN SAM zwrot, gdy zgadzaja sie: dzien, kwota, kwota dostawy i ZESTAW pozycji
  * (klucz + ilosc). Kolejnosc pozycji nie ma znaczenia — formularz odsyla je w kolejnosci
@@ -364,7 +362,7 @@ export const czyTenSamZwrot = (a, b) => odciskZwrotu(a) === odciskZwrotu(b);
  * Zwrot ROZLICZONY = pieniadze oddane ORAZ, gdy zamowienie ma fakture, istnieje korekta.
  *
  * ⚠️ Ta funkcja rzadzi lista robocza (`doZrobienia`), a nie statusem. Status „Zwrot" jest
- * KONCOWY i zostaje na zawsze (decyzja wlasciciela) — ale zamowienie z nieoddanymi pieniedzmi
+ * KONCOWY i zostaje na zawsze — ale zamowienie z nieoddanymi pieniedzmi
  * ma zostac na liscie do zrobienia, bo jest tam robota. To ten sam wzorzec, ktorym panel
  * trzyma na liscie fakture wymagajaca czlowieka.
  */
@@ -381,7 +379,7 @@ export const PROG_PRZEPADNIECIA_KOREKTY_MIN = 15;
 
 /**
  * Czy zlecenie korekty przepadlo. ⚠️ `201` z inFaktu NIE dowodzi, ze tresc byla poprawna
- * (zmierzone 2026-08-14 pustym cialem), wiec brak numeru po progu jest JEDYNYM sygnalem
+ * (nawet na puste ciało), wiec brak numeru po progu jest JEDYNYM sygnalem
  * odrzucenia, jaki panel dostanie.
  */
 export function korektaPrzepadla(w, { teraz = new Date().toISOString() } = {}) {
@@ -393,7 +391,7 @@ export function korektaPrzepadla(w, { teraz = new Date().toISOString() } = {}) {
 /**
  * „Otwarta sprawa korekty" = zwrot BEZ numeru korekty (przy zafakturowanym zamowieniu, ktore
  * jest jedynym miejscem, gdzie ta lista w ogole ma sens — patrz `doczytaj` w
- * services/korekta.js). Kazdy taki zwrot moze jeszcze dostac numer, wiec kazdy jest
+ * moduly/zwroty/services/korekta.js). Kazdy taki zwrot moze jeszcze dostac numer, wiec kazdy jest
  * kandydatem do pomylki: encja korekty w inFakcie nie niesie referencji do zwrotu.
  */
 export function wiecejNizJedenOtwartySprawaKorekty(zwroty) {
@@ -401,22 +399,22 @@ export function wiecejNizJedenOtwartySprawaKorekty(zwroty) {
 }
 
 /**
- * ⚠️⚠️ CZY `doczytaj` (services/korekta.js) SWIADOMIE NIE ZAPYTAL INFAKTU O TEN ZWROT —
- * recenzja kontrolna 2026-08-15, WARUNEK ODBLOKOWANIA.
+ * ⚠️⚠️ CZY `doczytaj` (moduly/zwroty/services/korekta.js) SWIADOMIE NIE ZAPYTAL INFAKTU
+ * O TEN ZWROT — WARUNEK ODBLOKOWANIA.
  *
  * `doczytaj` wychodzi PRZED zapytaniem do inFaktu, gdy to zamowienie ma wiecej niz jeden
  * zwrot z otwarta sprawa korekty (patrz docblock tamtej funkcji) — bo nie ma jak rozstrzygnac,
  * KTORY z dwoch nierozliczonych zwrotow opisuje znaleziony dokument. To jest SWIADOMA DECYZJA
  * i ma zostac.
  *
- * ALE: widok ekranu zwrotu czytal do tego dnia WYLACZNIE `korektaPrzepadla` (proba czasu) i po
+ * ALE: widok ekranu zwrotu czytał dawniej WYŁĄCZNIE `korektaPrzepadla` (próba czasu) i po
  * przekroczonym progu pisal „inFakt nie wystawił dokumentu — zlecenie zostało odrzucone" —
  * zdanie O FAKCIE, KTOREGO PANEL NIE ZNA, bo `doczytaj` nigdy nie zapytal. Czlowiek, ktory w to
  * uwierzy, odblokuje rezerwacje i otworzy droge do DRUGIEGO DOKUMENTU u organu podatkowego.
  *
  * Ta funkcja jest JEDYNYM miejscem, ktore liczy „czy pytalismy" — `doczytaj` i trasa ekranu
- * zwrotu (routes/zwroty.js) czytaja DOKLADNIE TO SAMO zdanie. Widok (zwrot.ejs) tej reguly
- * NIE LICZY, tylko dostaje gotowa odpowiedz od trasy.
+ * zwrotu (moduly/zwroty/trasy/wspolne.js) czytaja DOKLADNIE TO SAMO zdanie. Widok
+ * (moduly/zwroty/widoki/zwrot.ejs) tej reguly NIE LICZY, tylko dostaje gotowa odpowiedz od trasy.
  */
 export function korektaNieSprawdzona(w, zwroty) {
   if (!w?.korekta_zlecona_at || w.korekta_numer) return false;
@@ -427,7 +425,7 @@ export function powodOdmowyUsunieciaZwrotu(w) {
   if (w?.pieniadze_oddane_at) {
     return 'Do tego zwrotu pieniądze zostały już oddane — skasowanie zostawiłoby wypłatę bez podstawy.';
   }
-  // ⚠️ NUMER SPRAWDZAMY OSOBNO, PRZED REZERWACJA (2026-08-15). Do czasu, gdy numer korekty
+  // ⚠️ NUMER SPRAWDZAMY OSOBNO, PRZED REZERWACJA. Do czasu, gdy numer korekty
   // zapisywala WYLACZNIE sciezka przez rezerwacje, warunek nizej wystarczal: numer nie mial
   // prawa istniec bez `korekta_zlecona_at`. „Korektę wystawiłem ręcznie" zapisuje numer BEZ
   // rezerwacji (korekta powstala poza panelem), wiec bez tej linii taki zwrot dawalby sie
@@ -442,29 +440,28 @@ export function powodOdmowyUsunieciaZwrotu(w) {
 }
 
 /**
- * ⚠️⚠️ WYJSCIE ZE STANU, W KTORY PANEL SAM POZWALA WEJSC (przewodnik OMS, 4.9).
+ * ⚠️⚠️ WYJSCIE ZE STANU, W KTORY PANEL SAM POZWALA WEJSC (reguła: każdy stan ma wyjście).
  *
- * Zmierzone na zywym koncie 2026-08-14: inFakt oddaje `201` NAWET NA PUSTE CIALO i odrzuca
+ * Na żywym koncie inFakt oddaje `201` NAWET NA PUSTE CIALO i odrzuca
  * tresc dopiero w przetwarzaniu w tle. Sekwencja, ktora sie przez to zdarza: operator klika
  * „Wystaw korektę" → `201` → `korekta_zlecona_at` ustawione → walidacja w tle odrzuca dokument
  * → po progu ekran pisze „zlecenie zostało odrzucone". I na tym KONIEC: przycisku „Wystaw
  * korektę" juz nie ma (`!w.korekta_zlecona_at`), skasowania zwrotu odmawia
  * `powodOdmowyUsunieciaZwrotu`, a zwrot zostaje NIEROZLICZONY NA ZAWSZE, trzymajac zamowienie
- * na liscie roboczej. Jedynym wyjsciem byl `UPDATE` na produkcyjnej bazie.
+ * na liscie roboczej. Jedynym wyjściem byłby ręczny `UPDATE` na bazie.
  *
  * ⚠️ PROG NIE ZWALNIA REZERWACJI SAM — decyzje podejmuje CZLOWIEK, ktory sprawdzil w inFakcie.
- * To ta sama regula, co przy zerwanym polaczeniu (services/korekta.js) i przy `odblokujFakture`:
- * zaden uplyw czasu nie jest dowodem, ze dokument nie powstal. Prog wyznacza tylko moment,
+ * To ta sama regula, co przy zerwanym polaczeniu (moduly/zwroty/services/korekta.js) i przy
+ * `odblokujFakture`: zaden uplyw czasu nie jest dowodem, ze dokument nie powstal. Prog wyznacza tylko moment,
  * od ktorego wolno CZLOWIEKOWI rozstrzygnac.
  */
 /**
- * ⚠️⚠️ JEDNA REGULA PROGU DLA OBU DECYZJI CZLOWIEKA PRZY ZLECENIU, KTORE JESZCZE TRWA
- * (K2, recenzja kontrolna 2026-08-15).
+ * ⚠️⚠️ JEDNA REGULA PROGU DLA OBU DECYZJI CZLOWIEKA PRZY ZLECENIU, KTORE JESZCZE TRWA.
  *
  * Panel ma DWIE drogi wyjscia ze zlecenia korekty: „sprawdziłem w inFakcie, korekty nie ma —
  * odblokuj" i „korektę wystawiłem ręcznie". Przed progiem OBIE znacza to samo: czlowiek
  * rozstrzyga o dokumencie, ktory inFakt moze wlasnie przetwarzac. Odblokowanie mialo bariere,
- * reczny numer NIE MIAL ZADNEJ — zmierzone: rezerwacja sprzed minuty, POST `/korekta/reczna`
+ * reczny numer NIE MIAL ZADNEJ — przykład: rezerwacja sprzed minuty, POST `/korekta/reczna`
  * → 302, numer zapisany, `korekta_zlecona_at` zostaje. Skutek to DWA dokumenty do jednej
  * faktury, ktorych `doczytaj` juz nie zauwazy (wychodzi na `korekta_numer`), `odblokuj`
  * odmowi, a zwrot zamelduje sie jako rozliczony.
@@ -492,9 +489,9 @@ export function powodOdmowyOdblokowaniaKorekty(w, { teraz = new Date().toISOStri
 }
 
 /**
- * ⚠️⚠️ JEDNA KOREKTA NA FAKTURE — REGULA, NIE WYGODA (K1 + W4, recenzja kontrolna 2026-08-15).
+ * ⚠️⚠️ JEDNA KOREKTA NA FAKTURE — REGULA, NIE WYGODA.
  *
- * Zwrotow do jednego zamowienia bywa kilka (specyfikacja dopuszcza to wprost), ale panel czyta
+ * Zwrotow do jednego zamowienia bywa kilka (to jest dozwolone), ale panel czyta
  * ZAWSZE FAKTURE PIERWOTNA. Dla drugiego zwrotu czesciowego zlozylby wiec dokument mowiacy
  * „z 2 szt. na 1 szt." wtedy, gdy pierwsza korekta juz te sztuke zdjela — czyli korekte
  * in minus policzona u organu DWA RAZY. Zeby zlozyc ja poprawnie, trzeba by odtworzyc stan
@@ -502,16 +499,15 @@ export function powodOdmowyOdblokowaniaKorekty(w, { teraz = new Date().toISOStri
  * umie, ma o tym POWIEDZIEC, a nie wystawic dokument.
  *
  * ⚠️ Regula mieszka TUTAJ, a UZYWAJA jej DWIE warstwy i to jest celowe:
- *   • usluga (services/korekta.js) — zeby odmowa przyszla PRZED dotknieciem inFaktu i po polsku,
- *   • baza (db/zwroty.js, wewnatrz `BEGIN IMMEDIATE`) — bo sprawdzenie POZA transakcja
+ *   • usluga (moduly/zwroty/services/korekta.js) — zeby odmowa przyszla PRZED dotknieciem inFaktu i po polsku,
+ *   • baza (oms/db/zwroty.js, wewnatrz `BEGIN IMMEDIATE`) — bo sprawdzenie POZA transakcja
  *     przepuszczalo DWA rownolegle zgloszenia na dwa zwroty tego samego zamowienia: oba
  *     czytaly „nikt inny nie ma korekty" i oba rezerwowaly wlasny wiersz.
  * To ten sam uklad, co przy `czyTenSamZwrot` i `dodajZwrot`.
  *
  * ⚠️ Warunek obejmuje `korekta_zlecona_at` RAZEM z `korekta_numer`, bo zlecenie bez numeru tez
- * moglo powolac dokument (`201` z inFaktu nie dowodzi niczego w zadna strone — notatka
- * 2026-08-14-oms-zwroty-pomiar.md). Rezerwacja zwolniona po odmowie 4xx ma OBA pola puste, wiec
- * droga do poprawnej korekty zostaje otwarta.
+ * moglo powolac dokument (`201` z inFaktu nie dowodzi niczego w zadna strone). Rezerwacja
+ * zwolniona po odmowie 4xx ma OBA pola puste, wiec droga do poprawnej korekty zostaje otwarta.
  */
 export function powodOdmowyKorektyDlaFaktury(w, zwroty) {
   const inny = (zwroty ?? []).find((x) => x.id !== w?.id && (x.korekta_numer || x.korekta_zlecona_at));
@@ -523,17 +519,17 @@ export function powodOdmowyKorektyDlaFaktury(w, zwroty) {
 }
 
 /**
- * ⚠️⚠️ K1: TEN SAM ZWROT TEZ MOZE JUZ MIEC KOREKTE — I DO 2026-08-15 NIC TEGO NIE PILNOWALO.
+ * ⚠️⚠️ TEN SAM ZWROT TEŻ MOŻE JUŻ MIEĆ KOREKTĘ.
  *
- * Bariera wyzej patrzyla wylacznie na INNE zwroty (`x.id !== w.id`), a „Korektę wystawiłem
- * ręcznie" NIE USTAWIA rezerwacji — dla TEGO SAMEGO zwrotu nie bylo wiec zadnej bariery.
- * Zmierzone: zwrot z numerem `9/KOR/08/2026` i pusta rezerwacja przechodzil wszystkie sita,
+ * Bariera wyżej patrzy wyłącznie na INNE zwroty (`x.id !== w.id`), a „Korektę wystawiłem
+ * ręcznie” NIE USTAWIA rezerwacji — TEN SAM zwrot potrzebuje więc osobnej bariery.
+ * Przykład bez niej: zwrot z numerem `9/KOR/08/2026` i pusta rezerwacja przechodzil wszystkie sita,
  * `wystawKorekte` szlo do inFaktu, a `zapiszKorekte` (COALESCE) nadpisywalo numer reczny numerem
  * nowego dokumentu — pierwszy znikal z bazy BEZ SLADU. Droga przez UI: druga otwarta karta albo
  * back+resubmit sprzed wpisania numeru.
  *
  * ⚠️ To jest komunikat DLA CZLOWIEKA. Granica faktu stoi osobno, w SQL-u rezerwacji
- * (`korekta_numer IS NULL` w db/zwroty.js) — bo tamtej nie da sie wyprzedzic wyscigiem.
+ * (`korekta_numer IS NULL` w oms/db/zwroty.js) — bo tamtej nie da sie wyprzedzic wyscigiem.
  * Obie warstwy, nie jedna.
  */
 export function powodOdmowyWystawieniaKorekty(w) {
@@ -546,7 +542,7 @@ export function powodOdmowyWystawieniaKorekty(w) {
 }
 
 /**
- * PRZ-148.03: zwrot kosztu dostawy da się ująć w korekcie TYLKO przy fakturze z pozycją „Dostawa” — inaczej panel
+ * Zwrot kosztu dostawy da się ująć w korekcie TYLKO przy fakturze z pozycją „Dostawa” — inaczej panel
  * nie ma czego pomniejszyć, a korekta bez tych pieniędzy rozjechałaby panel i dokument u organu (dawniej działo się
  * to po cichu; uzasadnienie przy `paryKorekty`, domena/korekta-pozycje.js, który woła TĘ funkcję). Faktura bez tej
  * linii zdarza się normalnie: darmowa wysyłka, dostawa pod inną nazwą, dokument poprawiony ręcznie w programie.
@@ -563,7 +559,7 @@ export function powodOdmowyKorektyBezDostawy(w, faktura, { nazwa = NAZWA_ZAPASOW
     + ` „${NAZWA_DOSTAWY}" — korekty nie da się złożyć. Wystaw ją ręcznie w ${nazwa.miejscownik}.`;
 }
 
-/** PRZ-148.03: czy dla tego zwrotu karta/ekran muszą znać pozycje faktury (zwrot z dostawą, jeszcze bez korekty). */
+/** Czy dla tego zwrotu karta/ekran muszą znać pozycje faktury (zwrot z dostawą, jeszcze bez korekty). */
 export function zwrotWymagaPozycjiDostawy(w) {
   if (!w || w.korekta_numer || w.korekta_zlecona_at || !w.kwota_dostawy) return false;
   return grosze(w.kwota_dostawy, 'zwrot dostawy') > 0;
@@ -577,12 +573,12 @@ export function zwrotWymagaPozycjiDostawy(w) {
  * ⚠️ BEZ TEJ DROGI zwrot do faktury skorygowanej poza panelem NIGDY sie nie rozliczy
  * (`zwrotRozliczony` wymaga `korekta_numer`) — a przy DRUGIEJ korekcie do tej samej faktury
  * jest to droga ZALECANA, bo panel odmawia jej swiadomie: nie umie odtworzyc stanu „przed"
- * po pierwszej korekcie (services/korekta.js).
+ * po pierwszej korekcie (moduly/zwroty/services/korekta.js).
  *
  * Odmowa nadpisania istniejacego numeru to obrona przed dwuklikiem: drugi numer przy tym samym
  * zwrocie znaczylby, ze panel wie o dwoch dokumentach, a rozliczyl jeden.
  *
- * ⚠️⚠️ K2: ODMOWA TAKZE PRZY REZERWACJI W TOKU. Ta droga obchodzila prog, ktorego pilnuje trasa
+ * ⚠️⚠️ ODMOWA TAKZE PRZY REZERWACJI W TOKU. Ta droga obchodzila prog, ktorego pilnuje trasa
  * odblokowania — a to jest TA SAMA decyzja o tej samej wadze (patrz
  * `powodOdmowyPrzyZleceniuWToku` wyzej: jedno zdanie, jedno miejsce). Po progu droga zostaje
  * otwarta, bo przy zleceniu, ktore przepadlo, jest to JEDYNE wyjscie.

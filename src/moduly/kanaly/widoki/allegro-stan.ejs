@@ -1,15 +1,15 @@
 <%
-  // U25–U26: problem = nieudany ostatni test albo błąd pobierania; tylko wtedy jest przycisk główny.
+  // Problem = nieudany ostatni test albo błąd pobierania; tylko wtedy jest przycisk główny.
   const problem = k.autoryzacja === 'polaczone' && Boolean(diagnostyka?.blad || stan?.ostatni_blad);
   const odczyty = [stan?.ostatni_przebieg_at, diagnostyka?.ostatni_sukces_at].filter(t => t && !Number.isNaN(Date.parse(t)));
   const ostatniOdczyt = odczyty.sort((a, b) => Date.parse(b) - Date.parse(a))[0];
-  // #6, U9: stan i czas jak w wierszu listy „Moje połączenia” (ten sam model), daty jak „dziś 08:10”.
+  // Stan i czas jak w wierszu listy „Moje połączenia” (ten sam model), daty jak „dziś 08:10”.
   const kiedy = (t) => fmtKiedy(t, locals.teraz ?? new Date());
   const wiersz = locals.wiersz;
   const dziala = k.autoryzacja === 'polaczone' || locals.zSerwera === true;
   const etykieta = wiersz ? wiersz.etykietaStanu : problem ? 'Wymaga uwagi' : k.pobieranie === 'wlaczone' ? 'Działa' : 'Połączone, pobieranie wyłączone';
   const odczyt = wiersz ? wiersz.czasOdczytu : ostatniOdczyt;
-  // PRZ-160 E3.02 (D42): zgoda na oferty — opcjonalna, na żądanie.
+  // Zgoda na oferty — opcjonalna, na żądanie.
   const oferty = locals.oferty ?? null;
 %>
 <section class="ust-sekcja">
@@ -52,7 +52,7 @@
       <form method="post" action="<%= adres %>/oferty-aplikacja"><p><button class="btn btn--maly" type="submit">Sprawdź uprawnienia aplikacji</button></p></form>
     </li>
     <% if (oferty.aplikacja === true) { %>
-    <%# PRZ-160 E3d.01: „Chcę wystawiać oferty” wraca tu (#oferty-polacz) z potwierdzeniem w tym kroku (tylko raz). %>
+    <%# „Chcę wystawiać oferty” wraca tu (#oferty-polacz) z potwierdzeniem w tym kroku (tylko raz). %>
     <li id="oferty-polacz"><% if (locals.ofertyZapisano) { %><p class="pas-potwierdzenie" role="status">Zapisano: chcesz wystawiać oferty z tego konta. Następny krok poniżej.</p><% } %><% if (!oferty.chce) { %>Aplikacja ma uprawnienia do ofert. Potwierdź, że chcesz wystawiać oferty z tego konta.
       <form method="post" action="<%= adres %>/oferty-chce"><p><button class="btn btn--maly btn--glowny" type="submit">Chcę wystawiać oferty</button></p></form>
       <% } else if (oferty.sciezka === 'env') { %>Połącz konto ponownie i na stronie Allegro zatwierdź zgodę — tym razem także na oferty. Do czasu zatwierdzenia dotychczasowe połączenie przestaje działać, więc zrób to od razu do końca.

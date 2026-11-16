@@ -15,13 +15,13 @@ export const modulZdrowie: ModulOms<{proba:boolean;kopieKatalog:string;kopiaZewn
     return {proba:env.OMS_TRYB==='proba',kopieKatalog:(env.OMS_KOPIE_KATALOG??'').trim(),kopiaZewnetrzna:(env.OMS_KOPIA_ZEWNETRZNA??'').trim()};
   },migracje:[],uprawnienia:[],menu:[],
   zbuduj:ctx=>{
-    // PRZ-059: wersja z obrazu klienta (/app/wydanie.json z paczki); w repo i obrazie produkcji pliku nie ma.
+    // Wersja z obrazu klienta (/app/wydanie.json z paczki); w repo i obrazie produkcji pliku nie ma.
     const wersja=wersjaWydania(new URL('../../../wydanie.json',import.meta.url));
     const infakt=ctx.usluga<any>('faktury','infakt');
     const fakturyWidok=ctx.usluga<any>('faktury','fakturyWidok');
     const puls=ctx.usluga<any>('faktury','puls');
     const czuwaczOstrzezen=infakt?createCzuwaczOstrzezen({db:ctx.db,infakt,fakturyWidok}):null;
-    // PRZ-118.08: strażnik budżetu z limitów programu, który naprawdę stoi za czuwaczem.
+    // Strażnik budżetu z limitów programu, który naprawdę stoi za czuwaczem.
     if(czuwaczOstrzezen&&czuwaczOstrzezen.najdluzszyPrzebiegMs>=ODSTEP_OSTRZEZEN_MS){
       throw Error(`Budżet czuwacza ostrzeżeń z limitów programu „${czuwaczOstrzezen.program?.opis.nazwa.mianownik}” (${czuwaczOstrzezen.najdluzszyPrzebiegMs} ms) nie mieści się między tyknięciami zegara (${ODSTEP_OSTRZEZEN_MS} ms) — panel nie wstanie z tym programem.`);
     }
@@ -34,7 +34,7 @@ export const modulZdrowie: ModulOms<{proba:boolean;kopieKatalog:string;kopiaZewn
     };
     const rachunekFirmy=opcjonalna<{biezacy:()=>{rachunek:string|null}}>('rdzen','rachunekFirmy');
     const nipBdoFirmy=opcjonalna<{biezacy:()=>{nip:string|null}}>('rdzen','nipBdoFirmy');
-    // PRZ-122.B16a: stan kopii bazy dla panelu (tabelka ostrzeżeń). Z katalogiem — wynik stanKopii; bez niego
+    // Stan kopii bazy dla panelu (tabelka ostrzeżeń). Z katalogiem — wynik stanKopii; bez niego
     // tylko informacja, czy brak nadzoru jest groźny (program wbudowany trzyma faktury wyłącznie w bazie).
     const kopie=()=>{
       const katalog=ctx.konfiguracja.kopieKatalog;
@@ -48,7 +48,7 @@ export const modulZdrowie: ModulOms<{proba:boolean;kopieKatalog:string;kopiaZewn
       const rejestr=opcjonalna<{lista:()=>{klucz:string;autoryzacja:string;pobieranie:string}[];stany?:()=>{sklep:string}[]}>('kanaly','rejestrKanalow');
       const zrodlaAllegro=rejestr?rejestr.lista().filter(k=>['polaczone','brak'].includes(k.autoryzacja)&&k.pobieranie==='wlaczone').map(k=>k.klucz):Object.keys(config.kanaly);
       const kurierzy=ctx.usluga<Record<string,unknown>>('wysylka','kurierzy');
-      // PRZ-102.22: koszty mówią to funkcją (token z Ustawień i przełącznik modułu bez restartu); wartość — starsze składy.
+      // Koszty mówią to funkcją (token z Ustawień i przełącznik modułu bez restartu); wartość — starsze składy.
       const wlaczone=opcjonalna<boolean|(()=>boolean)>('koszty','kosztyWlaczone');
       const kosztyWlaczone=typeof wlaczone==='function'?wlaczone():(wlaczone??false);
       const kosztyModulWylaczony=opcjonalna<()=>boolean>('koszty','modulWylaczony')?.()??false;
@@ -68,26 +68,26 @@ export const modulZdrowie: ModulOms<{proba:boolean;kopieKatalog:string;kopiaZewn
         kanaly:ctx.usluga<()=>any[]>('kanaly','stanyKanalow')() as any,
       });
       const alarmy=alarmyKonfiguracjiKanalow(ctx.db,config,teraz,ctx.konfiguracja.proba);
-      // Podmieniamy wartości istniejących pól, zachowując ich kolejność dla monitoring.
+      // Dopisujemy do istniejących pól (alarmy, uwagi), nie dodajemy kluczy — kolejność kluczy odpowiedzi jest umową z czujką monitoring.
       wynik.alarmy.push(...alarmy);
-      // PRZ-102.20: bez rachunku (ani w pliku, ani w panelu) panel działa, ale maile o płatności idą bez danych do
+      // Bez rachunku (ani w pliku, ani w panelu) panel działa, ale maile o płatności idą bez danych do
       // przelewu, a proforma odmawia — uwaga, nie alarm: to brak ustawienia, nie awaria do budzenia czujki.
       if(rachunekFirmy&&!rachunekFirmy.biezacy().rachunek)wynik.uwagi.push(UWAGA_BRAK_RACHUNKU);
-      // PRZ-108.10: tak samo NIP — bez niego proforma, specyfikacja, wywóz i faktura WDT odmawiają.
+      // Tak samo NIP — bez niego proforma, specyfikacja, wywóz i faktura WDT odmawiają.
       if(nipBdoFirmy&&!nipBdoFirmy.biezacy().nip)wynik.uwagi.push(UWAGA_BRAK_NIP);
-      // PRZ-059: nadzór kopii tylko tam, gdzie compose klienta ustawia OMS_KOPIE_KATALOG.
+      // Nadzór kopii tylko tam, gdzie compose klienta ustawia OMS_KOPIE_KATALOG.
       if(ctx.konfiguracja.kopieKatalog){
         const kopie=stanKopii({katalog:ctx.konfiguracja.kopieKatalog,zewnetrzna:ctx.konfiguracja.kopiaZewnetrzna,teraz});
         wynik.alarmy.push(...kopie.alarmy);
         wynik.uwagi.push(...kopie.uwagi);
-        // PRZ-062: klucz kanału niezgodny z regułą Allegro — tylko w instalacji klienta (ten sam przełącznik).
+        // Klucz kanału niezgodny z regułą Allegro — tylko w instalacji klienta (ten sam przełącznik).
         wynik.alarmy.push(...alarmyNazwKanalow(config.definicje??[]));
       }else{
-        // PRZ-122.B16a: program wbudowany bez nadzoru kopii — uwaga (ok bez zmian); program zewnętrzny: /health bajt w bajt jak dotąd.
+        // Program wbudowany bez nadzoru kopii — uwaga (ok bez zmian); program zewnętrzny: /health bajt w bajt jak dotąd.
         const k=kopie();
         if('wymagany' in k&&k.wymagany)wynik.uwagi.push(uwagaBezNadzoruKopii(k.nazwa??''));
       }
-      // PRZ-119.12a: Fakturownia wysłała do KSeF bez zlecenia — alarm do „Sprawdziłem” w Ustawieniach.
+      // Fakturownia wysłała do KSeF bez zlecenia — alarm do „Sprawdziłem” w Ustawieniach.
       wynik.alarmy.push(...(opcjonalna<()=>string[]>('faktury','alarmyAutoKsef')?.()??[]));
       wynik.ok=wynik.alarmy.length===0;
       // Na końcu odpowiedzi (umowa kolejności kluczy z czujką monitoring).

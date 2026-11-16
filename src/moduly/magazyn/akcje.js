@@ -1,10 +1,9 @@
-// Port frozen 5b9cd765: 1127–1500, 1662–1765, 1910–2008.
 import { stronaOdmowy } from '../../core/web/odmowa.js';
 import { polaSlownikowZFormularza, dopiszDoSlownikow, wTransakcji } from './services/slowniki-kart.js';
 
 export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta, kontaErli = /** @returns {{ klucz: string }[]} */ () => [] }) {
   const { kartyZKanalami, niepowiazaneOfertyAllegro, powiazaneOfertyAllegro, kartyDoPowiazania, powiazOfertyHurtem, odepnijOferte, podgladPrzepiec, kartaPoId, produktyKarty, zapiszKarte, kartyPoIdach, zastosujHurtem, zajeteSku, nadajSku, produktyKart, polecenieZFormularza, zmianyHurtem, polaDoPrzeniesienia, proponujSku, przejeciaZeSklepu, propozycje, KANALY_ALLEGRO, wartosciPol, adresKanalu, BEZ_SKLEPOW, BEZ_SKLEPOW_ODMOWA, BEZ_KART, SORTOWANIE_POWIAZAN, SORTOWANIE_POWIAZAN_DOMYSLNE, napis, kanalAllegro, paryZFormularza, wierszOferty, pozycjaListy, adresPowiazan, linkiPowiazan, ukrytePowiazan, pole, zmianyZFormularza, bezpiecznyWroc, adresKarty, numeryZaznaczone, filtryZawezenia, zakresHurtu, HURT_BEZ_ZAZNACZENIA, HURT_BEZ_ZMIANY } = pomoc;
-  // PRZ-152.G13: odmowa „brak sklepu” w układzie OMS (status i tekst bez zmian); powrót na listę, z której przyszedł człowiek.
+  // Odmowa „brak sklepu” w układzie OMS (status i tekst bez zmian); powrót na listę, z której przyszedł człowiek.
   const odmowaBezSklepow = (req, reply) => stronaOdmowy(reply, 503, BEZ_SKLEPOW_ODMOWA, {
     tytul: 'Magazyn nie ma skąd czytać katalogu', napisWroc: 'Wróć do magazynu',
     wroc: pomoc.bezpiecznyWroc(req.query?.wroc ?? req.body?.wroc) ?? '/magazyn',
@@ -25,7 +24,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta, 
       wynik,
       blad,
       // Zakres i zawezenie wracaja na ekran, zeby przycisk „popraw zaznaczenie" prowadzil
-      // do TEJ SAMEJ listy, z ktorej czlowiek przyszedl (niezmiennik 4.13b).
+      // do TEJ SAMEJ listy, z ktorej czlowiek przyszedl (reguła: filtry nie kasują frazy).
       zakres,
       adresPowrotu: zawezenie ? `/magazyn?${zawezenie}` : '/magazyn',
     });
@@ -50,7 +49,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta, 
     });
 
     // ⚠️ ODMOWA JEST CALOSCIOWA: jedno pole, ktorego nie rozumiemy, wstrzymuje CALY zapis,
-    // a nie „to, co dalo sie odczytac". Przy 645 kartach nikt by juz nie odtworzyl, ktora
+    // a nie „to, co dalo sie odczytac". Przy setkach kart nikt by juz nie odtworzyl, ktora
     // polowa weszla.
     const { polecenie, blad } = polecenieZFormularza(req.body);
     if (blad) return odmowa(blad);
@@ -63,7 +62,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta, 
     if (zakres === 'pasujace') {
       // ⚠️ TO SAMO ZAPYTANIE, CO LISTA — razem z regula „filtr, ktorego nie rozumiemy, oddaje
       // PUSTO". Cicho zignorowany filtr znaczylby hurtowa zmiane na CALYM katalogu zamiast
-      // na 645 brakach.
+      // na kartach z brakami.
       const filtry = filtryZawezenia(zawezenie);
       karty = kartyZKanalami(db, { fraza: filtry.fraza, filtry });
     } else {
@@ -95,8 +94,8 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta, 
 
   // ——— GENERATOR SKU ——————————————————————————————————————————————————————————
   //
-  // PO CO TO JEST (zmierzone na produkcji 2026-08-12): 965 kart bez SKU. Numer nadany tutaj
-  // pojedzie w Zadaniu 15 do produkcyjnych sklepow i stanie sie TOZSAMOSCIA produktu.
+  // PO CO TO JEST: wiele kart moze byc bez SKU. Numer nadany tutaj
+  // pojedzie pozniej do sklepow i stanie sie TOZSAMOSCIA produktu.
   //
   // ⚠️⚠️ TA SAMA DROGA, CO PRZY EDYCJI HURTEM, I ANI JEDNEJ WLASNEJ REGULY WIECEJ: podglad
   // (`/magazyn/sku-podglad`) wylacznie liczy i pokazuje, zapisuje dopiero
@@ -104,10 +103,10 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta, 
   // podgladu niesie DECYZJE (wzorzec i numery kart), nigdy gotowych numerow SKU.
   //
   // ⚠️⚠️ KOLIZJA WSTRZYMUJE CALOSC. Pozycja, ktorej numer juz do kogos nalezy, nie ma prawa
-  // ani zostac zapisana, ani po cichu wypasc z zestawu — a „zapisalem 964 z 965" jest przy
+  // ani zostac zapisana, ani po cichu wypasc z zestawu — a „zapisalem 99 ze 100" jest przy
   // tej skali zdaniem, po ktorym nikt nie odtworzy, ktorego karty brakuje.
   //
-  // ⚠️ ANI JEDNEGO ZADANIA DO SKLEPU CZY ALLEGRO. Numery jada do sklepow w Zadaniu 15,
+  // ⚠️ ANI JEDNEGO ZADANIA DO SKLEPU CZY ALLEGRO. Numery jada do sklepow osobna droga,
   // z wlasnym podgladem — tutaj powstaja wylacznie w naszym rejestrze.
 
   const SKU_BEZ_ZAZNACZENIA = 'Nie zaznaczono ani jednej karty, więc nie nadałem żadnego '
@@ -179,7 +178,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta, 
     if (zakres === 'pasujace') {
       // ⚠️ TO SAMO ZAPYTANIE, CO LISTA — razem z regula „filtr, ktorego nie rozumiemy, oddaje
       // PUSTO". Cicho zignorowany filtr znaczylby numerowanie CALEGO katalogu zamiast
-      // 965 brakow.
+      // samych kart bez numeru.
       const filtry = filtryZawezenia(zawezenie);
       karty = kartyZKanalami(db, { fraza: filtry.fraza, filtry });
     } else {
@@ -189,7 +188,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta, 
     }
 
     // ⚠️⚠️ ZAJETE NUMERY CZYTANE Z OBU ZBIOROW I ZA KAZDYM RAZEM OD NOWA (`zajeteSku`):
-    // `karty.sku` ORAZ 218 numerow zyjacych w sklepach, o ktorych `UNIQUE` nic nie wie.
+    // `karty.sku` ORAZ numery zyjace w sklepach, o ktorych `UNIQUE` nic nie wie.
     // ⚠️ TA SAMA FUNKCJA LICZY PODGLAD I ZAPIS, za kazdym razem ze stanu BIEZACEGO — miedzy
     // jednym a drugim mogl wejsc odczyt katalogow albo drugi operator.
     let propozycje;
@@ -231,7 +230,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta, 
     return ekranSku(reply, {
       ...wspolne,
       pozycje: doWidoku((p) => (nieweszly.has(p.id) ? SKU_NIEAKTUALNY : null)),
-      // ⚠️ NIEAKTUALNE MAJA BYC POKAZANE (niezmiennik 4.13a): karta, ktora numeru nie dostala,
+      // ⚠️ NIEAKTUALNE MAJA BYC POKAZANE (reguła: pominięte wracają z powodem): karta, ktora numeru nie dostala,
       // bo zdobyla go w miedzyczasie, to CO INNEGO niz karta pominieta — i tylko po tej
       // roznicy widac, ze bariera w `UPDATE` zadzialala.
       wynik: { nadane: nadane.length, nieaktualne: nieaktualne.length },
@@ -249,7 +248,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta, 
 
   // ——— PRZEJECIE NUMERU ZE SKLEPU ——————————————————————————————————————————————
   //
-  // PO CO TO JEST (zmierzone na produkcji 2026-08-12): 278 kart — czwarta czesc katalogu —
+  // PO CO TO JEST: czesc kart
   // nie ma NASZEGO numeru, a ich produkt MA wlasny numer w sklepie. Generator SKU ich nie
   // przejmuje i nie ma jak: on wydaje numery NOWE i poprawnie omija zajete, ale zostawia
   // ROZBIEZNOSC (rejestr milczy, sklep ma numer).
@@ -339,7 +338,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta, 
     const idy = karty.map((w) => w.id);
     // ⚠️⚠️ ZAJETE NUMERY BEZ PRODUKTOW TYCH KART. Numer, ktory karta ma PRZEJAC, zyje
     // w lustrze — bez pominiecia kazde przejecie odbijaloby sie o wlasne odbicie i ekran
-    // meldowalby 278 kolizji z niczym.
+    // meldowalby kolizje z niczym przy kazdej karcie.
     // ⚠️ TA SAMA FUNKCJA LICZY PODGLAD I ZAPIS, za kazdym razem ze stanu BIEZACEGO.
     const pozycje = przejeciaZeSklepu(
       karty,
@@ -384,7 +383,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta, 
   // zamiast przekierowywac: ekran wyniku jest jedynym miejscem, w ktorym widac komplet
   // przejetych numerow i to, czego panel nie tknal.
   app.post('/magazyn/przejmij-zapisz', async (req, reply) => przejmijSku(req, reply, { zapisz: true }));
-  // E4.14 / D59: przy włączonych stanach przepięcie przenosi sprzedaż od granicy z ofertą, więc najpierw podgląd
+  // Przy włączonych stanach przepięcie przenosi sprzedaż od granicy z ofertą, więc najpierw podgląd
   // („stan karty X: 7 → 4”), a zapis dopiero po potwierdzeniu. Formularz podglądu odsyła to samo ciało plus
   // `potwierdz=1`. Stany wyłączone albo przepięcie bez wpływu na stan — zapis od razu, jak dotąd.
   function podgladPrzedZapisem(req, reply, akcja, zmiany) {
@@ -439,14 +438,14 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta, 
       // bo widok w tym module niczego nie rozstrzyga.
       sortowanie: linkiPowiazan(sort, kier, filtry, wroc),
       // Formularze GET niosa nawzajem swoje wartosci ukrytymi polami — inaczej klikniecie
-      // „Filtruj" gubiloby fraze, a wpisanie frazy gubiloby filtr konta (niezmiennik 4.13b).
+      // „Filtruj" gubiloby fraze, a wpisanie frazy gubiloby filtr konta (reguła: filtry nie kasują frazy).
       filtry,
       wartosciPol: { fraza: filtry.fraza ?? '' },
       ukryteWFiltrach: ukrytePowiazan(filtry, { sort, kier, wroc }, ['kanal']),
       ukryteWSzukajce: ukrytePowiazan(filtry, { sort, kier, wroc }, ['fraza']),
       filtrowane: Boolean(filtry.fraza || filtry.kanal),
       adresBezFiltrow: adresPowiazan({}, { sort, kier, wroc }),
-      // Powrot na zawezony magazyn (4.13d). Czytany RAZ, w tej funkcji — bo renderuja ja
+      // Powrot na zawezony magazyn (reguła: powrót na zawężony widok). Czytany RAZ, w tej funkcji — bo renderuja ja
       // TRZY trasy (odczyt, wiazanie hurtem, odpiecie) i osobny odczyt w kazdej z nich
       // rozjechalby sie po cichu przy pierwszej zmianie.
       adresPowrotu: wroc ?? '/magazyn',
@@ -468,7 +467,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta, 
 
     const karty = kartyDoPowiazania(db);
     // ⚠️⚠️ OBIE LISTY, A NIE SAME NIEPOWIAZANE — i to jest cala droga dla stanu
-    // nieaktualnego. Formularz z 447 wierszami zyje w karcie dlugo; oferta, ktora ktos
+    // nieaktualnego. Formularz z setkami wierszy zyje w karcie dlugo; oferta, ktora ktos
     // powiazal w drugiej karcie, JUZ NIE JEST niepowiazana. Gdybysmy szukali jej wylacznie
     // wsrod niepowiazanych, wypadlaby jako „nie ma jej w lustrze" (nieprawda — jest,
     // i jest powiazana z czyms innym) albo zniknelaby po cichu. Tak dochodzi do warstwy
@@ -496,7 +495,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta, 
     return ekranPowiazan(req, reply, { powiazane: powiazane.length, pominiete });
   });
 
-  // ⚠️⚠️ WIAZANIE JEST ODWRACALNE (rozstrzygniecie wlasciciela). Bez tej trasy pomylka
+  // ⚠️⚠️ WIAZANIE JEST ODWRACALNE. Bez tej trasy pomylka
   // w hurcie byla nie do cofniecia z panelu — a hurtem pomylka jest hurtowa. Warunek kanalu
   // stoi w `odepnijOferte`: ta trasa nie ma prawa odpiac produktu SKLEPOWEGO, bo to jego
   // powiazanie ZBUDOWALO karte.
@@ -522,7 +521,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta, 
     // ze wszystko poszlo dobrze.
     if (blad) return ekranKarty(req, reply, { karta, blad, kod: 400 });
 
-    // PRZ-160.P3b.01: kategoria i marka ze słownika albo „dodaj nową” — nowa nazwa trafia do słownika
+    // Kategoria i marka ze słownika albo „dodaj nową” — nowa nazwa trafia do słownika
     // w tej samej transakcji co zapis karty.
     Object.assign(zmiany, polaSlownikowZFormularza(req.body));
     wTransakcji(db, () => {
@@ -531,7 +530,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta, 
     });
     // 303, a nie 302: po POST-cie przegladarka ma pojsc GET-em, zeby odswiezenie strony
     // nie proponowalo powtorzenia zapisu.
-    // ⚠️ `wroc` Z ADRESU TEGO ZADANIA (Zadanie 6) — formularz karty POSTuje pod adres akcji,
+    // ⚠️ `wroc` Z ADRESU TEGO ZADANIA — formularz karty POSTuje pod adres akcji,
     // ktory JUZ niesie `?wroc=…` (patrz `adresKarty` przekazany widokowi), wiec query string
     // przezywa POST tak samo, jak przy kazdym innym POST-cie tej karty.
     return reply.code(303).redirect(adresKarty(karta.id, { wroc: bezpiecznyWroc(req.query.wroc) }));
@@ -577,7 +576,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta, 
       });
     }
     // ⚠️ `wroc` z adresu TEGO zadania — formularz „Przypnij" POSTuje pod `adresPowiaz`,
-    // ktory JUZ niesie `?wroc=…` (Zadanie 6; patrz komentarz przy jego skladaniu w
+    // ktory JUZ niesie `?wroc=…` (patrz komentarz przy jego skladaniu w
     // `ekranKarty` — doklejenie na piechote za `adresKarty` wsadzaloby `/powiaz` w srodek
     // wartosci parametru).
     return reply.code(303).redirect(adresKarty(karta.id, { wroc: bezpiecznyWroc(req.query.wroc) }));
@@ -613,7 +612,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta, 
       });
     }
     // ⚠️ `wroc` z adresu TEGO zadania — formularz „Odepnij" POSTuje pod `adresOdepnij`,
-    // ktory JUZ niesie `?wroc=…` (Zadanie 6, ta sama pulapka sklejania, co przy `powiaz`).
+    // ktory JUZ niesie `?wroc=…` (ta sama pulapka sklejania, co przy `powiaz`).
     return reply.code(303).redirect(adresKarty(karta.id, { wroc: bezpiecznyWroc(req.query.wroc) }));
   });
 }

@@ -4,14 +4,15 @@ import { bladOperatora } from '../../domena/bledy.js';
 
 // Klient KSeF v2 — CZESC UWIERZYTELNIAJACA.
 //
-// ⚠️⚠️ TEN MODUL WYLACZNIE CZYTA Z KSeF. Nie ma tu i nie ma prawa sie pojawic zadne
-// wywolanie `POST /sessions/*` ani nic innego, co WYSYLA fakture. Wysylka mieszka
-// w `services/wysylka-ksef.js` (przez inFakt) i tam zostaje. Dopisujac do tej fabryki
-// kolejne metody (`pobierzMetadane`, `pobierzXml`) trzymamy sie tej granicy.
+// ⚠️⚠️ TEN MODUŁ WYŁĄCZNIE CZYTA Z KSeF. Nie ma tu i nie ma prawa się pojawić żadne
+// wywołanie `POST /sessions/*` ani nic innego, co WYSYŁA fakturę. Bezpośrednia wysyłka
+// sesją interaktywną mieszka w `ksef/wysylka.js`, a wysyłka przez program fakturowy
+// w `moduly/faktury/services/wysylka-ksef.js`. Dopisując do tej fabryki
+// kolejne metody (`pobierzMetadane`, `pobierzXml`) trzymamy się tej granicy.
 //
 // ⚠️⚠️ CALY TEN PLIK OBRACA POSWIADCZENIAMI: token KSeF (wsad), token operacji, access
 // token i refresh token. Zadne z nich NIE MA PRAWA trafic do komunikatu bledu, do logu
-// ani na ekran (niezmiennik 4.10). Dlatego `blad()` nizej sklada tresc WYLACZNIE
+// ani na ekran (reguła: sekrety nie wychodzą). Dlatego `blad()` nizej sklada tresc WYLACZNIE
 // z odpowiedzi serwera i nie widzi domkniecia fabryki.
 
 // Twardy limit JEDNEGO zadania. Sygnal jest NARZUCONY, a nie domyslny — wolajacy nie ma
@@ -34,12 +35,12 @@ const ODSTEP_PYTANIA_MS = 2000;
 export const NAJWIECEJ_PYTAN = 30;
 
 // ⚠️ NAJDLUZSZY MOZLIWY CZAS ODPYTYWANIA, a nie sama suma przerw. Kazde z 30 pytan ma
-// WLASNY limit 60 s, wiec „czekamy 60 s" (tak stalo w komunikacie odmowy) zanizalo prawde
+// WLASNY limit 60 s, wiec „czekamy 60 s" w komunikacie odmowy zanizaloby prawde
 // trzydziestokrotnie. Miedzy pytaniami jest 29 przerw, a nie 30 — po ostatnim pytaniu nie
 // ma juz na co czekac. Komunikat dla operatora liczy sie STAD, zeby nie klamal po zmianie
 // ktorejkolwiek z tych stalych.
-// ⚠️ EKSPORTOWANE, bo `bootstrap.js` liczy z tego straznik czasu przebiegu czuwacza kosztow
-// (services/czuwacz-kosztow.js: NAJDLUZSZY_PRZEBIEG_KOSZTOW_MS). Przepisana kopia tej
+// ⚠️ EKSPORTOWANE, bo `moduly/koszty/modul.ts` liczy z tego strażnik czasu przebiegu czuwacza kosztów
+// (moduly/koszty/services/czuwacz-kosztow.js: NAJDLUZSZY_PRZEBIEG_KOSZTOW_MS). Przepisana kopia tej
 // arytmetyki rozjechalaby sie z oryginalem przy pierwszej zmianie ktorejkolwiek ze stalych,
 // i to po cichu — a od tej liczby zalezy, czy panel w ogole wstanie.
 export const NAJDLUZSZE_ODPYTYWANIE_MS = NAJWIECEJ_PYTAN * LIMIT_ZADANIA_MS
@@ -53,7 +54,7 @@ export function createKsefClient({
   spij = (ms) => new Promise((r) => { setTimeout(r, ms); }),
 }) {
   // ⚠️ `token` TO POSWIADCZENIE. Nie trafia do komunikatu bledu, do logu ani na ekran
-  // (niezmiennik 4.10) — dlatego `blad()` sklada tresc WYLACZNIE z odpowiedzi serwera.
+  // (reguła: sekrety nie wychodzą) — dlatego `blad()` sklada tresc WYLACZNIE z odpowiedzi serwera.
   // `traceId` z problem-details jest tu jedyna rzecza, po ktorej da sie cokolwiek
   // odszukac po stronie MF, wiec niesiemy go zawsze, gdy przyszedl.
   //
@@ -77,10 +78,10 @@ export function createKsefClient({
    * ⚠️⚠️ ILE SEKUND CZEKAC PO HTTP 429 — JEDYNA LICZBA, KTORA ZAMIENIA ODMOWE Z LIMITU
    * W PRZERWE ZAMIAST W AWARIE (ksef/limit.js).
    *
-   * KSeF ogranicza pobieranie do 16 zadan na minute (zmierzone na produkcji 2026-09-02) i mowi
+   * KSeF ogranicza pobieranie do 16 zadan na minute (zmierzone, nie z dokumentacji) i mowi
    * o tym DWOMA drogami, z ktorych zadna nie jest pewna: naglowkiem `Retry-After` albo zdaniem
    * w tresci odmowy („Sprobuj ponownie po 54 sekundach"). Naglowek ma pierwszenstwo, bo jest
-   * standardem HTTP; tresc jest odczytem awaryjnym — na produkcji przyszla WLASNIE ona.
+   * standardem HTTP; tresc jest odczytem awaryjnym — w pomiarze przyszła WŁAŚNIE ona.
    *
    * ⚠️ ZNACZNIK NIESIEMY WYLACZNIE PRZY 429. Czas ponowienia dopisany do 404 albo 500 kazalby
    * wolajacemu czekac minute na odmowie, ktora nigdy sie sama nie naprawi.
@@ -167,8 +168,8 @@ export function createKsefClient({
     const klucz = kluczZCertyfikatu(kluczMf(certy, 'KsefTokenEncryption'));
 
     const ch = await zapytaj('/auth/challenge', { metoda: 'POST', gdzie: 'inicjalizacji uwierzytelnienia' });
-    // ⚠️ TEN SAM STRAZNIK KSZTALTU, CO PRZY CERTYFIKACIE I PRZY ODPOWIEDZI KSEF-TOKEN, TYLKO
-    // POMINIETY W POPRZEDNIEJ RUNDZIE. Bez niego `null` (pusta/niepoprawna tresc z `zapytaj`)
+    // ⚠️ TEN SAM STRAZNIK KSZTALTU, CO PRZY CERTYFIKACIE I PRZY ODPOWIEDZI KSEF-TOKEN.
+    // Bez niego `null` (pusta/niepoprawna tresc z `zapytaj`)
     // wywala sie TypeError-em „Cannot read properties of null" BEZ znacznika `dlaOperatora`,
     // wiec panel pokazalby „blad techniczny panelu" zamiast zdania, z ktorego cokolwiek wynika.
     // `{}` jest GORSZE: HTTP jest 200, `ch.challenge` i `ch.timestampMs` sa `undefined`, ale
@@ -237,7 +238,7 @@ export function createKsefClient({
     // sie NIE POWIODLO (spodziewamy sie 4xx-owego kodu, ale nikt tego nie zmierzyl na zywym
     // API). Dzis kazdy LICZBOWY kod rozny od 100 traktujemy jak „skonczone" i idziemy po tokeny
     // — jesli to bledny odczyt, `redeem` odmowi i sekwencje trzeba bedzie powtorzyc. Do
-    // rozstrzygniecia przy pomiarze na prawdziwym koncie (Zadanie 0).
+    // rozstrzygniecia przy pomiarze na prawdziwym koncie.
     const kodStanu = stan?.status?.code;
     const znanyStanKoncowy = typeof kodStanu === 'number' && kodStanu !== STATUS_W_TOKU;
     if (!znanyStanKoncowy) {
@@ -351,7 +352,7 @@ export function createKsefClient({
     // ktore w danym kontekscie nie ma zastosowania (`isTruncated` ma sens tylko przy
         // `hasMore: true`). Gdyby KSeF tak robil, twardy wymog obu znacznikow kazalby
     // odmawiac na OSTATNIEJ stronie kazdego przebiegu — czyli kazdej nocy bez nowych faktur.
-    // Tego zachowania NIE ZMIERZONO na zywym API (Zadanie 0 wciaz przed nami), wiec dzis nie
+    // Tego zachowania NIE ZMIERZONO na zywym API, wiec dzis nie
     // wolno zakladac ostrzejszego kontraktu, niz naprawde wiemy. Dlatego brakujace albo
     // niebulowskie `hasMore`/`isTruncated` schodza do bezpiecznego `false`, a nie do odmowy.
     // Po pomiarze na zywym koncie: jesli KSeF zawsze oddaje oba pola, ten straznik mozna
@@ -362,7 +363,7 @@ export function createKsefClient({
         + 'listy, której nie umie policzyć. Spróbuj ponownie.',
       );
     }
-    // ⚠️⚠️ KSZTALT KAZDEJ POZYCJI, A NIE TYLKO SAMEJ TABLICY (recenzja, D3). Element, ktory nie
+    // ⚠️⚠️ KSZTALT KAZDEJ POZYCJI, A NIE TYLKO SAMEJ TABLICY. Element, ktory nie
     // jest obiektem (`null`, liczba, napis, tablica), wywalal sie dopiero w `naWiersz` GOLYM
     // `TypeError`-em — czyli BEZ znacznika `dlaOperatora`. Skutki byly trzy naraz: kwarantanna
     // takiego bledu NIE PRZYJMUJE (przyjmuje wylacznie odmowy opisane dla czlowieka), przebieg
@@ -385,11 +386,10 @@ export function createKsefClient({
         + `kursor stoi, a strona (${from} → ${to}, offset ${pageOffset}) pojedzie ponownie.`,
       );
     }
-    // ⚠️⚠️ ZEJSCIE DO `false` ZOSTAJE, ALE PRZESTAJE BYC NIEWIDOCZNE (recenzja, W3). Brakujace
+    // ⚠️⚠️ ZEJSCIE DO `false` ZOSTAJE, ALE PRZESTAJE BYC NIEWIDOCZNE. Brakujace
     // `hasMore` konczy okno pobrania DOKLADNIE tak samo, jak prawdziwy koniec danych — a jesli
     // KSeF pomija to pole na stronie MAJACEJ nastepniki, ogon okna nie zostaje przeczytany
-    // nigdy, bo kursor przeskakuje go razem z ostatnim oknem. To ta sama dziura, ktora
-    // naprawiono dla sufitu stron, tylko z innego wyzwalacza.
+    // nigdy, bo kursor przeskakuje go razem z ostatnim oknem.
     //
     // Klient jest JEDYNYM miejscem, ktore wie, ze wartosc zostala zgadnieta (wyzej juz jej
     // nie widac), wiec to on nazywa skutek: KONIEC OKNA JEST NIEPEWNY. Co z tym zrobic,
@@ -404,7 +404,7 @@ export function createKsefClient({
     // To jest ta sama lekcja, co przy `zapiszBladPobrania` (db/koszty.js), i cena za nia
     // bylaby tu placona co noc.
     //
-    // Do rozstrzygniecia na zywym koncie (Zadanie 0): jesli KSeF zawsze oddaje `hasMore`,
+    // Do rozstrzygniecia na zywym koncie: jesli KSeF zawsze oddaje `hasMore`,
     // ten znacznik jest zawsze `false` i caly straznik mozna wtedy zaostrzyc z powrotem
     // do wymogu jawnej wartosci bulowskiej.
     //
@@ -421,7 +421,7 @@ export function createKsefClient({
   }
 
   /**
-   * Oryginalny XML faktury z KSeF (services/archiwum-kosztow.js). ⚠️ NIE PRZEZ `zapytaj` —
+   * Oryginalny XML faktury z KSeF (moduly/koszty/services/archiwum-kosztow.js). ⚠️ NIE PRZEZ `zapytaj` —
    * tamta funkcja parsuje KAZDA odpowiedz jako JSON i na dokumencie XML oddalaby `null`,
    * gubiac cala tresc. Ta sama pulapka, co przy PDF-ach w infakt/client.js. Naglowek
    * i limit czasu zostaja te same, co w reszcie klienta — inny jest tylko odczyt (`res.text()`
@@ -448,7 +448,7 @@ export function createKsefClient({
     }
     // ⚠️ TEN SAM STRAZNIK KSZTALTU, CO PRZY CERTYFIKACIE I CHALLENGE'U WYZEJ. HTTP 200 z pusta
     // trescia przechodzi bez slowa i archiwum dostalby pusty plik — nieodroznialny od prawdziwego
-    // dokumentu, dopoki ktos go recznie nie otworzy na NAS-ie.
+    // dokumentu, dopoki ktos go ręcznie nie otworzy w archiwum.
     if (!tresc) {
       throw bladOperatora(
         `KSeF oddał pustą odpowiedź przy pobieraniu dokumentu ${ksefNumber} — nie ma czego `

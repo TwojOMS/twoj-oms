@@ -42,7 +42,7 @@ export function openOmsDb(path = ':memory:', {
   try {
     wykonajMigracje(db, moduly, teraz);
     maTabeleStatusow(db); // przygotowanie zapytania schematu, współdzielone przez odczyty listy
-    // PRZ-051: przed uzupełnieniami niżej — one też zmieniają zamówienia.
+    // Przed uzupełnieniami niżej — one też zmieniają zamówienia.
     sledzZmianyListy(db);
     if (moduly.some(modul => modul.nazwa === 'rdzen')) { dosypPtaszekStatystyk(db, teraz); }
     if (db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='kategorie_kosztow'").get()) przygotujKoszty(db);

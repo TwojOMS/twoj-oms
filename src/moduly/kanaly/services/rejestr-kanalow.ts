@@ -7,7 +7,7 @@ import type {DefinicjaKanalu} from '../konfiguracja.ts';
 import {createHash,randomUUID} from 'node:crypto';
 /** W istniejącej kolumnie ścieżki przechowujemy również skrót zasobu.
  * Treść i nazwy plików nie trafiają do rejestru ani widoku przeglądu.
- * PRZ-160.E3.04 (D39): wystawienie oferty — skrót `external.id`, wgranie zdjęcia — sha256 bajtów, żeby jeden
+ * Wystawienie oferty — skrót `external.id`, wgranie zdjęcia — sha256 bajtów, żeby jeden
  * timeout nie wstrzymywał wszystkich ofert konta. Eksport: pętla ofert wylicza ten sam zasób do `zwolnijOperacje`. */
 export function zasobZapisu(sciezka:string,init:RequestInit):string {
  const brak=()=>new Error('Brak identyfikatora zasobu operacji Allegro.');
@@ -78,7 +78,7 @@ export function createRejestrKanalow(o:{repozytorium:RepozytoriumKanalow;fabryki
    const metoda=(init.method??'GET').toUpperCase(),sciezka=new URL(url).pathname;
    const zapisErli=s.typ==='erli'&&!['GET','HEAD','OPTIONS'].includes(metoda)&&!sciezka.endsWith('/_search')&&!['/orders/changes/mark-read','/inbox/mark-read'].some(p=>sciezka.endsWith(p));
    if(zapisErli&&o.repozytorium.zapisyZablokowane(klucz))throw Object.assign(new Error('ERLI: włączono tryb tylko odczyt.'),{code:'ERLI_TYLKO_ODCZYT'});
-   // Prognoza opłat (D39/D40) to odczyt wysyłany POST-em: bez przeglądu i bez wstrzymania przy zablokowanych zapisach.
+   // Prognoza opłat to odczyt wysyłany POST-em: bez przeglądu i bez wstrzymania przy zablokowanych zapisach.
    const allegro=s.typ==='allegro';
    const zapis=allegro&&!osobno&&!['GET','HEAD','OPTIONS'].includes(metoda)&&!(metoda==='POST'&&['/shipment-management/label','/shipment-management/pickup-proposals','/pricing/offer-fee-preview'].includes(sciezka));
    const niejednoznaczny=zapis&&metoda!=='PUT';
@@ -87,7 +87,7 @@ export function createRejestrKanalow(o:{repozytorium:RepozytoriumKanalow;fabryki
    if(niejednoznaczny&&o.repozytorium.operacjaZablokowana(klucz,metoda,zasob))throw new Error('Wynik poprzedniej operacji Allegro jest niejednoznaczny. Sprawdź go przed ponowieniem.');
    const operacja=niejednoznaczny?{id:randomUUID(),metoda,sciezka:zasob}:null;if(operacja)k.zapisy.push(operacja);
    const sygnaly=[k.abort.signal,...(init.signal?[init.signal]:[])];
-   // D39: odczyt operacji oferty odpowiada 303 z Location — oddajemy odpowiedź; każdy inny przekierowany zapis/odczyt odmawia.
+   // Odczyt operacji oferty odpowiada 303 z Location — oddajemy odpowiedź; każdy inny przekierowany zapis/odczyt odmawia.
    const odczytOperacji=allegro&&metoda==='GET'&&ODCZYT_OPERACJI_OFERTY.test(sciezka);
    const r=await transport(url,{...init,redirect:s.typ==='woo'?init.redirect:odczytOperacji?'manual':'error',signal:AbortSignal.any(sygnaly)});
    if(operacja&&r.status>=400&&r.status<500)k.zapisy=k.zapisy.filter(p=>p.id!==operacja.id);

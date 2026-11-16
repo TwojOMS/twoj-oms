@@ -1,7 +1,7 @@
 // ⚠️⚠️ TO JEST JEDYNE MIEJSCE W MODULE KOSZTOW, KTORE ZNA STREFE WARSZAWY. Ten projekt
 // przejechal sie na strefach dwa razy (kursor `date_modified`, data proformy w UTC), a czuwacz
 // KSeF chodzi co godzine cala dobe WLASNIE po to, zeby nie zakladac trzeciego takiego miejsca.
-// Tutaj wlasciciel poprosil o pobranie nocne, wiec strefa jest potrzebna — ale wylacznie do
+// Tutaj potrzebne jest pobranie nocne, wiec strefa jest potrzebna — ale wylacznie do
 // ODCZYTU godziny, nigdy do arytmetyki dat. Zadnego dodawania godzin, zadnego `setHours`.
 //
 // ⚠️ ODPOWIEDZ DOTYCZY CALEJ GODZINY 03:00–03:59, a nie rownej godziny: zegar czuwacza tyka
@@ -10,7 +10,7 @@
 const GODZINA_POBRANIA = 3;
 
 // ⚠️ CO ILE WRACA OKNO POBRANIA — czyli ile czasu ma przebieg, zanim zacznie zjadac WLASNE
-// nastepne okno. To jest miara, wzgledem ktorej `bootstrap.js` sprawdza najgorszy przypadek
+// nastepne okno. To jest miara, wzgledem ktorej `moduly/koszty/modul.ts` sprawdza najgorszy przypadek
 // czuwacza kosztow (a nie odstep zegara: zegar tyka co godzine, ale 23 tykniecia na dobe
 // i tak oddaja „nie ta pora", wiec przebieg dluzszy niz godzina nie kosztuje niczego).
 export const ODSTEP_OKNA_POBRANIA_MS = 24 * 60 * 60 * 1000;

@@ -1,4 +1,4 @@
-// STATYSTYKI PŁATNOŚCI — czysta agregacja nad listą z domain/statystyki-okresu.js.
+// STATYSTYKI PŁATNOŚCI — czysta agregacja nad listą z domena/statystyki-okresu.js.
 import { normalizujMetode } from './metody-platnosci.js';
 import { czyKanalAllegro } from './wysylka.js';
 import { udzialProcent } from './statystyki-wysylki.js';
@@ -8,23 +8,24 @@ import { udzialProcent } from './statystyki-wysylki.js';
  *
  * ⚠️⚠️ ALLEGRO NIE MÓWI, CZYM KUPUJĄCY ZAPŁACIŁ. Kanał oddaje wyłącznie `payment.type`
  * (ONLINE / CASH_ON_DELIVERY), który mapuje się na „Allegro (płatność online)" i
- * „Za pobraniem" — o BLIK-u, karcie ani przelewie nie ma tam ani słowa. Na produkcji
- * 13.09.2026 to 92 z 226 zamówień, czyli 41% bazy.
+ * „Za pobraniem" — o BLIK-u, karcie ani przelewie nie ma tam ani słowa. Przy sprzedaży
+ * na Allegro to bywa duża część bazy — w zmierzonej instalacji ponad jedna trzecia zamówień.
  *
  * Dlatego procent liczy się z mianownika BEZ ALLEGRO, a te zamówienia dostają OSOBNY
- * licznik, pokazywany obok tabeli i wyłączony z procentów. Zmierzone trzy odpowiedzi na
- * pytanie „ile % BLIK": 43/226 = 19%, 43/120 (bez Allegro) = 36%, 43/83 (tylko Woo) = 52%.
+ * licznik, pokazywany obok tabeli i wyłączony z procentów. Te same zamówienia dają trzy
+ * różne odpowiedzi na pytanie „ile % BLIK": z całości, bez Allegro i tylko z Woo — i potrafią
+ * się różnić o dziesiątki punktów procentowych.
  * Wrzucenie Allegro do kubełka „inne" albo doliczenie go do przelewów byłoby zmyśleniem
- * danych, których nie mamy — a 19% czytałoby się jak odpowiedź.
+ * danych, których nie mamy — a wynik z całości czytałoby się jak odpowiedź.
  *
  * ⚠️ KANAŁ ROZSTRZYGA `czyKanalAllegro`, czyli KOLUMNA `sklep` — nie treść metody. Metoda
  * jest edytowalna z karty (`wysylka_reczna_json` i formularz wpłaty ręcznej), więc reguła
  * kluczowana napisem miałaby furtkę: poprawka metody przenosiłaby zamówienie między
  * mianownikami.
  *
- * ⚠️ ZAMÓWIENIA RĘCZNE ZOSTAJĄ w rozkładzie (na produkcji 36× „Przelew"). Metodę wpisał
+ * ⚠️ ZAMÓWIENIA RĘCZNE ZOSTAJĄ w rozkładzie (zwykle z metodą „Przelew"). Metodę wpisał
  * operator, ale zamówienie jest prawdziwe i pieniądze naprawdę przyszły przelewem.
- * Wyrzucenie ich podniosłoby udział BLIK-u z 36% na 52% — czyli zmieniłoby odpowiedź,
+ * Wyrzucenie ich podniosłoby udział BLIK-u — czyli zmieniłoby odpowiedź,
  * a nie tylko mianownik. Ekran mówi o tym w bloku metodologii.
  */
 export function rozkladMetod(zamowienia) {

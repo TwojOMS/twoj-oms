@@ -16,15 +16,14 @@ import {
 import { podsumujReklamy } from '../../../domena/reklamy.js';
 import { stronaOdmowy } from '../../../core/web/odmowa.js';
 
-// PRZ-152.G13: odmowy „Odśwież” w układzie OMS (status 503 i tekst bez zmian); powrót na ekran reklam.
+// Odmowy „Odśwież” w układzie OMS (status 503 i tekst bez zmian); powrót na ekran reklam.
 const odmowaKampanii = (reply, tekst) => stronaOdmowy(reply, 503, tekst, { tytul: 'Nie udało się odświeżyć reklam', napisWroc: 'Wróć do reklam', wroc: '/kampania' });
 import { polaczeniaIntegracji } from '../../ustawienia/services/polaczenia-integracji.ts';
 
-// Zakladka /kampania (WRZESIEN30, 2026-08-25). Trasa jest CIENKA — wzorzec
-// routes/raporty.js: wybiera kampanie, wola domene, renderuje. Etap 0 liczy WYLACZNIE
-// z wlasnej bazy (zamowienia.kupony_json) — ani jednego zapytania na zewnatrz, wiec nie
-// potrzebuje ani `config`, ani zadnej uslugi. Sekcje GA4/Meta to osobne etapy i osobne
-// czuwacze, NIE zapytania w trasie: panel nie moze wisiec na dostepnosci Google i Mety.
+// Zakładka /kampania. Trasa jest CIENKA — wzorzec src/moduly/raporty/trasy/raporty.js:
+// wybiera kampanię, woła domenę, renderuje. Zamówienia z kuponami liczy z własnej bazy
+// (zamowienia.kupony_json), a liczby z GA4 i Mety czyta z lustra w bazie, które zapełniają
+// osobne czuwacze — NIE zapytania w trasie: panel nie może wisieć na dostępności Google i Mety.
 
 const WZORZEC_DNIA = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -35,7 +34,7 @@ const dzisiaj = () => dzienWarszawa(new Date().toISOString());
 
 // Dzien odniesienia z parametru (podglad historyczny i testy) albo dzis.
 // ⚠️ Walidacje robi `kluczOkresu`, NIE `new Date` — V8 cicho przewija 30 lutego na
-// 2 marca (ta sama pulapka i to samo lekarstwo, co w routes/raporty.js).
+// 2 marca (ta sama pulapka i to samo lekarstwo, co w src/moduly/raporty/trasy/finanse.js).
 function dzienOdniesienia(surowy) {
   if (typeof surowy !== 'string' || !WZORZEC_DNIA.test(surowy.trim())) return dzisiaj();
   try { kluczOkresu(surowy.trim()); } catch { return dzisiaj(); }
@@ -157,7 +156,7 @@ export function zarejestrujTrasyKampanii(app, { db, config = {}, proba = config.
     }
     const kampania = wybierzKampanie(kampanie, dzis, szukanyKod);
     const zamowienia = zamowieniaZKuponami(db);
-    // ⚠️ Liczby z Mety i GA4 przychodza z LUSTRA (Etapy 1-2), nigdy z zapytania w trasie —
+    // ⚠️ Liczby z Mety i GA4 przychodza z LUSTRA, nigdy z zapytania w trasie —
     // ekran ma sie wyrenderowac tak samo szybko przy padnietym Google, jak przy dzialajacym.
     // Ten sam uklad, co zakladka KOSZTY wobec KSeF.
     const meta = kampania ? metaDni(db, kampania.kod) : [];
@@ -188,7 +187,7 @@ export function zarejestrujTrasyKampanii(app, { db, config = {}, proba = config.
       fale: kampania ? faleKampanii(kampania) : [],
       agregat: agregatKuponow(zamowienia),
       etykiety: etykietyStatusow(db),
-      // PRZ-063: etykiety kanałów z definicji instalacji (PRZ-053: bez globalnej mapy firmy).
+      // Etykiety kanałów z definicji instalacji (bez globalnej mapy firmy).
       adresKanalu: (sklep) => adresKanalu(sklep, definicje),
       // ⚠️ „NIESKONFIGUROWANE" TO CO INNEGO NIZ „ZERO" I NIZ „AWARIA" — a w tabeli wszystkie
       // trzy wygladaja tak samo (brak wierszy). Bez tej pary flag ekran nie umialby napisac,

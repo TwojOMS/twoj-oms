@@ -26,7 +26,7 @@ export function wystawienieFaktury(z, { mozliwaFaktura, mozeAdres, dlaKazdego, p
   if (!mozeAdres) return nie('Twoje konto nie ma prawa wystawiać faktur — poproś administratora o dostęp do wystawiania faktur.');
   if (!chceFakture(z) && !dlaKazdego) return nie('Klient nie prosił o fakturę. Administrator może to włączyć w Ustawienia → Faktury i podatki → Zasady wystawiania („faktura także bez prośby klienta”)'
     + (program?.opis?.wbudowany === true ? `; przy ${nazwa.miejscownik} najpierw „Faktury konsumenckie w KSeF”.` : '.'));
-  // PRZ-126.PT5: ta sama reguła co odmowa serwera (faktura-odmowa.js), sprawdzana ostatnia.
+  // Ta sama reguła co odmowa serwera (faktura-odmowa.js), sprawdzana ostatnia.
   const braki = brakiAdresuNabywcy(daneFaktury(z));
   if (braki.length) return nie(`Brak adresu nabywcy (${zdanieBrakuAdresu(braki)}) — `,
     { href: '#dane-faktury', tekst: 'uzupełnij dane do faktury' }, '.');

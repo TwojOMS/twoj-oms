@@ -1,9 +1,9 @@
 // TEKST WIADOMOSCI Z CENTRUM WIADOMOSCI ALLEGRO → zwykly tekst.
 //
-// ⚠️⚠️ ALLEGRO ODDAJE `text` Z ENCJAMI HTML. Pomiar na kopii produkcji 14.10.2026: 30 z 85
-// wiadomosci w lustrze ma `&oacute;`, jedna `&Oacute;`, szesc `&quot;`, do tego 170 razy `&zwnj;`.
-// Litery spoza Latin-1 (ą, ę, ł, ś, ź, ż, ć, ń) przychodza jako zwykle znaki, wiec zepsute
-// wygladalo WYLACZNIE „ó/Ó" — zgloszenie wlasciciela „problem z polskimi znakami Ó" (PRZ-074).
+// ⚠️⚠️ ALLEGRO ODDAJE `text` Z ENCJAMI HTML. Pomiar na kopii prawdziwych danych: mniej więcej co
+// trzecia wiadomość w lustrze ma `&oacute;`, trafiają się `&Oacute;` i `&quot;`, do tego
+// wielokrotnie `&zwnj;`. Litery spoza Latin-1 (ą, ę, ł, ś, ź, ż, ć, ń) przychodza jako zwykle
+// znaki, wiec zepsute wygladalo WYLACZNIE „ó/Ó".
 // Szablon EJS ucieka `&` drugi raz i na ekranie stalo dosłownie „&Oacute;".
 //
 // ⚠️ LUSTRO ZOSTAJE SUROWE — rozwijamy przy ODCZYCIE (oms/db/allegro-watki.js). Dzieki temu

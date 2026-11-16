@@ -14,13 +14,13 @@ import { setImmediate } from 'node:timers/promises';
 const bezpiecznyJson = (s) => { try { return JSON.parse(s ?? '{}') ?? {}; } catch { return {}; } };
 
 /**
- * Uzasadnienie decyzji z 13.09.2026 (przywrócone po recenzji PRZ-094.13).
- * Statystyka musi czytać TE SAME NAKŁADKI co lista zamówień. Surowe kolumny
+ * Uzasadnienie wspólnego odczytu: statystyka musi czytać TE SAME NAKŁADKI co lista
+ * zamówień. Surowe kolumny
  * dawały inne liczby dla tej samej paczki:
  * - `oplacone_at` na liście powstaje przy odczycie z tabeli `platnosci`, z progiem
  *   kwoty oczekiwanej od klienta. Migracja `przeniesWplatyDoListy` zeruje surową
  *   kolumnę przy wpłacie ręcznej, a `dodajWplateReczna` nigdy jej nie zapisuje.
- *   Zmierzone wtedy: 16 ze 132 zamówień sierpnia (12% miesiąca) wypadało z obu
+ *   Zmierzone wtedy: kilkanaście procent zamówień miesiąca wypadało z obu
  *   procentów jako „bez daty startu zegara”, choć były opłacone. Przy dopłacie
  *   efektywna data pokrycia bywa późniejsza niż sklepowa — surowa schlebia wynikowi.
  * - `metoda_wysylki` i `pobranie` też są efektywne: ręczna korekta z karty leży
@@ -28,10 +28,10 @@ const bezpiecznyJson = (s) => { try { return JSON.parse(s ?? '{}') ?? {}; } catc
  * Próg `kwotaOczekiwanaGrosze` wymaga pozycji Z CENAMI, ręcznych nadpisań pozycji
  * i członu różnicowego dostawy. Liczenie tego tutaj tworzyłoby trzecią definicję
  * opłacenia. Dlatego nakładki nadal wykonuje `zLinii`, dziś przez zamowieniaPoId.
- * Historyczny pomiar 13.09.2026 (SQLite w pamięci): 226 zamówień — 88 ms wobec
- * 1,8 ms surowego odczytu; 2000 — 659 ms wobec 13 ms. Ówczesna lista miała N+1.
- * Te liczby dokumentują powód przyjęcia wspólnego odczytu, nie obecną wydajność:
- * PRZ-094.13 zawęża kandydatów i czyta dzieci porcjami, zachowując te same nakładki.
+ * Historyczny pomiar (SQLite w pamięci): odczyt z nakładkami trwał dziesiątki razy
+ * dłużej niż surowy (ówczesna lista miała N+1). Ta różnica dokumentuje powód przyjęcia
+ * wspólnego odczytu, nie obecną wydajność: kandydaci są zawężani, a dzieci czytane
+ * porcjami, z zachowaniem tych samych nakładek.
  *
  * Okno SQL wybiera kandydatów, a dzienWarszawa i wykluczenia ustalają mianownik.
  * Nakładki pozostają w zamowieniaPoId (wspólne z listą i kartą): efektywna data
@@ -84,7 +84,7 @@ export async function statystykiWOkresie(db, zakres, reguly = {}) {
 /**
  * Dzień (Warszawa) najstarszego zamówienia w tabeli `zamowienia` albo `null` przy pustej bazie.
  *
- * PRZ-093.07: domyślny początek danych zakładki, gdy instalacja nie ustawiła
+ * Domyślny początek danych zakładki, gdy instalacja nie ustawiła
  * `OMS_STATYSTYKI_PIERWSZY_DZIEN` (env wygrywa — trasa pyta tę funkcję tylko bez niego).
  * To prawdziwa odpowiedź na pytanie paska, bo `zamowieniaOkresu` czyta WYŁĄCZNIE wiersze
  * `zamowienia`: przed pierwszym z nich statystyki nie mają czego liczyć.

@@ -1,9 +1,9 @@
 // src/oms/db/ostrzezenia.js
 //
-// Jedyna warstwa zapytań dwóch tabel ostrzeżeń strony głównej (schema.sql, 2026-08-29):
+// Jedyna warstwa zapytań dwóch tabel ostrzeżeń strony głównej (schemat w migracji 0001-baseline.sql):
 // `ostrzezenia_odrzucone` (kliknięcia „Ignoruj"/„Wycisz") i `ksef_luki` (lustro
 // dokumentów do wysłania do KSeF, pisane przez czuwacza). Reguły — co alarmuje, co
-// wygasa, jakie są klucze — mieszkają w domain/ostrzezenia.js, nie tutaj.
+// wygasa, jakie są klucze — mieszkają w domena/ostrzezenia.js, nie tutaj.
 
 import { OSTATNIA_ZYWA_PACZKA } from '../../moduly/wysylka/db/ostatnia-paczka.js';
 import { idDokumentuSql } from '../../domena/dokument-programu.js';
@@ -56,7 +56,7 @@ export function podmienLukiKsef(db, luki, { sprawdzonaAt = teraz() } = {}) {
   });
 }
 
-/** PRZ-102.23: data wystawienia jednego dokumentu z lustra luk (odczyt czuwacza z inFaktu) albo `null`. */
+/** Data wystawienia jednego dokumentu z lustra luk (odczyt czuwacza z inFaktu) albo `null`. */
 export function dzienWystawieniaLuki(db, uuid) {
   return db.prepare('SELECT invoice_date FROM ksef_luki WHERE uuid = ?').get(uuid)?.invoice_date ?? null;
 }
@@ -92,7 +92,7 @@ export function poTerminie(db) {
  * Zwroty czekające na korektę w inFakcie (typ `zwrot-korekta`): zwrot przy zamówieniu,
  * które MA wiersz faktury, bez numeru korekty.
  *
- * ⚠️ TA SAMA granica, co `zwrotRozliczony` (domain/zwrot.js): o obowiązku korekty
+ * ⚠️ TA SAMA granica, co `zwrotRozliczony` (domena/zwrot.js): o obowiązku korekty
  * rozstrzyga OBECNOŚĆ faktury (`z?.faktura` = wiersz istnieje), a o wystawieniu —
  * WYŁĄCZNIE `korekta_numer` (samo `korekta_zlecona_at` to rezerwacja, nie dokument;
  * zlecenie potrafi przepaść — patrz `korektaPrzepadla`).
@@ -114,7 +114,7 @@ export function zwrotyBezKorekty(db) {
  * jeszcze zarejestrowanego zwrotu, wraz z jego ostatnią żywą paczką.
  *
  * ⚠️ ZBIERA, NIE ROZSTRZYGA. Czy paczka jest bez gotówki, mówi `czyPaczkaBezGotowki`
- * przez `ostrzezeniaPobran` (domain/ostrzezenia.js) — ta sama zasada, co w czuwaczu
+ * przez `ostrzezeniaPobran` (domena/ostrzezenia.js) — ta sama zasada, co w czuwaczu
  * pobrań: etapu przesyłki NIE filtrujemy w SQL. Wierszy są tu dziesiątki, więc odsianie
  * u siebie nic nie kosztuje, a reguła pieniędzy zostaje JEDNA i widoczna.
  *

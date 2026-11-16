@@ -7,20 +7,19 @@ import { bladOperatora } from '../../../domena/bledy.js';
 /**
  * Okres, do ktorego nalezy zamowienie — albo `null`, gdy rozliczane jest pojedynczo.
  *
- * Ten serwis istnieje po to, zeby `db/okresy.js` dostawalo GOTOWY klucz klienta i nic wiecej.
+ * Ten serwis istnieje po to, zeby `oms/db/okresy.js` dostawalo GOTOWY klucz klienta i nic wiecej.
  * Rozstrzygniecie „czy ten NIP jest rozliczany zbiorczo" wymaga zlozenia dwoch warstw:
- * odczytu karty klienta (`db/klienci.js`) i czystej reguly (`domain/klient-zbiorczy.js`).
- * ⚠️ Do 2026-08-24 wymagalo zamiast tego `OMS_KLIENCI_ZBIORCZY` — stad `config` w sygnaturze,
- * ktory odszedl razem z ta zmienna.
+ * odczytu karty klienta (`oms/db/klienci.js`) i czystej reguly (`domena/klient-zbiorczy.js`).
+ * ⚠️ Rozliczenie zbiorcze czyta się z karty klienta, nie ze zmiennej środowiskowej — dlatego
+ * sygnatura nie ma `config`.
  *
  * ⚠️ HURT NIE WCHODZI DO OKRESU. Ten sam klient ma dwa rodzaje zamowien: drop do klienta
  * koncowego (faktura zbiorcza na koniec miesiaca) i hurt do wlasnej siedziby (faktura od
- * razu, z terminem). Podzial nie jest nowy — repo `raporty` zna go od dawna jako
- * DROPSHIPPING vs B2B i ostrzega, ze ten sam adres mailowy wystepuje w obu rolach.
+ * razu, z terminem). Ten sam adres mailowy może występować w obu rolach.
  * Hurt wrzucony do okresu znaczylby fakture zbiorcza obejmujaca zamowienie, ktore klient
  * juz zaplacil z osobna — czyli podwojne obciazenie.
  *
- * ⚠️ Data to data ZLOZENIA, nie wysylki (patrz naglowek domain/okres-rozliczeniowy.js).
+ * ⚠️ Data to data ZLOZENIA, nie wysylki (patrz naglowek domena/okres-rozliczeniowy.js).
  * Brak daty leci wyjatkiem z `kluczOkresu` i tak ma zostac: podstawienie „dzisiaj" w zastepstwie
  * zgubionej daty wrzucaloby zamowienia z przelomu miesiaca na fakture nie tego miesiaca.
  */

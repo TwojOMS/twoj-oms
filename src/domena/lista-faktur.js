@@ -41,7 +41,7 @@ export function filtrujDokumenty(dokumenty, { typ = '', platnosc = '' } = {}) {
 // Czyste reguły listy faktur — bez sieci, bez bazy, bez zegara (dzień przychodzi argumentem).
 // Tych samych odpowiedzi potrzebują trzy warstwy: usługa widoku, sam widok i testy.
 
-// PRZ-126.C07a: wspólny wybór do pobierania i podglądu KSeF. Wysyłkę filtruje coWolnoWyslac.
+// Wspólny wybór do pobierania i podglądu KSeF. Wysyłkę filtruje coWolnoWyslac.
 export function doZaznaczenia(d) {
   return Boolean(d?.uuid);
 }
@@ -49,7 +49,7 @@ export function doZaznaczenia(d) {
 /** Do ilu dni przed terminem świecimy ostrzegawczo. Tydzień = jeden cykl przelewów. */
 export const PROG_WKROTCE_DNI = 7;
 
-// PRZ-126.C06: dokument czekający na numer KSeF też — w zestawieniu wchodzi podglądem z uwagą w wierszu.
+// Dokument czekający na numer KSeF też — w zestawieniu wchodzi podglądem z uwagą w wierszu.
 export function doZestawienia(d) {
   return Boolean(d?.uuid && (d.rodzaj === 'vat' || d.rodzaj === 'korekta'));
 }
@@ -97,25 +97,26 @@ export function zakresMiesiaca(miesiac) {
 /**
  * Stan dokumentu wobec KSeF — TRZY odpowiedzi, nie dwie.
  *
- * ⚠️ ROZSTRZYGA `ksef_number`, A NIE `ksef_data`. Zmierzone 06.08.2026: faktura VAT pola
+ * ⚠️ ROZSTRZYGA `ksef_number`, A NIE `ksef_data`. Zmierzone na żywym koncie: faktura VAT pola
  * `ksef_data` w ogóle nie oddaje (także przy `fields=…,ksef_data`); ma je dopiero korekta.
  * Reguła oparta na obiekcie działałaby na korektach i milczała na fakturach — czyli tam,
  * gdzie jest cały ruch.
  *
  * ⚠️⚠️ TRZECI STAN `wyslana_czeka` POWSTAŁ Z FAŁSZU NA EKRANIE, KTÓREGO CAŁYM ZADANIEM JEST
- * ZŁAPAĆ POMYŁKĘ PRZED OPERACJĄ NIEODWRACALNĄ (recenzja całości, Finding 1). inFakt nadaje
+ * ZŁAPAĆ POMYŁKĘ PRZED OPERACJĄ NIEODWRACALNĄ. inFakt nadaje
  * numer KSeF dopiero po ~70 sekundach od przyjęcia zlecenia, więc dokument wysłany o 14:00
  * miał go dopiero o 14:01 — a lista otwarta o 14:00:30 pisała przy nim „brak", oddawała pole
  * wyboru, „zaznacz wszystkie" brało go z powrotem, a ekran podglądu liczył go do „Poleci do
- * KSeF". Drugie zatwierdzenie odbiłoby się od rezerwacji w bazie (db/wysylki-ksef.js), ale
- * człowiek dowiedziałby się o tym dopiero po kliknięciu przycisku od operacji nieodwracalnej.
+ * KSeF". Drugie zatwierdzenie odbiłoby się od rezerwacji w bazie
+ * (`moduly/faktury/db/wysylki-ksef.js`), ale człowiek dowiedziałby się o tym dopiero po
+ * kliknięciu przycisku od operacji nieodwracalnej.
  *
  * ⚠️ NUMER MA PIERWSZEŃSTWO PRZED REZERWACJĄ: gdy organ numer nadał, dokument JEST w KSeF,
  * a nie „czeka" — inaczej wiersz zostawałby w stanie przejściowym na zawsze.
  *
  * ⚠️ FUNKCJA ZOSTAJE CZYSTA. Fakt „panel zlecił wysyłkę" (wiersz w `wysylki_ksef`, klucz =
- * uuid inFaktu) przychodzi ARGUMENTEM — czyta go services/faktury-widok.js jednym zapytaniem
- * na całą listę. Wołanie bez drugiego argumentu zachowuje się dokładnie jak przed zmianą.
+ * uuid inFaktu) przychodzi ARGUMENTEM — czyta go `moduly/faktury/services/faktury-widok.js`
+ * jednym zapytaniem na całą listę. Wołanie bez drugiego argumentu daje tylko `jest` albo `brak`.
  */
 export const stanKsef = (dok, zlecona = false) => {
   if (dok?.ksef_number) return 'jest';
@@ -154,30 +155,29 @@ export function liniaRazem(suma) {
 /** Status inFaktu znaczący „zapłacone". Jedyny, jaki wolno tu rozpoznać — patrz niżej. */
 const STATUS_ZAPLACONA = 'paid';
 
-/** Sposób zapłaty „za pobraniem" na dokumencie inFaktu (pomiar — domain/sposob-platnosci.js). */
+/** Sposób zapłaty „za pobraniem" na dokumencie inFaktu (pomiar — domena/sposob-platnosci.js). */
 const PLATNOSC_POBRANIE = 'delivery';
 
 /**
  * Czy inFakt uważa ten dokument za zapłacony — TRZY odpowiedzi, nie dwie.
  *
- * ⚠️⚠️ POWSTAŁA Z ROZJECHANIA SIĘ DWÓCH KOPII TEJ SAMEJ ODPOWIEDZI. Do 28.08.2026 pas długów
- * pytał o `status` (poprawka z 10.08), a kolumna „Płatność" obok — o `left_to_pay`. Zmierzone
- * na żywym koncie 28.08: SZEŚĆ dokumentów sierpnia miało `status: paid` i niezerowe
- * `left_to_pay`, więc pas milczał, a kolumna świeciła na czerwono przy tej samej fakturze
- * (zgłoszona 51/08/2026: `paid`, `paid_date: 2026-08-26`, `left_to_pay: 99000`).
+ * ⚠️⚠️ POWSTAŁA Z ROZJECHANIA SIĘ DWÓCH KOPII TEJ SAMEJ ODPOWIEDZI. Pas długów pytał
+ * o `status`, a kolumna „Płatność" obok — o `left_to_pay`. Zmierzone na żywym koncie:
+ * dokumenty ze `status: paid` i niezerowym `left_to_pay` istnieją, więc pas milczał, a kolumna
+ * świeciła na czerwono przy tej samej fakturze.
  *
  * ⚠️ OBA WARUNKI SĄ POTRZEBNE i każdy stoi przed INNĄ awarią:
- *   - sam `status`:      przedpłata ma `left_to_pay: 0`, ale status `sent` (pomiar 04.08) —
+ *   - sam `status`:      przedpłata ma `left_to_pay: 0`, ale status `sent` (pomiar) —
  *                        cała sprzedaż ze sklepów wyglądałaby na dług „0,00 zł";
- *   - sam `left_to_pay`: te sześć wyżej, bo oznaczenie zapłaty tego pola NIE ZERUJE
- *                        (nie ustawia też `paid_price` — zostaje `0`, pomiar 28.08).
+ *   - sam `left_to_pay`: dokumenty opisane wyżej, bo oznaczenie zapłaty tego pola NIE ZERUJE
+ *                        (nie ustawia też `paid_price` — zostaje `0`, pomiar).
  *
  * ⚠️ TRZECI STAN ISTNIEJE, ŻEBY NIE ZGADYWAĆ. Dokument bez statusu i bez kwoty nie mówi nic,
  * a `do_zaplaty` byłoby przy nim oskarżeniem klienta o dług, którego nikt nie zmierzył.
  * Pas długów traktuje `nieznany` jak `do_zaplaty` (patrz `czekaNaPrzelew`) — bo tam milczenie
  * kosztuje więcej niż fałszywy alarm — ale KOLUMNA ma prawo powiedzieć „nie wiem".
  *
- * PRZ-126.C09d: CZWARTY stan `zastapiona` — faktura TwojeFaktury zastąpiona przy złym NIP-ie (`zastapiona_przez`
+ * CZWARTY stan `zastapiona` — faktura TwojeFaktury zastąpiona przy złym NIP-ie (`zastapiona_przez`
  * z wiersza listy). Saldo ma 0, ale nie została zapłacona: wpłaty przeszły na nową. Nie jest długiem.
  */
 export function stanZaplaty(dok) {
@@ -197,60 +197,55 @@ export function stanZaplaty(dok) {
 /**
  * Czy ten dokument to pieniądze, na które CZEKAMY NA PRZELEW — czyli wiersz pasa długów.
  *
- * ⚠️⚠️ TO NIE JEST „left_to_pay > 0" I NIE WOLNO DO TEGO WRÓCIĆ. Zgłoszenie właściciela
- * 10.08.2026, potwierdzone pomiarem na żywym koncie tego samego dnia:
- *
- *   q[left_to_pay_gt]=0                  → 67 dokumentów:  status paid=65, sent=2
- *   q[left_to_pay_gt]=0 & status!=paid   → 2:  64/07/2026, 24/08/2026   (dokładnie te zaległe)
- *   z 65 odsianych — KAŻDY ma wypełnione `paid_date`
+ * ⚠️⚠️ TO NIE JEST „left_to_pay > 0" I NIE WOLNO DO TEGO WRÓCIĆ. Pomiar na żywym koncie:
+ * wśród dokumentów z `left_to_pay > 0` zdecydowana większość ma status `paid` i wypełnione
+ * `paid_date`; zalegają tylko te, których status nie jest `paid`.
  *
  * Oznaczenie zapłaty w inFakcie ustawia `status` i `paid_date`, ale **`left_to_pay` zostawia
  * nietknięte** — dokładnie ta sama pułapka, którą moduł ma zmierzoną przy `/paid.json`
- * (docblock `ZAPLACONE` w domain/termin-platnosci.js). Pas długów pokazywał więc 67 pozycji na
- * ~35 tys. zł, gdy realnie zalegały dwie. Pole `left_to_pay` mówi, ILE zostało do zapłaty na
+ * (docblock `ZAPLACONE` w domena/termin-platnosci.js). Pas długów pokazywał więc dziesiątki
+ * pozycji, gdy realnie zalegały pojedyncze. Pole `left_to_pay` mówi, ILE zostało do zapłaty na
  * dokumencie; o tym, CZY zapłacono, mówi status.
  *
  * ⚠️ OBA WARUNKI MUSZĄ ZACHODZIĆ NARAZ, bo każdy stoi przed INNĄ awarią — i każdy z osobna
  * przepuszcza tę drugą:
  *   - sam status:      faktura przedpłacona z `paid_price` ma `left_to_pay: 0`, ale status
- *                      `sent` (pomiar 04.08.2026) → cała sprzedaż ze sklepów wjechałaby na
+ *                      `sent` (pomiar) → cała sprzedaż ze sklepów wjechałaby na
  *                      listę długów z kwotą „0,00 zł";
- *   - sam left_to_pay: te 65 wyżej.
+ *   - sam left_to_pay: zapłacone dokumenty opisane wyżej.
  *
- * ⚠️ POBRANIE ODPADA OSOBNO (decyzja właściciela 10.08.2026): pieniądze odbiera kurier, więc
- * nikt nie czeka na przelew i nie ma kogo upominać. Dziś wszystkie 31 takich dokumentów ma już
- * status `paid`, czyli ten warunek zdejmuje ZERO wierszy — stoi za fakturę wystawioną DZIŚ,
- * zanim pobranie wróci z DPD. ⚠️ Dokumenty za pobraniem sprzed 07.08.2026 mają jeszcze
- * `payment_method: 'transfer'` (błąd naprawiony tamtego dnia) i tą drogą się nie odsieją —
- * odsiewa je status, bo wszystkie są już rozliczone.
+ * ⚠️ POBRANIE ODPADA OSOBNO: pieniądze odbiera kurier, więc nikt nie czeka na przelew i nie
+ * ma kogo upominać. Rozliczone pobranie ma już status `paid`, więc ten warunek stoi za fakturą
+ * wystawioną dziś, zanim gotówka z pobrania wróci od kuriera. ⚠️ Dokumenty za pobraniem
+ * wystawione przed poprawką sposobu zapłaty mają jeszcze `payment_method: 'transfer'` i tą
+ * drogą się nie odsieją — odsiewa je status, bo wszystkie są już rozliczone.
  *
  * ⚠️ ODSIEWAMY WYŁĄCZNIE NA DOWÓD ZAPŁATY, nigdy na braku danych. Nieznany status, brak statusu
  * i nieznana metoda płatności ZOSTAJĄ na liście, tak samo jak dokument, którego w ogóle nie ma.
  * Fałszywy alarm o pieniądzach jest widoczny i człowiek go wyjaśni w minutę; cicho ukryty dług
  * nie daje o sobie znać w ogóle. Ta sama zasada, co przy odmowie zamiast pustej listy
- * w services/faktury-widok.js: na tym ekranie milczenie kosztuje więcej niż fałszywy alarm.
+ * w `moduly/faktury/services/faktury-widok.js`: na tym ekranie milczenie kosztuje więcej niż
+ * fałszywy alarm.
  *
- * ⚠️ SPROSTOWANIE 28.08.2026: rozstrzygnięcie „czy zapłacono" wyprowadzone do `stanZaplaty`
- * wyżej. Ta funkcja dokłada do niego WYŁĄCZNIE swoje dwie rzeczy: odsianie pobrania i to,
- * że `nieznany` ZOSTAJE na liście długów. Powód wyprowadzenia jest w docblocku tamtej.
+ * ⚠️ Rozstrzygnięcie „czy zapłacono" mieszka w `stanZaplaty` wyżej. Ta funkcja dokłada do
+ * niego WYŁĄCZNIE swoje dwie rzeczy: odsianie pobrania i to, że `nieznany` ZOSTAJE na liście
+ * długów. Powód jest w docblocku tamtej.
  *
  * ⚠️ FAKT O PACZCE JEDZIE ARGUMENTEM, A FUNKCJA ZOSTAJE CZYSTA — dokładnie tym wzorcem,
- * co `zlecona` w `stanKsef` wyżej. Składa go `services/faktury-widok.js` JEDNYM zapytaniem
- * na całą listę (faktury → zamowienia → przesylki), nie jednym na wiersz. Wołanie bez
- * drugiego argumentu zachowuje się dokładnie jak przed zmianą.
+ * co `zlecona` w `stanKsef` wyżej. Składa go `moduly/faktury/services/faktury-widok.js`
+ * JEDNYM zapytaniem na całą listę (faktury → zamowienia → przesylki), nie jednym na wiersz.
+ * Wołanie bez drugiego argumentu odsiewa każde pobranie.
  *
- * ⚠️ ARGUMENT NAZYWA SIĘ `pobranieBezGotowki`, A NIE `pobranieZwrocone` (recenzja poprawkowa
- * 28.08.2026, W4) — i to jest cała zmiana nazwy: zwrot NIE JEST jedynym sposobem, w jaki
- * gotówka przy pobraniu nie dochodzi. Nieudane doręczenie („adresat nieobecny", awizo) daje
- * etap `doreczona`, więc pod starą nazwą i starym pytaniem taki dokument znikał z pasa długów
- * na stałe. Odpowiada `czyPaczkaBezGotowki` (domain/pobranie-zaplacone.js) — TA SAMA funkcja,
- * z której czyta czuwacz pobrań.
+ * ⚠️ ARGUMENT NAZYWA SIĘ `pobranieBezGotowki`, A NIE `pobranieZwrocone`: zwrot NIE JEST
+ * jedynym sposobem, w jaki gotówka przy pobraniu nie dochodzi. Nieudane doręczenie („adresat
+ * nieobecny", awizo) daje etap `doreczona`, więc pytanie tylko o zwrot zdejmowałoby taki
+ * dokument z pasa długów na stałe. Odpowiada `czyPaczkaBezGotowki` (domena/pobranie-zaplacone.js)
+ * — TA SAMA funkcja, z której czyta czuwacz pobrań.
  *
- * ⚠️⚠️ POWÓD (spec 2026-08-28): odsianie pobrania było BEZWARUNKOWE, więc paczka NIEODEBRANA
- * — czyli realny dług, bo kurier niczego nie zainkasował — znikała z pasa tak samo jak
- * doręczona. Do 28.08 nie bolało, bo pobrania i tak nie miały statusu `paid` i widać je było
- * w tabeli miesiąca; po domknięciu pętli (services/oznaczanie-pobran.js) przestałyby być
- * widoczne gdziekolwiek.
+ * ⚠️⚠️ POWÓD: bezwarunkowe odsianie pobrania zdejmowałoby z pasa paczkę NIEODEBRANĄ — czyli
+ * realny dług, bo kurier niczego nie zainkasował — tak samo jak doręczoną. Po domknięciu pętli
+ * pobrań (`moduly/wysylka/services/oznaczanie-pobran.js`) taki dług nie byłby widoczny
+ * gdziekolwiek.
  */
 export function czekaNaPrzelew(dok, { pobranieBezGotowki = false } = {}) {
   const stan = stanZaplaty(dok);

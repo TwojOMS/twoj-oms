@@ -1,0 +1,101 @@
+/* Ekran logowania z marką Twój OMS: formularz po lewej, zielona połowa marki po prawej.
+   Paleta i krój są marki produktu (strona twojoms.pl), a nie motywu panelu: ekran wygląda tak samo
+   w motywie jasnym i ciemnym, dlatego kolory stoją tu wprost, a `color-scheme` jest jasne.
+   Krój Schibsted Grotesk z plików paczki (public/fonts, licencja OFL obok) — panel bywa w sieci bez internetu. */
+@font-face { font-family: "Schibsted Grotesk"; font-style: normal; font-weight: 400 800; font-display: swap; src: url(fonts/schibsted-grotesk-latin-ext.woff2) format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "Schibsted Grotesk"; font-style: normal; font-weight: 400 800; font-display: swap; src: url(fonts/schibsted-grotesk-latin.woff2) format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+
+.tresc.tresc--logowanie { padding: 0; }
+/* Panel rezerwuje miejsce na pasek przewijania (oms-uklad.css); tu zostawiałoby biały pas przy zielonej połowie. */
+html:has(.lg-ekran) { scrollbar-gutter: auto; }
+
+.lg-ekran {
+  --lg-tusz: #111111;
+  --lg-szary: #5C5C5C;
+  --lg-ramka-pola: #8F8F8A;
+  --lg-akcent: #1F6B45;
+  --lg-akcent-ciemniej: #17583A;
+  --lg-na-akcencie: #FFFFFF;
+  --lg-na-akcencie-przygaszony: rgba(255,255,255,.74);
+  --lg-linia-na-akcencie: rgba(255,255,255,.22);
+  --lg-blad: #A1251B;
+  --lg-blad-tlo: #FBEFEC;
+  --lg-ok: #1F6B45;
+  --lg-ok-tlo: #EAF3EE;
+  --lg-tlo: #FFFFFF;
+  color-scheme: light;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+  grid-template-rows: 1fr auto;
+  grid-template-areas: "formularz gora" "formularz dol";
+  background: var(--lg-tlo);
+  color: var(--lg-tusz);
+  font: 16px/1.5 "Schibsted Grotesk", system-ui, sans-serif;
+  font-variant-numeric: normal;
+  -webkit-font-smoothing: antialiased;
+}
+.lg-ekran *, .lg-ekran *::before, .lg-ekran *::after { box-sizing: border-box; }
+.lg-ekran :focus-visible { outline: 3px solid var(--lg-akcent); outline-offset: 2px; border-radius: 0; }
+
+/* ── strona marki (prawa połowa: góra + dół) ─────────────────────────── */
+.lg-marka-gora, .lg-marka-dol { background: var(--lg-akcent); color: var(--lg-na-akcencie); padding-inline: clamp(32px, 5vw, 72px); }
+.lg-marka-gora { grid-area: gora; padding-top: 48px; display: flex; flex-direction: column; }
+.lg-marka-dol { grid-area: dol; padding-bottom: 40px; }
+.lg-marka-tresc { margin-block: auto; padding-block: 56px 40px; max-width: 34rem; }
+.lg-znacznik-marki { margin: 0 0 18px; font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--lg-na-akcencie-przygaszony); }
+.lg-haslo { margin: 0; font-size: clamp(30px, 3.2vw, 44px); line-height: 1.08; font-weight: 700; letter-spacing: -.02em; max-width: 16ch; color: inherit; }
+.lg-firma-opis { margin: 18px 0 0; font-size: 19px; color: var(--lg-na-akcencie-przygaszony); }
+.lg-lista { margin: 40px 0 0; padding: 0; border-top: 2px solid var(--lg-na-akcencie); }
+.lg-lista div { display: grid; grid-template-columns: 7.5rem 1fr; gap: 16px; padding: 13px 0; border-bottom: 1px solid var(--lg-linia-na-akcencie); font-size: 15px; }
+.lg-lista dt { font-weight: 700; }
+.lg-lista dd { margin: 0; color: var(--lg-na-akcencie-przygaszony); }
+.lg-linki { display: flex; flex-wrap: wrap; gap: 8px 28px; margin: 0; padding: 0; list-style: none; font-size: 15px; font-weight: 600; }
+.lg-ekran a.lg-link, .lg-ekran a.lg-link:visited, .lg-ekran a.lg-link:hover { color: inherit; text-underline-offset: 4px; text-decoration: underline; text-decoration-color: var(--lg-linia-na-akcencie); text-decoration-thickness: 1px; }
+.lg-ekran a.lg-link:hover { text-decoration-color: var(--lg-na-akcencie); }
+.lg-linki a.lg-link::after { content: " ↗"; font-weight: 400; }
+.lg-przypis { margin: 16px 0 0; font-size: 13px; color: var(--lg-na-akcencie-przygaszony); }
+
+/* ── formularz (lewa połowa) ─────────────────────────────────────────── */
+/* Kolumna logo / formularz / stopka wyśrodkowana siatką (justify-items), bez `margin: auto` — reguła szerokości
+   panelu (tests/core/szerokosci-prz154.test.js) zostaje bez wyjątków. */
+.lg-strona-formularza { grid-area: formularz; display: grid; grid-template-rows: auto 1fr auto; justify-items: center; padding: 48px clamp(24px, 5vw, 72px) 32px; }
+.lg-logo-formularza { width: 100%; max-width: 380px; margin: 0 0 40px; }
+.lg-logo { display: block; height: 40px; width: auto; }
+.lg-panel { width: 100%; max-width: 380px; align-self: center; }
+.lg-znacznik { display: inline-block; margin: 0 0 20px; padding: 3px 8px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--lg-akcent); border: 1px solid var(--lg-akcent); border-radius: 2px; }
+.lg-panel h1 { margin: 0 0 12px; font-size: 32px; line-height: 1.15; font-weight: 700; letter-spacing: -.015em; color: var(--lg-tusz); }
+.lg-wstep { margin: 0 0 28px; color: var(--lg-szary); }
+.lg-przycisk { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 52px; padding: 0 24px; font: inherit; font-size: 17px; font-weight: 700; color: var(--lg-na-akcencie); background: var(--lg-akcent); border: 1px solid var(--lg-akcent); border-radius: 2px; cursor: pointer; }
+.lg-przycisk:hover { background: var(--lg-akcent-ciemniej); border-color: var(--lg-akcent-ciemniej); }
+.lg-przycisk-duzy { height: 60px; font-size: 18px; }
+.lg-przycisk-duzy span { transition: transform .15s; }
+.lg-przycisk-duzy:hover span { transform: translateX(3px); }
+@media (prefers-reduced-motion: reduce) { .lg-przycisk-duzy span { transition: none; } }
+
+.lg-pole { display: block; margin-bottom: 18px; }
+.lg-pole span { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 600; }
+.lg-pole input { width: 100%; height: 48px; padding: 0 14px; font: inherit; font-size: 16px; color: var(--lg-tusz); background: var(--lg-tlo); border: 1px solid var(--lg-ramka-pola); border-radius: 2px; }
+.lg-pole input:hover { border-color: var(--lg-tusz); }
+.lg-pole input:focus { outline: 3px solid var(--lg-akcent); outline-offset: -1px; border-color: var(--lg-akcent); }
+.lg-formularz .lg-przycisk { margin-top: 8px; }
+
+.lg-blad { margin: 0 0 20px; padding: 12px 14px; font-size: 15px; color: var(--lg-blad); background: var(--lg-blad-tlo); border-left: 3px solid var(--lg-blad); }
+.lg-komunikat { margin: 0 0 20px; padding: 12px 14px; font-size: 15px; color: var(--lg-ok); background: var(--lg-ok-tlo); border-left: 3px solid var(--lg-ok); }
+
+.lg-stopka { width: 100%; max-width: 380px; margin: 40px 0 0; font-size: 13px; color: var(--lg-szary); }
+
+/* ── telefon: logo i formularz u góry, marka i linki pod nimi ─────────── */
+@media (max-width: 880px) {
+  .lg-ekran { grid-template-columns: 1fr; grid-template-rows: auto auto auto; grid-template-areas: "formularz" "gora" "dol"; }
+  .lg-marka-gora { padding-top: 8px; }
+  .lg-marka-tresc { padding-block: 28px 28px; }
+  .lg-haslo { font-size: 26px; max-width: 22ch; }
+  .lg-lista { display: none; }
+  .lg-znacznik-marki { margin-bottom: 10px; }
+  .lg-logo { height: 32px; }
+  .lg-strona-formularza { padding: 32px 20px 32px; }
+  .lg-panel h1 { font-size: 26px; }
+  .lg-marka-dol { padding-block: 28px 32px; }
+  .lg-stopka { margin-top: 28px; }
+}

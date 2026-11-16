@@ -1,4 +1,4 @@
-// SLOWNIK METOD PLATNOSCI — regula dzialajaca PRZY ODCZYCIE (audyt 22.08.2026).
+// SLOWNIK METOD PLATNOSCI — regula dzialajaca PRZY ODCZYCIE.
 //
 // Metoda platnosci przychodzi ze sklepu jako WOLNY TEKST (`payment_method_title`), wiec
 // baza trzyma „BLIK" i „Blik" jako dwa byty i trzy rozne „przelewy". Normalizacja siedzi
@@ -28,7 +28,7 @@ const KANONICZNE = [
   { klucz: 'gotowka', etykieta: 'Gotówka', wzorce: ['gotowka', 'gotówka'] },
 ];
 
-// Pusta metoda NIE znika — dostaje jawny kubelek. Na danych produkcyjnych to garstka wplat
+// Pusta metoda NIE znika — dostaje jawny kubelek. Bywa to garstka wplat
 // o zauwazalnej sumie (jedna z wiekszych pozycji): niewidoczne w filtrze wygladaloby jak „mniej pieniedzy",
 // a nie jak „brak etykiety".
 const NIEOKRESLONA = { klucz: 'nieokreslona', etykieta: 'Nieokreślona' };

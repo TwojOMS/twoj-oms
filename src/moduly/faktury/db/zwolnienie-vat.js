@@ -1,4 +1,4 @@
-// PRZ-122.B07b: zwolnienie z VAT firmy (Ustawienia → Firma, tylko przy TwojeFaktury). Jeden wiersz tabeli `ustawienia`
+// Zwolnienie z VAT firmy (Ustawienia → Firma, tylko przy TwojeFaktury). Jeden wiersz tabeli `ustawienia`
 // (bez migracji, bez pamięci podręcznej — wzór stawka-vat.js), JSON `{ zwolniona, podstawa, rodzaj }`.
 //
 // Podstawę składa SERWER z wyboru na ekranie — admin wpisuje tylko numer punktu i literę (art. 43) albo własny tekst
@@ -93,7 +93,7 @@ export function zwolnienieDlaProgramu(db) {
 }
 
 /**
- * PRZ-122.B07d: jedno źródło prawdy „sprzedawca zwolniony z VAT” dla usług faktur — `true` tylko przy programie
+ * Jedno źródło prawdy „sprzedawca zwolniony z VAT” dla usług faktur — `true` tylko przy programie
  * wbudowanym (lista stawek z „zw”, `opcjeZwProgramu`) i zapisanym zwolnieniu firmy. Przy inFakcie zawsze `false`
  * (zachowanie bez zmian). Czytane przy każdym żądaniu: rezygnacja ze zwolnienia działa bez restartu.
  */
@@ -102,7 +102,7 @@ export function sprzedawcaZwolniony(db, opisProgramu) {
 }
 
 /**
- * PRZ-122.B07f: ta sama reguła dla wołających, które mają już flagę `{ zw }` programu zamiast jego opisu (usługa
+ * Ta sama reguła dla wołających, które mają już flagę `{ zw }` programu zamiast jego opisu (usługa
  * proformy, `zmienUstalenia`) — `true` tylko przy `zw === true` i zapisanym zwolnieniu firmy.
  */
 export function zwolnionaZFlagi(db, opcje) {

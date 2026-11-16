@@ -1,7 +1,7 @@
 import { zapiszZamowienie } from '../../../oms/db/zamowienia.js';
 
 // `od` — data, od ktorej panel w ogole zaglada do sklepu przy PIERWSZYM przebiegu.
-// Bez niej sklep bez zapisanego kursora oznacza „przeczytaj cala historie": sklep A
+// Bez niej sklep bez zapisanego kursora oznacza „przeczytaj całą historię": duży sklep
 // ma kilka tysiecy zamowien z wielu lat, wiec pierwszy przebieg to setki stron REST-a, ktore nie
 // zdazyly sie skonczyc miedzy dwoma tykniernami zegara — i kazde kolejne tykniecie
 // startowalo NASTEPNY przebieg od strony pierwszej. Panel jest lista roboca, a nie
@@ -9,14 +9,13 @@ import { zapiszZamowienie } from '../../../oms/db/zamowienia.js';
 // zamiast liczby), wiec wpadaja jako „nieznana metoda" i tylko zasmiecaja liste.
 //
 // ⚠️⚠️ `od` JEST TEZ TRWALA PODLOGA NA DATE ZLOZENIA, nie tylko oknem pierwszego przebiegu.
-// Pierwsza wersja (01.08.2026) zawezala wylacznie pierwsze zapytanie i to NIE WYSTARCZYLO:
-// tego samego dnia o 13:30 sklep DOTKNAL MASOWO calego archiwum (zamowienia z 2019, 2020
-// i 2024 dostaly `date_modified_gmt` w tej samej sekundzie), wiec poller — poprawnie, bo
-// byly zmodyfikowane po kursorze — wciagnal 500 zamowien sprzed lat. Filtr po dacie
-// MODYFIKACJI nie da sie na tym oprzec: sklep moze dotknac czegokolwiek, kiedykolwiek.
+// Zawężenie wyłącznie pierwszego zapytania NIE WYSTARCZA: sklep potrafi DOTKNĄĆ MASOWO całego
+// archiwum (zamówienia sprzed lat dostają `date_modified_gmt` w tej samej sekundzie), więc
+// poller — poprawnie, bo były zmodyfikowane po kursorze — wciągnąłby setki zamówień sprzed lat.
+// Filtr po dacie MODYFIKACJI nie może się na tym oprzeć: sklep może dotknąć czegokolwiek, kiedykolwiek.
 // Podloga idzie po dacie ZLOZENIA, ktora sie nie zmienia.
 //
-// ⚠️ Poller NIE WIE, z czym rozmawia (Etap 4). Kanal — WooCommerce, Allegro, cokolwiek —
+// ⚠️ Poller NIE WIE, z czym rozmawia. Kanal — WooCommerce, Allegro, cokolwiek —
 // przychodzi jako `kanal` i to ON zna ksztalt surowego zamowienia: ktore pole jest data
 // modyfikacji, ktore data zlozenia i jak zamienic je na wiersz. Reguly ponizej (podloga,
 // jeden przebieg naraz, kursor za najpozniejsza PRZETWORZONA modyfikacja) zostaja przez to
@@ -43,7 +42,7 @@ export function createPoller({ db, kanal, sklep, od = null, kontrola = () => {} 
   }
 
   // ⚠️ `rodzaj` ROZSTRZYGA, CZY BLAD BEDZIE DLAWIONY — i to na OBU progach naraz
-  // (domain/zdrowie.js: ekran po `PROB_BLEDU_NA_EKRAN` probach, telefon po
+  // (domena/zdrowie.js: ekran po `PROB_BLEDU_NA_EKRAN` probach, telefon po
   // `PROG_BLEDU_POLLERA_S`). Nie jest wiec etykieta opisowa, tylko decyzja:
   //   'awaria'     — rzut przebiegu (siec, timeout, dysk). Ponowienie za dwie minuty MOZE
   //                  pomoc, wiec alarm czeka, az blad zacznie TRWAC.
@@ -62,7 +61,7 @@ export function createPoller({ db, kanal, sklep, od = null, kontrola = () => {} 
     const poprzedni = blad ? stan() : null;
     // ⚠️ LICZNIK NIEUDANYCH PRZEBIEGOW Z RZEDU. Rosnie przy KAZDEJ wpadce i wraca do zera
     // (NULL) przy pierwszym udanym przebiegu, bo „z rzedu" znaczy nieprzerwanie. To ON,
-    // a nie `ostatni_blad_od_at`, rozstrzyga o komunikacie na ekranie (domain/zdrowie.js):
+    // a nie `ostatni_blad_od_at`, rozstrzyga o komunikacie na ekranie (domena/zdrowie.js):
     // czas potrafi plynac bez ani jednej proby, liczba prob nie potrafi.
     // ⚠️ Nieparsowalna albo ujemna wartosc w kolumnie (obcy zapis, reczny UPDATE) liczymy
     // jak zero — licznik ma rosnac, a nie cofac sie w nieskonczonosc.
@@ -85,15 +84,15 @@ export function createPoller({ db, kanal, sklep, od = null, kontrola = () => {} 
 
   // ⚠️⚠️ IZOLACJA PER ZAMOWIENIE — CALA TRESC TEJ FUNKCJI I POWOD, DLA KTOREGO ISTNIEJE.
   //
-  // Do 04.08.2026 rzut z `kanal.mapuj` leial przez petle prosto do `catch` przebiegu: kursor
-  // zostawal na POPRZEDNIEJ wartosci i szedl dalej w gore. Nastepne tykniecie czytalo TE SAMA
-  // strone, mapowanie rzucalo na TYM SAMYM zamowieniu — i kanal stal NA ZAWSZE, cicho, bo
-  // panel dziala, a nowe zamowienia po prostu przestaja przychodzic. Jedynym wyjsciem byl
-  // reczny UPDATE na `stan_pollera`, czyli wprost naruszenie niezmiennika 4.9
-  // (docs/oms/PRZEWODNIK.md: panel nie moze wchodzic w stan, z ktorego nie umie wyjsc).
-  // Wyzwalaczem jest KAZDA odmowa mapowania kanalu Allegro (domain/allegro-mapowanie.js:
+  // Gdyby rzut z `kanal.mapuj` leciał przez pętlę prosto do `catch` przebiegu, kursor
+  // zostawałby na POPRZEDNIEJ wartości. Następne tyknięcie czytałoby TĘ SAMĄ
+  // stronę, mapowanie rzucałoby na TYM SAMYM zamówieniu — i kanał stałby NA ZAWSZE, cicho, bo
+  // panel działa, a nowe zamówienia po prostu przestają przychodzić. Jedynym wyjściem byłby
+  // ręczny UPDATE na `stan_pollera` (reguła: każdy stan ma wyjście — panel nie może wchodzić
+  // w stan, z którego nie umie wyjść).
+  // Wyzwalaczem jest KAZDA odmowa mapowania kanalu Allegro (domena/allegro-mapowanie.js:
   // nieparsowalna kwota zamowienia, pobranie na 0 zl, nieparsowalna cena pozycji) — czyli
-  // JEDNO zamowienie o zlym ksztalcie zabijalo caly kanal.
+  // JEDNO zamówienie o złym kształcie zabiłoby cały kanał.
   //
   // ⚠️ IZOLUJEMY WYLACZNIE MAPOWANIE, NIE ZAPIS. To nie jest oszczednosc, tylko granica
   // miedzy dwiema roznymi klasami awarii:
@@ -107,7 +106,7 @@ export function createPoller({ db, kanal, sklep, od = null, kontrola = () => {} 
   //     jego wyjatek dalej wychodzi z petli, kursor zostaje na poprzedniej wartosci
   //     i zamowienia wroca przy nastepnym przebiegu (zapis jest idempotentny).
   //
-  // ⚠️ SKLEPOM TO NIC NIE ZMIENIA: `domain/mapowanie.js` (WooCommerce) nie rzuca NIGDY, wiec
+  // ⚠️ SKLEPOM TO NIC NIE ZMIENIA: `domena/mapowanie.js` (WooCommerce) nie rzuca NIGDY, wiec
   // dla `sklep_b` i `sklep_a` ta galaz nie uruchamia sie ani razu i przebieg wyglada jak dotad.
   //
   // Powod pominiecia bierzemy Z KOMUNIKATU BLEDU, a nie z zawartosci zamowienia — poller
@@ -116,8 +115,8 @@ export function createPoller({ db, kanal, sklep, od = null, kontrola = () => {} 
   // niosa identyfikator zamowienia, bo pisane sa dla czlowieka.
   const powodPominiecia = (e) => (e?.message ? String(e.message) : String(e));
 
-  // Zdanie dla paska na liscie zamowien (bootstrap.js: `stan()` oddaje stan pollera
-  // z NIEPUSTYM bledem). Pominiete zamowienie MUSI byc widoczne: kursor przez nie
+  // Zdanie dla paska na liscie zamowien (src/moduly/zamowienia/lista.js). `stan()`
+  // (kanaly/services/kompozycja-kanalow.ts) oddaje stan pollera z NIEPUSTYM bledem. Pominiete zamowienie MUSI byc widoczne: kursor przez nie
   // przeskakuje, wiec samo z siebie juz NIE WROCI — wroci dopiero, gdy zrodlo je zmodyfikuje.
   const opisPominietych = (powody) => `Pominięto ${powody.length} zamówien${powody.length === 1 ? 'ie' : 'ia'}`
     + ` (kursor przesunięty, same z siebie nie wrócą): ${powody.join(' | ')}`;
@@ -144,7 +143,7 @@ export function createPoller({ db, kanal, sklep, od = null, kontrola = () => {} 
         //   `od`     — TRWALA PODLOGA PO DACIE ZLOZENIA (patrz komentarz nad createPoller).
         //              Obowiazuje w KAZDYM przebiegu, nie tylko pierwszym, bo sklep potrafi
         //              masowo dotknac archiwum i wtedy filtr po dacie modyfikacji wciaga
-        //              zamowienia sprzed lat (01.08.2026: 500 sztuk z 2019, 2020 i 2024).
+        //              zamowienia sprzed lat.
         // Nie skladamy ich tutaj w jedna wartosc, bo adapter, ktory WYBIERA miedzy nimi,
         // musi widziec PRAWDZIWY BRAK KURSORA. Allegro pyta albo po dacie modyfikacji, albo
         // po dacie zlozenia — gdyby dostawalo `kursor` juz podmieniony na `od`, na pustym
@@ -211,7 +210,8 @@ export function createPoller({ db, kanal, sklep, od = null, kontrola = () => {} 
     // roznica wobec pominiecia po podlodze (`pominieteStare`), ktore jest stanem NORMALNYM
     // i milczy. Zamowienie odrzucone przez mapowanie to zamowienie, ktorego w panelu NIE MA
     // i ktore samo nie wroci; jedyne miejsce, w ktorym czlowiek moze sie o tym dowiedziec,
-    // to pasek na liscie (bootstrap.js: `stan()` wybiera pollera z niepustym bledem).
+    // to pasek na liscie (src/moduly/zamowienia/lista.js; pollera z niepustym bledem wybiera
+    // `stan()` w kanaly/services/kompozycja-kanalow.ts).
     // Bez tego zapisu izolacja zamienialaby awarie glosna na CICHA — a to gorzej niz stojacy
     // kanal, bo stojacy kanal chociaz widac po braku nowych zamowien.
     kontrola();

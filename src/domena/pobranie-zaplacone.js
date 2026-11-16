@@ -4,13 +4,13 @@ import { dzienWarszawa } from './format-daty.js';
 
 // KIEDY POBRANIE JEST JUŻ PIENIĘDZMI — czysta reguła, bez bazy, bez sieci, bez zegara.
 //
-// ⚠️⚠️ REGUŁA BRZMI „DORĘCZONA = OPŁACONA", NIGDY „POBRANIE = OPŁACONE" (decyzja właściciela
-// 28.08.2026). Różnica nie jest kosmetyczna: paczka nieodebrana wraca ZWROTEM i pieniędzy
+// ⚠️⚠️ REGUŁA BRZMI „DORĘCZONA = OPŁACONA", NIGDY „POBRANIE = OPŁACONE".
+// Różnica nie jest kosmetyczna: paczka nieodebrana wraca ZWROTEM i pieniędzy
 // nie ma. Reguła oparta na samej metodzie płatności oznaczałaby taki dokument jako zapłacony
 // i skasowała jedyny ślad po niezapłaconym zamówieniu.
 //
 // ⚠️ TA REGUŁA NIE JEST DRUGĄ PRAWDĄ O PIENIĄDZACH. O zapłacie dalej mówi inFakt i jego
-// `status` (spec §4.1). Ona odpowiada na inne pytanie: czy panel ma inFaktowi ZGŁOSIĆ fakt,
+// `status`. Ona odpowiada na inne pytanie: czy panel ma inFaktowi ZGŁOSIĆ fakt,
 // którego tamten nie zna, bo kurier nie rozmawia z księgowością.
 
 /** Etap przesyłki, przy którym pieniądze są już u nas. Jeden, celowo. */
@@ -23,12 +23,12 @@ const ETAP_ZAPLATY = 'doreczona';
  * adresat nieobecny" albo „Nieudana próba doręczenia" wpada w te same wzorce co prawdziwe
  * doręczenie (`doręczon`, `odbiorc`). Dziś kosztuje to najwyżej złą pastylkę na ekranie
  * przesyłek — `etapPrzesylki` obsługuje też zakładkę przesyłek i czuwacza bez ruchu, więc
- * naprawa jej wzorców to osobna decyzja o szerszym zasięgu (właściciel, 28.08.2026: NIE ruszać).
+ * naprawa jej wzorców to osobna decyzja o szerszym zasięgu.
  * W ścieżce pieniędzy ta sama pomyłka oznaczałaby fakturę jako opłaconą, choć kurier
  * niczego nie zainkasował — stąd druga, węższa bramka, TYLKO tutaj, TYLKO dla PIENIĘDZY.
  *
- * ⚠️ „TYLKO tutaj" ZNACZY „TYLKO W TYM MODULE", a nie „tylko dla czuwacza pobrań": od
- * 28.08.2026 czyta ją także pas długów, przez `czyPaczkaBezGotowki` niżej. To dalej jest
+ * ⚠️ „TYLKO tutaj" ZNACZY „TYLKO W TYM MODULE", a nie „tylko dla czuwacza pobrań":
+ * czyta ją także pas długów, przez `czyPaczkaBezGotowki` niżej. To dalej jest
  * JEDNA bramka — po prostu z dwoma wołającymi.
  *
  * Warianty celowo bez polskich znaków — nie każdy kurier je wysyła w opisie zdarzenia.
@@ -46,7 +46,7 @@ function opisBrzmiJakNieudaneDoreczenie(opis) {
 /**
  * CZY PRZY TEJ PACZCE PIENIĘDZY NIE MA — jedna reguła, DWÓCH czytelników.
  *
- * ⚠️⚠️ ISTNIEJE, BO DWIE WARSTWY PYTAŁY O TO SAMO INACZEJ (recenzja poprawkowa 28.08.2026, W4).
+ * ⚠️⚠️ ISTNIEJE, BO DWIE WARSTWY PYTAŁY O TO SAMO INACZEJ.
  * Ścieżka pieniędzy (`czyPobranieRozliczone` niżej) miała bezpiecznik nieudanego doręczenia,
  * a pas długów (services/faktury-widok.js) pytał wyłącznie `etapPrzesylki(...) === 'zwrot'`.
  * Skutek na paczce ze statusem „Nie doręczono — adresat nieobecny": `etapPrzesylki` daje
@@ -80,7 +80,7 @@ export function czyPobranieRozliczone({ zamowienie, przesylka, uuidFaktury } = {
   if (!uuidFaktury) return false;
   // Wartość EFEKTYWNA, po ręcznych korektach (`czyPobranie` czyta nadpisanie, a w jego
   // braku kolumnę) — a nie `kwota_pobrania`. To decyzja o pobraniu rządzi, kwota jest
-  // jej skutkiem; ta sama zasada, co w `platnoscPrzyOdbiorze` (domain/platnosci.js).
+  // jej skutkiem; ta sama zasada, co w `platnoscPrzyOdbiorze` (domena/platnosci.js).
   if (!czyPobranie(zamowienie)) return false;
   // Etap liczony z OSTATNIEGO znanego statusu — dokładnie jak w czuwaczu przesyłek.
   // Brak statusu daje etap inny niż `doreczona`, więc milczenie kuriera NIE jest zapłatą.
@@ -102,32 +102,32 @@ const JEST_POPRAWNA_DATA = /^\d{4}-\d{2}-\d{2}$/;
 /**
  * Dzień, który poleci do inFaktu jako `paid_date` — albo `null`, gdy żadnej daty nie znamy.
  *
- * ⚠️⚠️ KONTRAKT (od Poprawki 1, 28.08.2026): FUNKCJA MOŻE ZWRÓCIĆ `null`. WOŁAJĄCY MA
+ * ⚠️⚠️ KONTRAKT: FUNKCJA MOŻE ZWRÓCIĆ `null`. WOŁAJĄCY MA
  * OBOWIĄZEK TO SPRAWDZIĆ i przy `null` NIE wysyłać oznaczenia zapłaty do inFaktu — zamiast
  * tego zostawić ślad (log / status do wyjaśnienia ręcznego). Wcześniej funkcja zawsze
- * zwracała jakąś datę; `invoiceDate === null` (realnie osiągalne, gdy pochodzi z odpowiedzi
- * inFaktu: `dane?.invoice_date ?? null`) przechodziło przez `dzien > null`, JS konwertował
+ * zwracała jakąś datę; `invoiceDate === null` (realnie osiągalne, gdy odpowiedź
+ * programu faktur nie niesie daty wystawienia) przechodziło przez `dzien > null`, JS konwertował
  * `null` na `0` i prawie każda data wygrywała porównanie — poza `dzien` pustym, gdzie
  * funkcja PO CICHU oddawała `null`, mimo że dzień doręczenia był ZNANY. `null` leciałby
  * dalej jako `paid_date` do systemu księgowego.
  *
- * Reguła (rozstrzygnięcie właściciela, 28.08.2026):
+ * Reguła:
  *  - znamy dzień doręczenia, `invoiceDate` NIE jest poprawną datą → dzień doręczenia
  *    (znamy datę, więc nie ma powodu jej gubić);
  *  - NIE znamy dnia doręczenia I `invoiceDate` NIE jest poprawną datą → `null`
  *    (jedyny przypadek odmowy: nie ma żadnej daty do wysłania, a zmyślona data w dokumencie
  *    księgowym jest gorsza niż brak oznaczenia);
- *  - oba poprawne → PÓŹNIEJSZA z dwóch, jak dotychczas.
+ *  - oba poprawne → PÓŹNIEJSZA z dwóch.
  *
  * ⚠️ PÓŹNIEJSZA Z DWÓCH DAT. Dokumentacja `/paid.json` stawia jeden warunek: `paid_date`
  * nie wcześniejsza niż data wystawienia. Paczka doręczona 25.08 przy fakturze wystawionej
  * 27.08 dałaby odmowę — i status, który miał się naprawić, zostałby zły. Ta sama bramka, co
  * w `dataZaplatyFaktury` (services/faktura.js) dla programu bez `dowolnaDataZaplaty` (inFakt,
- * TwojeFaktury). Dla Fakturowni droga faktury nie przycina daty (pomiar F9B), a ta droga nadal
- * przycina — świadomie, poza zakresem PRZ-119.12c.
+ * TwojeFaktury). Dla Fakturowni droga faktury nie przycina daty, a ta droga nadal
+ * przycina — świadomie.
  *
- * ⚠️⚠️ `status_kuriera_at` BYŁA DO 28.08.2026 KOLUMNĄ CZYSTO PREZENTACYJNĄ (komentarz przy
- * `zapiszStatusDpd` w db/przesylki.js) i ten moduł czyni ją NOŚNĄ. Zapisywana jest jako
+ * ⚠️⚠️ `status_kuriera_at` BYŁA KIEDYŚ KOLUMNĄ CZYSTO PREZENTACYJNĄ (komentarz przy
+ * `zapiszStatusDpd` w src/moduly/wysylka/db/przesylki.js) i ten moduł czyni ją NOŚNĄ. Zapisywana jest jako
  * `at ?? null`, więc BYWA PUSTA — kurier nie zawsze oddaje czas zdarzenia. Brak daty NIE
  * JEST sama w sobie powodem do odmowy: to krok po fakcie doręczenia, więc gdy `invoiceDate`
  * jest poprawną datą, spadamy na nią — ona jest zawsze poprawna i zawsze spełnia warunek
@@ -145,13 +145,10 @@ export function dataZaplatyPobrania(przesylka, invoiceDate) {
 /**
  * PÓŹNIEJSZA Z DWÓCH ZNANYCH DAT — albo `null`, gdy żadna nie jest datą.
  *
- * Sedno kontraktu `dataZaplatyPobrania` wyżej, wyjęte osobno WYŁĄCZNIE dlatego, że drugi
- * wołający ma ten sam problem z inną pierwszą datą: skrypt sprzątający liczy `paid_date`
- * także dla dokumentów rozliczonych WPŁATAMI (services/sprzatanie-zaplat.js), gdzie dniem
- * zapłaty jest dzień pokrycia kwoty, a nie dzień doręczenia. Reguła — „nie zejść poniżej
- * daty wystawienia, a przy braku obu dat nie wysyłać nic" — jest w obu przypadkach TA SAMA
- * i nie ma prawa istnieć w dwóch kopiach: rozjazd między nimi kończyłby się `paid_date`,
- * które inFakt odrzuca, albo — gorzej — datą zmyśloną w dokumencie księgowym.
+ * Sedno kontraktu `dataZaplatyPobrania` wyżej, wyjęte osobno, żeby reguła — „nie zejść poniżej
+ * daty wystawienia, a przy braku obu dat nie wysyłać nic" — istniała w jednej kopii: druga
+ * kopia, rozjechana z tą, kończyłaby się `paid_date`, które inFakt odrzuca, albo — gorzej —
+ * datą zmyśloną w dokumencie księgowym.
  *
  * @param dzien dzień `RRRR-MM-DD` albo pusty napis, gdy nieznany (tak oddaje `dzienWarszawa`).
  */

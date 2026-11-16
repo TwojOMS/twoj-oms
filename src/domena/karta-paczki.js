@@ -1,5 +1,5 @@
-// KARTA PACZKI (PRZ-152.G8) — co pokazuje jedna paczka w sekcji „Przesyłka” karty zamówienia.
-// Układ zatwierdzony przez właściciela 04.11 („Tak, układ OK”):
+// KARTA PACZKI — co pokazuje jedna paczka w sekcji „Przesyłka” karty zamówienia.
+// Układ:
 //   wiersz 1: „Paczka N” · plakietka przewoźnika · JEDEN status etapu · akcje;
 //   wiersz 2: numer listu (link do śledzenia) + „kopiuj numer”;
 //   wiersz 3: ostatnie zdarzenie kuriera — `opis · dziś 17:18`, bez nawiasu z sekundami;
@@ -69,14 +69,14 @@ function odczytajAdresUzyty(json) {
   }
 }
 
-// Te same pola, co dawna linia „Adres użyty przy nadaniu”, plus punkt odbioru.
+// Pola adresu porównywane z adresem zamówienia, plus punkt odbioru.
 const POLA_POROWNANIA = ['nazwa', 'ulica', 'kod', 'miasto', 'kraj', 'punkt_odbioru'];
 const doPorownania = (a) => Object.fromEntries(POLA_POROWNANIA.map((k) => [k, k === 'kraj' ? krajPL(a?.[k]) : tekst(a?.[k])]));
 
 /**
  * Wiersz „Do:” — adres użyty przy TYM nadaniu (operator mógł go poprawić na ekranie nadania),
  * a dla paczek sprzed kolumny `adres_uzyty` — adres z zamówienia. `inny` = różni się od adresu
- * zamówienia (zastępuje dawną osobną linię „Adres użyty przy nadaniu”).
+ * zamówienia.
  * @returns {{ tekst: string, inny: boolean }}
  */
 export function adresPaczki(p, z) {

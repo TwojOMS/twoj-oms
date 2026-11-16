@@ -1,12 +1,11 @@
 // Odroczenie kolejnej próby wydruku po nieudanej próbie (kolumna
-// `kolejka_druku.nastepna_proba_at`, patrz db/kolejka-druku.js).
+// `kolejka_druku.nastepna_proba_at`, patrz moduly/wysylka/db/kolejka-druku.js).
 //
 // Czuwacz (deploy/drukarka/czuwacz-etykiet.ps1) odpytuje panel o etykiety CO 5 SEKUND.
 // Bez odroczenia pozycja, której nie da się wydrukować (drukarka zgaszona, otwarta głowica,
 // zacięty papier), wracałaby do kolejki NATYCHMIAST i była próbowana w kółko przy każdym
-// cyklu, dopisując wpis do logu za każdym razem — w tej infrastrukturze pełny dysk już RAZ
-// położył usługę (AdGuard, notatka z 2026-07-19), więc kolejka druku nie może powtórzyć
-// tego błędu.
+// cyklu, dopisując wpis do logu za każdym razem — pełny dysk potrafi położyć usługę,
+// więc kolejka druku nie może dokładać wpisu do logu co 5 sekund.
 //
 // Rośnie WYKŁADNICZO: pierwsza awaria może być przypadkowa (chwila nieuwagi operatora przy
 // drukarce), więc odroczenie jest krótkie; kolejne — coraz dłuższe, bo powtarzająca się
@@ -26,7 +25,7 @@ const BAZA_ODROCZENIA_MS = 15 * 1000;
 /**
  * Odroczenie (w milisekundach) do następnej próby wydruku po `proby` nieudanych próbach
  * pod rząd. `proby` to wartość PO doliczeniu bieżącej awarii (patrz oznaczBladDruku
- * w db/kolejka-druku.js) — pierwsza awaria wywołuje to z `proby = 1`.
+ * w moduly/wysylka/db/kolejka-druku.js) — pierwsza awaria wywołuje to z `proby = 1`.
  */
 export function odroczenieMs(proby) {
   const wykladnik = Math.max(0, Number(proby) - 1);

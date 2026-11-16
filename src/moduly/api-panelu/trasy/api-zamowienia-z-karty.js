@@ -16,25 +16,25 @@ const POWOD_POWTORKI = 'Zamówienie z tej karty już istnieje.';
 // Zamowienie zalozone Z KARTY panelu zamowien indywidualnych. Jedyny klient tej trasy to
 // panel (kontener obok, ten sam LAN) — czlowiek zaklada zamowienia formularzem.
 //
-// ⚠️ TRASA NIE JEST WYJETA SPOD OCHRONY CSRF (src/security/csrf.js) i nie ma byc. Klient
+// ⚠️ TRASA NIE JEST WYJETA SPOD OCHRONY CSRF (src/core/bezpieczenstwo/csrf.js) i nie ma byc. Klient
 // serwerowy poda `Origin` sam — to jedna linijka po jego stronie, a wyjatek w strazniku
 // zostalby na zawsze i dotyczylby takze przegladarki.
 //
-// `proforma` (services/proforma.js) jedzie tu z tego samego powodu, co do tras karty:
+// `proforma` (faktury/services/proforma.js) jedzie tu z tego samego powodu, co do tras karty:
 // panel wystawia proforme klientowi i sam ja mailuje. `null` (panel bez sekcji
 // OMS_PROFORMY_*) to tryb POPRAWNY — trasa odmawia wtedy czytelnie 503, zamiast udawac,
 // ze dokument powstal.
-// PRZ-122.B07c: `opcjeZw()` — flaga „zw” programu fakturowego z kontekstu karty (zamówienia); bez niej jak dotąd.
+// `opcjeZw()` — flaga „zw” programu fakturowego z kontekstu karty (zamówienia); bez niej jak dotąd.
 export function trasaApiZamowieniaZKarty(app, { db, config, proforma = null, syncSklep = null, kanalIndywidualny = true,
   opcjeZw = () => ({ zw: false }) }) {
   app.post('/api/zamowienia-z-karty', obslugaZalozeniaZKarty({ db, kanalIndywidualny, opcjeZw }));
 
-  // Odczyt stanu zamowienia zalozonego z karty — panel odpytuje ta trase co 10 minut,
-  // zeby wykryc wplate (Zadanie 9, poza tym repo).
+  // Odczyt stanu zamówienia założonego z karty — panel odpytuje tę trasę co 10 minut,
+  // żeby wykryć wpłatę.
   //
   // ⚠️ ODCZYT IDZIE PRZEZ pobierzZamowienie (zLinii w db/zamowienia.js), NIE surowe kolumny
   // `oplacone_at` / `anulowane` z tabeli `zamowienia`. Od migracji `przeniesWplatyDoListy`
-  // (db/db.js, komentarz przy niej) te dwie kolumny sa faktami SKLEPU — poller WooCommerce
+  // (oms/db/uzupelnienia-zamowien.js, komentarz przy niej) te dwie kolumny są faktami SKLEPU — poller WooCommerce
   // je odswieza co dwie minuty. Zamowienie zalozone Z TEJ KARTY ma `sklep = 'reczne'`
   // (zalozZamowienieReczne) i ZADEN poller go nie dotyka — po utworzeniu `oplacone_at`
   // zostaje `NULL` NA ZAWSZE. Jedyna prawdziwa droga do oznaczenia platnosci takiego
@@ -43,7 +43,7 @@ export function trasaApiZamowieniaZKarty(app, { db, config, proforma = null, syn
   // (zrodlo='reczna') — surowej kolumny w ogole nie dotyka (db/platnosci.js: dodajWplateReczna).
   // Trasa czytajaca surowa kolumne wprost oddawalaby `oplacone: false` przez cale zycie
   // takiego zamowienia, bez wzgledu na to, ile realnych wplat operator zaksieguje — a to
-  // dokladnie ta wartosc, po ktora poller panelu (Zadanie 9) siega, zeby ustawic `paid_at`
+  // dokładnie ta wartość, po którą poller panelu sięga, żeby ustawić `paid_at`
   // karty. To samo dotyczy `anulowane`: reczne anulowanie zamowienia recznego zapisuje sie
   // w `anulowane_recznie`, a efektywna wartosc (`anulowaneEfektywnie`) liczy sie z NIEJ,
   // nie z kolumny sklepowej. `pobierzZamowienie` liczy oba fakty tak samo, jak reszta OMS-u
@@ -51,12 +51,12 @@ export function trasaApiZamowieniaZKarty(app, { db, config, proforma = null, syn
   app.get('/api/zamowienia-z-karty/:kartaId', obslugaZamowieniaZKarty({ db }));
 
   // ---------------------------------------------------------------------------------
-  // DANE DOSTAWY I DOKUMENTU — dla strony akceptacji projektu (20.08.2026).
+  // DANE DOSTAWY I DOKUMENTU — dla strony akceptacji projektu.
   //
   // Klient po zaakceptowaniu projektu ma zobaczyc, DOKAD to jedzie i na co dostanie dokument,
   // zeby zdazyl zareagowac, zanim paczka pojedzie pod zly adres. Panel tych danych NIE MA:
   // przy torze automatycznym adres zostal w sklepie, a panel zna tylko numer zamowienia.
-  // (Zmierzone 20.08 na produkcji: 4 karty z 23 oplaconych mialy adres po stronie panelu.)
+  // (Na produkcji adres po stronie panelu ma tylko mniejszość opłaconych kart.)
   //
   // ⚠️ KLUCZEM JEST ID ZAMOWIENIA, NIE `karta_id`. Trasa wyzej szuka po `karta_id`, ktore ma
   // WYLACZNIE zamowienie zalozone Z KARTY (tor reczny). Tor automatyczny — klient placi
@@ -71,12 +71,12 @@ export function trasaApiZamowieniaZKarty(app, { db, config, proforma = null, syn
   app.get('/api/zamowienia/:id/dostawa', obslugaDostawy({ db }));
 
   // ---------------------------------------------------------------------------------
-  // STAN WYSYLKI — dla pollera wysylek panelu indywidualnego (26.08.2026).
+  // STAN WYSYŁKI — dla pollera wysyłek panelu indywidualnego.
   //
-  // Karta panelu ma sama przejsc na „Wyslane", gdy zamowienie tutaj dostanie `wyslane_at`.
-  // Do tej pory ten fakt wprowadzalo sie DWA razy (raz belka statusu w OMS-ie, raz przycisk
-  // na karcie panelu), a rozjazd nie dawal o sobie znac niczym — dokladnie ta sama klasa
-  // problemu, ktora 22.08 zamknela trasa `/w-realizacji`, tylko w przeciwna strone.
+  // Karta panelu ma sama przejść na „Wysłane", gdy zamówienie tutaj dostanie `wyslane_at`.
+  // Bez tej trasy ten fakt wprowadzałoby się DWA razy (raz belką statusu w OMS-ie, raz przyciskiem
+  // na karcie panelu), a rozjazd nie dawałby o sobie znać niczym — dokładnie ta sama klasa
+  // problemu, którą zamyka trasa `/w-realizacji`, tylko w przeciwną stronę.
   //
   // ⚠️ KLUCZEM JEST ID ZAMOWIENIA, NIE `karta_id` — z tego samego powodu, co w `/dostawa`:
   // tor automatyczny zadnego `karta_id` po stronie OMS-u nie ma, a wysylka dotyczy go
@@ -89,7 +89,7 @@ export function trasaApiZamowieniaZKarty(app, { db, config, proforma = null, syn
   app.get('/api/zamowienia/:id/stan-wysylki', obslugaStanuWysylki({ db }));
 
   // ---------------------------------------------------------------------------------
-  // ZAMOWIENIE PO NUMERZE SKLEPOWYM (Etap 1a planu 2026-08-18-layout-karty-i-koniec-apilo).
+  // ZAMÓWIENIE PO NUMERZE SKLEPOWYM.
   //
   // Tor automatyczny panelu idzie: oferta → zamowienie w sklepie → NUMER tego zamowienia →
   // ta trasa → `oplacone` → `paid_at` karty → ETAP IV. Zastepuje odczyt zaplaty z Apilo,
@@ -108,14 +108,14 @@ export function trasaApiZamowieniaZKarty(app, { db, config, proforma = null, syn
   app.get('/api/zamowienia/po-numerze/:numer', obslugaZamowieniaPoNumerze({ db }));
 
   // ---------------------------------------------------------------------------------
-  // PROFORMA DLA PANELU (Etap 1b tego samego planu).
+  // PROFORMA DLA PANELU.
   //
-  // ⚠️ TRASY PRZEGLADARKOWE (POST /zamowienia/:id/proforma, GET /proformy/:id/pdf
-  // w routes/zamowienia.js) ZOSTAJA NIETKNIETE. Te tutaj sa DODATKIEM, nie zamiana, bo panel
+  // ⚠️ TRASY PRZEGLĄDARKOWE (POST /zamowienia/:id/proforma, GET /proformy/:id/pdf
+  // w faktury/trasy/dokumenty.js) ZOSTAJĄ NIETKNIĘTE. Te tutaj są DODATKIEM, nie zamianą, bo panel
   // potrzebuje czego innego niz czlowiek przy karcie OMS-u:
   //   • tamta odpowiada `302` na ekran HTML karty — klient serwerowy nie ma z tego jak
   //     wyciagnac numeru dokumentu ani adresu pliku;
-  //   • tamta oddaje PDF z `Content-Disposition: inline` (od PRZ-162) — instrukcja dla przegladarki,
+  //   • tamta oddaje PDF z `Content-Disposition: inline` — instrukcja dla przeglądarki,
   //     bez znaczenia dla panelu, ktory bierze bajty i wpina je do maila jako WLASNY
   //     zalacznik.
   // Ujednolicenie starych tras do ksztaltu API zostawiloby operatora karty z golym JSON-em
@@ -125,7 +125,7 @@ export function trasaApiZamowieniaZKarty(app, { db, config, proforma = null, syn
   // Proforme MAILUJE PANEL — tutaj konczy sie na oddaniu numeru i bajtow.
   // ---------------------------------------------------------------------------------
 
-  // Kolejnosc sprawdzen JAK W TRASIE PRZEGLADARKOWEJ (routes/zamowienia.js): najpierw
+  // Kolejność sprawdzeń JAK W TRASIE PRZEGLĄDARKOWEJ (faktury/trasy/dokumenty.js): najpierw
   // „czy jest takie zamowienie", potem „czy proformy sa skonfigurowane". Dwie postacie tej
   // samej operacji nie moga odpowiadac roznie na to samo zadanie.
   app.post('/api/zamowienia/:id/proforma', obslugaProformy({ db, proforma, opcjeZw }));
@@ -135,15 +135,15 @@ export function trasaApiZamowieniaZKarty(app, { db, config, proforma = null, syn
   app.get('/api/proformy/:id/pdf', obslugaPdfProformy({ proforma }));
 
   /**
-   * AKCEPTACJA PROJEKTU → „W realizacji" (22.08.2026).
+   * AKCEPTACJA PROJEKTU → „W realizacji".
    *
-   * Klient klika „Akceptuję projekt" na stronie sklepu, panel zamowien indywidualnych
-   * przesuwa swoja karte do realizacji — i tym samym wywolaniem przesuwa TU zamowienie.
-   * Do tego dnia robil to czlowiek, klikajac belke statusu w OMS-ie: ta sama informacja
-   * wprowadzana dwa razy, a rozjazd („karta w realizacji, zamowienie dalej indywidualne")
-   * nie dawal o sobie znac NICZYM.
+   * Klient klika „Akceptuję projekt" na stronie sklepu, panel zamówień indywidualnych
+   * przesuwa swoją kartę do realizacji — i tym samym wywołaniem przesuwa TU zamówienie.
+   * Bez tej trasy robiłby to człowiek, klikając belkę statusu w OMS-ie: ta sama informacja
+   * wprowadzana dwa razy, a rozjazd („karta w realizacji, zamówienie dalej indywidualne")
+   * nie dawałby o sobie znać NICZYM.
    *
-   * Zgodne z zasada statusu z 2026-08-07 (PRZEWODNIK 4.x): wyjscie ze statusu
+   * Zgodne z zasadą statusu (reguła: status wynika z faktów): wyjście ze statusu
    * „Indywidualne" to `w_realizacji_at` i nic wiecej — zadnej nowej kolumny, zadnego
    * nowego przelacznika. Zmieniamy wylacznie to, KTO go zapisuje.
    *
@@ -190,7 +190,7 @@ export function dostawaZamowienia(z) {
       numer: z.numer,
       adres: {
         // `firma` OSOBNO od `nazwa` — dla osoby prywatnej firmy nie ma i nie wolno jej
-        // podstawiac imieniem (patrz firmaNabywcy w domain/dane-faktury.js).
+        // podstawiac imieniem (patrz firmaNabywcy w domena/dane-faktury.js).
         nazwa: adres?.nazwa || null,
         firma: adres?.company || null,
         ulica: adres?.ulica || null,
@@ -270,9 +270,9 @@ export function obslugaZamowieniaPoNumerze({ db }) {
         powod: `Sklep „${sklep}" nie ma zamówienia o numerze „${numer}".`,
       });
     }
-    // ⚠️ WIELOZNACZNOSC MIMO PODANEGO SKLEPU = ODMOWA, NIGDY „WEZ PIERWSZE". Do jednej bazy
-    // pisze i biezacy poller, i jednorazowy import historii (services/import-apilo.js), a
-    // kolumna `numer` nie ma UNIQUE — dwa wiersze o tym samym numerze w tym samym sklepie sa
+    // ⚠️ WIELOZNACZNOSC MIMO PODANEGO SKLEPU = ODMOWA, NIGDY „WEZ PIERWSZE". Kolumna `numer`
+    // tabeli `zamowienia` nie ma UNIQUE (wyjatkiem jest tylko seria reczna, indeks
+    // `zamowienia_numer_reczny`) — dwa wiersze o tym samym numerze w tym samym sklepie sa
     // wiec osiagalne. Zgadniecie wiaze karte panelu z zamowieniem NA STALE, wiec jedyna
     // uczciwa odpowiedz brzmi „nie wiem, ktore" — a odpowiedz NIE NIESIE zadnego `id`,
     // bo panel, ktory je dostanie, i tak go uzyje.
@@ -294,8 +294,9 @@ export function obslugaZamowieniaPoNumerze({ db }) {
       oplacone: Boolean(z.oplacone_at),
       anulowane: Boolean(z.anulowane),
       kwotaBrutto: z.kwota_brutto,
-      // Kolumna jest liczbowa (0/1), a NULL znaczy „jeszcze nie przeliczone" (db/db.js
-      // dolicza je przy starcie). Panel pyta o fakt, wiec dostaje fakt — a nie trzy stany,
+      // Kolumna jest liczbowa (0/1), a NULL znaczy „jeszcze nie przeliczone"
+      // (`uzupelnijIndywidualne` w oms/db/uzupelnienia-zamowien.js dolicza je przy starcie).
+      // Panel pyta o fakt, więc dostaje fakt — a nie trzy stany,
       // z ktorych dwa musialby traktowac tak samo.
       indywidualne: Boolean(z.indywidualne),
     });
@@ -320,16 +321,16 @@ export function obslugaZalozeniaZKarty({ db, kanalIndywidualny = true, opcjeZw =
   }
 
   return async (req, reply) => {
-    // PRZ-089: zamówienie z karty liczy się w raporcie jako INDYWIDUALNE — bez tego kanału raport odmówiłby
+    // Zamówienie z karty liczy się w raporcie jako INDYWIDUALNE — bez tego kanału raport odmówiłby
     // („brak granicy”), więc odmowa stoi tu, przy wejściu, a nie po zapisie.
     if (!kanalIndywidualny) return reply.code(503).send({ powod: 'Kanał zamówień indywidualnych jest wyłączony (OMS_KANAL_INDYWIDUALNY).' });
     let dane;
-    // ⚠️ ZEGAR ODCZYTANY RAZ, NA CALA TRASE — ta sama zasada, co w trasie formularza
-    // (D4): `utworzone_at` i rok serii numeracji maja pochodzic z JEDNEJ wartosci.
+    // ⚠️ ZEGAR ODCZYTANY RAZ, NA CAŁĄ TRASĘ — ta sama zasada, co w trasie formularza:
+    // `utworzone_at` i rok serii numeracji mają pochodzić z JEDNEJ wartości.
     const znacznik = new Date().toISOString();
     const flagaZw = opcjeZw();
     try {
-      // PRZ-122.B07f: firma zwolniona z VAT — numer UE nabywcy to nie WDT (netto stawką pozycji, nie 0).
+      // Firma zwolniona z VAT — numer UE nabywcy to nie WDT (netto stawką pozycji, nie 0).
       dane = parsujZamowienieZKarty(req.body ?? {}, {
         stawkaDomyslna: czytajStawkeDomyslna(db, flagaZw), ...flagaZw, zwolniona: zwolnionaZFlagi(db, flagaZw),
       });
@@ -338,7 +339,7 @@ export function obslugaZalozeniaZKarty({ db, kanalIndywidualny = true, opcjeZw =
     }
 
     // ⚠️ SPRAWDZENIE PRZED ZAPISEM JEST WYGODA, NIE GWARANCJA. Gwarancje daje czesciowy
-    // indeks UNIQUE (Zadanie 1) — dwa zadania w tej samej chwili przejda oba przez ten
+    // indeks UNIQUE — dwa żądania w tej samej chwili przejdą oba przez ten
     // odczyt, a odbije sie dopiero drugi INSERT. Dlatego nizej lapiemy takze wyjatek.
     const juz = istniejace(dane.karta_id);
     if (juz) return odpowiedzPowtorki(reply, juz);
@@ -368,7 +369,7 @@ export function obslugaZalozeniaZKarty({ db, kanalIndywidualny = true, opcjeZw =
       // tego bloku. Zamowienie z ta karta moze w bazie LEZEC z dwoch zupelnie roznych
       // powodow, a odpowiedzi na nie sa przeciwstawne:
       //
-      //   • `e.zamowienieId` (services/zamowienie-reczne.js) znaczy „numer zostal nadany
+      //   • `e.zamowienieId` (zamowienia/services/zamowienie-reczne.js) znaczy „numer został nadany
       //     PRZEZ TO zadanie, a dalszy krok padl" — zamowienie jest POL-ZALOZONE (numer jest,
       //     pozycji albo kwoty brak) i NIE WOLNO oddac na to 409. Dla panelu 409 znaczy
       //     „juz zrobione, nic nie rob": karta zostalaby oznaczona jako przeniesiona,
@@ -390,7 +391,7 @@ export function obslugaZalozeniaZKarty({ db, kanalIndywidualny = true, opcjeZw =
       //
       // ⚠️ ROZSTRZYGA DATA, NIE KOMPLETNOSC WIERSZA. Kuszace „ma pozycje / ma niezerowa
       // kwote = jest dokonczone" jest BLEDNE: zamowienie bez pozycji, wycenione sama
-      // dostawa, to stan DOZWOLONY (decyzja wlasciciela: zadne pole formularza nie jest
+      // dostawą, to stan DOZWOLONY (reguła produktu: żadne pole formularza nie jest
       // obowiazkowe), wiec taka heurystyka oddawalaby 500 w kolko przy poprawnie zalozonym
       // zamowieniu i panel nigdy by go sobie nie zapisal. `znacznik` znamy na pewno — to ta
       // sama wartosc, ktora podalismy `zalozZamowienieReczne`, a `utworzZamowienieReczne`
@@ -434,7 +435,7 @@ export function obslugaProformy({ db, proforma = null, opcjeZw = () => ({ zw: fa
     if (!proforma) return reply.code(503).send({ powod: 'Proformy nie są skonfigurowane.' });
     let p;
     try {
-      // SYNCHRONICZNIE — caly dokument powstaje u nas, bez sieci (services/proforma.js).
+      // SYNCHRONICZNIE — cały dokument powstaje u nas, bez sieci (faktury/services/proforma.js).
       p = proforma.wystaw(id, opcjeZw());
     } catch (e) {
       // ⚠️ ODMOWA MA DOJSC NA ZEWNATRZ W CALOSCI. `czyWolnoWystawic` odmawia po polsku

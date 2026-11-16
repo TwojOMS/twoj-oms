@@ -20,7 +20,7 @@ const BEZ_NAZWY = Object.freeze({
   narzednik: 'programem fakturowym',
 });
 
-// ⚠️⚠️ FINDING A1 (recenzja całości). Wysyłka do KSeF jest NIEODWRACALNA, więc kształtu
+// ⚠️⚠️ ODPOWIEDŹ ZAPISUJEMY ZAWSZE. Wysyłka do KSeF jest NIEODWRACALNA, więc kształtu
 // odpowiedzi `send.json` nie da się zaobserwować inaczej niż PRAWDZIWYM zgłoszeniem — nie ma
 // próbnego telefonu. Jeśli ten zapis nie powstanie przy PIERWSZEJ nadzorowanej wysyłce, jedyną
 // drogą, żeby ją jeszcze raz zobaczyć, jest wysłanie KOLEJNEGO prawdziwego dokumentu do organu.
@@ -41,22 +41,23 @@ function bezpiecznaTrescOdpowiedzi(dane) {
     : tekst;
 }
 
-// ⚠️⚠️ JEDYNA DROGA DO WYSŁANIA DOKUMENTU DO KSeF. Wywoływana WYŁĄCZNIE z trasy zatwierdzenia,
+// ⚠️⚠️ JEDYNA DROGA DO WYSŁANIA DOKUMENTU DO KSeF. Wywoływana WYŁĄCZNIE z trasy zatwierdzenia
+// i z automatu KSeF (services/ksef-automat.js, services/ksef-automat-wbudowany.js),
 // nigdy z pollera i nigdy z czuwacza.
 //
 // `log` jest wstrzykiwalny WYŁĄCZNIE po to, żeby dało się sprawdzić testem to, co inaczej
-// ląduje w `console.error` kontenera — ten sam wzorzec, co `log` w `bootstrap.js`
+// ląduje w `console.error` kontenera — ten sam wzorzec, co `log` w core/zegary.ts
 // (`uruchomZegary`). Dotyczy WYŁĄCZNIE dokumentu bez zamówienia i bez okresu: taki dokument
 // nie ma gdzie zapisać śladu w bazie (patrz `zapiszSlad` niżej), a odpowiedź nieodwracalnej
 // wysyłki i tak nie ma prawa przepaść bez śladu.
 //
-// PRZ-118.07: wysyła PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`) — jego zdolność
+// Wysyła PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`) — jego zdolność
 // `wyslijDoKsef`. Program bez niej: `niedostepna` niesie zdanie dla człowieka (trasy podglądu i zatwierdzenia
 // oraz automat KSeF pokazują je zamiast ekranu wysyłki), a `wyslij` odmawia nim, zanim cokolwiek zarezerwuje.
 // Strażnik tests/core/straznik-wysylki-ksef-prz118.test.js: w tym pliku nazwa metody pada dokładnie raz — w wywołaniu.
-// PRZ-122.ZGODA-TFb: `wpisTf` — odczyt wersji z KSeF TwojeFaktury (db/ksef-automat-twojefaktury.js) dla uzgodnienia
+// `wpisTf` — odczyt wersji z KSeF TwojeFaktury (db/ksef-automat-twojefaktury.js) dla uzgodnienia
 // wstrzymanych automatu; podaje go modul.ts. Bez niego (inFakt, testy) lista wstrzymanych się nie zmienia.
-// PRZ-168.01b: ta sama reguła dla usługi wysyłki i karty okresu (trasy/okresy.js) — czy program wysyła do KSeF z OMS-u.
+// Ta sama reguła dla usługi wysyłki i karty okresu (trasy/okresy.js) — czy program wysyła do KSeF z OMS-u.
 export function programWysylaDoKsef(program) {
   return program?.opis?.zdolnosci?.includes('wyslijDoKsef') === true;
 }
@@ -67,19 +68,19 @@ export function createWysylkaKsef({
   const program = zProgramu({ program: programPodany, infakt });
   // Bez programu (usługa złożona w teście bez `infakt`) zdania mówią ogólnie — nazwy nie ma skąd wziąć.
   const nazwa = program?.opis?.nazwa ?? BEZ_NAZWY;
-  // PRZ-151 D2: jedna odpowiedź „czy program wysyła do KSeF z OMS-u” dla `niedostepna` i flagi `korekty`.
+  // Jedna odpowiedź „czy program wysyła do KSeF z OMS-u” dla `niedostepna` i flagi `korekty`.
   const wysyla = programWysylaDoKsef(program);
   const niedostepna = program && !wysyla
     ? `${nazwa.mianownik} nie wysyła do KSeF z OMS-u — panel nie ma jak zlecić mu wysyłki, `
       + `więc dokumenty wyślesz do KSeF bezpośrednio w ${nazwa.miejscownik}.`
     : null;
-  // PRZ-123 C08 → PRZ-151 D2: korekty (z pierwotną już w KSeF) wysyła każdy program, który wysyła do KSeF z OMS-u —
+  // Korekty (z pierwotną już w KSeF) wysyła każdy program, który wysyła do KSeF z OMS-u —
   // wbudowany i zewnętrzny; program bez tej zdolności — POWOD_KOREKTA.
   const korekty = wysyla;
   // Zbiór liczony ZA KAŻDYM RAZEM od nowa, z listy pobranej na świeżo. Podgląd i zatwierdzenie
   // liczą go OSOBNO — przepisanie wyniku podglądu byłoby dokładnie tą pomyłką, przed którą
-  // broni się nadanie masowe (przewodnik 4.13a): między jednym ekranem a drugim właściciel
-  // mógł wysłać dokument ręcznie w inFakcie, a drugie zgłoszenie byłoby duplikatem u organu.
+  // broni się nadanie masowe: między jednym ekranem a drugim operator mógł wysłać dokument
+  // ręcznie w programie, a drugie zgłoszenie byłoby duplikatem u organu.
   //
   // ⚠️ `dokumenty` WRACAJĄ RAZEM Z WYNIKIEM, i to nie jest wygoda. `coWolnoWyslac` jest REGUŁĄ,
   // więc oddaje wyłącznie `{ uuid, numer }` — nabywcy ani kwoty tam nie ma i być nie powinno.
@@ -92,7 +93,7 @@ export function createWysylkaKsef({
     return { ...odsiejInnyProgram(doWyslania, pominiete), dokumenty };
   }
 
-  // PRZ-121.04a: dokument, który OMS zna (wiersz faktury zamówienia albo okresu), a który leży w innym programie niż
+  // Dokument, który OMS zna (wiersz faktury zamówienia albo okresu), a który leży w innym programie niż
   // moduł faktur OMS-u — odmowa `idDokumentuDla` jako POMINIĘTY Z POWODEM, PRZED rezerwacją w `wysylki_ksef`
   // i PRZED siecią. Liczona tu, w `przelicz`, więc podgląd mówi to samo, co zrobi zatwierdzenie. Identyfikator bez
   // wiersza w bazie (dokument wystawiony poza OMS-em) przechodzi jak dawniej. Ten sam identyfikator w kilku wierszach
@@ -127,7 +128,7 @@ export function createWysylkaKsef({
   // KSeF, czyli jest w pełni wysyłalna. Sam warunek na `d.zamowienie` puszczał CAŁY pieniądz
   // B2B do organu nie zostawiając ani jednego śladu w panelu. Wpis idzie do logu KAŻDEGO
   // zamówienia okresu — bo tam człowiek szuka historii — dokładnie tak samo, jak przy
-  // wystawianiu faktury okresu (routes/okresy.js).
+  // wystawianiu faktury okresu (trasy/okresy.js).
   function zapiszSlad(doWyslania, dokumenty, zdanie) {
     for (const d of doWyslania) {
       const dokument = dokumenty.find((x) => x?.uuid === d.uuid);
@@ -140,9 +141,9 @@ export function createWysylkaKsef({
     }
   }
 
-  // ⚠️⚠️ FINDING A1 — SUROWA ODPOWIEDŹ inFAKTU DO LOGU, PO UDANEJ WYSYŁCE. `zapiszSlad` wyżej
+  // ⚠️⚠️ SUROWA ODPOWIEDŹ inFAKTU DO LOGU, PO UDANEJ WYSYŁCE. `zapiszSlad` wyżej
   // pisze wyłącznie zdanie „zlecono, czeka na numer" PRZED wywołaniem; treść tego, co inFakt
-  // NAPRAWDĘ oddał, do tej pory nie trafiała nigdzie — grep łapał ją wyłącznie w komentarzach.
+  // NAPRAWDĘ oddał, nie trafiałaby bez tego nigdzie.
   // Ta funkcja dokłada DRUGI wpis, tym razem PO odpowiedzi, niosący ją serializowaną i przyciętą.
   //
   // ⚠️ `przyjete` LECI RAZEM Z TREŚCIĄ — to jedyne miejsce, które go dziś czyta (ekran wyniku
@@ -167,21 +168,21 @@ export function createWysylkaKsef({
     log('ksef: dokument bez zamówienia i bez okresu —', wpis.wynik);
   }
 
-  // ⚠️⚠️ REZERWACJA PRZED WYWOŁANIEM, NIE PO NIM (przewodnik 4.2) — i to jest JEDYNA bariera
-  // przed drugim zgłoszeniem tego samego dokumentu u organu. `coWolnoWyslac` odsiewa po
-  // `ksef_number`, a inFakt nadaje go dopiero po ~70 sekundach, więc świeżo pobrana lista jest
+  // ⚠️⚠️ REZERWACJA PRZED WYWOŁANIEM, NIE PO NIM (reguła: rezerwacja przed wywołaniem) — i to jest
+  // JEDYNA bariera przed drugim zgłoszeniem tego samego dokumentu u organu. `coWolnoWyslac` odsiewa po
+  // `ksef_number`, a program nadaje go dopiero po około minucie, więc świeżo pobrana lista jest
   // ŚLEPA na wysyłkę zleconą przed chwilą z tego samego panelu. Zatwierdzenie jest zwykłym
   // formularzem, JavaScriptu nie ma i przekierowania celowo też nie — dwuklik, back+resubmit
   // i dwie karty podglądu to normalne drogi do drugiego, NIEODWRACALNEGO zgłoszenia.
   //
   // ⚠️ ODBITY DOKUMENT WRACA JAKO POMINIĘTY, Z POWODEM. Cicho wypadający dokument wyglądałby
   // jak wysłany (albo jak nieistniejący) — a człowiek ma dostać zdanie mówiące, gdzie sprawdzić.
-  // ⚠️⚠️ PETLA MUSI BYC CHRONIONA, INACZEJ WRACA DOKLADNIE TEN SAM SLEPY ZAULEK, KTORY
-  // NAPRAWIA `wyslij` NIZEJ — tylko o pietro wczesniej. Bez ochrony: awaria zapisu na
-  // DRUGIM dokumencie zostawialaby PIERWSZY zajety NA ZAWSZE, mimo ze do inFaktu nie
-  // poszlo NIC — nic nie wyslano, a rezerwacja i tak by trwala (niezmiennik 4.9). Ta sama
-  // granica jak przy „TU DO inFAKTU NIE POSZLO JESZCZE NIC" nizej w `wyslij`: zwalniamy,
-  // co zdazylismy zajac w TEJ partii, i rzucamy dalej.
+  // ⚠️⚠️ PĘTLA MUSI BYĆ CHRONIONA, INACZEJ WRACA DOKŁADNIE TEN SAM ŚLEPY ZAUŁEK, KTÓRY
+  // NAPRAWIA `wyslij` NIŻEJ — tylko o piętro wcześniej. Bez ochrony: awaria zapisu na
+  // DRUGIM dokumencie zostawiałaby PIERWSZY zajęty NA ZAWSZE, mimo że do programu nie
+  // poszło NIC — nic nie wysłano, a rezerwacja i tak by trwała (reguła: każdy stan ma wyjście).
+  // Ta sama granica jak przy „TU DO inFAKTU NIE POSZŁO JESZCZE NIC" niżej w `wyslij`: zwalniamy,
+  // co zdążyliśmy zająć w TEJ partii, i rzucamy dalej.
   function zarezerwuj(doWyslania) {
     const zlecone = [];
     const odbite = [];
@@ -192,12 +193,12 @@ export function createWysylkaKsef({
           zlecone.push(d);
           continue;
         }
-        // ⚠️ ZDANIE PRZYCHODZI ZE WSPÓLNEJ REGUŁY (domain/wysylka-ksef.js). Ten sam stan opisuje
+        // ⚠️ ZDANIE PRZYCHODZI ZE WSPÓLNEJ REGUŁY (domena/wysylka-ksef.js). Ten sam stan opisuje
         // teraz TAKŻE odsiew przed ekranem podglądu, a dwie kopie tego samego zdania rozjechałyby
         // się przy pierwszej zmianie — człowiek dostawałby dwa różne opisy w odstępie jednego
         // kliknięcia. Przy okazji znika stempel-doklejka: wariant bez `zlecona_at` (baza oddała
         // odmowę, ale wiersza nie umiała już pokazać) dokładał drugi odstęp przed myślnikiem.
-        // PRZ-152.G15: znacznik dla ekranu (krótkie `zdanieJuzWyslano`); długi `powod` zostaje dla logu i automatu.
+        // Znacznik dla ekranu (krótkie `zdanieJuzWyslano`); długi `powod` zostaje dla logu i automatu.
         odbite.push({ numer: d.numer, powod: powodJuzZlecona(wiersz?.zlecona_at, program), juzZlecona: true, zleconaAt: wiersz?.zlecona_at ?? null });
       }
     } catch (e) {
@@ -252,16 +253,16 @@ export function createWysylkaKsef({
     // historii — nie niosłaby ani śladu, że cokolwiek w ogóle próbowano wysłać.
     //
     // ⚠️ WPIS NIESIE NAZWĘ OPERATORA. Pierwszym pytaniem po zerwanej próbie jest „kto to klikał
-    // i o której" — od tego zależy, kogo zapytać, czy zajrzał już do inFaktu. Panelu używają
-    // dwie osoby, więc wpis bez nazwy zostawiał to pytanie bez odpowiedzi (ta sama zasada, co
-    // w routes/okresy.js przy fakturze zbiorczej).
+    // i o której" — od tego zależy, kogo zapytać, czy zajrzał już do inFaktu. Panelu używa
+    // kilka osób, więc wpis bez nazwy zostawiałby to pytanie bez odpowiedzi (ta sama zasada, co
+    // w trasy/okresy.js przy fakturze zbiorczej).
     try {
       zapiszSlad(zlecone, dokumenty, (d) => `(${kto}) zlecono wysyłkę do KSeF z panelu (${d.numer}) — czeka na numer KSeF`);
     } catch (e) {
       // ⚠️⚠️ TU DO inFAKTU NIE POSZŁO JESZCZE NIC — i to jest cała różnica wobec awarii niżej.
       // Wywołania nawet nie zaczęliśmy, więc rezerwacja nie chroni przed niczym, a zostawiona
       // zamykałaby te dokumenty NA ZAWSZE: ekran mówiłby prawdę („nic nie poszło"), a panel
-      // i tak odmawiałby kolejnej próby — stan bez wyjścia (niezmiennik 4.9). Zwalniamy
+      // i tak odmawiałby kolejnej próby — stan bez wyjścia (reguła: każdy stan ma wyjście). Zwalniamy
       // i rzucamy dalej: trasa pokaże komunikat awarii, zgodnie z prawdą bez ani jednego
       // dokumentu „nie wiadomo".
       try {
@@ -274,21 +275,20 @@ export function createWysylkaKsef({
       throw e;
     }
 
-    // ⚠️⚠️ PETLA PER DOKUMENT — TO NIE JEST OPTYMALIZACJA, TYLKO KSZTALT ZASOBU (07.08.2026).
-    // Do tego dnia szlo stad JEDNO wywolanie wsadowe z lista uuidow. Taki zasob w inFakcie
-    // NIE ISTNIEJE (patrz docblock `wyslijDokumentDoKsef` w infakt/client.js) i kazda wysylka
-    // konczyla sie 404 — zgloszenie wlasciciela „wysylka FV do KSeF nie dziala".
+    // ⚠️⚠️ PĘTLA PER DOKUMENT — TO NIE JEST OPTYMALIZACJA, TYLKO KSZTAŁT ZASOBU. Wywołania
+    // wsadowego z listą uuidów w inFakcie NIE MA (patrz docblock `wyslijDokumentDoKsef`
+    // w infakt/client.js) — takie wywołanie kończyłoby się 404 i każda wysyłka by padała.
     //
-    // ⚠️⚠️ NAJWAZNIEJSZY SKUTEK: „WSZYSTKO ALBO NIC" PRZESTALO OBOWIAZYWAC. Kazdy dokument
-    // idzie osobnym zadaniem, wiec CZESCIOWY SUKCES jest przypadkiem NORMALNYM. Stara sciezka
-    // odmowy zwalniala rezerwacje CALEJ partii na jednym 4xx — przy wysylce per dokument
-    // byloby to zwolnienie dokumentow, ktore WLASNIE POSZLY do organu, czyli otwarcie drogi
-    // do duplikatu. Zwalniamy WYLACZNIE ten dokument, ktory dostal jednoznaczna odmowe.
+    // ⚠️⚠️ NAJWAŻNIEJSZY SKUTEK: „WSZYSTKO ALBO NIC" NIE OBOWIĄZUJE. Każdy dokument
+    // idzie osobnym zadaniem, więc CZĘŚCIOWY SUKCES jest przypadkiem NORMALNYM. Zwolnienie
+    // rezerwacji CAŁEJ partii na jednym 4xx byłoby zwolnieniem dokumentów, które WŁAŚNIE
+    // POSZŁY do organu, czyli otwarciem drogi do duplikatu.
+    // Zwalniamy WYŁĄCZNIE ten dokument, który dostał jednoznaczną odmowę.
     //
-    // ⚠️ AWARIA JEDNEGO NIE PRZERYWA POZOSTALYCH — ta sama zasada, co przy nadaniu zbiorczym
-    // (przewodnik 4.13a): operator zaznaczyl N dokumentow i ma dostac odpowiedz o KAZDYM.
-    // Przerwanie petli na pierwszym bledzie zostawialoby reszte zarezerwowana, nietknieta
-    // i bez ani jednego zdania na ekranie.
+    // ⚠️ AWARIA JEDNEGO NIE PRZERYWA POZOSTAŁYCH — ta sama zasada, co przy nadaniu zbiorczym
+    // (reguła: pominięte wracają z powodem): operator zaznaczył N dokumentów i ma dostać
+    // odpowiedź o KAŻDYM. Przerwanie pętli na pierwszym błędzie zostawiałoby resztę
+    // zarezerwowaną, nietkniętą i bez ani jednego zdania na ekranie.
     //
     // ⚠️ ZADNEGO PONOWIENIA, ANI TU, ANI NIGDZIE WYZEJ. Ponowione zgloszenie po niejednoznacznym
     // timeoucie to duplikat u organu, ktorego nie da sie skasowac — zostaje wylacznie korekta.
@@ -305,14 +305,14 @@ export function createWysylkaKsef({
         // ⚠️⚠️ DWIE AWARIE, DWA SKUTKI DLA REZERWACJI — dokladnie ta sama granica, ktora przy
         // wystawianiu faktury rysuja `zwolnijFakture` i `oznaczFaktureDoWyjasnienia`.
         //
-        // JEDNOZNACZNA (4xx): inFakt odpowiedzial i ODMOWIL, wiec dokumentu u organu NA PEWNO
-        // NIE MA. Rezerwacja nie chroni juz przed niczym, a zostawiona zamykalaby dokument NA
-        // ZAWSZE (niezmiennik 4.9). ZWALNIAMY — ale TYLKO TEN JEDEN.
+        // JEDNOZNACZNA (4xx): inFakt odpowiedział i ODMÓWIŁ, więc dokumentu u organu NA PEWNO
+        // NIE MA. Rezerwacja nie chroni już przed niczym, a zostawiona zamykałaby dokument NA
+        // ZAWSZE (reguła: każdy stan ma wyjście). ZWALNIAMY — ale TYLKO TEN JEDEN.
         //
         // ⚠️⚠️ NIEJEDNOZNACZNA (zerwane polaczenie, timeout, 5xx): REZERWACJI NIE ZWALNIAMY
         // I TO JEST SWIADOME. Taka awaria NIE JEST dowodem, ze zlecenie nie doszlo.
         const odmowa = jednoznacznaOdmowa(e);
-        // PRZ-123.C07b: „na pewno nie wysłano” (POST bez dostępu, błąd przed POST, zamknięta sesja bez faktury) — to
+        // „na pewno nie wysłano” (POST bez dostępu, błąd przed POST, zamknięta sesja bez faktury) — to
         // nie odmowa treści dokumentu: ta sama wersja idzie jeszcze raz BEZ zmian, „Popraw dane” byłoby nieprawdą.
         const nieWyslano = odmowa && e?.kod === 'nie-wyslano';
         let opis = komunikatDlaOperatora(e);
@@ -343,7 +343,7 @@ export function createWysylkaKsef({
         // ⚠️ ODRZUCONY DOKUMENT NIE JEST „NIEPEWNY". `niepewne` to kategoria, ktora ekran
         // opisuje zdaniem „mogly juz trafic do KSeF nieodwracalnie" — po odmowie inFaktu
         // byloby to nieprawda i odstraszaloby od ponowienia, ktore jest tu poprawnym krokiem.
-        // C09: `kod` błędu (np. 'czeka-na-pierwotna', 'korekta-nieaktualna') — dla automatu TwojeFaktury.
+        // `kod` błędu (np. 'czeka-na-pierwotna', 'korekta-nieaktualna') — dla automatu TwojeFaktury.
         const kodBledu = typeof e?.kod === 'string' ? { kod: e.kod } : {};
         if (nieWyslano) {
           odrzucone.push({
@@ -371,10 +371,10 @@ export function createWysylkaKsef({
       }
 
       wyslane.push(d);
-      // ⚠️⚠️ FINDING A1 — I TU JEST JEDYNA SZANSA ZAPISAC KSZTALT ODPOWIEDZI. Wysylka jest
-      // nieodwracalna, wiec `send.json` NIE DA SIE zaobserwowac drugi raz bez wyslania
+      // ⚠️⚠️ TU JEST JEDYNA SZANSA ZAPISAĆ KSZTAŁT ODPOWIEDZI. Wysyłka jest
+      // nieodwracalna, więc `send.json` NIE DA SIĘ zaobserwować drugi raz bez wysłania
       // KOLEJNEGO prawdziwego dokumentu do organu.
-      // ⚠️ AWARIA TEGO ZAPISU NIE MA PRAWA ZABRAC UDANEJ WYSYLKI — dokument POSZEDL.
+      // ⚠️ AWARIA TEGO ZAPISU NIE MA PRAWA ZABRAĆ UDANEJ WYSYŁKI — dokument POSZEDŁ.
       try {
         zapiszOdpowiedzInfaktu(d, dokumenty, odpowiedz, kto);
       } catch {
@@ -386,10 +386,10 @@ export function createWysylkaKsef({
       }
     }
 
-    // PRZ-123 C09ca: wpis automatu „nie doszła” (TwojeFaktury) ma mówić o OSTATNIM wyniku tej wersji — także po
+    // Wpis automatu „nie doszła” (TwojeFaktury) ma mówić o OSTATNIM wyniku tej wersji — także po
     // ręcznym ponowieniu (odrzucona → wpis odrzuconej; nie wiadomo / w KSeF → wpis znika). Awaria zapisu nie zabiera
-    // wyniku wysyłki — następna wysyłka uzgodni wpis jeszcze raz. PRZ-151 D2: warunek własny (program wbudowany), nie
-    // flaga `korekty` — ta od PRZ-151 obejmuje też programy zewnętrzne, a uzgodnienie dotyczy tylko wpisów TwojeFaktury.
+    // wyniku wysyłki — następna wysyłka uzgodni wpis jeszcze raz. Warunek własny (program wbudowany), nie
+    // flaga `korekty` — ta obejmuje też programy zewnętrzne, a uzgodnienie dotyczy tylko wpisów TwojeFaktury.
     if (program?.opis?.wbudowany === true) {
       try {
         uzgodnijWstrzymane(db, zlecone.map((d) => d.uuid), undefined, wpisTf);
@@ -411,7 +411,7 @@ export function createWysylkaKsef({
   }
 
   // `nazwaProgramu` — dla automatu KSeF (zdanie „… odłączony”) bez drugiego źródła programu.
-  // C09: `wSesji` — praca (przebieg automatu) w jednej sesji KSeF, gdy program to umie (TwojeFaktury); inaczej wprost.
+  // `wSesji` — praca (przebieg automatu) w jednej sesji KSeF, gdy program to umie (TwojeFaktury); inaczej wprost.
   const wSesji = (praca) => (typeof program?.wspolnaSesjaKsef === 'function' ? program.wspolnaSesjaKsef(praca) : praca());
   return { podglad, wyslij, niedostepna, nazwaProgramu: nazwa, korekty, wSesji };
 }

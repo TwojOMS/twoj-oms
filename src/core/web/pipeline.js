@@ -33,7 +33,7 @@ import { etapPrzesylki, etykietaEtapu, dniKalendarzowe } from '../../domena/etap
 import { etykietaWysylki, nazwaDostawy } from '../../domena/wysylka.js';
 import { zlotowki } from '../../domena/kwoty.js';
 import { klasaStatusu, modyfikatorStatusu } from './klasa-statusu.js';
-// PRZ-154.E1.6: licznik przy „Wiadomości” jest dodatkiem do menu — jego awaria nie może
+// Licznik przy „Wiadomości” jest dodatkiem do menu — jego awaria nie może
 // wywalić strony (jak liczniki statusów niżej), menu pokazuje się wtedy bez plakietki.
 function licznikWiadomosciDlaMenu(db, req) {
   try {
@@ -45,11 +45,11 @@ function licznikWiadomosciDlaMenu(db, req) {
 }
 
 // Liczniki statusów zamówień do bocznego menu na ekranach, które nie niosą własnego `panelStatusow`
-// (Przesyłki, Faktury…). Z TEGO SAMEGO indeksu co lista (PRZ-051), więc liczby się zgadzają.
-// ⚠️ Bez liczb, gdy indeksu nie ma (panel indywidualny, baza bez migracji) albo się nie odświeżył:
+// (Przesyłki, Faktury…). Z TEGO SAMEGO indeksu co lista, więc liczby się zgadzają.
+// ⚠️ Bez liczb, gdy indeksu nie ma (baza bez migracji) albo się nie odświeżył:
 // liczba sprzed zapisu, który nie doszedł, twierdziłaby coś, czego nie ma, a strona ma się otworzyć.
 // Domyślnie tylko GET (POST zwykle kończy się przekierowaniem); `naZadanie` — trasa, która po POST renderuje
-// stronę (formularz z błędem, C07c), prosi o liczby sama przez `reply.locals.licznikiMenuNaZadanie()`.
+// stronę (formularz z błędem), prosi o liczby sama przez `reply.locals.licznikiMenuNaZadanie()`.
 async function licznikiStatusowDlaMenu(db, req, nawigacja, { naZadanie = false } = {}) {
   if ((!naZadanie && req.method !== 'GET') || !nawigacja?.kontekst?.statusy?.length) return null;
   try {
@@ -103,13 +103,12 @@ function sciezkaPowrotuDlaMenu(app, req, definicje) {
     if (kandydat == null) continue;
     const powrot = kanonicznyPowrot(kandydat, definicje);
     const pathname = new URL(powrot, 'http://oms.local').pathname;
-    // ⚠️ `findRoute`, NIE `hasRoute` (Fastify 5, 2026-09-29). W v5 `hasRoute` porownuje
+    // ⚠️ `findRoute`, NIE `hasRoute` (Fastify 5). W v5 `hasRoute` porownuje
     // WZORZEC definicji (`/zamowienia/:id`), wiec adres karty z numerem nie pasowal i powrot
     // po cichu spadal na liste. `findRoute` idzie przez `router.find` — dopasowuje KONKRETNA
     // sciezke tym samym routerem, ktory obsluguje zadania (tak dzialalo `hasRoute` w v4).
     // Wlasne dopasowanie po spisie `trasyOms` byloby drugim routerem z inna semantyka
-    // (parametry z regexem, `/public/*`, ukosnik koncowy). Pilnuje: motyw-post.test.js
-    // i scripts/mutacje-fastify5-powrot.mjs.
+    // (parametry z regexem, `/public/*`, ukosnik koncowy). Pilnuje: motyw-post.test.js.
     if (app.findRoute({ method: 'GET', url: pathname })) return powrot;
   }
   return '/';
@@ -167,12 +166,12 @@ app.register(fastifyView, {
     layout: 'core/web/widoki/layout-oms.ejs',
 options: { views: katalogiWidokow() },
     // `fmtDataCzas`/`fmtDataCzasKrotko` w defaultContext, zeby byly dostepne w KAZDYM
-    // widoku bez przekazywania ich osobno w kazdej trasie (Zadanie „strona glowna",
-    // punkt C) — jeden format daty w calym module, patrz domain/format-daty.js. Tak samo
-    // `klasaStatusu`: lista i karta maluja ten sam status jedna funkcja (web/klasa-statusu.js).
+    // widoku bez przekazywania ich osobno w kazdej trasie — jeden format daty w calym
+    // module, patrz domena/format-daty.js. Tak samo `klasaStatusu`: lista i karta maluja
+    // ten sam status jedna funkcja (core/web/klasa-statusu.js).
     //
-    // ⚠️ `etykietaWysylki` jest tu z TEGO SAMEGO powodu, ale stawka jest wyzsza: od
-    // 2026-08-01 nazwa dostawy i dopisek „(pobranie)" to DWIE wartosci sklejane w jedna
+    // ⚠️ `etykietaWysylki` jest tu z TEGO SAMEGO powodu, ale stawka jest wyzsza:
+    // nazwa dostawy i dopisek „(pobranie)" to DWIE wartosci sklejane w jedna
     // etykiete. Lista, karta i ekran nadania musza mowic o tej samej paczce tak samo —
     // widok skladajacy ten dopisek u siebie zgubilby go przy pierwszym przeoczeniu, a to
     // jest informacja o pieniadzach, ktore kurier ma zainkasowac.
@@ -182,11 +181,11 @@ options: { views: katalogiWidokow() },
       etapPrzesylki, etykietaEtapu, dniKalendarzowe,
       etykietaWysylki,
       zlotowki,
-      // Pelna nazwa uslugi (Allegro) z odwrotem na etykiete kubelka — patrz domain/wysylka.js.
+      // Pelna nazwa uslugi (Allegro) z odwrotem na etykiete kubelka — patrz domena/wysylka.js.
       nazwaDostawy,
       // ⚠️ htmx WYLACZONY DOMYSLNIE i wlaczany po jednym ekranie (`htmx: true` z trasy).
       // Ekran zwrotu ma nie miec ANI JEDNEGO skryptu — jego dwukrokowosc bierze sie stad,
-      // ze nic nie liczy sie na zywo, i pilnuje tego test. Wartosc domyslna tutaj sprawia,
+      // ze nic nie liczy sie na zywo (patrz layout-oms.ejs). Wartosc domyslna tutaj sprawia,
       // ze ekran dopisany w przyszlosci nie dostanie biblioteki przez przypadek ani nie
       // wywali szablonu na brak zmiennej.
       htmx: false,
@@ -197,7 +196,7 @@ options: { views: katalogiWidokow() },
       proba: false,
       demo: null,
       podgladDemo: false,
-      // PRZ-100: adresy /public/*.css|js z wersją (`?v=`) — po wydaniu przeglądarka za pośrednikiem nie trzyma starego pliku.
+      // Adresy /public/*.css|js z wersją (`?v=`) — po wydaniu przeglądarka za pośrednikiem nie trzyma starego pliku.
       zasob,
     },
   });
@@ -245,7 +244,7 @@ app.addHook('onRequest', zbudujStraznika({
         loginSerwisowy: config.auth.user,
         usluga: 'oms',
       },
-      // PRZ-153: /api/v1 tylko kluczem API. Panel indywidualny tego parametru nie podaje.
+      // /api/v1 tylko kluczem API. Panel indywidualny tego parametru nie podaje.
       // Limit jeden na aplikację (licznik wywołań klucza i złych kluczy z IP), tworzony tutaj obok strażnika.
       klucze: { db, limit: utworzLimitApi() },
     }));
@@ -256,9 +255,9 @@ app.addHook('onResponse', async (req, reply) => {
   if (!czyTrasaMaszynowaZdekodowana(req.url)) return;
   await wpisDrukuDoDziennika(req, reply);
 });
-// PRZ-083: demo publiczne — gość ogląda Ustawienia, nie zapisuje (podglad-demo.js). Bez konta gościa haka nie ma.
+// Demo publiczne — gość ogląda Ustawienia, nie zapisuje (podglad-demo.js). Bez konta gościa haka nie ma.
 if (config.demo) app.addHook('onRequest', podgladUstawienDemo({ loginGoscia: config.demo.login }));
-// PRZ-153.E1.3: ta sama nazwa ciasteczka co strażnikowi — żądanie z kluczem API i bez ciasteczka sesji omija CSRF.
+// Ta sama nazwa ciasteczka co strażnikowi — żądanie z kluczem API i bez ciasteczka sesji omija CSRF.
 zarejestrujOchroneCsrf(app, { nazwaCiasteczka: nazwaCiasteczkaOms(config.proba) });
 app.addHook('preHandler', async (req, reply) => {
       const kolory = koloryStatusow(db);
@@ -282,10 +281,10 @@ app.addHook('preHandler', async (req, reply) => {
         // `panelStatusow`, bo jako jedyne znają rzeczywiste liczniki i aktywny filtr.
         nawigacja,
         licznikWiadomosci: nawigacja.boczne?.some(g => g.pozycje.some(p => p.klucz === 'wiadomosci'))
-          // PRZ-167: w trybie próby (piaskownica, demo) wątki są z atrapy — plakietka „czeka na odpowiedź” byłaby szumem.
+          // W trybie próby (piaskownica, demo) wątki są z atrapy — plakietka „czeka na odpowiedź” byłaby szumem.
           ? (config.proba === true ? 0 : licznikWiadomosciDlaMenu(db, req)) : 0,
         modulWlaczony: (modul) => !odlozoneEkrany.includes(modul),
-        // PRZ-085: liczby przy statusach na KAŻDEJ zakładce, nie tylko na liście i karcie.
+        // Liczby przy statusach na KAŻDEJ zakładce, nie tylko na liście i karcie.
         licznikiStatusow: await licznikiStatusowDlaMenu(db, req, nawigacja),
         licznikiMenuNaZadanie: () => licznikiStatusowDlaMenu(db, req, nawigacja, { naZadanie: true }),
         // Kontrolki pytaja o SWOJ adres. Mapowanie adres -> zakres pozostaje jedno,
@@ -293,18 +292,18 @@ app.addHook('preHandler', async (req, reply) => {
         mozeAdres: (url) => maDostepDoAdresu(req.konto ?? null, url),
         // Model Ustawień ukrywa „Użytkowników i uprawnienia" bez flagi `admin` — bez tego
         // pola trasy nie wiedziałyby, które pozycje przekazać do wspólnego slotu nawigacji,
-        // kto akurat patrzy na strone. `req.konto` jest `undefined` na panelu indywidualnym
-        // (straznik wolany tam BEZ `konta`, patrz web/straznik.js), stad `?? null`.
+        // kto akurat patrzy na strone. `req.konto` bywa `undefined`, gdy straznik dziala bez
+        // modulu kont (patrz core/bezpieczenstwo/straznik.js), stad `?? null`.
         konto: req.konto ?? null,
         menuKonta: menuKontaDla(req.konto ?? null, { powrot: sciezkaPowrotu }),
-        // Tekst alternatywny znaku w belce (PRZ-060, OMS_LOGO_ALT); bez niego znak jest ozdobą.
+        // Tekst alternatywny znaku w belce (OMS_LOGO_ALT); bez niego znak jest ozdobą.
         marka: { logoAlt: znak.biezace().alt },
         logoInstalacji: { wPliku: znak.wPliku, ...znak.biezace() },
-        // PRZ-075: tryb próby (lista: komunikat demo zamiast alarmu synchronizacji) i konto gościa demo
+        // Tryb próby (lista: komunikat demo zamiast alarmu synchronizacji) i konto gościa demo
         // (ekran logowania pokazuje jego login i hasło). Poza trybem próby `demo` jest zawsze null (core/demo.ts).
         proba: config.proba === true,
         demo: config.demo ?? null,
-        // PRZ-083: gość demo na ekranie Ustawień — układ robi treść martwą i stawia pasek podglądu (podglad-demo.js).
+        // Gość demo na ekranie Ustawień — układ robi treść martwą i stawia pasek podglądu (podglad-demo.js).
         podgladDemo: req.konto?.podgladDemo === true && wUstawieniach(req.url),
       };
     });

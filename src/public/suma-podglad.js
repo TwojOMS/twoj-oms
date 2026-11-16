@@ -1,12 +1,10 @@
-// PODGLĄD KWOTY na ekranie „Nowe zamówienie" (07.08.2026, prośba właściciela: „pozycje
-// powinny się sumować i pokazywać kwotę zamówienia").
+// PODGLĄD KWOTY na ekranie „Nowe zamówienie": pozycje się sumują i pokazują kwotę zamówienia.
 //
-// ⚠️⚠️ TO JEST DRUGA IMPLEMENTACJA REGUŁY, KTÓRA MA PIERWOWZÓR W `domain/suma-pozycji.js`,
-// i do 07.08.2026 widok wprost odmawiał jej istnienia („liczenie w przeglądarce byłoby DRUGĄ
-// implementacją reguły — dwa miejsca, które prędzej czy później się rozjadą"). Właściciel
-// wybrał liczenie na żywo świadomie, więc obiekcja nie znika — zostaje SPŁACONA:
+// ⚠️⚠️ TO JEST DRUGA IMPLEMENTACJA REGUŁY, KTÓRA MA PIERWOWZÓR W `domena/suma-pozycji.js` —
+// dwa miejsca, które prędzej czy później się rozjadą. Liczenie na żywo jest wyborem świadomym, więc ta obiekcja nie znika —
+// zostaje SPŁACONA:
 //
-//   `tests/oms/suma-podglad.test.js` importuje TEN PLIK i puszcza go razem z prawdziwym
+//   `tests/domena/suma-podglad.test.js` importuje TEN PLIK i puszcza go razem z prawdziwym
 //   parserem serwera (`parsujPozycjeFormularza` + `sumaPozycjiZWysylkaGrosze`) po wspólnej
 //   tablicy przypadków — przecinki dziesiętne, netto zamiast brutta, zaokrąglenia, puste
 //   i niepełne wiersze. Rozjazd którejkolwiek strony wywala test, a nie fakturę.
@@ -16,19 +14,20 @@
 // się z serwerem o grosz — a to jest kwota, którą operator dyktuje klientowi przez telefon
 // i którą przy pobraniu inkasuje kurier.
 //
-// ⚠️ CZEGO TEN PODGLĄD NIE OBEJMUJE: opłaty za obsługę doklejanej klientom rozliczanym
-// zbiorczo (`services/oplata.js` — 4 zł albo 19 zł zależnie od etykiety i progu darmowej
-// dostawy). O tym, czy się należy, decyduje NIP z listy w konfiguracji serwera, której
-// przeglądarka nie zna i znać nie ma — kopiowanie tej listy do strony byłoby powielaniem
-// POLITYKI CENOWEJ, nie arytmetyki. Właściciel wie o tym i **świadomie nie chciał ostrzeżenia
-// na ekranie** (decyzja 07.08.2026). Prawdziwą kwotę pokazuje karta zaraz po zapisie.
+// ⚠️ CZEGO TEN PODGLĄD NIE OBEJMUJE: opłaty za obsługę doklejanej stałym klientom, którzy
+// nadają paczkę na własnej etykiecie, ani darmowej dostawy powyżej progu
+// (reguła w `domena/oplata-obslugi.js`: `oplataDlaZamowienia`, `darmowaDostawa`; kwota i próg darmowej
+// dostawy z karty klienta). O tym, czy się należą, decyduje klient znaleziony po NIP w bazie,
+// której przeglądarka nie zna i znać nie ma — kopiowanie warunków klientów do strony byłoby
+// powielaniem POLITYKI CENOWEJ, nie arytmetyki. Ekran **świadomie nie ostrzega** o tym wprost.
+// Prawdziwą kwotę pokazuje karta zaraz po zapisie.
 
 // Stawka VAT NIE jest tu wpisana na sztywno — dojeżdża atrybutem `data-vat` formularza,
 // dokładnie jak w `_skrypt-cena.ejs`. Druga, wpisana wprost kopia stawki rozjechałaby się
 // cicho z fakturą przy pierwszej zmianie.
 const KOLUMNY = ['nazwa', 'sku', 'ilosc', 'cena_netto', 'cena_brutto'];
 
-/** `domain/suma-pozycji.js: grosze` — bez rzucania: podgląd oddaje `null`, nie wyjątek. */
+/** `domena/kwoty.js: grosze` — bez rzucania: podgląd oddaje `null`, nie wyjątek. */
 function grosze(kwota) {
   const t = String(kwota ?? '').trim().replace(',', '.');
   if (!t) return null;
@@ -37,7 +36,7 @@ function grosze(kwota) {
   return Math.round(n * 100);
 }
 
-/** `domain/vat.js: bruttoZNetto` — przez grosze, nigdy na złotówkach. */
+/** `domena/vat.js: bruttoZNetto` — przez grosze, nigdy na złotówkach. */
 function bruttoZNetto(netto, procentVat) {
   const gr = grosze(netto);
   if (gr === null) return null;
@@ -45,7 +44,7 @@ function bruttoZNetto(netto, procentVat) {
 }
 
 /**
- * `domain/pozycje-reczne.js: parsujIlosc` — całkowita, większa od zera.
+ * `domena/pozycje-reczne.js: parsujIlosc` — całkowita, większa od zera.
  * Ułamek jest ODMOWĄ, nie zaokrągleniem: cała warstwa liczy na całkowitych groszach.
  */
 function ilosc(surowa) {
@@ -57,7 +56,7 @@ function ilosc(surowa) {
 }
 
 /**
- * Wiersz pusty jest pomijany. ⚠️ Ilość się nie liczy (PRZ-106): nowy wiersz ma ilość 1 od razu,
+ * Wiersz pusty jest pomijany. ⚠️ Ilość się nie liczy: nowy wiersz ma ilość 1 od razu,
  * a nietknięty wiersz ma zostać pusty — ta sama reguła co `pusteWiersz` w domena/nowe-zamowienie.js.
  */
 export function pustyWiersz(w) {
@@ -83,7 +82,7 @@ export function liniaGrosze(w, procentVat, wdt = false, { zw = true } = {}) {
 }
 
 // ---------------------------------------------------------------------------------
-// PRZ-105 — stawka WIERSZA, nabywca z UE i podsumowanie netto / VAT / brutto. Dosłowne kopie reguł serwera,
+// Stawka WIERSZA, nabywca z UE i podsumowanie netto / VAT / brutto. Dosłowne kopie reguł serwera,
 // przypięte testem wspólnej tablicy (tests/domena/suma-podglad.test.js):
 //   - `domena/pozycje-reczne.js: parsujNowaPozycje` — pusta stawka = domyślna, przy WDT netto stawką 0;
 //   - `domena/klient-zbiorczy.js: normalizujNip` + `domena/wdt.js: czyNipUe`;
@@ -106,8 +105,8 @@ export function czyNipUe(nip) {
 }
 
 /**
- * `domena/wdt.js: czyWdt` — WDT = numer UE nabywcy, ale nie u firmy zwolnionej z VAT (PRZ-122.B07g, decyzja właściciela
- * 27.10: sprzedawca zwolniony z art. 113 nie robi WDT). Flagę niesie formularz: `data-zwolniona="1"`.
+ * `domena/wdt.js: czyWdt` — WDT = numer UE nabywcy, ale nie u firmy zwolnionej z VAT (sprzedawca zwolniony
+ * z art. 113 nie robi WDT). Flagę niesie formularz: `data-zwolniona="1"`.
  */
 export function czyWdt(nip, { zwolniona = false } = {}) {
   return czyNipUe(nip) && !zwolniona;
@@ -115,12 +114,12 @@ export function czyWdt(nip, { zwolniona = false } = {}) {
 
 /**
  * Stawka wiersza: WDT → 0, wpisana w wierszu → ona, pusta → domyślna formularza. Liczba albo 'zw'.
- * PRZ-122.B07a: „zw” (lista ma ją tylko przy programie wbudowanym — domena z flagą `zw`) zostaje napisem 'zw':
+ * „zw” (lista ma ją tylko przy programie wbudowanym — domena z flagą `zw`) zostaje napisem 'zw':
  * liczy się jak 0 (`procentLiczbowy`), ale „0% krajowym” nie jest.
  */
-// PRZ-122.B07b (uwaga (4) z odbioru B07a): `zw: false` (formularz bez „zw” na liście — program inny niż wbudowany)
+// `zw: false` (formularz bez „zw” na liście — program inny niż wbudowany)
 // → wiersz „zw” to `null`: serwer bez flagi odmawia (`parsujStawke`), więc podgląd pokazuje myślnik, nie kwotę po 0%.
-// Domyślnie `zw: true` — tak liczyły te funkcje od B07a (test wspólnej tablicy).
+// Domyślnie `zw: true`: wywołanie bez flagi liczy „zw” jak 0, czego oczekuje wspólna tablica przypadków w teście.
 function stawkaWiersza(w, procentDomyslny, wdt, zw = true) {
   if (wdt) return 0;
   const s = String(w?.vat ?? '').trim();
@@ -185,7 +184,7 @@ export function kwotaFormularzaGrosze(wiersze, kosztDostawy, procentVat, nip = '
   return dostawa === null ? null : suma + dostawa;
 }
 
-/** Grosze na złotówki — `domain/suma-pozycji.js: zl`. */
+/** Grosze na złotówki — `domena/kwoty.js: zl`. */
 export const zl = (gr) => (gr / 100).toFixed(2);
 
 // ---------------------------------------------------------------------------------
@@ -198,22 +197,22 @@ export function podepnij(dokument) {
   if (!tabela) return null;
   const formularz = tabela.closest('form');
   const surowyProcent = formularz ? formularz.dataset.vat : undefined;
-  // PRZ-122.B07b (uwaga (2) z odbioru B07a): `data-vat="zw"` (firma zwolniona, TwojeFaktury) to stawka, nie zepsuty
+  // `data-vat="zw"` (firma zwolniona, TwojeFaktury) to stawka, nie zepsuty
   // atrybut — wcześniej `Number('zw')` wyłączał podgląd. „zw” dozwolone, gdy jest domyślną albo stoi na liście stawek
   // formularza (lista z programu: tylko wbudowany ją ma) — tak samo, jak serwer dostaje flagę `zw`.
   const zwDomyslna = surowyProcent !== undefined && String(surowyProcent).trim() === 'zw';
   const procent = zwDomyslna ? 'zw'
     : surowyProcent === undefined || String(surowyProcent).trim() === '' ? NaN : Number(surowyProcent);
   // Brak albo zepsuty atrybut wyłącza WYŁĄCZNIE podgląd — formularz działa dalej, bo kwotę
-  // i tak liczy serwer przy zapisie (ta sama zasada, co w public/cena-netto.js). PRZ-105: 0 to stawka.
+  // i tak liczy serwer przy zapisie (ta sama zasada, co w public/cena-netto.js). 0 to stawka.
   if (!zwDomyslna && (!Number.isFinite(procent) || procent < 0)) return null;
-  // PRZ-122.B07g: `data-zwolniona="1"` (firma zwolniona z VAT) — numer UE nabywcy to nie WDT, `data-wdt` zostaje „0”.
+  // `data-zwolniona="1"` (firma zwolniona z VAT) — numer UE nabywcy to nie WDT, `data-wdt` zostaje „0”.
   const opcjeZw = {
     zw: zwDomyslna || Boolean(formularz && formularz.querySelector('option[value="zw"]')),
     zwolniona: Boolean(formularz && formularz.dataset.zwolniona === '1'),
   };
 
-  // ⚠️ WIERSZE CZYTANE PRZY KAZDYM PRZELICZENIU, nie raz przy wczytaniu (PRZ-103): operator
+  // ⚠️ WIERSZE CZYTANE PRZY KAZDYM PRZELICZENIU, nie raz przy wczytaniu: operator
   // dokłada i kasuje wiersze bez przeładowania (public/pozycje-wiersze.js). Lista zapamiętana
   // na starcie liczyłaby w „Razem” wiersz już skasowany, a dołożonego nie liczyłaby wcale.
   const komorkaRazem = dokument.querySelector('[data-razem]');
@@ -224,7 +223,7 @@ export function podepnij(dokument) {
   const ustaw = (sel, tekst) => { const el = wez(sel); if (el) el.textContent = tekst; };
   const pokaz = (sel, widoczny) => { const el = wez(sel); if (el) el.hidden = !widoczny; };
 
-  // PRZ-105: stawka z listy wiersza (`poz_vat`) czytana obok kolumn — do pustości wiersza się nie liczy.
+  // Stawka z listy wiersza (`poz_vat`) czytana obok kolumn — do pustości wiersza się nie liczy.
   const odczytaj = (tr) => ({
     ...Object.fromEntries(KOLUMNY.map((k) => [k, (tr.querySelector(`[name="poz_${k}"]`) || {}).value ?? ''])),
     vat: (tr.querySelector('[name="poz_vat"]') || {}).value ?? '',
@@ -261,7 +260,7 @@ export function podepnij(dokument) {
       const suma = kwotaFormularzaGrosze(dane, koszt, procent, nip, opcjeZw);
       komorkaRazem.textContent = suma === null ? '—' : `${zl(suma)} zł`;
     }
-    // Wiersz dostawy (właściciel 21.10: „Dodaj wiersz z dostawą”) — ta sama linia, co „Dostawa” na fakturze.
+    // Wiersz dostawy — ta sama linia, co „Dostawa” na fakturze.
     const dostawa = dostawaGrosze(koszt);
     const stawkaDostawy = wdt ? 0 : procent;
     const nettoDostawy = dostawa === null ? null : Math.round((dostawa * 100) / (100 + procentLiczbowy(stawkaDostawy)));
@@ -269,7 +268,7 @@ export function podepnij(dokument) {
     ustaw('[data-dostawa-suma]', dostawa === null ? '—' : `${zl(dostawa)} zł`);
     ustaw('[data-dostawa-netto]', nettoDostawy === null ? '—' : `${zl(nettoDostawy)} zł`);
     ustaw('[data-dostawa-stawka]', wdt ? '0% — WDT' : zwDomyslna ? 'zw' : `${procent}%`);
-    // Podsumowanie netto / VAT / brutto (właściciel 21.10: „Brak sumy netto”).
+    // Podsumowanie netto / VAT / brutto.
     const p = podsumowanieFormularza(dane, koszt, procent, nip, opcjeZw);
     ustaw('[data-pv-netto]', p ? zl(p.nettoGr) : '—');
     ustaw('[data-pv-vat]', p ? zl(p.vatGr) : '—');

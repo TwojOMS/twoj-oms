@@ -18,7 +18,7 @@ function zrodlaKanalu(kanal, zrodla) {
 
 /**
  * Wczoraj albo dzień przed najwcześniejszym OD źródeł; kanały z historią wymagają pomiaru.
- * `automat` — PRZ-102.14: granicę przy starcie wolno założyć tylko, gdy KAŻDE źródło kanału ma poprawne
+ * `automat` — granicę przy starcie wolno założyć tylko, gdy KAŻDE źródło kanału ma poprawne
  * `<P>_OD` i komplet kluczy (brakujaceKluczeKanalu — reguła „kanał skonfigurowany” z /health). Bez OD
  * sklep pobiera całą historię, a niepełny kanał — od daty, której jeszcze nie znamy; granica „wczoraj”
  * przed pierwszym pobraniem cicho wycięłaby te zamówienia z raportu.

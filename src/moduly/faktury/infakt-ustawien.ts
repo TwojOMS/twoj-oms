@@ -1,11 +1,11 @@
-// PRZ-093.10 — klient inFaktu z Ustawień (Ustawienia → Integracje → inFakt). Wzór: kurierDpdZUstawien /
+// Klient inFaktu z Ustawień (Ustawienia → Integracje → inFakt). Wzór: kurierDpdZUstawien /
 // kurierInpostZUstawien w moduly/wysylka/kurierzy.ts.
 //
 // Pośrednik o tych samych metodach co createInfaktClient. Każde wywołanie czyta BIEŻĄCY zapis z bazy; nowy klient
 // powstaje tylko, gdy zmieniły się opcje (klucz) — więc zmiana klucza działa od następnego żądania, bez restartu.
 // Brak zapisu (odłączony) = odmowa dla operatora z adresem ekranu, zanim cokolwiek pójdzie do inFaktu.
 // Usługi faktur (wystawianie, lista, KSeF, archiwum) moduł składa przy starcie — pierwsze podłączenie inFaktu
-// w panelu bez inFaktu wymaga restartu (jak pierwszy kurier w PRZ-092); ekran to mówi.
+// w panelu bez inFaktu wymaga restartu (jak pierwszy kurier); ekran to mówi.
 import { METODY_INFAKTU } from '../../oms/infakt/client.js';
 import { opcjeKlientaInfakt, EKRAN_INFAKTU } from '../../domena/konfiguracja-infakt.js';
 import { bladOperatora } from '../../domena/bledy.js';
@@ -24,7 +24,7 @@ export function infaktZUstawien({ wczytaj, fabryka }: {
     // `status: 400` CELOWO, choć żadne żądanie nie poszło (ta sama zasada co pusty identyfikator w
     // wyslijDokumentDoKsef): usługi faktur rozpoznają jednoznaczną odmowę po 4xx i zwalniają rezerwację — bez
     // statusu odmowa wyglądałaby jak zerwane połączenie („nie wiadomo, czy faktura powstała”).
-    // `bezInfaktu: true` — to NIE jest odpowiedź inFaktu o dokumencie (P2 z recenzji PRZ-093.10): czuwacz pobrań
+    // `bezInfaktu: true` — to NIE jest odpowiedź inFaktu o dokumencie : czuwacz pobrań
     // (wysylka/services/oznaczanie-pobran.js) nie może z tej odmowy zrobić trwałego „inFakt nie zna faktury”.
     if (!opcje?.apiKey) {
       throw bladOperatora(`inFakt nie jest skonfigurowany — wpisz klucz API w Ustawienia → Integracje → inFakt (${EKRAN_INFAKTU}). Nic nie poszło do inFaktu.`, { status: 400, bezInfaktu: true });

@@ -1,9 +1,8 @@
-// Port frozen 5b9cd765: 1080–1124.
 import { stronaOdmowy } from '../../core/web/odmowa.js';
 
 export function registerSynchronizacjaMagazynu(app, { db, magazyn, sklepy, pomoc, karta, trescAllegro }) {
   const { produktyPominiete, utworzKartyZNiepowiazanych, grupujPominiete, BEZ_SKLEPOW, BEZ_SKLEPOW_ODMOWA, zEtykietaKanalu, bezpiecznyWroc } = pomoc;
-  // PRZ-152.G13: odmowa „brak sklepu” w układzie OMS (status i tekst bez zmian); powrót na listę, z której przyszedł człowiek.
+  // Odmowa „brak sklepu” w układzie OMS (status i tekst bez zmian); powrót na listę, z której przyszedł człowiek.
   const odmowaBezSklepow = (req, reply) => stronaOdmowy(reply, 503, BEZ_SKLEPOW_ODMOWA, {
     tytul: 'Magazyn nie ma skąd czytać katalogu', napisWroc: 'Wróć do magazynu',
     wroc: pomoc.bezpiecznyWroc(req.query?.wroc ?? req.body?.wroc) ?? '/magazyn',
@@ -16,7 +15,7 @@ export function registerSynchronizacjaMagazynu(app, { db, magazyn, sklepy, pomoc
     return reply.code(303).redirect('/magazyn');
   });
 
-  // PRZ-160.04b: „Pobierz treść i zdjęcia ofert" — osobny przebieg w tle, tylko odczyt z Allegro.
+  // „Pobierz treść i zdjęcia ofert" — osobny przebieg w tle, tylko odczyt z Allegro.
   // Jak odczyt katalogów: start i natychmiastowy powrót (303), postęp pokazuje lista.
   app.post('/magazyn/tresc-allegro', async (req, reply) => {
     if (!trescAllegro || trescAllegro.gotowy?.() === false) {
@@ -52,32 +51,32 @@ export function registerSynchronizacjaMagazynu(app, { db, magazyn, sklepy, pomoc
   // wiec pokazuje dokladnie to, co przycisk pominal.
   app.get('/magazyn/pominiete', async (req, reply) => {
     if (!magazyn || magazyn.gotowy?.() === false) return reply.view('pusta-strona.ejs', { ...BEZ_SKLEPOW, szerokosc: 'tabela' });
-    // PRZ-160 P3b.03: `?kanal=` — „dlaczego" z podglądu importu pokazuje pominięte TEGO kanału i wraca
+    // `?kanal=` — „dlaczego" z podglądu importu pokazuje pominięte TEGO kanału i wraca
     // do importu. Klucz spoza listy kanałów magazynu nie zawęża (zostaje cały ekran, powrót jak dotąd).
     const kanal = typeof req.query?.kanal === 'string' && pomoc.KANALY_MAGAZYNU.includes(req.query.kanal) ? req.query.kanal : null;
     const pominiete = produktyPominiete(db).filter((p) => !kanal || p.kanal === kanal);
     return reply.view('magazyn-pominiete.ejs', { szerokosc: 'tabela',
       title: 'Magazyn — pominięte',
       utworzone: null,
-      // Powrot na ZAWEZONA liste, z ktorej tu wszedl operator (4.13d). `bezpiecznyWroc`
-      // oddaje `null` dla wartosci spoza magazynu — wtedy zostaje goly ekran zakladki.
+      // Powrót na ZAWĘŻONĄ listę, z której tu wszedł operator (reguła: powrót na zawężony widok).
+      // `bezpiecznyWroc` oddaje `null` dla wartości spoza magazynu — wtedy zostaje goły ekran zakładki.
       adresPowrotu: kanal ? `/magazyn/import?kanal=${encodeURIComponent(kanal)}` : (bezpiecznyWroc(req.query?.wroc) ?? '/magazyn'),
       grupy: grupujPominiete(zEtykietaKanalu(pominiete)),
     });
   });
 
-  // ⚠️ OPERACJA MASOWA: jedno klikniecie zaklada ~980 kart. Ekran wyniku jest jedynym
-  // miejscem, w ktorym widac, CZEGO panel nie tknal — dlatego trasa RENDERUJE wynik,
-  // zamiast przekierowac na liste (ta sama zasada, co przy nadaniu zbiorczym).
+  // ⚠️ OPERACJA MASOWA: jedno kliknięcie zakłada setki kart. Ekran wyniku jest jedynym
+  // miejscem, w którym widać, CZEGO panel nie tknął — dlatego trasa RENDERUJE wynik,
+  // zamiast przekierować na listę (ta sama zasada, co przy nadaniu zbiorczym).
   app.post('/magazyn/utworz-karty', async (req, reply) => {
     if (!magazyn || magazyn.gotowy?.() === false) return odmowaBezSklepow(req, reply);
     const { utworzone } = utworzKartyZNiepowiazanych(db);
     return reply.view('magazyn-pominiete.ejs', { szerokosc: 'tabela',
       title: 'Magazyn — pominięte',
       utworzone,
-      // ⚠️ DRUGI RENDER TEGO SAMEGO WIDOKU — z ciala formularza, nie z adresu. Ta akcja
-      // zaklada ~980 kart i konczy sie wlasnie tutaj, wiec zgubienie zawezenia bolaloby
-      // po najdluzszej operacji zakladki.
+      // ⚠️ DRUGI RENDER TEGO SAMEGO WIDOKU — z ciała formularza, nie z adresu. Ta akcja
+      // zakłada setki kart i kończy się właśnie tutaj, więc zgubienie zawężenia bolałoby
+      // po najdłuższej operacji zakładki.
       adresPowrotu: bezpiecznyWroc(req.body?.wroc) ?? '/magazyn',
       // Liczone PO utworzeniu, z bazy — a nie przepisane z wyniku: te dwa zbiory maja byc
       // tym samym zbiorem i wlasnie dlatego czytamy je z jednego miejsca.

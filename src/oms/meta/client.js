@@ -1,13 +1,13 @@
 import { transport } from '../../integracje/transport.js';
-// Jedyne miejsce w OMS, ktore robi HTTP do Meta Graph API (Etap 1 kampanii, 2026-08-25).
+// Jedyne miejsce w OMS, które robi HTTP do Meta Graph API.
 //
 // ⚠️ SAME ODCZYTY. Ten modul umie zapytac o statystyki reklam i NIC POZA TYM — nie zaklada
 // kampanii, nie zmienia budzetow, nie publikuje. Panel ma mierzyc kampanie, nie prowadzic
 // jej; wydawanie pieniedzy zostaje w Business Suite, u czlowieka.
 //
-// ⚠️ TOKEN NIE TRAFIA ANI DO LOGU, ANI DO KOMUNIKATU BLEDU (niezmiennik 4.10). Idzie
-// w naglowku `Authorization`, a NIE w query stringu — adresy z parametrami laduja
-// w logach posrednikow, a ten token jest bezterminowy (System User).
+// ⚠️ TOKEN NIE TRAFIA ANI DO LOGU, ANI DO KOMUNIKATU BŁĘDU (reguła: sekrety nie wychodzą).
+// Idzie w nagłówku `Authorization`, a NIE w query stringu — adresy z parametrami lądują
+// w logach pośredników, a ten token jest bezterminowy (System User).
 
 const WERSJA = 'v23.0';
 const BAZA = 'https://graph.facebook.com';
@@ -22,7 +22,7 @@ const liczba = (v) => {
 };
 
 /**
- * ⚠️ KWOTA ZOSTAJE NAPISEM (przewodnik 4.5) — i to jest cala reguła pieniędzy w tym module.
+ * ⚠️ KWOTA ZOSTAJE NAPISEM (reguła: pieniądze w groszach) — i to jest cała reguła pieniędzy w tym module.
  * `spend` przychodzi z Mety jako napis w walucie konta; przepuszczenie go przez Number()
  * i z powrotem zamienia „88.19" w liczbę zmiennoprzecinkową, a arytmetyka groszy w domenie
  * ma dostać dokładnie to, co powiedziała Meta.
@@ -97,15 +97,14 @@ export function createMetaClient({ token, konta = [], fetchImpl, http = transpor
    * skonfigurowanych kontach.
    *
    * `kampanie` (lista identyfikatorow) zawęża odczyt do wskazanych kampanii reklamowych;
-   * pusta lista znaczy „cały wydatek konta" — patrz komentarz przy kolumnie
-   * `kampanie.meta_kampanie` w schema.sql.
+   * pusta lista znaczy „cały wydatek konta".
    *
    * ⚠️⚠️ ZASIEG (`reach`) TO LICZBA OSOB, NIE ZDARZEN — i dlatego NIE WOLNO go sumowac
    * ani po kontach, ani po dniach: ta sama osoba widziana dwa dni z rzedu policzylaby sie
    * dwa razy. Oddajemy go per dzien jako sume kont (przyblizenie, bo konta moga siegac
    * tych samych ludzi) i nigdzie nie sumujemy po oknie — ekran pokazuje wylacznie
-   * wyswietlenia jako sume. Dwa konta tej firmy celuja w te sama grupe, wiec bledu nie
-   * da sie usunac, tylko nazwac.
+   * wyswietlenia jako sume. Konta jednej firmy zwykle celują w tę samą grupę, więc błędu
+   * nie da się usunąć, tylko nazwać.
    */
   async function dzienneStatystyki({ od, do: doDnia, kampanie = [] }) {
     const wgDni = new Map();
@@ -149,7 +148,7 @@ export function createMetaClient({ token, konta = [], fetchImpl, http = transpor
     return [...wgDni.values()]
       .sort((a, b) => a.dzien.localeCompare(b.dzien))
       // JEDNO zaokraglenie do pelnych groszy — panel liczy pieniadze wylacznie w groszach
-      // calkowitych (domain/kwoty.js), wiec kwota z ulamkiem grosza nie ma jak do niego wejsc.
+      // calkowitych (domena/kwoty.js), wiec kwota z ulamkiem grosza nie ma jak do niego wejsc.
       .map(({ wydatekGr, ...reszta }) => ({ ...reszta, wydatek: (Math.round(wydatekGr) / 100).toFixed(2) }));
   }
 

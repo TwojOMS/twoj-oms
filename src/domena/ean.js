@@ -1,4 +1,4 @@
-// PRZ-153.E5.3c — EAN karty produktu: 8 albo 13 cyfr z poprawną cyfrą kontrolną GTIN.
+// EAN karty produktu: 8 albo 13 cyfr z poprawną cyfrą kontrolną GTIN.
 //
 // Cyfra kontrolna GTIN: od prawej (bez ostatniej cyfry) wagi 3, 1, 3, 1…; kontrolna dopełnia sumę
 // do wielokrotności 10. Ta sama reguła dla EAN-8 i EAN-13. Napis z odstępami w środku, literami albo

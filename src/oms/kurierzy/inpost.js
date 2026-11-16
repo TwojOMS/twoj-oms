@@ -1,6 +1,6 @@
 import { transport } from '../../integracje/transport.js';
 import { bladOperatora } from '../../domena/bledy.js';
-// Taryfa ShipX per zamowienie (sklep / Allegro / Allegro Smart) — patrz domain/usluga-inpost.js.
+// Taryfa ShipX per zamowienie (sklep / Allegro / Allegro Smart) — patrz domena/usluga-inpost.js.
 import { uslugaInpost } from '../../domena/usluga-inpost.js';
 import { naTelefonInPost } from '../../domena/telefon.js';
 import { PROG_ZAWIESZONEGO_NADANIA_MS } from '../../domena/przesylka-stan.js';
@@ -12,16 +12,15 @@ import { adresOdbiorcy } from '../../domena/adres-odbiorcy.js';
 // awarii ZPL i surowa odpowiedz do zapisu w bazie. Rozni sie JEDNA rzecza, ktorej DPD nie ma:
 // `shipmentId` — patrz komentarz przy nadaj().
 //
-// Ksztalt zadania NIE pochodzi z dokumentacji InPostu (siedzi na Confluence i nie da sie jej
-// odczytac maszynowo), tylko z odwzorowania DZIESIECIU prawdziwych przesylek z zywego konta:
-// docs/superpowers/notatki/2026-08-01-inpost-shipx-rozpoznanie.md.
+// Kształt żądania NIE pochodzi z dokumentacji InPostu (siedzi na Confluence i nie da się jej
+// odczytać maszynowo), tylko z odwzorowania kilku prawdziwych przesyłek z żywego konta.
 
 // Gabaryt paczkomatu podaje sie SZABLONEM, nie wymiarami (zmierzone: `small` oddaje
 // dimensions 380 x 640 x 80 mm, czyli 38 x 64 x 8 cm = gabaryt A).
 export const SZABLONY_GABARYTU = { A: 'small', B: 'medium', C: 'large' };
 
-// Sygnatury zawartosci etykiety — zmierzone na zywym koncie (rozpoznanie, sekcja „Etykieta").
-// ZPL jest NATYWNY dla Zebry GK420t, wiec kolejka druku nie wymaga zadnej zmiany.
+// Sygnatury zawartości etykiety — zmierzone na żywym koncie.
+// ZPL jest NATYWNY dla drukarki etykiet Zebra, więc kolejka druku nie wymaga żadnej zmiany.
 const SYGNATURY_ETYKIETY = { pdf: '%PDF', zpl: '^XA' };
 
 // Twardy limit JEDNEGO zadania HTTP. Bez wlasnego sygnalu undici czeka na naglowki 300 000 ms,
@@ -36,8 +35,8 @@ export const LIMIT_ZADANIA_MS = 30 * 1000;
 // etykiete), otwarcie karty — nie.
 export const LIMIT_ZAPYTANIA_STATUS_MS = 5000;
 
-// ⚠️ TWORZENIE PRZESYLKI JEST PRAWDOPODOBNIE ASYNCHRONICZNE. Wlasciciel mierzy w Apilo
-// „kilkanascie sekund" na etykiete paczkomatowa, podczas gdy DPD oddaje numer od razu.
+// ⚠️ TWORZENIE PRZESYŁKI JEST PRAWDOPODOBNIE ASYNCHRONICZNE. W innych programach etykieta
+// paczkomatowa przychodzi po „kilkunastu sekundach”, podczas gdy DPD oddaje numer od razu.
 // Nie da sie tego sprawdzic inaczej niz tworzac PRAWDZIWA przesylke (operacja nieodwracalna
 // i platna), wiec kod dziala w OBU wariantach: numer w odpowiedzi POST -> gotowe, brak numeru
 // -> odpytywanie. Okno odpytywania jest TWARDE: po nim oddajemy „przesylka istnieje, numeru
@@ -50,7 +49,7 @@ export const ODSTEP_ODPYTYWANIA_MS = 1000;
 // jeszcze w locie, gdy okno sie zamyka + dwie etykiety.
 const NAJDLUZSZE_NADANIE_MS = LIMIT_ODPYTYWANIA_MS + 4 * LIMIT_ZADANIA_MS;
 
-// Straznik przy wczytaniu modulu — ten sam wzorzec i ten sam niezmiennik co w dpd.js:
+// Strażnik przy wczytaniu modułu — ten sam wzorzec co w dpd.js:
 // „przesylka starsza od progu" MUSI znaczyc „nic juz nie leci". Gdyby najdluzsze nadanie
 // dosiegalo progu, panel moglby uznac ZYWE wywolanie za osierocone, operator odblokowalby
 // je w trakcie, a InPost dostalby druga paczke do tego samego zamowienia. Panel ma wtedy
@@ -65,8 +64,8 @@ if (NAJDLUZSZE_NADANIE_MS >= PROG_ZAWIESZONEGO_NADANIA_MS) {
 
 const uspij = (ms) => new Promise((koniec) => { setTimeout(koniec, ms); });
 
-// Stany przesylki po polsku. Zrodlem jest rozpoznanie na zywym koncie (sekcja „Stany
-// przesylki”): `confirmed` → `ready_to_pickup` → `delivered`, plus `returned_to_sender`
+// Stany przesyłki po polsku. Źródłem jest pomiar na żywym koncie:
+// `confirmed` → `ready_to_pickup` → `delivered`, plus `returned_to_sender`
 // i dwa stany posrednie widziane w `tracking_details`.
 //
 // ⚠️ SLOWNIK JEST CELOWO NIEPELNY i to nie jest przeoczenie. Wpisujemy WYLACZNIE stany
@@ -78,9 +77,9 @@ export const OPISY_STANOW = {
   confirmed: 'Przesyłka zarejestrowana',
   adopted_at_source_branch: 'Przyjęta w oddziale nadawczym',
   sent_from_source_branch: 'Wysłana z oddziału nadawczego',
-  // Zmierzony na PRODUKCJI (dwie przesylki z 08.2026 nosily „nieznany stan
-  // out_for_delivery" w status_kuriera) — dopisany zgodnie z regula tego slownika:
-  // wylacznie stany naprawde widziane na koncie.
+  // Zmierzony na prawdziwych przesyłkach (nosiły „nieznany stan out_for_delivery”
+  // w status_kuriera) — dopisany zgodnie z regułą tego słownika: wyłącznie stany
+  // naprawdę widziane na koncie.
   out_for_delivery: 'W doręczeniu',
   ready_to_pickup: 'Gotowa do odbioru w paczkomacie',
   delivered: 'Odebrana przez klienta',
@@ -101,15 +100,14 @@ function opisStanu(stan) {
   return OPISY_STANOW[kod] ?? `InPost: nieznany stan „${kod}”`;
 }
 
-// Znacznik czasu zdarzenia. Rozpoznanie mowi, ze KAZDY wpis `tracking_details` ma znacznik
+// Znacznik czasu zdarzenia. Pomiar na koncie pokazał, że KAŻDY wpis `tracking_details` ma znacznik
 // czasu, ale NIE PODAJE nazwy pola (dokumentacja ShipX siedzi na Confluence i nie da sie jej
 // odczytac maszynowo, a odpytanie zywego API o strukture zdarzen nie wchodzi w gre przed
 // pierwszym nadaniem pod nadzorem). Bierzemy wiec pierwsze pasujace z kilku prawdopodobnych
 // nazw — a gdy nie ma zadnej, zdarzenie po prostu ODPADA (patrz nizej), bo czas wziety
 // z powietrza bylby gorszy niz jego brak.
 //
-// ⚠️ ALE ODPADNIECIE WSZYSTKICH ZDARZEN NIE JEST JUZ „bezpiecznym trybem awarii" (tak stalo
-// tu do 2026-08-04). Chybione zgadywanie nazwy pola znaczyloby, ze KAZDA paczka pokazuje
+// ⚠️ ALE ODPADNIĘCIE WSZYSTKICH ZDARZEŃ NIE JEST „bezpiecznym trybem awarii”. Chybione zgadywanie nazwy pola znaczyloby, ze KAZDA paczka pokazuje
 // „brak zdarzen" na zawsze, a nikt sie nie dowiaduje, ze sledzenie nie dziala. Dlatego
 // statusPrzesylki() odmawia GLOSNO, gdy lista byla niepusta, a nie zostalo z niej nic.
 // ⚠️ Nazwa do potwierdzenia przy pierwszym prawdziwym nadaniu.
@@ -154,11 +152,11 @@ export function createInpostClient({
   if (!url) brak.push('url');
   if (!token) brak.push('token');
   if (!organizacja) brak.push('organizacja');
-  // ⚠️ `config.nadawca` jest NULL-em, gdy panel wstal bez sekcji DPD (dzis to jedyne zrodlo
-  // adresu firmy, patrz config.js). Klient InPostu ma wtedy ODMOWIC juz przy tworzeniu,
-  // a nie nadac przesylke bez nadawcy. Sprawdzamy POLA, nie samo istnienie obiektu — obiekt
-  // z pustymi stringami to wlasnie ta cicha awaria z lipca 2026, przez ktora kazda paczka
-  // jechala z pusta ulica, a kurier i tak oddawal numer listu.
+  // ⚠️ `nadawca` może być NULL-em albo obiektem z pustymi polami (adres firmy z DPD_NADAWCA_*,
+  // patrz moduly/wysylka/kurierzy.ts). Klient InPostu ma wtedy ODMÓWIĆ już przy tworzeniu,
+  // a nie nadać przesyłkę bez nadawcy. Sprawdzamy POLA, nie samo istnienie obiektu — obiekt
+  // z pustymi stringami to właśnie ta cicha awaria, przez którą każda paczka
+  // jechała z pustą ulicą, a kurier i tak oddawał numer listu.
   if (!nadawca) brak.push('nadawca');
   else {
     for (const klucz of ['nazwa', 'ulica', 'kod', 'miasto']) {
@@ -167,18 +165,16 @@ export function createInpostClient({
   }
   if (brak.length) throw new Error(`createInpostClient: brak wymaganej konfiguracji: ${brak.join(', ')}.`);
 
-  // ⚠️ TELEFON I E-MAIL NADAWCY SA WYMAGANE PRZEZ InPost, a przez DPD NIE — i to jest cala
-  // historia usterki z 05.08.2026 (pierwsze prawdziwe nadanie do paczkomatu, zam. 28173).
-  // Adres nadawcy powstal pod DPD, wiec `email` nie istnialo nawet w konfiguracji, a `phone`
-  // jechalo warunkowo. Zywe API odpowiedzialo:
+  // ⚠️ TELEFON I E-MAIL NADAWCY SĄ WYMAGANE PRZEZ InPost, a przez DPD NIE. Adres nadawcy
+  // powstał pod DPD, więc bez tych pól żywe API odpowiada:
   //   „There are some validation errors. … sender: email: required, phone: required".
   //
-  // ⚠️ BRAK TYCH POL NIE MOZE PRZEWROCIC USLUGI (decyzja wlasciciela 05.08). Zasada „polowiczna
-  // konfiguracja wywala start" obowiazuje w tym repo, ale TUTAJ ustepuje mocniejszemu
-  // argumentowi: DPD dziala bez tych pol, a panel obsluguje WSZYSTKIE zamowienia. Brak jednej
-  // zmiennej po wdrozeniu znaczylby petle restartow kontenera i cala firme bez panelu — ta
-  // klasa awarii wyszla juz raz, przy katalogu proform. Dlatego klient WSTAJE, a odmawia
-  // dopiero `nadaj()`, wymieniajac brakujaca zmienna po nazwie.
+  // ⚠️ BRAK TYCH PÓL NIE MOŻE PRZEWRÓCIĆ USŁUGI. Zasada „połowiczna
+  // konfiguracja wywala start" obowiązuje w tym repo, ale TUTAJ ustępuje mocniejszemu
+  // argumentowi: DPD działa bez tych pól, a panel obsługuje WSZYSTKIE zamówienia. Brak jednej
+  // zmiennej po wdrożeniu znaczyłby pętlę restartów kontenera i panel niedostępny dla
+  // wszystkich zamówień. Dlatego klient WSTAJE, a odmawia
+  // dopiero `nadaj()`, wymieniając brakującą zmienną po nazwie.
   //
   // Format sprawdzamy JEDNAK przy starcie: numer wpisany bzdurnie ma sie wydac od razu,
   // a nie przy pierwszej spakowanej paczce.
@@ -194,12 +190,11 @@ export function createInpostClient({
 
   // ⚠️ TOKEN TO SEKRET. Komunikaty bledow i `odpowiedz_surowa` trafiaja do BAZY i do logu
   // zamowienia, wiec token nie ma prawa tam wyladowac — ani przez echo serwera, ani przez
-  // komunikat sterownika sieci. Ta sama maszyneria co maskowanie loginu i hasla w dpd.js
-  // (gdzie jej usuniecie przezylo mutacje i wyszlo dopiero w recenzji).
+  // komunikat sterownika sieci. Ta sama maszyneria co maskowanie loginu i hasła w dpd.js.
   const oczysc = (t) => (token ? String(t ?? '').split(token).join('***') : String(t ?? ''));
 
-  // ⚠️ INPOST_URL MOZE MIEC KONCOWY UKOSNIK — konfiguracja go nie obcina (inaczej niz
-  // SHOP_*_URL, patrz config.js). Sklejanie „${url}/shipments" dawaloby wtedy podwojny ukosnik
+  // ⚠️ INPOST_URL MOŻE MIEĆ KOŃCOWY UKOŚNIK — konfiguracja go nie obcina (patrz
+  // moduly/wysylka/kurierzy.ts). Sklejanie „${url}/shipments" dawaloby wtedy podwojny ukosnik
   // w sciezce, a to juz jest inny zasob i inne 404.
   const bazowy = String(url).replace(/\/+$/, '');
   const sciezka = (...czesci) => [bazowy, ...czesci.map((c) => String(c).replace(/^\/+|\/+$/g, ''))].join('/');
@@ -281,8 +276,8 @@ export function createInpostClient({
   // ⚠️ Kwota nalezy do ZAMOWIENIA, nie do paczki: powtorzona na paczce nr 2 znaczy, ze klient
   // zaplaci ja DRUGI RAZ. Dlatego jedzie tylko na paczce, na ktorej ma jechac
   // (`pobranieNaTejPaczce`): domyslnie nr 1, a na paczce N > 1 wylacznie z JAWNEJ decyzji
-  // operatora (zamiennik za pobraniem, PRZ-137.03 D2) — ta sama zasada co w dpd.js.
-  // ⚠️ `nadpisanie` (Z4) to kwota poprawiona na ekranie nadania — WARTOSC, nigdy obejscie
+  // operatora (zamiennik za pobraniem) — ta sama zasada co w dpd.js.
+  // ⚠️ `nadpisanie` to kwota poprawiona na ekranie nadania — WARTOSC, nigdy obejscie
   // warunku `pobranieNaTejPaczce` ponizej. Brak nadpisania (wywolania spoza formularza,
   // nadanie zbiorcze) znaczy „kwota z zamowienia", dokladnie jak dotad.
   function kwotaPobrania(zamowienie, pobranieNaTejPaczce, nadpisanie) {
@@ -311,11 +306,10 @@ export function createInpostClient({
     return { first_name: czlony.slice(0, -1).join(' '), last_name: czlony.at(-1) };
   }
 
-  // ⚠️ ADRES NADAWCY — NIE ZGADUJEMY NUMERU DOMU. `config.nadawca.ulica` to JEDEN napis
-  // („ul. 11 Listopada 7"), a ShipX rozbija adres na `street` i `building_number`. Projekt podjal
-  // juz raz swiadomie te sama decyzje (services/faktura.js: „Zgadywanie numeru z tekstu
-  // psuloby 'Aleja 11 Listopada 7' czesciej niz cokolwiek naprawialo"), wiec caly napis idzie
-  // w `line1`, a `street`/`building_number` w ogole nie wyjezdzaja.
+  // ⚠️ ADRES NADAWCY — NIE ZGADUJEMY NUMERU DOMU. `nadawca.ulica` to JEDEN napis
+  // („ul. 11 Listopada 7"), a ShipX rozbija adres na `street` i `building_number`. Zgadywanie
+  // numeru z tekstu psułoby „Aleja 11 Listopada 7” częściej, niż cokolwiek naprawiało, więc cały
+  // napis idzie w `line1`, a `street`/`building_number` w ogóle nie wyjeżdżają.
   //
   // ⚠️ DO POTWIERDZENIA PRZY PIERWSZYM PRAWDZIWYM NADANIU. Gdyby ShipX odmowil przyjecia
   // adresu w tej postaci, wlasciwym rozwiazaniem sa OSOBNE POLA W KONFIGURACJI
@@ -402,8 +396,8 @@ export function createInpostClient({
     );
 
     if (!res.ok) {
-      // PRZ-117: 404 to „śledzenia tej przesyłki jeszcze nie ma” — InPost tak odpowiada tuż po nadaniu (4 z 35
-      // paczek na produkcji, zawsze tylko przy pierwszym pytaniu w sekundzie nadania). Znacznik pozwala usłudze
+      // 404 to „śledzenia tej przesyłki jeszcze nie ma” — InPost tak odpowiada tuż po nadaniu (zmierzone:
+      // zdarza się przy pierwszym pytaniu w sekundzie nadania). Znacznik pozwala usłudze
       // statusu (services/status-kuriera.js) odróżnić świeżą paczkę od zmyślonego numeru; komunikat bez zmian.
       throw bladOperatora(
         `InPost: nie udało się sprawdzić statusu przesyłki: ${opisBledu({ dane, tekst, status })}`,
@@ -432,10 +426,10 @@ export function createInpostClient({
 
     // ⚠️ „NIE ROZUMIEM ZDARZEN" NIE MOZE WYGLADAC JAK „NIE MA ZDARZEN". Kilka linii wyzej
     // pilnujemy, zeby 200-z-HTML-em nie udawalo pustej historii — a tu jest ta sama pulapka
-    // drugimi drzwiami: lista NIEPUSTA, z ktorej odpadly WSZYSTKIE wpisy, dawala do 2026-08-04
-    // to samo `null`, co historia naprawde pusta.
+    // drugimi drzwiami: lista NIEPUSTA, z której odpadły WSZYSTKIE wpisy, nie może dawać
+    // tego samego `null`, co historia naprawdę pusta.
     //
-    // Boli akurat teraz, bo nazwa pola ze znacznikiem czasu jest ZGADNIETA (POLA_CZASU wyzej).
+    // To ważne, bo nazwa pola ze znacznikiem czasu jest ZGADNIETA (POLA_CZASU wyzej).
     // Gdyby zgadywanie bylo chybione, kazda paczkomatowa paczka pokazywalaby „brak zdarzen"
     // NA ZAWSZE, znacznik proby zapisywalby sie bez bledu i nikt by sie nie dowiedzial, ze
     // sledzenie nie dziala — bo wygladaloby to identycznie jak przesylka nadana przed chwila.
@@ -469,8 +463,8 @@ export function createInpostClient({
   /**
    * Dobiera numer przesylki (odpytywaniem, jesli trzeba) i obie etykiety.
    *
-   * Wyodrebnione z nadaj(), bo Zadanie 6 potrzebuje DOKLADNIE tego pod przyciskiem
-   * „Sprawdz ponownie": przesylka u kuriera juz istnieje, brakuje tylko numeru.
+   * Wyodrębnione z nadaj(), bo przycisk „Sprawdź ponownie” potrzebuje DOKŁADNIE tego:
+   * przesyłka u kuriera juz istnieje, brakuje tylko numeru.
    */
   async function sprawdzPrzesylke(shipmentId, pierwsza = null) {
     const odpowiedzi = pierwsza ? [pierwsza.tekst] : [];
@@ -498,7 +492,7 @@ export function createInpostClient({
 
     // ⚠️ WYCZERPANE OKNO TO NIE JEST BLAD. Przesylka u kuriera ISTNIEJE, tylko numeru
     // jeszcze nie dostala. Oddajemy to jako wynik z `wTrakcieTworzenia`, a wolajacy
-    // (Zadanie 6) zostawia wiersz 'w_trakcie' i pokazuje „Sprawdz ponownie". Wyjatek
+    // (services/nadanie.js) zostawia wiersz 'w_trakcie' i pokazuje „Sprawdz ponownie". Wyjatek
     // w tym miejscu kazalby operatorowi szukac awarii, ktorej nie ma.
     if (!numer) {
       return {
@@ -524,7 +518,7 @@ export function createInpostClient({
       throw e;
     }
 
-    // Etykieta ZPL (Zebra GK420t przez czuwacza) — jej awaria NIE MOZE wywalic nadania:
+    // Etykieta ZPL (drukarka Zebra przez czuwacza) — jej awaria NIE MOZE wywalic nadania:
     // przesylka u kuriera juz istnieje, a operator dostanie PDF i informacje „druku na
     // Zebrze nie bedzie". Dokladnie ta sama asymetria co w dpd.js.
     let etykietaZpl = null;
@@ -548,7 +542,7 @@ export function createInpostClient({
   /** @param {import('../../core/kontrakty.ts').ZlecenieKuriera} zlecenie */
   async function nadaj({
     zamowienie, paczka, kolejnosc = 1, adres: adresPrzekazany, punktOdbioru: punktPrzekazany,
-    // ⚠️ Nadpisanie kwoty pobrania z ekranu nadania (Z4) — spojnie z dpd.js. Nazwa
+    // ⚠️ Nadpisanie kwoty pobrania z ekranu nadania — spójnie z dpd.js. Nazwa
     // zmieniona przy destrukturyzacji, bo `kwotaPobrania` to funkcja w tym module (ta sama
     // pulapka, co `adres` w dpd.js: przeslonieta nazwa wywalilaby nadaj() na TypeError).
     kwotaPobrania: kwotaPrzekazana,
@@ -594,29 +588,26 @@ export function createInpostClient({
     const telefon = naTelefonInPost(odbiorca.phone);
     const cod = kwotaPobrania(zamowienie, pobranieNaTejPaczce, kwotaPrzekazana);
 
-    // Referencja: InPost NIE odsiewa po niej duplikatow (Apilo w ogole jej nie wypelnia),
+    // Referencja: InPost NIE odsiewa po niej duplikatów,
     // wiec jedyna ochrona przed druga paczka zostaje indeks czesciowy w naszej bazie.
     // Wypelniamy ja mimo to — kosztuje nic, a pozwala odnalezc przesylke w panelu InPostu.
     // Sufiks „/N" dla kolejnych paczek, tak samo jak przy DPD.
     const reference = kolejnosc > 1 ? `${zamowienie.numer}/${kolejnosc}` : String(zamowienie.numer);
 
-    // ⚠️⚠️ TARYFA DOBIERANA PER ZAMOWIENIE, NIE NA SZTYWNO (07.08.2026). Do tego dnia stalo
-    // tu `inpost_locker_standard` wpisane wprost — poprawne, dopoki panel nadawal wylacznie
-    // paczkomaty ZE SKLEPU. Pierwszy paczkomat z ALLEGRO pojechal przez to na taryfie
-    // standardowej zamiast allegrowej (przesylka 6000000001, zam. 1126) i trzeba bylo ja
-    // anulowac. Regula i pomiar: domain/usluga-inpost.js.
+    // ⚠️⚠️ TARYFA DOBIERANA PER ZAMÓWIENIE, NIE NA SZTYWNO. Stałe `inpost_locker_standard`
+    // jest poprawne tylko dla paczkomatów ZE SKLEPU — paczkomat z ALLEGRO pojechałby na taryfie
+    // standardowej zamiast allegrowej i trzeba by go anulować. Reguła i pomiar: domena/usluga-inpost.js.
     const service = uslugaInpost(zamowienie);
     const cialo = {
       service,
-      // `sending_method: any_point` wystepuje w 44/44 przesylkach na koncie, bez wyjatku —
-      // wlasciciel nadaje w automacie, nie zamawia kuriera po odbior.
+      // `sending_method: any_point` — paczkę nadaje się w automacie, nie zamawia się kuriera
+      // po odbiór (tak wyglądały wszystkie zmierzone przesyłki na koncie).
       sending_method: 'any_point',
       custom_attributes: {
         target_point: punkt,
         sending_method: 'any_point',
-        // ⚠️ PACZKOMAT NADAWCZY — automat, W KTORYM WLASCICIEL ZOSTAWIA PACZKE. Apilo wypelnia
-        // to pole na KAZDEJ allegrowej przesylce konta (`dropoff_point: KTY01M`), nasz panel
-        // nie wypelnial go w ogole. NIEOBOWIAZKOWE: brak konfiguracji znaczy „nie wysylamy
+        // ⚠️ PACZKOMAT NADAWCZY — automat, W KTÓRYM SPRZEDAWCA ZOSTAWIA PACZKĘ (`dropoff_point`,
+        // np. „ABC01M”). NIEOBOWIĄZKOWE: brak konfiguracji znaczy „nie wysylamy
         // pola", czyli DOKLADNIE dawne zachowanie — zamowienie nie ma prawa nie dac sie nadac
         // dlatego, ze ktos nie dopisal zmiennej srodowiskowej.
         ...(paczkomatNadawczy ? { dropoff_point: paczkomatNadawczy } : {}),
@@ -630,8 +621,8 @@ export function createInpostClient({
         ...(odbiorca.email ? { email: odbiorca.email } : {}),
         phone: telefon,
       },
-      // Nadawce wysylamy JAWNIE, mimo ze organizacja ma wlasny adres: ten w InPoscie jest
-      // NIEAKTUALNY (stary adres firmy zamiast obecnego), a etykieta ma mowic prawde.
+      // Nadawcę wysyłamy JAWNIE, mimo że organizacja ma własny adres: ten w InPoście bywa
+      // NIEAKTUALNY (stary adres firmy zamiast obecnego), a etykieta ma mówić prawdę.
       sender: adresNadawcy(),
       parcels: [{ template, weight: { amount: waga, unit: 'kg' } }],
       reference,
@@ -657,12 +648,11 @@ export function createInpostClient({
       throw bladOperatora('InPost nie oddał identyfikatora przesyłki.', { surowa: oczysc(tekst) });
     }
 
-    // ⚠️⚠️ POBRANIE MA WROCIC Z INPOSTU, A NIE TYLKO DO NIEGO POJECHAC (27.08.2026, zam. 1233).
+    // ⚠️⚠️ POBRANIE MA WRÓCIĆ Z INPOSTU, A NIE TYLKO DO NIEGO POJECHAĆ.
     //
-    // Do tego dnia panel sprawdzal wylacznie, co WYSLAL. Wystarczalo, dopoki pobranie
-    // jezdzilo samym DPD — pierwsze allegrowe zamowienie na paczkomat ZA POBRANIEM odslonilo
-    // dziure, bo umowa z InPostem na przesylki pobraniowe jest NIEPOTWIERDZONA (rozpoznanie
-    // 01.08.2026: 0 przesylek z `cod` na 49, lista uslug organizacji bez wariantu pobraniowego).
+    // Samo sprawdzenie, co panel WYSŁAŁ, nie wystarcza: umowa z InPostem może nie obejmować
+    // przesyłek pobraniowych (konto bez ani jednej przesyłki z `cod` i z listą usług
+    // organizacji bez wariantu pobraniowego).
     //
     // Tryb awarii jest CICHY i najdrozszy z mozliwych: InPost przyjmuje przesylke, ignoruje
     // pobranie, oddaje numer listu i etykiete. Panel meldowalby „nadane", operator wrzucilby
@@ -714,7 +704,7 @@ export function createInpostClient({
   }
 
   /**
-   * PRZ-093.09 — „Sprawdź połączenie” na ekranie Ustawienia → Integracje → Kurier InPost.
+   * „Sprawdź połączenie” na ekranie Ustawienia → Integracje → Kurier InPost.
    * Jedno `GET /organizations/{id}`: odczyt organizacji, NICZEGO nie nadaje i nie tworzy. To samo żądanie
    * zmierzono na żywym koncie przy rozpoznaniu taryf (domena/usluga-inpost.js) — odpowiedź niesie pole `services`.
    * Sukces wymaga tego pola i (gdy jest) zgodnego `id`: strona pośrednika z HTTP 200 ani cudza organizacja nie są

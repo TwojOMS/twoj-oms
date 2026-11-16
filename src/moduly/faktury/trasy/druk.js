@@ -28,7 +28,7 @@ import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 export function registerDrukFakturRoutes(app, { db, config = {}, faktura, fakturaHurtem, proforma, infakt, fakturaAllegro, ksefDoczytanie, wczytajListe, miniaturyEkranu, wyborProgramu = null, teraz = () => new Date() }) {
 
 const nazwaProgramu = odmianaNazwyProgramu(zProgramu({ infakt }));
-// PRZ-121.03a: przy jawnym „brak” zdanie o wyłączonych fakturach zamiast „Panel nie ma podpiętego inFaktu.”.
+// Przy jawnym „brak” zdanie o wyłączonych fakturach zamiast „Panel nie ma podpiętego inFaktu.”.
 const bezProgramu = () => zdanieBrakuProgramu(wyborProgramu, 'PDF wcześniejszej faktury pobierzesz w programie, w którym ją wystawiono.') ?? 'Panel nie ma podpiętego inFaktu.';
 
 const adresPowrotuNaKarte = (req, id, opcje = {}) => adresKartyZamowienia(id, {
@@ -38,7 +38,7 @@ const adresPowrotuNaKarte = (req, id, opcje = {}) => adresKartyZamowienia(id, {
 
 const powrotKarty = (req) => bezpiecznyPowrotNaListe(req.query?.powrot ?? req.body?.powrot, config.definicje);
 
-// PRZ-152.G13f2: odmowa linku „PDF” (nowa karta) i formularzy „Drukuj” / „Porzuć wydruk” z karty zamówienia —
+// Odmowa linku „PDF” (nowa karta) i formularzy „Drukuj” / „Porzuć wydruk” z karty zamówienia —
 // strona w układzie OMS z powrotem na kartę (id z adresu, kodowany w adresKartyZamowienia). Status i tekst bez zmian.
 // Proformy: `:id` to id proformy, więc karta liczy się z `p.zamowienie_id` (`idKarty`). Nieznane zamówienie
 // albo proforma (`odmowaBezKarty`): karty nie ma — powrót na listę (bezpieczne `?powrot`).
@@ -53,7 +53,7 @@ const NIE_POBRANO = 'Nie udało się pobrać faktury';
 const NIE_DO_DRUKU = 'Nie udało się wysłać faktury do druku';
 const NIE_PORZUCONO = 'Nie udało się porzucić wydruku';
 
-// PRZ-122.B10b: pobranie zamyka fakturę TwojeFaktury — bez HEAD (Fastify domyślnie = handler GET).
+// Pobranie zamyka fakturę TwojeFaktury — bez HEAD (Fastify domyślnie = handler GET).
 app.get('/zamowienia/:id/faktura/pdf', { exposeHeadRoute: false }, async (req, reply) => {
     const id = Number(req.params.id);
     if (!pobierzZamowienie(db, id)) return odmowaBezKarty(req, reply, 404, 'Nie ma takiego zamówienia', NIE_POBRANO);
@@ -63,7 +63,7 @@ app.get('/zamowienia/:id/faktura/pdf', { exposeHeadRoute: false }, async (req, r
     try {
       wynik = await faktura.pdf(id);
     } catch (e) {
-      // B10a: faktura VAT (B2B i B2C — B2C-QR) bez numeru KSeF — „jeszcze nie”, nie błąd (bez wpisu BŁĄD); zdanie z adresem podglądu.
+      // Faktura VAT (B2B i B2C — B2C-QR) bez numeru KSeF — „jeszcze nie”, nie błąd (bez wpisu BŁĄD); zdanie z adresem podglądu.
       if (e?.czekaNaKsef) return odmowaDruku(req, reply, 409, komunikatDlaOperatora(e), NIE_POBRANO);
       dopiszLog(db, id, { akcja: 'faktura.pdf', wynik: `BŁĄD: ${e.message}` });
       return odmowaDruku(req, reply, 400, `Nie udało się pobrać faktury: ${komunikatDlaOperatora(e)}`, NIE_POBRANO);
@@ -80,9 +80,9 @@ app.post('/zamowienia/:id/faktura/drukuj', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
     if (!z) return odmowaBezKarty(req, reply, 404, 'Nie ma takiego zamówienia', NIE_DO_DRUKU);
-    // ⚠️ `infakt_uuid`, nie sam wiersz faktury: bez niego nie ma czego pobrac z inFaktu
-    // (wiersz istnieje takze jako REZERWACJA, przed powstaniem dokumentu — patrz
-    // domain/faktura-stan.js). Kolejka z zadaniem bez tresci wracalaby w petli.
+    // ⚠️ Id dokumentu w programie (`idDokumentu`), nie sam wiersz faktury: bez niego nie ma czego
+    // pobrać z programu fakturowego (wiersz istnieje także jako REZERWACJA, przed powstaniem
+    // dokumentu — patrz domena/faktura-stan.js). Kolejka z zadaniem bez treści wracałaby w pętli.
     if (!idDokumentu(z.faktura)) {
       return odmowaDruku(req, reply, 400, `Ta faktura nie ma jeszcze dokumentu w ${nazwaProgramu.miejscownik} — nie ma czego drukować.`, NIE_DO_DRUKU);
     }
@@ -109,8 +109,8 @@ app.post('/zamowienia/:id/faktura/druk-porzuc', async (req, reply) => {
     return reply.redirect(adresPowrotuNaKarte(req, id, { kotwica: 'faktura' }));
   });
 
-// PRZ-152.G10a (D4, D5): druk proformy. Wolno każdą nieunieważnioną (decyzja właściciela 05.11: „po prostu jest
-// proforma”). Adresy mieszczą się w regule `/^\/proformy/` (ekrany.js) — uprawnienia bez zmian. Drukarki
+// Druk proformy. Wolno każdą nieunieważnioną — proforma to proforma, bez dodatkowych warunków.
+// Adresy mieszczą się w regule `/^\/proformy/` (domena/ekrany.js) — uprawnienia bez zmian. Drukarki
 // serwer nie sprawdza, tak jak przy fakturze.
 app.post('/proformy/:id/drukuj', async (req, reply) => {
     const p = pobierzProforme(db, Number(req.params.id));
@@ -140,15 +140,15 @@ app.post('/proformy/:id/druk-porzuc', async (req, reply) => {
     return reply.redirect(adresPowrotuNaKarte(req, p.zamowienie_id, { kotwica: 'faktura' }));
   });
 
-// D3: czuwacz bez zmian — jedna lista dla faktur i proform; pozycja proformy ma id „p<n>”, a trasy niżej
+// Czuwacz bez zmian — jedna lista dla faktur i proform; pozycja proformy ma id „p<n>”, a trasy niżej
 // rozpoznają przedrostek. Id bez przedrostka liczy się jak dotąd (`Number`), zniekształcone „p…” → 404.
 const pozycjaZAdresu = (req) => rozpoznajPozycjeDruku(req.params.id);
 const BRAK_POZYCJI = 'Nie ma takiej pozycji w kolejce druku faktur.';
 
-// Recenzja G10a: proformę można unieważnić już PO zajęciu pozycji przez czuwacza (drukuje po kolei, do
+// Proformę można unieważnić już PO zajęciu pozycji przez czuwacza (drukuje po kolei, do
 // 120 s na pozycję), więc PDF sprawdza ją jeszcze raz. Unieważniona → pozycja oczekująca porzucona
 // z tym samym powodem co przy liście, odpowiedź 409 z tekstem odmowy; `null` = można dalej.
-// Potwierdzenie (…/wydrukowano) NIE odmawia — PDF wyszedł, gdy proforma była ważna (recenzja 2).
+// Potwierdzenie (…/wydrukowano) NIE odmawia — PDF wyszedł, gdy proforma była ważna.
 const odmowaUniewaznionej = (idPozycji, cel, reply) => {
     const zgoda = czyWolnoDrukowacProforme({ numer: cel.numer, uniewazniona_at: cel.uniewaznionaAt });
     if (zgoda.wolno) return null;
@@ -158,7 +158,7 @@ const odmowaUniewaznionej = (idPozycji, cel, reply) => {
 
 app.get('/kolejka-druku-faktur', async (req) => {
     const stanowisko = String(req.query?.stanowisko ?? '').trim();
-    // PRZ-126.C05a: odpytanie = zgłoszenie komputera z drukarką (karta wyszarza „Drukuj” bez zgłoszenia z 5 min).
+    // Odpytanie = zgłoszenie komputera z drukarką (karta wyszarza „Drukuj” bez zgłoszenia z 5 min).
     // Zapis z dławieniem (raz na 60 s na stanowisko); jego błąd nie psuje odpowiedzi dla czuwacza.
     try {
       zapiszZgloszenie(db, stanowisko, teraz());

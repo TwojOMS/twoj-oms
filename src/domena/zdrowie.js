@@ -3,23 +3,22 @@ import { poPolsku } from './blad-po-polsku.js';
 // ZDROWIE PANELU DLA CZUJKI — regula za GET /health, w calosci czysta (bez sieci, bez bazy,
 // bez zegara: wszystko przychodzi argumentami).
 //
-// POWSTALA PO AUDYCIE 2026-08-22. Awaria DNS 17.08 polozyla panel na 2,5 godziny i wykryl ja
-// czlowiek; kanal allegro_a 14.08 milczal od 23:34, a wlasciciel dowiedzial sie rano,
-// bo nie dalo sie nadac paczki. Panel WIEDZIAL i nie powiedzial — czujka monitoring na
-// Proxmoksie ma go teraz o to PYTAC, a ta funkcja jest odpowiedzia.
+// Awarii sieci ani milczącego kanału nie ma zauważać dopiero człowiek, któremu nie da się
+// nadać paczki. Panel WIE o takiej awarii, więc zewnętrzna czujka (np. monitoring) PYTA go o nią, a ta
+// funkcja jest odpowiedzią.
 //
 // ⚠️ ZRODLA PRAWDY SA TRZY I ROZNE — i to jest tresc tej funkcji, a nie przypadek:
 //   • poller       → tabela stan_pollera (per sklep/kanal, kazdy przebieg bije znacznik,
 //                    blad gasnie przy sukcesie; przezywa restart kontenera),
 //   • czuwacz KSeF → puls w pamieci procesu (jedyny zegar bez zadnego sladu w bazie),
 //   • koszty       → tabela stan_kosztow (ostatnie_udane_at bije takze PUSTA noc —
-//                    patrz odnotujUdanyPrzebieg w db/koszty.js).
-// Kanaly Allegro przychodza JUZ ocenione przez stanKanalu() z domain/kanal-stan.js —
+//                    patrz odnotujUdanyPrzebieg w oms/db/koszty.js).
+// Kanaly Allegro przychodza JUZ ocenione przez stanKanalu() z domena/kanal-stan.js —
 // druga kopia tej reguly rozjechalaby sie z paskiem ostrzezen na liscie zamowien.
 //
 // ⚠️ TA FUNKCJA NIE MA PRAWA DOTKNAC SIECI. /health bedzie odpytywane co godzine przez
-// czujke; jedno odswiezenie tokenu Allegro w tej sciezce SPALILOBY jednorazowy refresh token
-// (awaria 14.08). Kanaly ida z bazy przez stanDlaEkranu(), nigdy przez klienta HTTP.
+// czujke; jedno odswiezenie tokenu Allegro w tej sciezce SPALILOBY jednorazowy refresh token.
+// Kanały idą z bazy przez stanDlaEkranu(), nigdy przez klienta HTTP.
 
 // Progi per zegar — kazdy z zapasem wzgledem wlasnego odstepu, zeby jedna czkawka sieci
 // nie budzila telefonu w nocy:
@@ -28,40 +27,36 @@ import { poPolsku } from './blad-po-polsku.js';
 //   koszty raz na dobe (03:00)   → 26 h (doba + godzina zapasu na dlugi przebieg).
 export const PROG_POLLERA_S = 15 * 60;
 // ⚠️ DRUGI PROG POLLERA, O CZYMS INNYM NIZ PIERWSZY. `PROG_POLLERA_S` pyta „czy poller
-// w ogole chodzi"; ten pyta „czy blad TRWA". Powstal po falszywym alarmie 08.09.2026:
-// jeden przebieg `pro` padl na `fetch failed` o 19:05:32, czujka odpytala /health
-// o 19:05:51 — dziewietnascie sekund pozniej — i obudzila telefon. Dwie minuty pozniej
-// nastepny przebieg zgasil blad w bazie. Alarm byl nieaktualny, zanim dotarl.
+// w ogole chodzi"; ten pyta „czy blad TRWA". Jeden przebieg potrafi paść na `fetch failed`
+// chwilę przed pytaniem czujki i obudzić telefon, a następny przebieg gasi błąd w bazie
+// dwie minuty później. Taki alarm jest nieaktualny, zanim dotrze.
 //
-// Skala z logu (04–09.09, 4,4 doby): 24 nieudane przebiegi na ~12 700, czyli 0,2%, KAZDY
-// otwierajacy dwuminutowe okno `ok:false` przy czujce pytajacej raz na godzine. Alarm
-// o czknieciu sieci byl wiec loteria 2/60 — a budzik, ktory 24 razy na 25 klamie, uczy
-// nie czytac budzikow. 10 minut = piec nieudanych przebiegow z rzedu (decyzja wlasciciela
-// 09.09.2026); najdluzsza seria w tamtych 4,4 doby miala dlugosc JEDEN.
+// Pojedyncze nieudane przebiegi są rzadkie i krótkie, a budzik, który zwykle kłamie, uczy
+// nie czytać budzików. 10 minut = pięć nieudanych przebiegów z rzędu.
 export const PROG_BLEDU_POLLERA_S = 10 * 60;
 
-// ⚠️⚠️ TRZECI PROG POLLERA — EKRANOWY, I MIERZY CO INNEGO NIZ DWA POPRZEDNIE (decyzja
-// wlasciciela 10.09.2026: „komunikat po 3 nieudanych przebiegach z rzedu").
+// ⚠️⚠️ TRZECI PROG POLLERA — EKRANOWY, I MIERZY CO INNEGO NIZ DWA POPRZEDNIE
+// (komunikat po 3 nieudanych przebiegach z rzędu).
 //
 // Ekran i telefon to dwa rozne koszty falszywego alarmu. Budzik w nocy kosztuje tyle, ze
 // woli sie spoznic (10 minut, ~5 przebiegow); wiersz na stronie, ktora i tak sie oglada,
-// kosztuje spojrzenie — moze zapalic sie wczesniej. Ale NIE od pierwszej wpadki: to
-// wlasnie ona 10.09.2026 kazala szukac awarii, ktorej juz nie bylo.
+// kosztuje spojrzenie — moze zapalic sie wczesniej. Ale NIE od pierwszej wpadki: ta każe
+// szukać awarii, której już nie ma.
 //
 // ⚠️ LICZYMY PROBY, NIE MINUTY — i to jest cala roznica wobec `PROG_BLEDU_POLLERA_S`.
 // Przy tyknieciu co 2 minuty „trzy przebiegi" wypadaja okolo czwartej minuty, wiec kusi,
 // zeby zapisac tu `4 * 60` i nie zakladac kolumny. To bylby jednak PROG O CZYMS INNYM:
 // czas plynie takze wtedy, gdy prob nie ma ani jednej (zawieszony przebieg blokuje
-// nastepne przez `wTrakcie` w services/poller.js), a zmiana `ODSTEP_POLLERA_MS`
-// przestawilaby znaczenie stalej po cichu. Licznik `stan_pollera.ostatni_blad_prob`
-// mowi dokladnie to, o co poproszono.
+// nastepne przez `wTrakcie` w moduly/kanaly/services/poller.js), a zmiana zmiennej
+// `OMS_POLLER_MS` przestawiłaby znaczenie stałej po cichu. Licznik
+// `stan_pollera.ostatni_blad_prob` mówi dokładnie to, o co chodzi.
 export const PROB_BLEDU_NA_EKRAN = 3;
 
 /**
  * Czy blad pollera nie ma jeszcze prawa OBUDZIC TELEFONU — prog czasu trwania.
  *
  * ⚠️ 'awaria' TAK, 'pominiecie' NIGDY. Zamowienie odrzucone przez mapowanie zostalo
- * przeskoczone przez kursor i samo z siebie NIE WROCI (services/poller.js,
+ * przeskoczone przez kursor i samo z siebie NIE WROCI (moduly/kanaly/services/poller.js,
  * `opisPominietych`), a blad gasnie przy najblizszym czystym przebiegu — czyli po
  * ~2 minutach. Dlawienie 10-minutowe nie opoznialoby tamtego alarmu, tylko kasowalo go
  * w calosci. Rodzaj nieznany (wiersz sprzed migracji albo z obcego zapisu) tez NIE jest
@@ -75,7 +70,7 @@ export function czyDlawicAlarmPollera({ rodzaj = null, bladWiekS = null } = {}) 
  * Czy blad pollera nie ma jeszcze prawa POKAZAC SIE W PANELU — prog liczby prob.
  *
  * Ta sama zasada co wyzej dla rodzaju i dla braku wiedzy: `pominiecie` przechodzi zawsze,
- * a wiersz bez licznika (sprzed migracji z 10.09.2026) POKAZUJE blad.
+ * a wiersz bez licznika (sprzed migracji) POKAZUJE blad.
  */
 export function czyDlawicWierszPollera({ rodzaj = null, bladProb = null } = {}) {
   return rodzaj === 'awaria' && Number.isFinite(bladProb) && bladProb < PROB_BLEDU_NA_EKRAN;
@@ -85,11 +80,11 @@ export function czyDlawicWierszPollera({ rodzaj = null, bladProb = null } = {}) 
  * Licznik prob z wiersza bazy → liczba albo `null` („nie wiem").
  *
  * ⚠️⚠️ `Number(null)` TO ZERO, NIE NaN — i na tym polega cala potrzeba tej funkcji.
- * Wiersz sprzed migracji z 10.09.2026 ma w tej kolumnie NULL; goly `Number()` zamienialby
+ * Wiersz sprzed migracji ma w tej kolumnie NULL; goly `Number()` zamienialby
  * go w „zero prob", czyli w wartosc MNIEJSZA od progu — i blad, o ktorym nic nie wiemy,
  * zostalby ZDLAWIONY zamiast pokazany. Dokladnie odwrotnie do zasady „na braku wiedzy nie
- * chowamy". Zlapane 10.09.2026: w testach szlo `undefined` (→ NaN, poprawnie), a z bazy
- * przychodzi `null` — dwie rozne odpowiedzi na to samo pytanie.
+ * chowamy". W testach łatwo podać `undefined` (→ NaN, poprawnie), a z bazy przychodzi
+ * `null` — dwie różne odpowiedzi na to samo pytanie.
  */
 export function liczbaProbBledu(wartosc) {
   if (wartosc === null || wartosc === undefined || wartosc === '') return null;
@@ -99,7 +94,7 @@ export function liczbaProbBledu(wartosc) {
 
 /**
  * Blad pollera GOTOWY NA EKRAN — po polsku i bez czkniec — albo `null`, gdy nie ma o czym
- * mowic. Uzywa tego pasek synchronizacji na liscie zamowien (web/views/lista.ejs), zeby
+ * mowic. Uzywa tego pasek synchronizacji na liscie zamowien (moduly/zamowienia/lista.js), zeby
  * mowil dokladnie to samo, co tabelka ostrzezen nad nim; dwie rozne odpowiedzi na tym
  * samym ekranie ucza ignorowania obu.
  *
@@ -118,9 +113,9 @@ export function bladPolleraNaEkran(stan) {
 
 export const PROG_CZUWACZA_KSEF_S = 3 * 3600;
 export const PROG_KOSZTOW_S = 26 * 3600;
-// Zegar #4 (sledzenie paczek, od 23.08) chodzi co godzine jak KSeF — ten sam zapas.
+// Zegar #4 (sledzenie paczek) chodzi co godzine jak KSeF — ten sam zapas.
 export const PROG_PRZESYLEK_S = 3 * 3600;
-// Zegar #6 (czuwacz ostrzezen, od 29.08: lustra luk KSeF i terminow platnosci dla
+// Zegar #6 (czuwacz ostrzezen: lustra luk KSeF i terminow platnosci dla
 // tabelki na stronie glownej) chodzi co godzine — ten sam zapas.
 export const PROG_OSTRZEZEN_S = 3 * 3600;
 
@@ -139,7 +134,7 @@ const naIso = (isoAlboDate) => {
   return Number.isFinite(t) ? new Date(t).toISOString() : null;
 };
 
-// Eksportowane od 2026-08-29: strona główna (domain/ostrzezenia.js) formatuje wiek
+// Eksportowane: strona główna (domena/ostrzezenia.js) formatuje wiek
 // zegarów TYM SAMYM przelicznikiem, co /health — dwie kopie rozjechałyby się przy
 // pierwszej zmianie progu godzin.
 export const fmtWiek = (s) => (s >= 7200 ? `${Math.floor(s / 3600)} h` : `${Math.floor(s / 60)} min`);
@@ -151,7 +146,7 @@ function ocenaZegaraZPulsu({ nazwa, wlaczony, puls, progS, procesWiekS, teraz, a
   // ⚠️ `bladSwiezszy` JEST W WYNIKU, a nie tylko w tej funkcji — bo `blad` bywa PAMIATKA.
   // Puls trzyma ostatni slad bledu takze wtedy, gdy pozniejszy przebieg sie udal, wiec
   // renderer, ktory zacytuje `blad` bez tego pola, opowie o usterce JUZ NIEAKTUALNEJ
-  // (domain/ostrzezenia.js, zdanieZegara — zgloszenie wlasciciela z 10.09.2026).
+  // (domena/ostrzezenia.js, zdanieZegara).
   const wynik = {
     wlaczony: Boolean(wlaczony), zdrowy: true, okAt: null, wiekS: null,
     blad: null, bladAt: null, bladSwiezszy: false,
@@ -219,36 +214,34 @@ export function ocenZdrowie({
       };
     }
     const wiek = wiekS(teraz, w.ostatni_przebieg_at);
-    // Tresc bledu idzie na ekran i na telefon, wiec PO POLSKU (domain/blad-po-polsku.js).
+    // Tresc bledu idzie na ekran i na telefon, wiec PO POLSKU (domena/blad-po-polsku.js).
     // W bazie zostaje oryginal — patrz uzasadnienie w tamtym pliku.
     const blad = poPolsku(String(w.ostatni_blad ?? '').trim() || null);
     const bladOdAt = w.ostatni_blad_od_at ?? null;
     const bladWiek = wiekS(teraz, bladOdAt);
-    // Licznik nieudanych przebiegow z rzedu (services/poller.js). Wiersz sprzed migracji
-    // z 10.09.2026 go nie ma — `null` znaczy „nie wiem" i regula nizej wtedy NIE dlawi.
+    // Licznik nieudanych przebiegów z rzędu (moduly/kanaly/services/poller.js). Wiersz sprzed
+    // migracji go nie ma — `null` znaczy „nie wiem" i regula nizej wtedy NIE dlawi.
     const bladProb = liczbaProbBledu(w.ostatni_blad_prob);
     let zdrowy = true;
     if (blad) {
-      // ⚠️⚠️ DWA PROGI, DWA ADRESATY — i to jest cala tresc tej galezi (10.09.2026).
+      // ⚠️⚠️ DWA PROGI, DWA ADRESATY — i to jest cala tresc tej galezi.
       //
-      // Do 09.09 stalo tu `zdrowy = false` przy KAZDYM bledzie: czknieccie sieci milczalo
-      // na telefonie, ale malowalo czerwony wiersz na stronie glownej od pierwszej sekundy.
-      // Zgloszenie wlasciciela z 10.09.2026 pokazalo, ile to warte: zobaczyl „Poller
-      // allegro_b nie działa: The operation was aborted due to timeout", poszedl
-      // do Ustawien → Łączność, tam bylo ZIELONO — bo dwie minuty wczesniej nastepny
-      // przebieg zgasil blad w bazie. Wiersz opowiadal o usterce, ktorej juz nie bylo.
+      // Dawniej stało tu `zdrowy = false` przy KAŻDYM błędzie: czknięcie sieci milczało
+      // na telefonie, ale malowało czerwony wiersz na stronie głównej od pierwszej sekundy.
+      // Operator widział „Poller nie działa: timeout”, szedł do Ustawień → Łączność, a tam
+      // było ZIELONO, bo następny przebieg zgasił już błąd w bazie. Wiersz opowiadał
+      // o usterce, której już nie było.
       //
       // Prog jest jednak INNY dla kazdego z adresatow, bo inny jest koszt pomylki:
       //   • EKRAN   — po TRZECH nieudanych przebiegach z rzedu (`PROB_BLEDU_NA_EKRAN`).
       //               Czyta go tabelka ostrzezen i pasek na liscie zamowien.
-      //   • TELEFON — po 10 minutach TRWANIA (`PROG_BLEDU_POLLERA_S`, decyzja z 09.09).
+      //   • TELEFON — po 10 minutach TRWANIA (`PROG_BLEDU_POLLERA_S`).
       //               Budzik ma prawo sie spoznic; nie ma prawa klamac.
       //
       // ⚠️ TO NIE JEST ZIELEN NA SILE. Blad wciaz JEST w wyniku (`blad`, `bladOdAt`,
       // `bladWiekS`, `bladProb`) i wciaz widac go w /health; dlawimy WYLACZNIE to, co
-      // krzyczy do czlowieka. Najdluzsza seria zmierzona w logu (04–09.09, 4,4 doby)
-      // miala dlugosc JEDEN, wiec prog trzech prob nie przepusci ani jednego czknieccia
-      // z tamtego okresu.
+      // krzyczy do czlowieka. Pojedyncze czknięcia sieci zwykle nie tworzą serii, więc próg
+      // trzech prób nie pokaże ich na ekranie.
       if (!czyDlawicWierszPollera({ rodzaj: w.ostatni_blad_rodzaj, bladProb })) {
         zdrowy = false;
       }
@@ -280,8 +273,8 @@ export function ocenZdrowie({
 
   // CZUWACZE ZYJACE PULSEM (KSeF i przesylki) — wspolna ocena wyzej. Brak wpisu przy
   // mlodym procesie to stan POPRAWNY (pierwszy przebieg dopiero za niecala godzine);
-  // przy starym — czuwacz nie przebiegl ani razu, czyli dokladnie ta awaria
-  // `if (false && czuwaczKsef)`, ktorej grep nie widzial.
+  // przy starym — czuwacz nie przebiegł ani razu, czyli jest wyłączony w kodzie albo
+  // zawieszony.
   const czuwaczKsef = ocenaZegaraZPulsu({
     nazwa: 'czuwacz KSeF', wlaczony: ksefWlaczony, puls: pulsKsef,
     progS: PROG_CZUWACZA_KSEF_S, procesWiekS, teraz, alarmy,
@@ -300,11 +293,11 @@ export function ocenZdrowie({
   // to z definicji stan biezacy, a nie pamiatka.
   const czuwaczKosztow = {
     wlaczony: Boolean(kosztyWlaczone), zdrowy: true, ostatnieUdaneAt: null, wiekS: null, blad: null, bladAt: null,
-    // PRZ-102.22: dlaczego czuwacz stoi — moduł wyłączony w Ustawienia → Moduły to stan zamierzony, nie awaria
-    // (bez alarmu i bez uwagi, żeby czujka nie budziła co dobę o decyzji właściciela).
+    // Dlaczego czuwacz stoi — moduł wyłączony w Ustawienia → Moduły to stan zamierzony, nie awaria
+    // (bez alarmu i bez uwagi, żeby czujka nie budziła co dobę o decyzji operatora).
     stan: kosztyModulWylaczony ? 'koszty wyłączone' : kosztyWlaczone ? 'pobiera z KSeF' : 'brak tokenu KSeF',
   };
-  // PRZ-102.22 (recenzja): próg liczy się od PÓŹNIEJSZEJ z dwóch chwil — ostatniego udanego pobrania albo włączenia
+  // Próg liczy się od PÓŹNIEJSZEJ z dwóch chwil — ostatniego udanego pobrania albo włączenia
   // pobierania (zapis tokenu w Ustawieniach, włączenie modułu Koszty). Pobranie chodzi raz na dobę o 3:00, więc
   // pobieranie włączone w dzień nie miało jeszcze szansy — bez tego /health wisiałby na alarmie do nocy. Pole `wiekS`
   // w odpowiedzi zostaje wiekiem OSTATNIEGO UDANEGO pobrania (czujka i ekran czytają je jak dotąd).
@@ -360,22 +353,20 @@ export function ocenZdrowie({
     czuwaczOstrzezen,
     czuwaczKosztow,
     kanaly: kanalyWynik,
-    // MOMENT STARTU PROCESU (2026-09-10). Panel znał tę liczbę od początku — `procesWiekS`
+    // MOMENT STARTU PROCESU. Panel znał tę liczbę od początku — `procesWiekS`
     // decyduje, czy młody proces ma czekać zamiast krzyczeć alarmem w pierwszej minucie po
     // restarcie — ale jej nie oddawał. Bez niej z zewnątrz NIE DA SIĘ odróżnić restartu
-    // panelu od zadławienia sieci: jedno i drugie wygląda jak cisza na /health. Bot
-    // diagnozujący awarie pisał wprost „nie odróżnię restartu kontenera od zadławienia
-    // sieci"; odpowiedź siedziała w tym procesie przez cały czas.
+    // panelu od zadławienia sieci: jedno i drugie wygląda jak cisza na /health.
     //
     // ⚠️⚠️ TO POLE STOI NA KOŃCU I MUSI TU ZOSTAĆ. Czujka `monitoring.sh` nie parsuje
     // JSON-a, tylko wycina treść sedem po SĄSIEDZTWIE kluczy (`"uwagi":[…],"poller"`).
-    // Pierwsza wersja tej zmiany wstawiła `proces` dokładnie między `uwagi` a `poller`:
-    // nic by nie krzyknęło, a czujka przestałaby podawać POWÓD uwagi i wysyłała ogólnik.
-    // Nowe pola dokładać PRZED `ok` albo PO `poller` — pilnują tego dwa testy „kolejność
-    // kluczy jest umową z czujką".
+    // Pole wstawione między `uwagi` a `poller` nie wywołałoby żadnego błędu, a czujka
+    // przestałaby podawać POWÓD uwagi i wysyłała ogólnik. Nowe pola dokładać PRZED `ok`
+    // albo PO `poller` — pilnują tego testy „kolejność kluczy jest umową z czujką”
+    // (tests/domena/zdrowie-domena.test.js).
     //
-    // ⚠️ Trasa jest OTWARTA (4.40), więc to pole jest publiczne w LAN-ie. Czas startu
-    // procesu jest metadaną — nie danymi klienta i nie sekretem — i takie ma zostać.
+    // ⚠️ Trasa jest OTWARTA (reguła: /health bez sieci i sekretów), więc to pole jest
+    // publiczne w LAN-ie. Czas startu procesu jest metadaną — nie danymi klienta i nie sekretem — i takie ma zostać.
     proces: { startAt: naIso(startAt), wiekS: procesWiekSurowy },
   };
 }

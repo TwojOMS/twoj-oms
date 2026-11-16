@@ -3,25 +3,24 @@ import { zl } from './kwoty.js';
 import { cenaPoRabacieGrosze } from './rabat.js';
 import { cenaWdtGrosze } from './wdt.js';
 
-// PRODUKT Z MAGAZYNU → POZYCJA ZAMÓWIENIA (21.08.2026, prośba właściciela).
+// PRODUKT Z MAGAZYNU → POZYCJA ZAMÓWIENIA.
 //
-// „Dzwoni klient, chce zamówić 3 lampy z naszej oferty. Klikam dodaj zamówienie i muszę
-// ręcznie wpisywać nazwy i ceny." Do dziś zamówienie telefoniczne było JEDYNYM miejscem
-// w panelu, gdzie cena wchodzi do zamówienia bez żadnego źródła — stąd i literówka w nazwie
-// na fakturze, i cena sprzed podwyżki.
+// Bez tego zamówienie telefoniczne byłoby JEDYNYM miejscem w panelu, gdzie nazwa i cena
+// wchodzą do zamówienia bez żadnego źródła — a stąd literówka w nazwie na fakturze i cena
+// sprzed podwyżki.
 //
 // Ten moduł jest CZYSTY: dostaje wiersz lustra katalogów (`produkty_sklepowe`) i oddaje
 // gotową pozycję. Bez bazy, bez SQL-a, bez widoku.
 
-// ⚠️⚠️ ALLEGRO NIGDY NIE JEST CENNIKIEM i to jest wymóg wprost ze zgłoszenia („ceny domyślne
-// to ceny ze sklepów, nie z Allegro"), a nie ostrożność.
+// ⚠️⚠️ ALLEGRO NIGDY NIE JEST CENNIKIEM (ceny domyślne to ceny ze sklepów, nie z Allegro)
+// i to jest wymóg, a nie ostrożność.
 //
 // Powód jest arytmetyczny, nie estetyczny: cena allegrowa ma wliczoną prowizję (rzędu
 // kilkunastu procent), więc podstawiona do zamówienia telefonicznego zawyżałaby je o kwotę,
 // której nikomu nie płacimy — a przy zamówieniu firmowym poszłaby wprost na fakturę.
 // Lista jest ZAMKNIĘTA: kanał spoza niej nie jest cennikiem, choćby miał cenę.
 //
-// PRZ-060: lista, kolejność i nazwy cenników to KONFIGURACJA instalacji (`OMS_CENNIKI`,
+// Lista, kolejność i nazwy cenników to KONFIGURACJA instalacji (`OMS_CENNIKI`,
 // pierwszy wpis = cennik domyślny, zwykle detal), nie stała w kodzie. Bez niej cennikami są
 // sklepy WooCommerce z `OMS_KANALY`, w ich kolejności, pod ich etykietą.
 
@@ -115,8 +114,8 @@ export function nazwaPozycji({ nazwa, rozmiar_tekst: rozmiar } = {}) {
  *
  * ⚠️ TO NIE JEST KOSMETYKA, tylko konsekwencja tego, jak powstaje lustro: przy produkcie
  * BEZ atrybutu rozmiaru odczyt katalogu wpisuje w `rozmiar_tekst` całą NAZWĘ
- * (`rozmiarZAtrybutow(...) ?? nazwa` w services/magazyn-sync.js). Pokazane wprost dawało
- * na liście „Dwa kotki - aplikacja 30x48cm — Dwa kotki - aplikacja 30x48cm", czyli szum
+ * (`rozmiarZAtrybutow(...) ?? nazwa` w moduly/magazyn/services/magazyn-sync.js). Pokazane wprost dawało
+ * na liście „Ramka dębowa 30x48cm — Ramka dębowa 30x48cm”, czyli szum
  * dokładnie tam, gdzie operator ma przy telefonie odróżnić rozmiary od siebie.
  *
  * Ta sama reguła, co w `nazwaPozycji` wyżej, i to jest cały powód, dla którego stoi obok:
@@ -151,10 +150,10 @@ function parsujIlosc(surowa) {
  * w zamówieniu sprzed tygodnia — dokładnie tak samo, jak nie zmienia jej dziś przy
  * zamówieniu sklepowym.
  *
- * ⚠️ RABAT STAŁEGO KLIENTA WCHODZI TUTAJ, a cena katalogowa jedzie OBOK (21.08.2026).
+ * ⚠️ RABAT STAŁEGO KLIENTA WCHODZI TUTAJ, a cena katalogowa jedzie OBOK.
  * Bez zapisanej ceny sprzed rabatu nie dałoby się ani pokazać na karcie, skąd wzięła się
  * kwota, ani przeliczyć zamówienia po zmianie rabatu, ani wrócić do cen katalogowych —
- * a „rabat 0%" jest jedyną uczciwą drogą powrotu po pomyłce (domain/rabat.js).
+ * a „rabat 0%" jest jedyną uczciwą drogą powrotu po pomyłce (domena/rabat.js).
  * Zapisujemy ją ZAWSZE, także przy rabacie zerowym: pozycja bez ceny katalogowej jest dla
  * przeliczenia niewidzialna, więc rabat wpisany na karcie po dodaniu towaru nie miałby
  * czego dotknąć.
@@ -180,12 +179,12 @@ export function pozycjaZProduktu(produkt, iloscSurowa, { rabatProcent = 0, wdt =
   // `cenaPoRabacieGrosze`. Rabat zerowy oddaje cenę katalogową co do grosza, więc ta jedna
   // ścieżka obsługuje oba przypadki i nie ma drugiej, „bezrabatowej", która mogłaby się
   // z nią rozjechać.
-  // Klient WDT (nabywca z numerem VAT-UE): po rabacie zdejmujemy jeszcze 23% wliczone
-  // w cenę sklepową (÷1,23 NA SZTUCE — wzorzec Apilo, patrz cenaWdtGrosze). Zgłoszenie
-  // właściciela 26.08: wstawka z samym rabatem zostawiała mu 19 pozycji do ręcznego
-  // dzielenia — czyli dokładnie ten rodzaj przepisywania, który ten moduł miał skasować.
+  // Klient WDT (nabywca z numerem VAT-UE): po rabacie zdejmujemy jeszcze VAT wliczony
+  // w cenę sklepową (dzielenie przez stawkę NA SZTUCE — wzorzec Apilo, patrz cenaWdtGrosze).
+  // Wstawka z samym rabatem zostawiałaby operatorowi każdą pozycję do ręcznego dzielenia —
+  // czyli dokładnie ten rodzaj przepisywania, który ten moduł ma skasować.
   const poRabacieGr = cenaPoRabacieGrosze(cenaGr, rabatProcent);
-  // PRZ-105: przy WDT ÷ stawka domyślna z Ustawień (wołający podaje `stawkaDomyslna`), nie stałe 1,23.
+  // Przy WDT ÷ stawka domyślna z Ustawień (wołający podaje `stawkaDomyslna`), nie stałe 1,23.
   const doZaplatyGr = wdt ? cenaWdtGrosze(poRabacieGr, stawkaDomyslna) : poRabacieGr;
   // Identyfikator produktu ma sens WYŁĄCZNIE liczbowy: kolumna `pozycje.produkt_id` jest
   // INTEGER (identyfikatory Woo), a lustro trzyma je jako tekst, bo mieści też Allegro.

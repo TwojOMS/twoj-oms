@@ -9,7 +9,7 @@ import {wczytajKonfiguracjeIntegracji,zapiszKonfiguracjeIntegracji,usunKonfigura
 import {MODULY_KURIEROW,type RejestrKurierow} from '../../../domena/moduly-kurierow.ts';
 import {UPRAWNIENIA} from '../../../domena/woo-uprawnienia.js';
 
-// PRZ-135 D5 (pieniądze): pobranie w mapowaniu Woo tylko przy metodach kurierów na NASZEJ umowie, które umieją pobranie
+// Pieniądze: pobranie w mapowaniu Woo tylko przy metodach kurierów na NASZEJ umowie, które umieją pobranie
 // (`pobranie !== 'brak'`: DPD 'umowa', InPost 'adapter'). WzA ma 'umowa', ale umowę platformy — sklep Woo jej nie nadaje.
 const METODY_Z_POBRANIEM_WOO:ReadonlySet<unknown>=new Set(Object.values(MODULY_KURIEROW as RejestrKurierow).filter(o=>o.umowa==='wlasna'&&o.umiejetnosci.pobranie!=='brak').flatMap(o=>o.metody.map(m=>m.klucz)));
 
@@ -38,7 +38,7 @@ export function createSklepyWoo(o:{db:DatabaseSync;repozytorium:ReturnType<typeo
  function utworzSzkic(d:{nazwa:string;adres:string;ck:string;cs:string;od:string;uprawnienia?:unknown},a:Aktor){
   const adres=normalizujAdresSklepu(d.adres,o.tryb),od=poczatekDniaWarszawa(d.od);
   if(!adres||!od||!poprawnaDataStartu(od,teraz())||!sprawdzKlucze(d.ck,d.cs))return walidacja('Podaj poprawny adres, klucze i datę startu.');
-  // PRZ-149.04: brak wyboru = dawne zachowanie (Zapis/odczyt); nieznana wartość to błąd formularza.
+  // Brak wyboru = dawne zachowanie (Zapis/odczyt); nieznana wartość to błąd formularza.
   if(d.uprawnienia!==undefined&&!UPRAWNIENIA.includes(d.uprawnienia as string))return walidacja('Wybierz uprawnienia klucza.');
   const uprawnienia=d.uprawnienia as 'odczyt'|'zapis'|undefined;
   const blokada=blokadaPiaskownicy(adres);if(blokada)return blokada;
@@ -52,7 +52,7 @@ export function createSklepyWoo(o:{db:DatabaseSync;repozytorium:ReturnType<typeo
   return bladAllegro('konflikt','Nie udało się przydzielić identyfikatora raportu. Spróbuj ponownie.');
  }
  const komunikatSprawdzenia=(powod?:string)=>({klucze:'Sklep odrzucił klucze. Sprawdź, czy skopiowałeś oba i czy klucz ma uprawnienie „Zapis/odczyt”.',siec:'Sklep nie odpowiada. Sprawdź, czy działa, i spróbuj ponownie za chwilę.',adres:'Nie udało się odnaleźć sklepu. Sprawdź adres sklepu i popraw ewentualną literówkę.',brak_api:'Pod tym adresem nie znaleziono API WooCommerce. Sprawdź, czy WooCommerce jest włączone i czy adres prowadzi do sklepu.',certyfikat:'Sklep ma nieważny lub niezaufany certyfikat HTTPS. Sprawdź certyfikat sklepu (np. czy nie wygasł) i spróbuj ponownie.',przekierowanie:'Adres przekierowuje na inną stronę. Wpisz adres, pod którym sklep działa naprawdę (np. z www albo https).'} as Record<string,string>)[powod??'']??'Nie udało się połączyć ze sklepem.';
- // PRZ-134.PT8: klucze nowego sklepu sprawdzane PRZED zapisem — odrzucone nie zostawiają szkicu, którego adres blokował ponowne dodanie.
+ // Klucze nowego sklepu sprawdzane PRZED zapisem — odrzucone nie zostawiają szkicu, którego adres blokował ponowne dodanie.
  async function sprawdzNowe(d:{adres:string;ck:string;cs:string}){
   const adres=normalizujAdresSklepu(d.adres,o.tryb);if(!adres||!sprawdzKlucze(d.ck,d.cs))return walidacja('Podaj poprawny adres i oba klucze REST.');
   const blokada=blokadaPiaskownicy(adres);if(blokada)return blokada;
@@ -73,10 +73,10 @@ export function createSklepyWoo(o:{db:DatabaseSync;repozytorium:ReturnType<typeo
   const blokada=blokadaPiaskownicy(d.adres);if(blokada)return blokada;
   const kl=o.klient({baseUrl:d.adres,ck:s.ck,cs:s.cs});let metody:unknown;try{metody=await kl.pobierzMetodyWysylki();}catch{return bladAllegro('tymczasowy','Nie udało się pobrać metod wysyłki.');}let bramki:unknown=null;try{bramki=await kl.pobierzBramkiPlatnosci();if(!Array.isArray(bramki))bramki=null;}catch{bramki=null;}return {ok:true as const,dane:{metody,mapowanie:JSON.parse(d.ustawienia_json).mapowanie??{instancje:{},poPozycji:[]},bramki,bladBramek:bramki===null?'Nie udało się odczytać bramek płatności ze sklepu.':null}};
  }
- // PRZ-134 D5: zapis z panelu = decyzja o pobraniu; wzór i limit bramek sprawdza mapowanieSklepu (konfiguracja.ts)
+ // Zapis z panelu = decyzja o pobraniu; wzór i limit bramek sprawdza mapowanieSklepu (konfiguracja.ts)
  function zapiszMapowanie(k:string,d:{instancje:unknown;bramkiPobrania:unknown},wersja:number,a:Aktor){if(env(k))return zPliku();const i=d?.instancje,b=d?.bramkiPobrania;if(!i||typeof i!=='object'||Array.isArray(i)||Object.keys(i).length>50)return walidacja('Niepoprawne mapowanie wysyłki.');
   if(!Array.isArray(b)||new Set(b).size!==b.length)return walidacja('Niepoprawna lista bramek płatności za pobraniem.');
-  // PRZ-134.03k: ten sam wzór i limit co mapowanieSklepu (konfiguracja.ts) — tu z komunikatem, który mówi, co poprawić
+  // Ten sam wzór i limit co mapowanieSklepu (konfiguracja.ts) — tu z komunikatem, który mówi, co poprawić
   if(b.length>20)return walidacja('Za dużo bramek płatności za pobraniem — najwyżej 20.');
   const zla=b.find(x=>typeof x!=='string'||!/^[A-Za-z0-9_.:-]{1,64}$/.test(x));if(zla!==undefined)return walidacja(`Niepoprawny identyfikator bramki „${String(zla).slice(0,64)}” — dozwolone litery łacińskie, cyfry i znaki _ . : - (do 64 znaków), np. cod.`);
   const wpisy=Object.values(i) as {metoda?:unknown;pobranie?:unknown}[];let zPobraniem=0;
@@ -87,7 +87,7 @@ export function createSklepyWoo(o:{db:DatabaseSync;repozytorium:ReturnType<typeo
   try{const tekst=JSON.stringify({instancje:i,poPozycji:[],bramkiPobrania:b});if(tekst.length>16384)return walidacja('Niepoprawne mapowanie wysyłki.');const mapowanie=mapowanieSklepu(tekst,'Mapowanie');
    return repo.transakcja(()=>{const w=repo.zapiszSklep(k,{mapowanie},wersja,a);if(w.ok)db.prepare('INSERT INTO kanaly_audit(kanal,operacja,wersja,aktor_id,aktor_login,zmieniono_at) VALUES (?,?,?,?,?,?)').run(k,`mapowanie_pobrania:bramki=${b.length},instancje_pobranie=${zPobraniem}`,w.dane.wersja,a.id,a.login,teraz().toISOString());return w;});
   }catch{return walidacja('Niepoprawne mapowanie wysyłki.');}}
- // PRZ-149.04: „Jakie uprawnienia ma klucz?” z kroku 2 — w ustawienia_json, bez migracji; generacja rośnie, więc klient
+ // „Jakie uprawnienia ma klucz?” z kroku 2 — w ustawienia_json, bez migracji; generacja rośnie, więc klient
  // sklepu buduje się od nowa i od razu odmawia (albo znów wysyła) zapisy.
  function ustawUprawnienia(k:string,u:unknown,wersja:number,a:Aktor){if(env(k))return zPliku();if(!UPRAWNIENIA.includes(u as string))return walidacja('Wybierz uprawnienia klucza.');
   return repo.transakcja(()=>repo.zapiszSklep(k,{uprawnienia:u as 'odczyt'|'zapis'},wersja,a));}
@@ -97,7 +97,7 @@ export function createSklepyWoo(o:{db:DatabaseSync;repozytorium:ReturnType<typeo
  function zmienNazwe(k:string,nazwa:string,wersja:number,a:Aktor){if(env(k))return zPliku();if(typeof nazwa!=='string'||![...nazwa.trim()].length||[...nazwa.trim()].length>80)return walidacja('Podaj nazwę sklepu.');return repo.transakcja(()=>zmien(k,wersja,a,{nazwa:nazwa.trim()},'nazwa_sklepu'));}
  function ustawDateStartu(k:string,od:string,wersja:number,a:Aktor){if(env(k))return zPliku();const s=sklep(k),data=poczatekDniaWarszawa(od);if(!s||s.wersja!==wersja)return konflikt();if(s.generacjaImportu>0||!data||!poprawnaDataStartu(data,teraz()))return walidacja('Nie można ustawić tej daty startu.');return repo.transakcja(()=>zmien(k,wersja,a,{odUtc:data},'data_sklepu'));}
  function odlacz(k:string,wersja:number,a:Aktor){if(env(k))return zPliku();return repo.transakcja(()=>{const w=zmien(k,wersja,a,{autoryzacja:'odlaczone',pobieranie:'wylaczone'},'odlaczenie_sklepu');if(w.ok){usunKonfiguracjeIntegracji(db,'woo_klucze:'+k);db.prepare('UPDATE kanaly_sklepy SET sprawdzono_at=NULL WHERE klucz=?').run(k);}return w;});}
- // PRZ-134.PT9: usunąć wolno tylko szkic z panelu, z którego OMS niczego nie pobrał — inaczej zostaje odłączenie.
+ // Usunąć wolno tylko szkic z panelu, z którego OMS niczego nie pobrał — inaczej zostaje odłączenie.
  const POBRANE='Sklep ma już pobrane zamówienia — możesz go tylko odłączyć.';
  function blokadaUsuniecia(k:string):string|null{
   if(env(k))return zPliku().komunikat;const s=sklep(k);if(!s)return 'Nie znaleziono sklepu. Odśwież ekran.';

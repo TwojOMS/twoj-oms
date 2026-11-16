@@ -18,19 +18,19 @@ const koniecMiesiaca = (rok, miesiac) => iso(new Date(Date.UTC(rok, miesiac + 1,
 const poczatekMiesiaca = (rok, miesiac) => iso(new Date(Date.UTC(rok, miesiac, 1)));
 
 /**
- * ⚠️⚠️ SKROTY „TEN…" KONCZA SIE DZIS, NIE NA KONCU OKRESU (poprawka 17.08.2026).
+ * ⚠️⚠️ SKROTY „TEN…" KONCZA SIE DZIS, NIE NA KONCU OKRESU.
  *
- * Do tego dnia „Ten miesiac" oddawal 1–31 sierpnia, choc byl 17 sierpnia — a `poprzedniOkres`
+ * Wczesniej „Ten miesiac" oddawal caly miesiac (1–31 sierpnia, choc byl 17 sierpnia) — a `poprzedniOkres`
  * rozpoznawal taki zakres jako PELNY miesiac i zestawial go z PELNYM lipcem. Panel pokazywal
- * przez to „sprzedaz ↓ 59,8%" i „zamowienia ↓ 30,7%", porownujac 17 dni z 31 dniami.
- * Ten sam wycinek obu miesiecy dawal −33% sprzedazy i **+46% zamowien** — czyli ekran mylil
- * sie nie o kilka procent, tylko o KIERUNEK. Zmierzone na produkcji, nie oszacowane.
+ * przez to spadek sprzedazy i zamowien rzedu kilkudziesieciu procent, porownujac 17 dni
+ * z 31 dniami. Ten sam wycinek obu miesiecy dawal mniejszy spadek sprzedazy i WZROST zamowien —
+ * czyli ekran mylil sie nie o kilka procent, tylko o KIERUNEK. Zmierzone na produkcji, nie oszacowane.
  *
  * Dni z przyszlosci nie niosly zadnej informacji (sprzedazy jeszcze nie ma), a psuly kazde
  * porownanie, ktore panel liczyl z dlugosci zakresu.
  *
  * ⚠️ `doKonca: true` PRZYWRACA PELNE OKRESY — i ma dokladnie jednego wolajacego: rachunek
- * zarzadczy (decyzja właściciela 17.08.2026: poprawka dotyczy zakladki sprzedazy). Tam koszty,
+ * zarzadczy. Tam koszty,
  * ZUS i PIT-5 sa MIESIECZNE, wiec skroty maja podawac okresy, dla ktorych rachunek w ogole
  * ma sens; zakres urwany w polowie miesiaca stawia tam pasek i nic nie liczy.
  * Domyslnie przycinamy, zeby nowy ekran, ktory zapomni podac opcji, dostal zachowanie
@@ -44,7 +44,7 @@ export function zakresSkrotu(skrot, dzisiaj, { doKonca = false } = {}) {
   const rok = d.getUTCFullYear();
   const m = d.getUTCMonth();
 
-  // ⚠️ „DZISIAJ" NIE PODLEGA ANI PRZYCIECIU, ANI OPCJI `doKonca` (31.08.2026, prosba właściciela).
+  // ⚠️ „DZISIAJ" NIE PODLEGA ANI PRZYCIECIU, ANI OPCJI `doKonca`.
   // Jeden dzien jest okresem PELNYM sam z siebie: nie ma w nim przyszlosci do przyciecia
   // ani konca miesiaca do rozciagniecia. Gdyby przechodzil przez `przytnij`, wynik bylby
   // ten sam — ale opcja `doKonca` (rachunek zarzadczy) kazalaby czytac, czy przypadkiem
@@ -79,9 +79,9 @@ export function zakresSkrotu(skrot, dzisiaj, { doKonca = false } = {}) {
       etykieta: 'Poprzedni kwartał',
     };
   }
-  // ⚠️ KWARTAL WSKAZANY NUMEREM (21.08.2026, na zyczenie właściciela do zakladki FINANSE).
+  // ⚠️ KWARTAL WSKAZANY NUMEREM.
   // `ten-kwartal`/`poprzedni-kwartal` odpowiadaja na pytanie „ktory to kwartal?" — a przy
-  // rachunku zarzadczym wlasciciel wskazuje kwartal WPROST. Rok bierze sie z „dzisiaj",
+  // rachunku zarzadczym sprzedawca wskazuje kwartal WPROST. Rok bierze sie z „dzisiaj",
   // tak samo jak przy `ten-rok`: obok stoi przycisk „Ten rok" i oba maja mowic o tym samym.
   const kwartal = /^q([1-4])$/.exec(skrot);
   if (kwartal) {
@@ -171,9 +171,9 @@ function poprzedniKalendarzowy({ od, do: doDnia }) {
  * czyli „miesiac (kwartal, rok) do dzis". Porownanie to TEN SAM WYCINEK okresu poprzedniego.
  *
  * ⚠️⚠️ TO NIE JEST TO SAMO, CO „okno tej samej dlugosci cofniete o dzien" (regula nizej,
- * dla zakresow z srodka miesiaca). Zmierzone na produkcji 17.08.2026: okno tej samej dlugosci
- * dla 1–17 sierpnia to 15–31 LIPCA, i przy nim zamowienia rosly o 9,4%. Ten sam wycinek
- * (1–17 lipca) pokazuje wzrost o **46%**. Czlowiek pytajacy „jak idzie sierpien" pyta
+ * dla zakresow z srodka miesiaca). Zmierzone na produkcji: okno tej samej dlugosci
+ * dla 1–17 sierpnia to 15–31 LIPCA, i przy nim wzrost zamowien wychodzil kilkakrotnie mniejszy
+ * niz dla tego samego wycinka (1–17 lipca). Czlowiek pytajacy „jak idzie sierpien" pyta
  * o pierwsze siedemnascie dni lipca, a nie o jego druga polowe — te dwie liczby opisuja
  * rozne rzeczy, a ekran nazywa obie „poprzedni okres".
  *
@@ -280,7 +280,7 @@ export function miesiaceOkresu({ od, do: doDnia }) {
 
 /** Nazwa okresu, gdy pokrywa sie z miesiacem / kwartalem / polroczem / rokiem. */
 export function nazwaOkresu({ od, do: doDnia }) {
-  // ⚠️ JEDEN DZIEN NAZYWA SIE RAZ (31.08.2026, razem ze skrotem „Dzisiaj"). Bez tego
+  // ⚠️ JEDEN DZIEN NAZYWA SIE RAZ (tak samo jak skrot „Dzisiaj"). Bez tego
   // naglowek ekranu brzmi „sprzedaz w okresie 2026-08-31 – 2026-08-31 · 2026-08-31 –
   // 2026-08-31", a podpis delty kanalu — „vs 2026-08-30 – 2026-08-30" w kolumnie
   // szerokiej na 6,5 rem.
@@ -318,9 +318,9 @@ function dzienZParametru(surowa) {
 }
 
 /**
- * ⚠️ JEDEN PARSER ZAKRESU NA WSZYSTKIE EKRANY, KTÓRE PYTAJĄ O OKRES (13.09.2026).
- * Do tego dnia siedział w `routes/raporty.js` i obsługiwał ekran raportów oraz eksport CSV.
- * Zakładka STATYSTYKI jest trzecim wołającym — druga kopia tych reguł znaczyłaby, że ekrany
+ * ⚠️ JEDEN PARSER ZAKRESU NA WSZYSTKIE EKRANY, KTÓRE PYTAJĄ O OKRES.
+ * Wcześniej siedział w trasie raportów i obsługiwał ekran raportów oraz eksport CSV.
+ * Zakładka STATYSTYKI jest kolejnym wołającym — druga kopia tych reguł znaczyłaby, że ekrany
  * mogą się różnić tym, CO uznają za poprawny zakres, a wtedy żaden z nich nie jest dowodem.
  *
  * ⚠️ ZŁA DATA I ODWRÓCONY ZAKRES TO BŁĄD, NIE PUSTY RAPORT. Przepuszczone dalej oddają 200

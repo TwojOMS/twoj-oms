@@ -1,7 +1,7 @@
-// KTO WYKONUJE BIEZACE ZADANIE (spec 2026-09-12, §9).
+// KTO WYKONUJE BIEŻĄCE ZADANIE.
 //
-// ⚠️ DLACZEGO AsyncLocalStorage, A NIE PARAMETR. `dopiszLog` ma 194 wywolania, z czego 102
-// w trasach. Dolozenie parametru znaczyloby 102 reczne poprawki przy okazji zmiany
+// ⚠️ DLACZEGO AsyncLocalStorage, A NIE PARAMETR. `dopiszLog` ma okolo dwustu wywolan, z czego
+// polowa w trasach. Dolozenie parametru znaczyloby setke recznych poprawek przy okazji zmiany
 // uwierzytelniania — a jedno pominiete miejsce to wpis historii, ktory MILCZY o autorze,
 // wygladajac dokladnie tak, jak wpis sprzed wdrozenia. Zadna suita tego nie zlapie.
 // Kontekst jest jedna linia w haku i zero linii w wywolaniach.

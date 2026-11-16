@@ -10,7 +10,7 @@
 <% if (blad) { %><div class="pas-blad" role="alert"><p><%= blad %></p></div><% } %>
 <% if (komunikat) { %><div class="pas-potwierdzenie" role="status"><p><%= komunikat %></p></div><% } %>
 <% if (k.autoryzacja !== 'polaczone') { %><%- include('../../../core/web/konfigurator/kroki-konfiguratora', { kroki }) %><% } %>
-<%# PRZ-134.PT9: nieaktywny sklep z panelu pokazuje sekcje tylko do bieżącego kroku; dalsze są wyłącznie na pasku kroków. %>
+<%# Nieaktywny sklep z panelu pokazuje sekcje tylko do bieżącego kroku; dalsze są wyłącznie na pasku kroków. %>
 <% const krokowo = !tylkoOdczyt && k.autoryzacja !== 'polaczone'; %>
 <% const iBiez = Math.max(0, kroki.findIndex(s => s.stan === 'biezacy')); %>
 <% const widac = (i) => !krokowo || i <= iBiez; const zwiniety = (i) => krokowo && i < iBiez; %>
@@ -74,7 +74,7 @@
 <section class="ust-sekcja"><h2>5. <%= konfigurator.kroki[4].tytul %></h2>
 <% if (pasekPobrania) { %><%- pasekPobraniaHtml %><% } %>
 <p>Sklep: <%= opisAutoryzacji[k.autoryzacja] ?? k.autoryzacja %>. Pobieranie zamówień: <%= opisPobierania[k.pobieranie] ?? k.pobieranie %>.</p>
-<%# PRZ-149.04: tryb klucza z kroku 2; sklep bez zapisanego wyboru (i z pliku konfiguracji) pracuje jako Zapis/odczyt. %>
+<%# Tryb klucza z kroku 2; sklep bez zapisanego wyboru (i z pliku konfiguracji) pracuje jako Zapis/odczyt. %>
 <% const uprawnieniaKlucza = wartosci.uprawnienia === 'odczyt' ? 'odczyt' : 'zapis'; %>
 <p>Uprawnienia klucza: <%= uprawnieniaKlucza === 'odczyt' ? 'Odczyt' : 'Zapis/odczyt' %>.</p>
 <% if (uprawnieniaKlucza === 'odczyt') { %><%- include('woo-mail-wyslane', { mailWyslane: locals.mailWyslane ?? null }) %><% } %>

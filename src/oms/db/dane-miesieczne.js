@@ -4,7 +4,7 @@ import { bladOperatora } from '../../domena/bledy.js';
 // Dane, ktorych panel nie zna i poznac nie moze: skladki ZUS, zaplacona zaliczka PIT-5
 // i zaplacony VAT-7. API inFaktu odmawia (skladki, KPiR i podatek sa poza planem taryfowym),
 // a przelew jest CO MIESIAC INNY, bo skladka zdrowotna liczy sie od dochodu
-// (maj 442,83 → czerwiec 894,30, dwukrotnie).
+// (z miesiąca na miesiąc potrafi urosnąć nawet dwukrotnie).
 //
 // ⚠️⚠️ BRAK WIERSZA = PUSTA SEKCJA I OSTRZEZENIE. Kwot ZUS NIGDY nie zgadujemy — ani ze
 // sredniej, ani z poprzedniego miesiaca. Podstawiona kwota wyglada jak fakt, ktorego nikt
@@ -15,7 +15,7 @@ const teraz = () => new Date().toISOString();
 // Klucz od strony wywolujacego (formularz, testy) → kolumna w `dane_miesieczne`.
 // ⚠️ ROZBICIE ZUS-u NA SKLADOWE MA ZNACZENIE PODATKOWE: na skali skladki spoleczne
 // pomniejszaja dochod, zdrowotna NIE — jedna kwota „razem" nie wystarczylaby do policzenia
-// PIT-u w rachunku zarzadczym (Zadania 14–16).
+// PIT-u w rachunku zarządczym.
 const POLA = [
   ['zusSpoleczne', 'zus_spoleczne'], ['zusZdrowotna', 'zus_zdrowotna'],
   ['zusFunduszPracy', 'zus_fundusz_pracy'], ['zusRazem', 'zus_razem'],
@@ -30,11 +30,11 @@ const POLE_TEKSTOWE = 'uwagi';
 /**
  * ⚠️ PRZECINEK NA KROPKE — inaczej pierwsza wpisana kwota polozylaby cala sekcje.
  *
- * Wlasciciel przepisuje skladki z PUE ZUS, gdzie separatorem dziesietnym jest PRZECINEK
- * („1874,53"). Taki napis wchodzil do bazy znak w znak, a `grosze()` (domain/kwoty.js) na nim
+ * Operator przepisuje składki z PUE ZUS, gdzie separatorem dziesiętnym jest PRZECINEK
+ * („1234,56"). Taki napis wchodzil do bazy znak w znak, a `grosze()` (domena/kwoty.js) na nim
  * RZUCA — wiec kazde kolejne wejscie na ekran danych i kazdy rachunek zarzadczy odbijalby sie
- * od wpisu, ktory z ekranu wyglada poprawnie. Ta sama normalizacja stoi w `naWierszReczny`
- * przy recznych kosztach i z tego samego powodu.
+ * od wpisu, który z ekranu wygląda poprawnie. Zamiana przecinka na kropkę stoi też
+ * w `naWierszReczny` (domena/koszt-reczny.js) przy ręcznych kosztach i z tego samego powodu.
  *
  * Spacje (takze niedzielace, wklejane z PUE razem z kwota) lecą przy okazji.
  */
@@ -47,7 +47,7 @@ function znormalizuj(wartosc, kolumna) {
  * Zapisuje dane recznie wpisane za dany miesiac — nadpisuje caly wiersz (UPSERT), nie tylko
  * pola podane w `pola`. To jest wlasciwy ksztalt dla jedynego wywolujacego (formularz
  * /finanse/dane wysyla komplet pol naraz): pole pominiete albo puste zapisuje sie jako NULL,
- * czyli BRAK — dokladnie tak jak puste pole na formularzu ma dzialac (Zadanie 13).
+ * czyli BRAK — dokładnie tak, jak puste pole na formularzu ma działać.
  *
  * ⚠️ `miesiac` to okres, KTOREGO skladka dotyczy — nie data przelewu.
  */
@@ -106,7 +106,7 @@ export function daneOkresu(db, miesiace) {
     if (w) wiersze.push(w); else brakujace.push(m);
   }
   // ⚠️ SUMA IDZIE NA GROSZACH, PRZEZ `grosze()`, NIGDY NA NAPISACH — ta sama zasada, co
-  // wszedzie w module (przewodnik OMS, 4.5).
+  // wszędzie w module (reguła: pieniądze w groszach).
   const suma = {
     zusRazemGrosze: wiersze.reduce((s, w) => s + gr(w, 'zus_razem'), 0),
     zusSpoleczneGrosze: wiersze.reduce((s, w) => s + gr(w, 'zus_spoleczne'), 0),
@@ -122,8 +122,8 @@ export function daneOkresu(db, miesiace) {
 /**
  * Roznica miedzy suma skladnikow ZUS a przelewem „razem", w groszach; `null`, gdy nie ma
  * kompletu skladnikow (bez kompletu rozjazdu NIE ZGADUJEMY).
- * ⚠️ TO MA BYC WIDOCZNE, A NIE WYGLADZONE: w styczniu 2026 skladniki daja 1 874,53, a przelew
- * 2 088,92 — rozjazd 214,39 zl jest do dzis niewyjasniony.
+ * ⚠️ TO MA BYĆ WIDOCZNE, A NIE WYGŁADZONE: zdarza się, że składniki i przelew „razem" różnią
+ * się o setki złotych bez żadnego wyjaśnienia.
  */
 export function rozjazdZus(w) {
   if (!w?.zus_spoleczne || !w?.zus_zdrowotna || !w?.zus_fundusz_pracy || !w?.zus_razem) return null;

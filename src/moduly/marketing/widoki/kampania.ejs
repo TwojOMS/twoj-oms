@@ -1,8 +1,8 @@
-<%# ——— ZAKLADKA KAMPANIA (WRZESIEN30, 2026-08-25) ————————————————————————————————————
-    Etap 0: wszystko z wlasnej bazy (zamowienia.kupony_json). Ekran NICZEGO nie liczy —
-    kafle, dni i tabele przychodza z domain/kampania.js; status maluje klasaStatusu,
-    czyli ta sama funkcja, co lista i karta. Sekcje GA4/Meta doida jako osobne etapy
-    (osobne czuwacze do wlasnych tabel), wiec ten ekran nie zna zadnego zewnetrznego API.
+<%# ——— ZAKŁADKA KAMPANIA ————————————————————————————————————————————————————
+    Wszystko z własnej bazy (zamowienia.kupony_json). Ekran NICZEGO nie liczy —
+    kafle, dni i tabele przychodzą z domena/kampania.js; status maluje klasaStatusu,
+    czyli ta sama funkcja, co lista i karta. Dane Meta i GA4 dociąga do własnych tabel (kampania_meta_dni,
+    kampania_ga4_dni) czuwacz w tle (uslugi/czuwacz-kampanii.js), więc ten ekran nie zna żadnego zewnętrznego API.
 
     Ciemna szata pozostaje ograniczona do `.strona-kampania`, a wspólna rama, nawigacja
     i menu konta pochodzą z layout-oms.ejs. %>
@@ -57,7 +57,7 @@
 
     <% if (stan.bladOkna) { %><p class="pasek-uwaga"><%= stan.bladOkna %></p><% } %>
 
-    <%# Alerty kontrolne (2026-08-27): warunki policzone w domenie (alertyKampanii) z tego,
+    <%# Alerty kontrolne: warunki policzone w domenie (alertyKampanii) z tego,
         co ekran i tak ma. Kazdy jest ostrozny — falszywy alarm uczy ignorowania paska. %>
     <% (alerty ?? []).forEach(function (a) { %>
       <p class="pasek-uwaga"><%= a %></p>
@@ -108,12 +108,12 @@
   </div>
 </section>
 
-<%# ——— PIENIADZE DZIEN PO DNIU (2026-08-27) ———————————————————————————————————————————
+<%# ——— PIENIĄDZE DZIEŃ PO DNIU ————————————————————————————————————————————————
     Slupki lustrzane wokol osi zera: przychod kampanijny W GORE (kod + utm-bez-kodu,
     kawalki ROZLACZNE, wiec suma slupka = unia obu licznikow), wydatek W DOL. Jedna skala
     px/zl po obu stronach — te same zlotowki, wiec „gora przerasta dol" znaczy doslownie
     „kampania sie spina". Zero JavaScriptu: wysokosci liczy widok, pelne liczby dnia
-    niesie `title` — ten sam idiom, co wykres uzyc nizej. %>
+    niesie `title` — ten sam idiom, co wykres lejka niżej. %>
 <%
   const pKwoty = stan.dni.some((d) => Number(d.kodKwotaZl) > 0 || Number(d.reklamyKwotaZl ?? 0) > 0);
   const pWydatki = stan.dni.some((d) => Number(d.wydatekZl) > 0);
@@ -134,11 +134,11 @@
       // ograniczenie, zeby ZADEN slupek nie wyszedl poza tor, a zlotowka byla ta sama gora i dol.
       const pSkala = Math.min(220 / pMaxGora, 100 / pMaxDol);
       const pPx = (n) => Math.round(n * pSkala * 10) / 10;
-      // ETAPY KAMPANII (2026-08-28, prosba właściciela — jak na makiecie): prowadnice ida
-      // z `fale` (kampanie.fale_json, przez domene), a dni PRZED pierwszym etapem dostaja
-      // strefe „przed reklamami" (na wrzesien30: kod dzialal z banera, zanim ruszyla Meta).
-      // Bez skonfigurowanych etapow wykres wraca do wyliczanej prowadnicy „start reklam"
-      // z pierwszego dnia z wydatkiem — przyszla kampania dziala bez zadnej konfiguracji.
+      // ETAPY KAMPANII: prowadnice idą z `fale` (kampanie.fale_json, przez domenę),
+      // a dni PRZED pierwszym etapem dostają strefę „przed reklamami"
+      // (np. gdy kod działał z banera, zanim ruszyła reklama).
+      // Bez skonfigurowanych etapów wykres wraca do wyliczanej prowadnicy „start reklam"
+      // z pierwszego dnia z wydatkiem — nowa kampania działa bez żadnej konfiguracji.
       const etapWDniu = new Map((fale ?? []).map((f) => [f.od, f.napis]));
       const pierwszyEtap = (fale ?? []).length ? fale[0].od : null;
       const pStart = pierwszyEtap ? -1 : stan.dni.findIndex((d) => Number(d.wydatekZl) > 0);
@@ -204,7 +204,7 @@
 </section>
 <% } %>
 
-<%# ——— REKLAMA (Etap 1) I RUCH (Etap 2) ——————————————————————————————————————————————
+<%# ——— REKLAMA I RUCH ——————————————————————————————————————————————————————————
     ⚠️ TRZY ROZNE STANY, KTORE W TABELI WYGLADAJA IDENTYCZNIE (brak wierszy):
     nieskonfigurowane / awaria pobierania / jeszcze nie pobrano. Ekran mowi KTORY. %>
 <div class="dwie-szpalty">
@@ -236,7 +236,7 @@
             <div class="kafel-etykieta">Wydano na reklamę</div>
             <div class="kafel-wartosc"><%= stan.meta.wydatekZl %> zł</div>
             <%# Prognoza z pelnych dni — dzisiejszy wydatek jest z natury niepelny, wiec %>
-            <%# tempo licza wylacznie dni zamkniete (domain/kampania.js). %>
+            <%# tempo licza wylacznie dni zamkniete (domena/kampania.js). %>
             <div class="kafel-dopisek"><%= stan.meta.wyswietlenia.toLocaleString('pl-PL') %> wyświetleń<% if (stan.meta.prognozaZl) { %> · przy tym tempie do końca ~<%= stan.meta.prognozaZl %> zł<% } %></div>
           </div>
           <div class="kafel">
@@ -247,7 +247,7 @@
           <div class="kafel">
             <div class="kafel-etykieta">Koszt kliknięcia</div>
             <div class="kafel-wartosc"><%= stan.meta.cpcZl ? `${stan.meta.cpcZl} zł` : '—' %></div>
-            <%# Punkt odniesienia z kampanii ruchowej VII–VIII.2026 — bez niego liczba nic %>
+            <%# Punkt odniesienia z wcześniejszej kampanii ruchowej — bez niego liczba nic %>
             <%# nie znaczy: „0,40 zł" to drogo czy tanio, wiadomo tylko wobec czegos. %>
             <div class="kafel-dopisek">dotąd 0,125 zł · <%= stan.meta.klikniecia.toLocaleString('pl-PL') %> kliknięć</div>
           </div>
@@ -258,7 +258,7 @@
           </div>
         </div>
         <p class="zrodlo-uwaga">
-          <%# ⚠️ ZASIEG BEZ SUMY — patrz domain/kampania.js. Podajemy najlepszy dzien, bo %>
+          <%# ⚠️ ZASIEG BEZ SUMY — patrz domena/kampania.js. Podajemy najlepszy dzien, bo %>
           <%# tylko on jest prawdziwa liczba osob; suma liczylaby dwa razy kazdego, kto %>
           <%# widzial reklame dwa dni z rzedu. %>
           Największy dzienny zasięg: <%= stan.meta.zasiegNajlepszyDzien.toLocaleString('pl-PL') %> osób
@@ -312,8 +312,8 @@
             <div class="kafel-dopisek">poglądowo</div>
           </div>
         </div>
-        <%# ⚠️⚠️ ZMIERZONY ROZJAZD DZIESIECIOKROTNY (20.08.2026): 306 klikniec w Mecie %>
-        <%# wobec 29 sesji Paid Social w GA4 tego samego okna. Zestawienie tych liczb obok %>
+        <%# ⚠️⚠️ ROZJAZD RZĘDU WIELKOŚCI: kliknięć w Mecie bywa wielokrotnie więcej niż %>
+        <%# sesji Paid Social w GA4 z tego samego okna. Zestawienie tych liczb obok %>
         <%# siebie jako „ile osob weszlo" jest bledem — i dlatego ekran mowi to wprost. %>
         <p class="zrodlo-uwaga">
           Kliknięć z Mety i sesji w GA4 <strong>nie porównujemy wprost</strong> — sesja powstaje dopiero
@@ -333,8 +333,8 @@
 </div>
 
 <% if (stan.dni.length) { %>
-<%# ——— LEJEK REKLAMY: OD WYSWIETLENIA DO ZAMOWIENIA (v2.1, 2026-08-28) ———————————————
-    Zgloszenie właściciela: dwa wykresy pokazywaly wydatek i mylily sie ze soba. Podzial rol:
+<%# ——— LEJEK REKLAMY: OD WYŚWIETLENIA DO ZAMÓWIENIA ———————————————————————————
+    Żeby dwa wykresy z wydatkiem nie myliły się ze sobą, role są rozdzielone:
     „Pieniadze dzien po dniu" wyzej = WYNIK (zlotowki), ten = MASZYNA (lejek reklamy).
     Trzy tory na wspolnej osi dni, kazdy z WLASNA skala — porownuje sie KSZTALT (czy
     klikniecia ida za wyswietleniami, a zamowienia za kliknieciami), nie wysokosci miedzy
@@ -472,11 +472,11 @@
   </div>
 </section>
 
-<%# ——— ZAMOWIENIA Z REKLAM (utm) — drugi licznik kampanii (2026-08-27) ———————————————
+<%# ——— ZAMÓWIENIA Z REKLAM (utm) — drugi licznik kampanii ——————————————————————
     Kod mierzy CALA promocje (rozdaje go tez baner na stronie, wiec trafia i do ruchu
     z Google), znacznik utm mierzy WYLACZNIE klikniecia w reklame. Czesc zamowien ma oba
     znaczniki naraz — tych liczb sie NIE sumuje i NIE porownuje. Sekcja stoi OBOK tabeli
-    kodu w jednej siatce (uklad 27.08): dwa liczniki jednej kampanii czyta sie razem. %>
+    kodu w jednej siatce: dwa liczniki jednej kampanii czyta sie razem. %>
 <section class="panel">
   <div class="panel-glowa">
     <h2>Zamówienia z reklam</h2>
@@ -553,8 +553,8 @@
 
 <% } %>
 
-<%# ——— SKAD PRZYSZLY ZAMOWIENIA Z KODEM (Etap 3) ——————————————————————————————————
-    Jedyne miejsce, ktore laczy pieniadze z marketingiem po stronie NASZYCH danych:
+<%# ——— SKĄD PRZYSZŁY ZAMÓWIENIA Z KODEM ———————————————————————————————————————
+    Tu pieniądze łączą się z marketingiem wyłącznie po stronie NASZYCH danych:
     sklep zapisuje zrodlo przy kazdym zamowieniu, wiec ta tabela nie zalezy ani od Mety,
     ani od GA4, ani od cudzych API. %>
 <% if (kampania && stan.zrodla.length) { %>
@@ -582,8 +582,8 @@
     <%# ⚠️⚠️ ZDANIE, KTORE RATUJE INTERPRETACJE CALEJ TABELI. Bez znacznikow UTM w linkach
         ruch z Instagrama i Facebooka wpada do „Bezpośrednich" — bo przegladarki w tych
         aplikacjach gubia odsylacz. Operator, ktory tego nie wie, czyta te tabele jako
-        „kampania nic nie przyniosla". Sprawdzone na produkcji 25.08: ani jedno zamowienie
-        w historii sklepu nie niosło `utm_campaign`. %>
+        „kampania nic nie przyniosla". Zdanie widac wylacznie wtedy, gdy w tabeli sa
+        wejscia „Bezposrednie" albo bez zrodla (klucz `typein*` / `brak`). %>
     <% if (stan.zrodla.some((z) => z.klucz.startsWith('typein') || z.klucz === 'brak')) { %>
       <p class="zrodlo-uwaga">
         <strong>„Bezpośrednie" nie znaczy „z nikąd".</strong> Przeglądarki w Instagramie i Facebooku
@@ -597,7 +597,7 @@
 </section>
 <% } %>
 
-<%# ——— WSZYSTKIE KUPONY W HISTORII — takze poza kampania (free50 na PRO itd.) —————— %>
+<%# ——— WSZYSTKIE KUPONY W HISTORII — takze poza kampania ——————————————————————————— %>
 <section class="panel">
   <div class="panel-glowa">
     <h2>Wszystkie kupony</h2>

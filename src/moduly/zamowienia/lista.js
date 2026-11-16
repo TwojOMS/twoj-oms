@@ -32,7 +32,7 @@ import { fmtDataCzasKrotko } from '../../domena/format-daty.js';
 import { zbudujSpecyfikacjePdf, zbudujSpecyfikacjeWieluPdf } from './pdf/specyfikacja-pdf.js';
 import { zbudujListeProduktowPdf, zbudujZestawieniePdf } from './pdf/wydruki-pdf.js';
 import {teraz,AKCJA_ALLEGRO_PROBA,allegroWymagaOdpytania,miniaturyEkranu,ktoKlikal,sprzedawcaSpecyfikacji,daneKarty,KATALOG_WIDOKOW,fragment} from './wspolne.js';
-// Wierszy na stronie listy (PRZ-051). Tyle samo, co sufit druku specyfikacji
+// Wierszy na stronie listy. Tyle samo, co sufit druku specyfikacji
 // (SUFIT_SPECYFIKACJI_DRUKU w domena/masowe.js): „zaznacz wszystkie" zaznacza strone, wiec
 // jedno klikniecie nigdy nie przekroczy partii, ktora panel umie wydrukowac. Sklep z mniejsza
 // liczba zamowien w zakladce nie widzi zmiany — strona miesci wszystko.
@@ -42,9 +42,8 @@ export const ROZMIAR_STRONY = 100;
 // jako tablica, zaden — wcale. Nigdy `undefined` do `wczytajListe`, bo to znaczy „wszystkie".
 const zaznaczone = (surowe) => [].concat(surowe ?? []);
 
-// PRZ-094.22 (właściciel 18.10.2026: „czasami trzeba czekać dość długo”). Masowa zmiana statusu odsyłała status do
-// sklepu/Allegro zamówienie PO zamówieniu — zmierzone na demo z atrapą opóźnioną o 2 s: 50 zamówień = 151 s, z czego
-// baza 0,5 s. Różne zamówienia nie zależą od siebie (każde ma własny cel w kanale), więc idą równolegle; kolejność
+// Masowa zmiana statusu odsyłała status do sklepu/Allegro zamówienie PO zamówieniu — na demo z atrapą
+// opóźnioną o 2 s 50 zamówień trwało ponad 2 minuty, z czego baza zajmowała ułamek sekundy. Różne zamówienia nie zależą od siebie (każde ma własny cel w kanale), więc idą równolegle; kolejność
 // W OBRĘBIE zamówienia (odczyt Allegro → zapis) zostaje w `odeslijStatus`. Limit mały, żeby nie zalać API sklepu.
 export const ROWNOLEGLE_ODESLANIA = 4;
 
@@ -72,10 +71,11 @@ app.post('/ostrzezenia/odrzuc', async (req, reply) => {
     return reply.redirect('/');
   });
 app.get('/', async (req, reply) => {
-    // ⚠️ OD PRZ-051 LISTA NIE CZYTA CALEJ BAZY. Liczniki zakladek, liczbe wynikow i wybor
+    // ⚠️ LISTA NIE CZYTA CALEJ BAZY. Liczniki zakladek, liczbe wynikow i wybor
     // strony daje indeks listy (oms/db/indeks-listy.js) — odpowiedzi TYCH SAMYCH regul domeny,
     // zapisane przy kazdym zamowieniu; tutaj czytamy pelne wiersze wylacznie dla jednej strony.
-    // Pomiar przed zmiana: 15 000 zamowien = 17 s zamrozenia procesu, 32 767 = blad SQL.
+    // Czytanie wszystkiego zamrazalo proces na kilkanascie sekund przy kilkunastu tysiacach zamowien,
+    // a powyzej ok. 32 tysiecy konczylo sie bledem SQL.
     // Jedna chwila na caly widok: indeks, zakladki i zegar w wierszach licza sie wzgledem niej.
     const terazMs = Date.now();
     const indeks = indeksListy(db);
@@ -92,7 +92,7 @@ app.get('/', async (req, reply) => {
     // Filtr statusu z adresu (panel boczny, wzor Apilo). Nieznana wartosc (literowka,
     // stary link po zmianie klucza w ETYKIETY) NIE ma cicho pokazywac calej listy —
     // spada do domyslnego widoku roboczego, bo to jest jedyny bezpieczny domyslny stan
-    // tego panelu (patrz komentarz przy doZrobienia w domain/status.js).
+    // tego panelu (patrz komentarz przy doZrobienia w domena/status.js).
     // Ukryty status dodatkowy pozostaje poprawnym adresem pustej listy.
     const filtrStatus = typeof req.query?.status === 'string' && (req.query.status === 'indywidualne' || Object.hasOwn(etykietyStatusow(db), req.query.status))
       ? req.query.status
@@ -104,7 +104,7 @@ app.get('/', async (req, reply) => {
     // Fraza z pola nad tabelą. Powtorzony klucz (?szukaj=a&szukaj=b) Fastify oddaje jako
     // tablice — `typeof === 'string'` odrzuca go tak samo, jak przy `?edytuj` na karcie.
     const szukaj = typeof req.query?.szukaj === 'string' ? req.query.szukaj.trim() : '';
-    // Filtry nad tabela: zakres dat, metoda wysylki, metoda platnosci (domain/filtry-listy.js).
+    // Filtry nad tabela: zakres dat, metoda wysylki, metoda platnosci (domena/filtry-listy.js).
     const filtry = parsujFiltry(req.query, config.definicje);
     const kontekst = {
       szukaj: szukaj || null,
@@ -121,9 +121,9 @@ app.get('/', async (req, reply) => {
     // klient dzwoni najczesciej („gdzie moja paczka"). Panel boczny nie ma wtedy zadnej
     // pozycji aktywnej — bo wyniki nie sa zadna z nich.
     //
-    // ⚠️ ALE FILTRY ZOSTAJA — i to jest granica, ktorej nie wolno przesunac (prosba
-    // wlasciciela, 01.08.2026: „chce np. poszukac jakiegos klienta i wyswietlic jego
-    // zamowienia z okreslonego czasu"). Roznica jest w tym, KTO co wpisal: zakladka statusu
+    // ⚠️ ALE FILTRY ZOSTAJA — i to jest granica, ktorej nie wolno przesunac:
+    // operator chce np. poszukac jakiegos klienta i wyswietlic jego zamowienia z okreslonego
+    // czasu. Roznica jest w tym, KTO co wpisal: zakladka statusu
     // to NAWIGACJA („co mam dzis do zrobienia"), wiec fraza slusznie ja zdejmuje; zakres dat
     // i metody to wartosci wpisane SWIADOMIE, wiec fraza ma je zawezac, a nie kasowac.
     if (szukaj) {
@@ -143,7 +143,7 @@ app.get('/', async (req, reply) => {
       aktywny = 'do_zrobienia';
     }
 
-    // ⚠️ STRONA (PRZ-051). Numer za koncem listy (stary link, zakladka, z ktorej zamowienia
+    // ⚠️ STRONA. Numer za koncem listy (stary link, zakladka, z ktorej zamowienia
     // wlasnie wyszly) pokazuje OSTATNIA strone, a nie pusta tabele z napisem „brak zamowien" —
     // ten napis klamalby, bo zamowienia sa, tylko wczesniej.
     const zapytanie = { zakladka, filtry, szukaj, limit: ROZMIAR_STRONY, teraz: terazMs };
@@ -164,7 +164,7 @@ app.get('/', async (req, reply) => {
       naPominiete: (z) => pominiete.push({ id: z.id, numer: z.numer, blad: PRZYCZYNA_POMINIETEGO }) });
     // Ręczna metoda wygrywa także przy nadaniu (metodaNadaniaErli) — lista nie może obiecywać drogi ERLI.
     const zDroga = wiersze.filter((z) => kanalyErli.has(z.sklep) && !saNadpisanieWysylki(z)).map((z) => z.id);
-    // Jedno zapytanie na stronę, nie jedno na wiersz (PRZ-051: lista czyta z zamówień tylko bieżącą stronę).
+    // Jedno zapytanie na stronę, nie jedno na wiersz (lista czyta z zamówień tylko bieżącą stronę).
     const suroweErli = new Map(zDroga.length ? db.prepare(`SELECT id, surowe_json FROM zamowienia WHERE id IN (${zDroga.map(() => '?').join(',')})`)
       .all(...zDroga).map((r) => [r.id, r.surowe_json]) : []);
     const zamowienia = wiersze.map((z) => {
@@ -202,14 +202,14 @@ app.get('/', async (req, reply) => {
     } : null;
 
     // ⚠️ SEDNO TEGO PANELU: liczniki i wiersze licza TE SAME reguly domeny (`wyliczStatus`,
-    // `doZrobienia`, zegar wieku) — od PRZ-051 przez indeks listy, ktory zapisuje ich
+    // `doZrobienia`, zegar wieku) — przez indeks listy, ktory zapisuje ich
     // odpowiedzi przy kazdym zamowieniu i liczy je COUNT-em. Status nie jest kolumna do
     // przestawiania, tylko wynikiem wyliczanym z faktow (komentarz nad `wyliczStatus`);
     // powtorzenie tej logiki drugi raz w SQL-u rozjechaloby sie z lista przy pierwszej zmianie
     // reguly — dlatego indeks przechowuje WYNIKI reguly, a nie jej kopie.
     //
-    // Struktura plaska celowo: w Etapie 1 kanal sprzedazy jest jeden. Grupowanie po
-    // kanalach (kiedy dojdzie) opakuje ta liste w grupy — sam ksztalt pozycji
+    // Struktura plaska celowo: ewentualne grupowanie po
+    // kanalach opakuje ta liste w grupy — sam ksztalt pozycji
     // (klucz/etykieta/liczba/href/aktywna) nie musi sie do tego przebudowywac.
     //
     // ⚠️ LICZNIKI NIE UWZGLEDNIAJA FILTROW — i to jest decyzja, nie przeoczenie. Panel boczny
@@ -221,12 +221,12 @@ app.get('/', async (req, reply) => {
     // swiadomie i przeskok na „Wyslane" nie ma go kasowac. Fraza sie NIE przenosi:
     // klikniecie zakladki znaczy „chce te zakladke", a fraza zakladki wlasnie zdejmuje.
     //
-    // ⚠️ PANEL BOCZNY SKLADA SIE ZNOWU Z SAMYCH ZAKLADEK STATUSU (2026-08-07).
+    // ⚠️ PANEL BOCZNY SKLADA SIE Z SAMYCH ZAKLADEK STATUSU.
     //
-    // Do tego dnia stala tu osobna, szesnasta pozycja „Indywidualne" — nie status, tylko
+    // Wczesniej stala tu osobna, szesnasta pozycja „Indywidualne" — nie status, tylko
     // KANAL (`?kanal=indywidualne`), doklejony do panelu, bo zamowienia z panelu
     // indywidualnego nie mialy wlasnego stanu i inaczej nie dalo sie ich wylowic. Odkad
-    // „indywidualne" JEST statusem (domain/status.js, prosba wlasciciela), ta pozycja
+    // „indywidualne" JEST statusem (domena/status.js), ta pozycja
     // musiala odejsc: zostawiona dawalaby w jednym panelu DWA WPISY O TEJ SAMEJ NAZWIE
     // i ROZNYCH LICZBACH (status liczy czekajace na akceptacje projektu, kanal — wszystkie
     // kiedykolwiek zlozone), czyli licznik nie do zinterpretowania bez czytania kodu.
@@ -300,7 +300,7 @@ app.get('/', async (req, reply) => {
     // kanalach drugi bylby niewidoczny, a przy jednym komunikat mowil o przyczynie
     // technicznej zamiast o skutkach.
     const kanalyDoUwagi = kanalyWymagajaceUwagi(stanyKanalow?.() ?? []);
-    // ⚠️ PRZ-109.02: pusta tabela bez frazy i filtrów znaczy DWIE różne rzeczy. „Nie ma tu nic do zrobienia”
+    // ⚠️ Pusta tabela bez frazy i filtrów znaczy DWIE różne rzeczy. „Nie ma tu nic do zrobienia”
     // jest prawdą tylko wtedy, gdy zamówienia są, a ta zakładka jest pusta; w nowej instalacji bez żadnego
     // zamówienia to samo zdanie mówi „wszystko załatwione”, choć kanał sprzedaży nie jest jeszcze podłączony.
     // Jedno `SELECT 1 … LIMIT 1` i TYLKO przy pustej liście — niepusta lista nie płaci ani zapytania.
@@ -323,7 +323,7 @@ app.get('/', async (req, reply) => {
       kanalyDoUwagi,
       bazaBezZamowien,
       odnosnikDoKanalow,
-      // Tabelka ostrzezen (spec 2026-08-29) — same fakty lokalne, zero sieci w tej trasie.
+      // Tabelka ostrzezen — same fakty lokalne, zero sieci w tej trasie.
       ostrzezenia: zbierzOstrzezenia(req),
       etykiety: etykietyStatusow(db),
       panelStatusow,
@@ -358,23 +358,23 @@ app.get('/', async (req, reply) => {
       // bo widok renderuje wiele zamowien po wiele pozycji.
       miniatura: miniaturyEkranu(db, zamowienia),
       // ⚠️ `stan()` oddaje pollera Z NIEPUSTYM BLEDEM, a dopiero w jego braku pierwszy sklep
-      // (bootstrap.js) — pasek jest JEDYNYM miejscem w panelu, w ktorym widac awarie
-      // synchronizacji, a do 04.08.2026 pokazywal wylacznie pierwszy SKLEP, wiec blad kanalu
-      // Allegro nie docieral do czlowieka nigdy. Dokladamy tu nazwe kanalu dla czlowieka
+      // (moduly/kanaly/services/kompozycja-kanalow.ts) — pasek jest JEDYNYM miejscem w panelu,
+      // w ktorym widac awarie synchronizacji, a kiedys pokazywal wylacznie pierwszy SKLEP, wiec
+      // blad kanalu Allegro nie docieral do czlowieka nigdy. Dokladamy tu nazwe kanalu dla czlowieka
       // (`adresKanalu` — TA SAMA funkcja, ktora opisuje kolumne „Kanał sprzedaży"), bo bez
       // niej komunikat o padnietym Allegro czytaloby sie jak awarie sklepu.
-      // ⚠️ `ostatni_blad` PODMIENIONY NA WERSJE EKRANOWA (10.09.2026) — po polsku i bez
-      // czkniec, TA SAMA regula, co w tabelce ostrzezen nad paskiem (domain/zdrowie.js,
+      // ⚠️ `ostatni_blad` PODMIENIONY NA WERSJE EKRANOWA — po polsku i bez
+      // czkniec, TA SAMA regula, co w tabelce ostrzezen nad paskiem (domena/zdrowie.js,
       // bladPolleraNaEkran). Dwie rozne odpowiedzi o tym samym pollerze na jednym ekranie
       // — tabelka milczy, pasek krzyczy „Błąd" po angielsku — ucza ignorowania obu.
-      // PRZ-089: instalacja bez kanałów (OMS_KANALY=[]) nie ma pollera wcale — „Brak synchronizacji” stałby
+      // Instalacja bez kanałów (OMS_KANALY=[]) nie ma pollera wcale — „Brak synchronizacji” stałby
       // tam bez końca jak awaria, choć /health mówi `zdrowy: true, zrodla: []`.
       bezKanalow: !stanPollera && !config.definicje?.length,
       stanPollera: stanPollera
         ?{ ...stanPollera, kanal: adresKanalu(stanPollera.sklep, config.definicje), ostatni_blad: bladPolleraNaEkran(stanPollera) }
         : null,
       // „Zaznacz wszystkie" BEZ JAVASCRIPTU — zwykly adres, tak jak filtry i wyszukiwanie
-      // (przewodnik OMS: stan chodzi przez adres strony). Odhaczenie pojedynczych wierszy
+      // (stan chodzi przez adres strony). Odhaczenie pojedynczych wierszy
       // po zaznaczeniu wszystkich dziala normalnie, bo formularz wysyla to, co jest
       // zaznaczone W CHWILI zatwierdzenia, a nie to, co mowi adres.
       zaznaczWszystkie: String(req.query?.zaznacz ?? '') === '1',
@@ -382,7 +382,7 @@ app.get('/', async (req, reply) => {
       // kasowaloby zawezenie listy i operator zaznaczylby zamowienia, ktorych nie widzial.
       adresZaznaczWszystkie: adresZFiltrami(filtry, { ...kontekst, strona, zaznacz: true }),
       adresOdznaczWszystkie: adresZFiltrami(filtry, { ...kontekst, strona, zaznacz: false }),
-      // ⚠️ ADRES POWROTU PO AKCJI MASOWEJ (zgloszenie wlasciciela, 10.09.2026). Jedzie
+      // ⚠️ ADRES POWROTU PO AKCJI MASOWEJ. Jedzie
       // ukrytym polem w pasku akcji, bo `formaction` przyciskow jest gole i sam adres
       // ekranu do trasy POST nie dociera. Bez tego zmiana statusu hurtem odsylala operatora
       // na gola strone glowna — czyli z zakladki „W realizacji" na „Do zrobienia" i bez
@@ -400,12 +400,12 @@ app.post('/zamowienia/masowe/status', async (req, reply) => {
     const { doZmiany, pominiete } = podzielDoStatusu(wybrane, docelowy);
 
     const nieudane = [];
-    // ⚠️ K1 (recenzja Partii 1 Planu B). TRZECIA KATEGORIA, a nie odmiana „pominietych":
+    // ⚠️ TRZECIA KATEGORIA, a nie odmiana „pominietych":
     // status W PANELU zostal zmieniony (i tego nie odwracamy — to zapis faktu stwierdzonego
-    // przez czlowieka), ale NIE DOJECHAL do sklepu/Allegro. Zmierzone przy recenzji:
-    // 20 zamowien allegrowych, kanal odmawia zapisu → 302 na liste, `sync_woo_blad` zapisany
-    // 20/20, na ekranie ANI SLOWA. Operator widzial „udalo sie", a kupujacy dalej widzieli
-    // stary status. Niezmiennik 4.13a: pominiete wracaja Z POWODEM i musza byc widoczne.
+    // przez czlowieka), ale NIE DOJECHAL do sklepu/Allegro. Gdy kanal odmawial zapisu,
+    // lista przekierowywala dalej, `sync_woo_blad` byl zapisany przy kazdym zamowieniu, a na
+    // ekranie nie bylo ANI SLOWA. Operator widzial „udalo sie", a kupujacy dalej widzieli
+    // stary status. Regula: pominiete wracaja Z POWODEM i musza byc widoczne.
     const niedoslane = [];
     const doOdeslania = [];
     for (const z of doZmiany) {
@@ -444,7 +444,7 @@ app.post('/zamowienia/masowe/status', async (req, reply) => {
     // zmianie. Gdy cokolwiek zostalo pominiete, ekran wyniku jest OBOWIAZKOWY: bez niego
     // operator widzialby, ze „cos sie zmienilo, ale nie wszystko", i nie wiedzialby co ani
     // dlaczego. Ciche wyrzucenie pominietych byloby gorsze niz odmowa calosci.
-    // ⚠️ WRACAMY TAM, SKAD KLIKNIETO (10.09.2026), a nie na gola liste. Operator pracuje
+    // ⚠️ WRACAMY TAM, SKAD KLIKNIETO, a nie na gola liste. Operator pracuje
     // zakladka i filtrami — odeslanie go na „Do zrobienia" bez zawezenia znaczylo, ze po
     // kazdej partii musi odtworzyc swoj widok recznie. Wartosc jest z formularza, wiec
     // przechodzi przez bariere (`bezpiecznyPowrotNaListe`): sciezka spoza listy zamowien
@@ -476,7 +476,7 @@ app.get('/zamowienia/:id/specyfikacja.pdf', async (req, reply) => {
     let bajty;
     try {
       const sprzedawca = sprzedawcaSpecyfikacji(config);
-      // PRZ-101.04: główne grupy scalonej drukuje pozycje CAŁEJ grupy (ta sama funkcja, co faktura).
+      // Główne grupy scalonej drukuje pozycje CAŁEJ grupy (ta sama funkcja, co faktura).
       bajty = await zbudujSpecyfikacjePdf(daneSpecyfikacji(zamowienieZGrupa(db, z), { sprzedawca, klienciWdt: config.klienciWdt }));
     } catch (e) {
       // ⚠️ `zapiszLubOdpusc`, ta sama zasada, co przy odswiezaniu statusu kuriera wyzej:
@@ -490,16 +490,16 @@ app.get('/zamowienia/:id/specyfikacja.pdf', async (req, reply) => {
       .header('Content-Disposition', `inline; filename="${nazwaPliku}"`)
       .send(bajty);
   });
-// Wydruki wewnetrzne z menu „Wydruki" (PRZ-084): „Lista produktów" (same produkty z iloscia,
-// bez danych klienta, cen i wysylki — domain/lista-produktow.js) i „Zestawienie zamówień"
-// (jak „order-shipping" z Apilo — domain/zestawienie-zamowien.js). Do PRZ-084 lista byla
-// strona HTML; właściciel 15.10: „lista powinna otwierać się jako PDF do druku".
+// Wydruki wewnetrzne z menu „Wydruki": „Lista produktów" (same produkty z iloscia,
+// bez danych klienta, cen i wysylki — domena/lista-produktow.js) i „Zestawienie zamówień"
+// (jak „order-shipping" z Apilo — domena/zestawienie-zamowien.js). Dawniej lista byla
+// strona HTML; teraz otwiera sie jako PDF do druku.
 //
 // ⚠️ `inline`, nie `attachment`: menu otwiera je w nowej karcie, a kartka ma od razu stac
-// w podgladzie przegladarki z przyciskiem druku — nie w Pobranych. Od PRZ-162 tak samo
+// w podgladzie przegladarki z przyciskiem druku — nie w Pobranych. Tak samo
 // specyfikacja i wszystkie PDF-y dla czlowieka: pobranie po `http://` z LAN Chrome blokuje
 // ostrzezeniem „niebezpieczny plik” (tests/moduly/zamowienia/pdf-w-przegladarce-prz162.test.js).
-// Ekran w straznik trafia przez prefiks `/zamowienia` (domain/ekrany.js), tak samo jak
+// Ekran w straznik trafia przez prefiks `/zamowienia` (domena/ekrany.js), tak samo jak
 // specyfikacja — to kartki do pakowania.
 const wydrukowano = () => fmtDataCzasKrotko(new Date().toISOString());
 const pdfInline = (reply, bajty, nazwaPliku) => reply.type('application/pdf')
@@ -564,11 +564,11 @@ app.post('/zamowienia/specyfikacje.pdf', async (req, reply) => {
     // liscie — ale nie ma prawa polegac WYLACZNIE na tamtej odmowie, bo trasa ma dac
     // komunikat operatorski, a nie techniczny wyjatek).
     if (!wybrane.length) return stronaOdmowy(reply, 400, 'Nie zaznaczono żadnego zamówienia.', { tytul: 'Nie udało się przygotować specyfikacji', wroc: powrotKarty(req), napisWroc: 'Wróć do listy zamówień' });
-    // ⚠️ SUFIT PARTII DRUKU (12.08.2026). Do tego dnia trasa nie miala go wcale, bo „rysowanie
+    // ⚠️ SUFIT PARTII DRUKU. Kiedys trasa nie miala go wcale, bo „rysowanie
     // jest lokalne, wiec nic nie grozi". Grozi, i to z rzeczy niewidocznych stad: lista nie ma
     // stronicowania, „zaznacz wszystkie" zaznacza KAZDY wyrenderowany wiersz, a rysowanie jest
     // SYNCHRONICZNE — czyli jedno pomylkowe klikniecie zatrzymuje panel dla wszystkich na czas
-    // rysowania calej bazy. Uzasadnienie liczby stoi przy stalej w domain/masowe.js.
+    // rysowania calej bazy. Uzasadnienie liczby stoi przy stalej w domena/masowe.js.
     const zaDuzo = powodZaDuzegoDruku(wybrane.length);
     if (zaDuzo) return stronaOdmowy(reply, 400, zaDuzo, { tytul: 'Nie udało się przygotować specyfikacji', wroc: powrotKarty(req), napisWroc: 'Wróć do listy zamówień' });
     let bajty;

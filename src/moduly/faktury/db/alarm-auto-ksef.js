@@ -1,4 +1,4 @@
-// PRZ-119.03 — trwały alarm „Fakturownia sama wysłała dokument do KSeF”.
+// Trwały alarm „Fakturownia sama wysłała dokument do KSeF”.
 //
 // Wystawienie w Fakturowni NIE może wysyłać do KSeF (wysyłka to osobny, zatwierdzany krok). Jeśli konto ma włączoną
 // automatyczną wysyłkę, odpowiedź na wystawienie niesie `gov_status` inny niż null / not_connected / not_applicable.
@@ -49,7 +49,7 @@ export function utworzAlarmAutoKsef(db, { teraz = () => new Date() } = {}) {
       zapisz(db, [], teraz().toISOString());
     },
     /**
-     * PRZ-161: chwila ostatniego „Sprawdziłem” (ISO) albo null. Pusty zapis powstaje WYŁĄCZNIE w `zgas` — `dopisz`
+     * Chwila ostatniego „Sprawdziłem” (ISO) albo null. Pusty zapis powstaje WYŁĄCZNIE w `zgas` — `dopisz`
      * zawsze zostawia co najmniej jeden wpis — więc wiersz z `[]` znaczy „operator potwierdził wyłączenie”.
      */
     potwierdzono() {

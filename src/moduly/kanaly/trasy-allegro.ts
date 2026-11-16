@@ -64,7 +64,7 @@ export function registerTrasyAllegro(app:FastifyInstance,o:Uslugi,teraz:()=>Date
  function widok(req:FastifyRequest,reply:FastifyReply,klucz?:string,extra:Record<string,unknown>={}){
   const k=klucz?o.repozytoriumKanalow.pobierz(klucz):null;
   if(klucz&&!k){
-   // PRZ-146.01: konto przykładowe piaskownicy jest tylko w konfiguracji kanałów (atrapa) — ekran bez akcji; reszta to 404 w układzie panelu.
+   // Konto przykładowe piaskownicy jest tylko w konfiguracji kanałów (atrapa) — ekran bez akcji; reszta to 404 w układzie panelu.
    let przykladowe=false;try{przykladowe=Boolean(configListy().kanaly?.[klucz]?.atrapa);}catch{}
    const nazwa=przykladowe?(configListy().definicje??[]).find((d:any)=>d?.klucz===klucz)?.etykieta:null;
    return reply.code(przykladowe?200:404).view('allegro-przykladowe.ejs',{przykladowe,
@@ -80,9 +80,9 @@ export function registerTrasyAllegro(app:FastifyInstance,o:Uslugi,teraz:()=>Date
   const dzis=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Warsaw',year:'numeric',month:'2-digit',day:'2-digit'}).format(teraz());
   let formularzId:string|null=null;
   if(!k){if(s.formularze.size>=50)s.formularze.delete(s.formularze.keys().next().value!);formularzId=randomUUID();s.formularze.set(formularzId,{});}
-  // U25: konto z pliku serwera (bez tokenów w bazie, ale z dostępem) działa jak połączone — bez kroków kreatora.
+  // Konto z pliku serwera (bez tokenów w bazie, ale z dostępem) działa jak połączone — bez kroków kreatora.
   const zSerwera=Boolean(k&&k.zrodlo==='env'&&k.autoryzacja==='brak'&&k.klucz in (configListy().kanaly??{}));
-  // PRZ-146.05 (B1): kreator bez aplikacji Device w żadnym środowisku zaczyna od kroku 0.
+  // Kreator bez aplikacji Device w żadnym środowisku zaczyna od kroku 0.
   const deviceGotowe={produkcja:Boolean(o.aplikacjaAllegro.stanAplikacji('produkcja').device),sandbox:Boolean(o.aplikacjaAllegro.stanAplikacji('sandbox').device)};
   const numerKroku=!k?(deviceGotowe.produkcja||deviceGotowe.sandbox?1:0):kandydat?s.potwierdzone.has(kandydat.probaId)?4:3:extra.device||extra.oczekujacaProba?2:k.autoryzacja==='polaczone'||zSerwera?5:2;
   const kroki=modulKanalu('allegro').konfigurator.kroki.map(krok=>({...krok,stan:krok.numer===numerKroku?'biezacy':krok.numer<numerKroku?'zrobione':'przyszly'}));
@@ -97,7 +97,7 @@ export function registerTrasyAllegro(app:FastifyInstance,o:Uslugi,teraz:()=>Date
    aplikacjaGotowa:k?k.zrodlo==='env'||Boolean(o.aplikacjaAllegro.stanAplikacji(k.srodowisko).device)||Boolean(o.aplikacjaAllegro.aplikacjaDlaInstalacji(k.srodowisko)):false,
    diagnostyka:k?o.db.prepare('SELECT ostatnia_proba_at,ostatni_sukces_at,blad FROM kanaly_diagnostyka WHERE kanal=?').get(k.klucz)??null:null,
    deviceGotowe,
-   // PRZ-160 E3.02 (D42): stan zgody na oferty (same flagi; bez tokenów i bez Client ID).
+   // Stan zgody na oferty (same flagi; bez tokenów i bez Client ID).
    oferty:k?(()=>{try{return o.ofertyAllegro.stan(k.klucz);}catch{return null;}})():null,
    blad,brakUprawnien:Boolean(blad?.startsWith('Brakuje uprawnień Allegro:')),dcrDostepne:o.aplikacjaAllegro.stanAplikacji('produkcja').dcrGotowe,komunikat,ofertyZapisano,device:null,przeglad:null,oczekujacaProba:null,...extra,
   });
@@ -124,7 +124,7 @@ export function registerTrasyAllegro(app:FastifyInstance,o:Uslugi,teraz:()=>Date
  const aktualny=(req:FastifyRequest)=>{const k=o.repozytoriumKanalow.pobierz(klucz(req));return k&&k.wersja===wersja(body(req).wersja)&&!o.repozytoriumKanalow.konfliktKlucza(k.klucz)?k:null;};
  const konflikt=(req:FastifyRequest,reply:FastifyReply)=>blad(req,reply,{ok:false,kod:'konflikt',komunikat:'Formularz jest nieaktualny. Odśwież ekran.'},klucz(req));
  const staraProba=(req:FastifyRequest,reply:FastifyReply)=>blad(req,reply,{ok:false,kod:'konflikt',komunikat:'Ta próba połączenia jest nieaktualna. Odśwież ekran albo połącz konto od nowa.'},klucz(req));
- // PRZ-146.03: szkic z panelu, który nigdy nie był połączony i nie ma zamówień — wolno go usunąć
+ // Szkic z panelu, który nigdy nie był połączony i nie ma zamówień — wolno go usunąć
  // („Przerwij podłączanie”, a zapis z kroku 1 przez „Wróć do kroku 1” zastępuje go nowym). tylkoBrak: przed startem zgody.
  type Pol=NonNullable<ReturnType<Uslugi['repozytoriumKanalow']['pobierz']>>;
  const doUsuniecia=(k:Pol|null,tylkoBrak=false)=>Boolean(k&&k.zrodlo==='panel'&&!k.kontoId&&(tylkoBrak?k.autoryzacja==='brak':k.autoryzacja==='brak'||k.autoryzacja==='oczekuje_potwierdzenia')&&!o.db.prepare('SELECT 1 FROM zamowienia WHERE sklep=? LIMIT 1').get(k.klucz));
@@ -139,7 +139,7 @@ export function registerTrasyAllegro(app:FastifyInstance,o:Uslugi,teraz:()=>Date
   if(usuniety)o.autoryzacjaAllegro.uniewaznij(klucz);
   return usuniety;
  }
- // Także przy pobieraniu w trakcie zatrzymywania: ekran kanału sam pokazuje „Pobieranie zamówień: Zatrzymywanie” (G16a).
+ // Także przy pobieraniu w trakcie zatrzymywania: ekran kanału sam pokazuje „Pobieranie zamówień: Zatrzymywanie”.
  const powrot=(reply:FastifyReply,k:{klucz:string;pobieranie?:string})=>reply.code(303).redirect(urlKanalu(k.klucz));
  trasa('GET',root+'/nowe',(req,reply)=>widok(req,reply));
  trasa('POST',root+'/szkice',async(req,reply)=>{
@@ -151,8 +151,8 @@ export function registerTrasyAllegro(app:FastifyInstance,o:Uslugi,teraz:()=>Date
   if(f.skrot&&f.skrot!==skrot)return blad(req,reply,{ok:false,kod:'konflikt',komunikat:'Ten formularz został już użyty. Otwórz nowy.'});
   f.skrot=skrot;f.praca??=o.zarzadzanieAllegro.utworzSzkic(dane,aktor(req));const w=await f.praca;
   if(!w.ok){f.praca=undefined;f.skrot=undefined;return blad(req,reply,w);}
-  // PRZ-146.03 (B5b): zapis z „Wróć do kroku 1” zastępuje poprzedni szkic, póki nie zaczęła się zgoda.
-  // PRZ-148.06: adres niesie wersję szkicu z chwili otwarcia kroku 1 — stary link nie usunie szkicu zmienionego później.
+  // Zapis z „Wróć do kroku 1” zastępuje poprzedni szkic, póki nie zaczęła się zgoda.
+  // Adres niesie wersję szkicu z chwili otwarcia kroku 1 — stary link nie usunie szkicu zmienionego później.
   const q=(req.query as Record<string,unknown>|undefined)??{},zastap=tekst(q.zastap),stary=zastap&&zastap!==w.dane.klucz?o.repozytoriumKanalow.pobierz(zastap):null;
   if(stary&&stary.wersja===wersja(q.wersja)&&doUsuniecia(stary,true)){usunSzkic(stary.klucz,stary.wersja,aktor(req),true);s.proby.delete(stary.klucz);}
   return powrot(reply,w.dane);
@@ -175,7 +175,7 @@ export function registerTrasyAllegro(app:FastifyInstance,o:Uslugi,teraz:()=>Date
 // Krok 0 kreatora: aplikacja Device tej instalacji. Sekret nigdy nie trafia do widoku.
  type Srod='produkcja'|'sandbox';
  const srodowiskoZ=(v:unknown):Srod|null=>v==='produkcja'||v==='sandbox'?v:null;
- // PRZ-148.06: domyślne środowisko kroków 0 i 1 — to, w którym jest aplikacja Device (obie albo żadna → produkcja).
+ // Domyślne środowisko kroków 0 i 1 — to, w którym jest aplikacja Device (obie albo żadna → produkcja).
  function domyslneSrodowisko():Srod{return !o.aplikacjaAllegro.stanAplikacji('produkcja').device&&o.aplikacjaAllegro.stanAplikacji('sandbox').device?'sandbox':'produkcja';}
  const statusDevice=({walidacja:400,z_pliku:409,w_uzyciu:409,dane_aplikacji:422,typ_aplikacji:422,tymczasowy:503} as Record<string,number>);
  function ekranAplikacji(reply:FastifyReply,s:Srod,extra:{blad?:string|null;brakujace?:{nazwa:string;opis:string;sekcja:string}[];clientId?:string;polaUserAgent?:PolaUserAgentAllegro;uaBlad?:string;uaZapisano?:boolean}={}){
@@ -197,7 +197,7 @@ export function registerTrasyAllegro(app:FastifyInstance,o:Uslugi,teraz:()=>Date
   });
  }
  trasa('GET',root+'/aplikacja',(req,reply)=>{
-  // PRZ-148.06: bez parametru — środowisko, w którym aplikacja już jest (inaczej produkcja).
+  // Bez parametru — środowisko, w którym aplikacja już jest (inaczej produkcja).
   const p=(req.query as Record<string,unknown>|undefined)?.srodowisko,s=p===undefined?domyslneSrodowisko():srodowiskoZ(p);
   if(!s)return odmowa(req,reply,400,'Wybierz środowisko Allegro: produkcja albo sandbox.',root+'/aplikacja');
   const ses=sesja(req,reply),blad=ses.blad;delete ses.blad;
@@ -223,11 +223,11 @@ export function registerTrasyAllegro(app:FastifyInstance,o:Uslugi,teraz:()=>Date
  // Odświeżenie strony po zapisie trafia GET-em na adres formularza — wracamy na krok 0.
  trasa('GET',root+'/user-agent',(req,reply)=>reply.redirect(`${root}/aplikacja?srodowisko=${srodowiskoZ((req.query as Record<string,unknown>)?.srodowisko)??domyslneSrodowisko()}`,303));
  trasa('GET',root+'/:kanal',(req,reply)=>widok(req,reply,klucz(req)));
- // PRZ-146.03 (B5b): krok 1 z wartościami szkicu; tylko przed startem zgody, potem wraca na ekran połączenia.
+ // Krok 1 z wartościami szkicu; tylko przed startem zgody, potem wraca na ekran połączenia.
  trasa('GET',root+'/:kanal/krok-1',(req,reply)=>{
   const k=o.repozytoriumKanalow.pobierz(klucz(req));
   if(!k||!doUsuniecia(k,true))return reply.code(303).redirect(k?urlKanalu(k.klucz):root+'/nowe');
-  // PRZ-148.06: zapisana data wraca do formularza tylko, gdy nadal mieści się w oknie startu (poprawny zapis,
+  // Zapisana data wraca do formularza tylko, gdy nadal mieści się w oknie startu (poprawny zapis,
   // od 12 miesięcy wstecz do dziś czasu polskiego); zepsuta, za stara albo z przyszłości → dzisiejsza data.
   const od=poprawnaDataStartu(k.odUtc,teraz())?new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Warsaw'}).format(new Date(k.odUtc)):undefined;
   return widok(req,reply,undefined,{wartosci:{nazwa:k.nazwa,srodowisko:k.srodowisko,od:od??new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Warsaw'}).format(teraz())},zastap:k.klucz,zastapWersja:k.wersja});
@@ -283,7 +283,7 @@ export function registerTrasyAllegro(app:FastifyInstance,o:Uslugi,teraz:()=>Date
   const s=sesja(req,reply);if(!s.potwierdzone.has(tekst(b.probaId)))return blad(req,reply,{ok:false,kod:'konflikt',komunikat:'Najpierw potwierdź konto Allegro przyciskiem „To moje konto — dalej”.'},klucz(req));
   const w=await o.zarzadzanieAllegro.aktywuj(klucz(req),tekst(b.probaId),wersja(b.wersja),b.pobieraj==='tak',aktor(req),s.id);
   if(!w.ok)return blad(req,reply,w,klucz(req));
-  // PRZ-146.06 (B8): od razu ten sam test co „Sprawdź” (wynik w kanaly_diagnostyka). Nieudany test nie cofa
+  // Od razu ten sam test co „Sprawdź” (wynik w kanaly_diagnostyka). Nieudany test nie cofa
   // aktywacji; po limicie transportu odpowiadamy bez wyniku (stan „Niesprawdzone”), test kończy się w tle.
   let timer:ReturnType<typeof setTimeout>|undefined;
   const test=o.zarzadzanieAllegro.sprawdzPolaczenie(w.dane.klucz,w.dane.wersja).catch(()=>null);
@@ -311,7 +311,7 @@ export function registerTrasyAllegro(app:FastifyInstance,o:Uslugi,teraz:()=>Date
   const w=await o.zarzadzanieAllegro.sprawdzPolaczenie(klucz(req),wersja(body(req).wersja));
   return w.ok?widok(req,reply,klucz(req),{komunikat:w.dane.uwaga??'Odczyt konta i zamówień działa. Test nie sprawdza nadania przesyłki ani wysyłania wiadomości.'}):blad(req,reply,w,klucz(req));
  });
- // PRZ-160 E3.02 (D42): zgoda na oferty na żądanie. Sprawdzenie aplikacji zapisuje wyłącznie znacznik
+ // Zgoda na oferty na żądanie. Sprawdzenie aplikacji zapisuje wyłącznie znacznik
  // aplikacji; konto, jego wersja i tokeny zostają bez zmian.
  trasa('POST',root+'/:kanal/oferty-aplikacja',async(req,reply)=>{
   const w=await o.ofertyAllegro.sprawdzAplikacje(klucz(req),aktor(req));
@@ -319,7 +319,7 @@ export function registerTrasyAllegro(app:FastifyInstance,o:Uslugi,teraz:()=>Date
  });
  trasa('POST',root+'/:kanal/oferty-chce',(req,reply)=>{
   const w=o.ofertyAllegro.chce(klucz(req),aktor(req));if(!w.ok)return blad(req,reply,w,klucz(req));
-  // PRZ-160 E3d.01: przewinięcie do następnego kroku i potwierdzenie w nim (allegro-stan.ejs, #oferty-polacz) —
+  // Przewinięcie do następnego kroku i potwierdzenie w nim (allegro-stan.ejs, #oferty-polacz) —
   // baner na górze strony byłby po przewinięciu poza ekranem.
   sesja(req,reply).ofertyZapisano=true;
   return reply.code(303).redirect(urlKanalu(klucz(req))+'#oferty-polacz');
@@ -336,7 +336,7 @@ export function registerTrasyAllegro(app:FastifyInstance,o:Uslugi,teraz:()=>Date
   const ids=Array.isArray(b.pozostaw)?b.pozostaw.map(tekst):b.pozostaw===undefined?[]:[tekst(b.pozostaw)];
   const w=o.przegladZapisowAllegro.zatwierdz(tekst(b.przegladId),ids,aktor(req),s.id);if(w.ok)s.przeglady.delete(tekst(b.przegladId));return w.ok?powrot(reply,w.dane):blad(req,reply,w,c.klucz);
  });
- // PRZ-160 E3.13 (D15, D24, D35, D42): krok 6 „Oferty” — ustawienia ofert konta, listy z Allegro, producent marki.
+ // Krok 6 „Oferty” — ustawienia ofert konta, listy z Allegro, producent marki.
  const ustawieniaOfert=()=>createOfertyAllegroUstawienia({db:o.db,teraz,
   klient:k=>{try{return o.klienciKanalow[k];}catch{return undefined;}},
   zgoda:k=>{try{return o.ofertyAllegro.stan(k)?.zgoda??null;}catch{return null;}}});

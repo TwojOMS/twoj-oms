@@ -1,8 +1,8 @@
 <%# Przeliczanie pary netto/brutto w formularzach pozycji (karta „Dodaj pozycję”, ekran „Nowe zamówienie”). %>
-<%# Pole cena_brutto jest WARTOSCIA ZRODLOWA (domain/pozycje-reczne.js: parsujNowaPozycje) — przy wylaczonym %>
+<%# Pole cena_brutto jest WARTOSCIA ZRODLOWA (domena/pozycje-reczne.js: parsujNowaPozycje) — przy wylaczonym %>
 <%# albo zepsutym skrypcie formularz dziala dalej, operator wpisuje brutto recznie. %>
-<%# PRZ-105 (21.10.2026): logika przeniesiona ze strony do public/cena-netto.js (stawka z listy wiersza, %>
-<%# data-vat formularza, data-wdt; test tests/public/cena-netto.test.js na tym samym pliku). Moduly wykonuja %>
+<%# Logika siedzi w public/cena-netto.js (stawka z listy wiersza, data-vat formularza, data-wdt; %>
+<%# test tests/public/cena-netto.test.js na tym samym pliku). Moduly wykonuja %>
 <%# sie w kolejnosci dokumentu — ten include stoi PRZED public/suma-podglad.js, ktory musi dostac brutto juz %>
 <%# policzone (oba sluchaja `input` na tym samym formularzu). %>
 <script type="module" src="<%= zasob('cena-netto.js') %>"></script>

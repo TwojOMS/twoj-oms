@@ -1,15 +1,15 @@
-// PRZ-108.09 (zmiana C2 planu automatyzacji, sekcja 2): zdarzenie „Kurier odebrał paczkę”.
+// Zdarzenie „Kurier odebrał paczkę”.
 //
 // Fakt: `przesylki.odebrana_at` — chwila, w której OMS PIERWSZY RAZ zobaczył dowód odbioru z białej listy
-// (domena/dowod-odbioru.js; zapis wyłącznie w `odswiezStatusKuriera`: czuwacz co godzinę i karta zamówienia; migracja
-// automatyzacje/0003). NIE `etapPrzesylki` (nieznany stan InPostu = „w drodze”) i nie `status_kuriera_at` (czas u kuriera,
-// przesuwa się z każdym skanem i bywa godzinę starszy niż chwila zapisu — kursor by go zgubił).
+// (domena/dowod-odbioru.js; zapis wyłącznie w `odswiezStatusKuriera`: czuwacz przesyłek, czuwacz podjazdów
+// („Wysyłam z Allegro”) i karta zamówienia; migracja automatyzacje/0003). NIE `etapPrzesylki` (nieznany stan InPostu =
+// „w drodze”) i nie `status_kuriera_at` (czas u kuriera, przesuwa się z każdym skanem i bywa godzinę starszy
+// niż chwila zapisu — kursor by go zgubił).
 //
 // Granica w detektorze: id paczki większe niż migawka `granica.przesylki` z chwili włączenia — paczka nadana przed
-// włączeniem nie trafia nawet do dziennika, choćby kurier odebrał ją po włączeniu (plan C2: „paczka sprzed granicy → 0”;
-// ten sam warunek co „Paczka nadana”). „Mail do historii” — zamówienie z INNĄ paczką z numerem sprzed granicy albo złożone
+// włączeniem nie trafia nawet do dziennika, choćby kurier odebrał ją po włączeniu (ten sam warunek co w „Paczka nadana”). „Mail do historii” — zamówienie z INNĄ paczką z numerem sprzed granicy albo złożone
 // ponad ZAMOWIENIE_STARSZE_NIZ_DNI przed granicą — odsiewa WSPÓLNY warunek wykonania każdej reguły (`historiaPrzedGranica`,
-// domena/warunki-automatyzacji.js, kod `przed_granica`; PRZ-108.08 po recenzji 08): pominięte z powodem w dzienniku.
+// domena/warunki-automatyzacji.js, kod `przed_granica`): pominięte z powodem w dzienniku.
 // Okna czasu detektor nie potrzebuje — czyta zakres indeksu `przesylki_odebrana_at` od kursora. `od` = kursor
 // − 5 min, nigdy sprzed granicy. Kontrakt kandydatów (zdarzenia/index.js): rosnąco po (odebrana_at, id paczki), przy `po`
 // ŚCIŚLE po (at, id), najwyżej `limit`. Jedno wykonanie na ZAMÓWIENIE (przedmiot domyślny `zamowienie:<id>`): druga paczka
@@ -36,7 +36,7 @@ export const zdarzeniePaczkaOdebrana = Object.freeze({
     const filtrKanalu = Array.isArray(kanaly) ? ` AND z.sklep IN (${znaki(kanaly.length)})` : '';
     const filtrPo = po ? ' AND (p.odebrana_at > ? OR (p.odebrana_at = ? AND p.id > ?))' : '';
     // Plan: indeks `przesylki_odebrana_at` (zakres od kursora), potem PK zamówienia — koszt rośnie z liczbą odbiorów
-    // od kursora, nie z wiekiem reguły (pomiar w raporcie PRZ-108.09).
+    // od kursora, nie z wiekiem reguły.
     return db.prepare(`SELECT p.id, p.zamowienie_id, z.sklep, p.id AS przesylka_id, p.odebrana_at AS zdarzenie_at
       FROM przesylki p JOIN zamowienia z ON z.id = p.zamowienie_id
       WHERE p.odebrana_at >= ? AND p.id > ? AND p.status = 'nadana'${filtrKanalu}${filtrPo}

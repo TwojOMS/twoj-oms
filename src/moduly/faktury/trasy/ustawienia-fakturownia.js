@@ -1,4 +1,4 @@
-// PRZ-119.06: wzór ekranu inFaktu; wartości sekretów nigdy nie trafiają do widoku.
+// Wzór ekranu inFaktu; wartości sekretów nigdy nie trafiają do widoku.
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
 import { stronaOdmowy } from '../../../core/web/odmowa.js';
 import { sprawdzFormularzFakturowni, EKRAN_FAKTUROWNI } from '../../../domena/konfiguracja-fakturownia.js';
@@ -19,12 +19,12 @@ const KOMUNIKATY = {
   sprawdzono: 'Potwierdzono wyłączenie automatycznej wysyłki w Fakturowni. Alarm został wygaszony.',
 };
 
-// PRZ-161: oficjalny skrót z pomocy Fakturowni do Integracje i dodatki → KSeF (przekierowuje na konto zalogowanego).
+// Oficjalny skrót z pomocy Fakturowni do Integracje i dodatki → KSeF (przekierowuje na konto zalogowanego).
 export const ADRES_KSEF_W_FAKTUROWNI = 'https://app.fakturownia.pl/goto?after_url=apps/ksef';
 export const POMOC_KSEF_W_FAKTUROWNI = 'https://pomoc.fakturownia.pl/199488736-jak-wysylac-faktury-z-fakturowni-do-ksef';
 
 /**
- * PRZ-161: ostatnie 4 znaki tokenu — żeby rozpoznać, KTÓRY token jest zapisany. Gdy token niesie `/domena` na końcu,
+ * Ostatnie 4 znaki tokenu — żeby rozpoznać, KTÓRY token jest zapisany. Gdy token niesie `/domena` na końcu,
  * końcówka idzie sprzed ukośnika (sama domena nic by nie mówiła). Token krótszy niż 12 znaków — nic (formularz i tak
  * takiego nie przyjmie, a z krótkiego czwórka zdradzałaby za dużo).
  */
@@ -36,7 +36,7 @@ export function koncowkaTokenu(token) {
 export function registerUstawieniaFakturowniRoutes(app, { db, konfiguracjaFakturowni: k, teraz = () => new Date(),
   wyborProgramu = /** @type {any} */ (null), restart = /** @type {any} */ (null) }) {
   const alarm = utworzAlarmAutoKsef(db, { teraz });
-  // PRZ-161: co jeszcze dzieli zapisaną Fakturownię od wystawiania — wybór w Module faktur albo restart.
+  // Co jeszcze dzieli zapisaną Fakturownię od wystawiania — wybór w Module faktur albo restart.
   function uruchomienie(req) {
     if (!k.wymagaRestartu()) return null;
     const wybrana = wyborProgramu?.teraz?.()?.program === 'fakturownia';
@@ -46,7 +46,7 @@ export function registerUstawieniaFakturowniRoutes(app, { db, konfiguracjaFaktur
       przycisk: tryb && req.konto?.admin === true ? { adres: ADRES_RESTARTU, nieaktywny: tryb !== 'tak' } : null,
       recznie: !tryb };
   }
-  // PRZ-161: jedno zapytanie do Fakturowni danymi `dane` (albo zapisanymi). Zwraca { stan, tekst }; nigdy nie rzuca.
+  // Jedno zapytanie do Fakturowni danymi `dane` (albo zapisanymi). Zwraca { stan, tekst }; nigdy nie rzuca.
   async function sprawdz(req, dane = null) {
     const zablokowane = k.sprawdzenieZablokowane?.() ?? null;
     if (zablokowane) return { stan: 'niesprawdzony', tekst: zablokowane, pominiete: true };
@@ -82,7 +82,7 @@ export function registerUstawieniaFakturowniRoutes(app, { db, konfiguracjaFaktur
     if (k.zEnv) return stronaOdmowy(reply, 409,
       'Fakturownia jest ustawiona w pliku konfiguracji (oms.env, FAKTUROWNIA_API_TOKEN i FAKTUROWNIA_DOMENA) — tam ją zmień. Formularz niczego nie zapisał.',
       { tytul: 'Nie zapisano ustawień Fakturowni', wroc: EKRAN_FAKTUROWNI, napisWroc: 'Wróć do ustawień Fakturowni' });
-    // PRZ-119.11b: pole domeny jest tylko do odczytu, ale jedyną ochroną jest to sprawdzenie (nic nie zapisane).
+    // Pole domeny jest tylko do odczytu, ale jedyną ochroną jest to sprawdzenie (nic nie zapisane).
     if (k.domenaProby && String(req.body?.domena ?? '').trim() !== k.domenaProby) {
       reply.code(400);
       return widok(req, reply, { bledy: [k.zdanieKontaProby(k.domenaProby)] });
@@ -92,7 +92,7 @@ export function registerUstawieniaFakturowniRoutes(app, { db, konfiguracjaFaktur
       reply.code(400);
       return widok(req, reply, { bledy });
     }
-    // PRZ-161: najpierw Fakturownia, potem zapis. Odmowa (zły token, nieznane konto) = nic nie zapisane;
+    // Najpierw Fakturownia, potem zapis. Odmowa (zły token, nieznane konto) = nic nie zapisane;
     // brak odpowiedzi = zapis ze stanem „niesprawdzony” (dane mogą być dobre, Fakturownia chwilowo niedostępna).
     const dane = { domena: ustawienia.domena, token: sekrety.token };
     const wynik = await sprawdz(req, dane);
@@ -111,7 +111,8 @@ export function registerUstawieniaFakturowniRoutes(app, { db, konfiguracjaFaktur
       return widok(req, reply, { test: { ok: false, tekst: 'Najpierw zapisz domenę konta i token API, potem sprawdź połączenie.' } });
     }
     const wynik = await sprawdz(req);
-    // Wynik zapamiętany dla danych z Ustawień (plik konfiguracji nie ma stanu na ekranie); pominięte przy „Brak” — nie.
+    // Wynik zapamiętany dla danych z Ustawień (plik konfiguracji nie ma stanu na ekranie); sprawdzenia zablokowanego
+    // (pominięte) nie zapamiętujemy.
     const zapis = wczytajKonfiguracjeIntegracji(db, 'fakturownia');
     if (!k.zEnv && zapis && !wynik.pominiete) zapiszSprawdzenieFakturowni(db, wynik, daneZapisu(zapis), { teraz: teraz() });
     return widok(req, reply, { test: wynik.stan === 'ok'

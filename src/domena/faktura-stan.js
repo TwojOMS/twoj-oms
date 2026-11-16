@@ -3,12 +3,11 @@
 // (czy zamówienie ma zostać na widoku) i karta (co pokazać i czy dać przycisk).
 //
 // UWAGA na `f.ksef_status` niżej: kolumna trzyma DWIE różne rzeczy pod jedną nazwą —
-// wewnętrzny stan panelu ('w_toku', 'do_wyjasnienia', patrz db/faktury.js) ORAZ, po
-// sukcesie, cokolwiek inFakt oddał w polu `ksef_data` (puste, dopóki dokument nie pójdzie
-// do KSeF — a panel tam nigdy sam nie wysyła, patrz infakt/client.js). Nazwa kolumny
-// ZOSTAJE mimo tego dualizmu (migracja na żywej bazie nie jest tego warta) — nie koliduje,
-// bo funkcja niżej sprawdza wewnętrzne stany JAKO PIERWSZE, a wszystko inne (w tym NULL
-// z pustego `ksef_data`) czyta jako „wystawiona".
+// wewnętrzny stan panelu ('w_toku', 'do_wyjasnienia', patrz src/moduly/faktury/db/faktury.js)
+// ORAZ, po sukcesie, cokolwiek inFakt oddał w polu `ksef_data` (puste, dopóki dokument nie
+// pójdzie do KSeF). Nazwa kolumny ZOSTAJE mimo tego dualizmu (migracja na żywej bazie nie jest
+// tego warta) — nie koliduje, bo funkcja niżej sprawdza wewnętrzne stany JAKO PIERWSZE,
+// a wszystko inne (w tym NULL z pustego `ksef_data`) czyta jako „wystawiona".
 //
 // Rezerwacja 'w_toku' powstaje PRZED wywołaniem inFaktu i normalnie żyje sekundy.
 // Jeśli proces panelu padnie dokładnie w trakcie tego wywołania, wiersz zostaje

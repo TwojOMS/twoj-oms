@@ -1,6 +1,6 @@
 import type { Migracja } from '../../../core/kontrakty.ts';
 
-// PRZ-091 — stany magazynowe: ruchy ręczne i historia przełącznika „Włącz stany magazynowe” (Ustawienia → Magazyn).
+// Stany magazynowe: ruchy ręczne i historia przełącznika „Włącz stany magazynowe” (Ustawienia → Magazyn).
 //
 // Rozchód z zamówień NIE ma tu tabeli — jest wyliczany z pozycji zamówień (domena/stany-magazynowe.js).
 // `ruchy_magazynowe.klucz` UNIQUE to cała ochrona przed podwójnym kliknięciem i ponownym importem stanu otwarcia.

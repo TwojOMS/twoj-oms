@@ -1,6 +1,6 @@
 import type { Migracja } from '../../../core/kontrakty.ts';
 
-// PRZ-153.E1.1 — klucze API `/api/v1` (plan docs/plany/PRZ-153-api-v1.md). W bazie wyłącznie sha256 klucza
+// Klucze API `/api/v1`. W bazie wyłącznie sha256 klucza
 // (`skrot`); klucz pokazany raz przy założeniu. `utworzyl_konto_id` bez REFERENCES: klucz to klucz maszyny
 // i działa dalej, gdy konto twórcy wyłączono. Dziennik: `klucz_id` NULL = odmowa 401 (nieznany klucz).
 //

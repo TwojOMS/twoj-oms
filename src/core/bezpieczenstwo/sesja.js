@@ -1,43 +1,43 @@
-// Podpisane ciasteczko sesji — wspolne dla obu paneli (indywidualnego i OMS).
+// Podpisane ciasteczko sesji.
 //
 // Po co. Basic Auth wysyla haslo w KAZDYM zadaniu (base64, czyli praktycznie jawnie)
 // i nie da sie go ostylowac — przegladarka rysuje wlasne okienko systemowe. Ciasteczko
 // przechodzi przez siec RAZ, przy logowaniu, a ekran logowania jest nasz.
 //
-// Dlaczego podpis, a nie tabela sesji. Sesji jest tyle, co urzadzen wlasciciela — dwa.
-// Tabela dawalaby odwolywanie pojedynczego urzadzenia, ale kosztem migracji i zapytania
+// Dlaczego podpis, a nie tabela sesji. Sesji jest niewiele — tyle, ile urządzeń operatorów.
+// Tabela dawałaby odwoływanie pojedynczego urządzenia, ale kosztem migracji i zapytania
 // przy KAZDYM zadaniu. Podpis nie wymaga ani jednego odczytu: tresc ciasteczka niesie
 // wszystko, czego trzeba, a jej nienaruszalnosci pilnuje HMAC.
 //
-// ⚠️ Ciasteczko jest CZYTELNE dla kazdego, kto je ma — podpis chroni przed PODMIANA,
-// nie przed odczytem. Nie wolno wkladac tu niczego poza nazwa konta i data waznosci.
+// ⚠️ Ciasteczko jest CZYTELNE dla każdego, kto je ma — podpis chroni przed PODMIANĄ,
+// nie przed odczytem. Nie wolno wkładać tu niczego poza nazwą konta, datą ważności
+// i wersją hasła.
 
 import { createHmac, timingSafeEqual, randomBytes } from 'node:crypto';
 
-// ⚠️ KAZDA USLUGA MA WLASNA NAZWE CIASTECZKA I OBIE STOJA TUTAJ, OBOK SIEBIE — CELOWO.
+// ⚠️ KAŻDA USŁUGA MA WŁASNĄ NAZWĘ CIASTECZKA I WSZYSTKIE STOJĄ TUTAJ, OBOK SIEBIE — CELOWO.
 //
-// Ciasteczka NIE SA dzielone portem (RFC 6265, §8.5: „cookies do not provide isolation by
-// port"). Panel chodzi na <host>:3000, OMS na <host>:3001 — dla przegladarki to
-// JEDEN gospodarz i JEDEN sloik. Wspolna nazwa znaczyla, ze zalogowanie do jednej uslugi
-// NADPISUJE ciasteczko drugiej; a poniewaz kazda podpisuje wlasnym sekretem (osobne bazy),
-// nadpisane ciasteczko byloby dla niej bezwartosciowe. Operator logowal sie kilka razy
-// dziennie — dokladnie tyle razy, ile razy przeskoczyl miedzy panelem a OMS-em.
+// Ciasteczka NIE SĄ dzielone portem (RFC 6265, §8.5: „cookies do not provide isolation by
+// port”). Dwie usługi na tym samym hoście, różniące się tylko portem, to dla przeglądarki
+// JEDEN gospodarz i JEDEN słoik. Wspólna nazwa znaczyłaby, że zalogowanie do jednej usługi
+// NADPISUJE ciasteczko drugiej; a ponieważ każda podpisuje własnym sekretem (osobne bazy),
+// nadpisane ciasteczko byłoby dla niej bezwartościowe. Operator logowałby się za każdym
+// razem, gdy przeskoczy między usługami.
 //
-// Nazwy stoja w JEDNYM miejscu, zeby trzecia usluga na tym samym gospodarzu nie mogla
-// wybrac swojej w oderwaniu od pozostalych. Ten sam powod ma juz `oms_motyw`
-// w src/oms/domain/motyw.js.
+// Nazwy stoją w JEDNYM miejscu, żeby kolejna usługa na tym samym hoście nie mogła wybrać
+// swojej w oderwaniu od pozostałych. Ten sam powód ma już `oms_motyw` w src/domena/motyw.js.
 export const NAZWA_CIASTECZKA_PANEL = 'sesja_panel';
 export const NAZWA_CIASTECZKA_OMS = 'sesja_oms';
 export const NAZWA_CIASTECZKA_OMS_PROBA = 'sesja_oms_proba';
 
-// PRZ-080: piaskownica (:3005, OMS_TRYB=proba) stoi na tym samym gospodarzu co produkcja (:3001)
-// — ten sam powod, co wyzej. Produkcja zostaje przy `sesja_oms`, zeby wydanie nikogo nie wylogowalo.
-// Nazwe wybiera konfiguracja modulu `web` (`proba`), nie `process.env` czytany tutaj.
+// Piaskownica (OMS_TRYB=proba) może stać na tym samym gospodarzu co instancja produkcyjna
+// — ten sam powód, co wyżej. Produkcja zostaje przy `sesja_oms`, żeby wydanie nikogo nie wylogowało.
+// Nazwę wybiera konfiguracja modułu `web` (`proba`), nie `process.env` czytany tutaj.
 export function nazwaCiasteczkaOms(proba) {
   return proba ? NAZWA_CIASTECZKA_OMS_PROBA : NAZWA_CIASTECZKA_OMS;
 }
 
-// 90 dni. Wartosc odnawia sie przy kazdym wejsciu (patrz `odswiez` nizej), wiec przy
+// 90 dni. Wartosc odnawia sie przy kazdym wejsciu (patrz `wartoOdswiezyc` niżej), wiec przy
 // codziennej pracy nie wygasa nigdy — a porzucone urzadzenie traci dostep po kwartale.
 export const WAZNOSC_MS = 90 * 24 * 60 * 60 * 1000;
 
@@ -58,7 +58,7 @@ function hmac(tresc, sekret) {
   return b64url(createHmac('sha256', String(sekret)).update(tresc).digest());
 }
 
-/** Nowy sekret do zapisania w bazie. 32 bajty — tyle, ile ma blok SHA-256. */
+/** Nowy sekret do zapisania w bazie: 32 losowe bajty jako 64 znaki szesnastkowe. */
 export function nowySekret() {
   return randomBytes(32).toString('hex');
 }
@@ -132,8 +132,8 @@ export function wartoOdswiezyc(sesja, teraz = Date.now()) {
 /**
  * Naglowek Set-Cookie. `bezpieczne` wlaczamy tylko po HTTPS — po HTTP przegladarka
  * odrzucilaby ciasteczko z flaga Secure w calosci i logowanie "nic by nie robilo".
- * Panel stoi dzis na czystym HTTP i ma stanac za proxy pozniej, wiec flaga musi isc
- * za faktycznym polaczeniem, a nie byc wpisana na sztywno w jedna albo w druga strone.
+ * Instalacja może stać na czystym HTTP albo za proxy z HTTPS, więc flaga musi iść
+ * za faktycznym połączeniem, a nie być wpisana na sztywno w jedną albo w drugą stronę.
  */
 export function ciasteczkoSesji(nazwa, wartosc, { bezpieczne, maxWiek = Math.floor(WAZNOSC_MS / 1000) } = {}) {
   const czesci = [

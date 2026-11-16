@@ -1,4 +1,4 @@
-// PRZ-069: maile systemowe do pracownika (nie do klienta firmy). Mailer opcjonalny — bez modułu
+// Maile systemowe do pracownika (nie do klienta firmy). Mailer opcjonalny — bez modułu
 // wiadomości albo bez SMTP wysyłki nie ma, „Pokaż link” działa zawsze. Nadawca: MAIL_FROM (createMailer).
 import { renderMailHtml } from '../../core/poczta/mail-html.js';
 import { zlozTresc, zlozTemat } from '../../domena/szablony-wiadomosci.js';
@@ -12,7 +12,7 @@ const BRAK_USLUGI = '„wiadomosci.mailer" nie istnieje';
 
 const BRAK_POCZTY = '„wiadomosci.pocztaWychodzaca" nie istnieje';
 
-/** Stan poczty wychodzącej z modułu wiadomości (PRZ-094.04) albo null — bez modułu albo w starym składzie usług. */
+/** Stan poczty wychodzącej z modułu wiadomości albo null — bez modułu albo w starym składzie usług. */
 export function pocztaOpcjonalna(usluga) {
   return () => {
     try { return usluga('wiadomosci', 'pocztaWychodzaca') ?? null; }
@@ -21,8 +21,8 @@ export function pocztaOpcjonalna(usluga) {
 }
 
 /**
- * Mailer do maili systemowych albo null. `wiadomosci.mailer` to plik .env, atrapa piaskownicy albo (PRZ-108.02:
- * zawsze, gdy pliku nie ma) pośrednik poczty z Ustawień, czytający zapis przy każdej wysyłce — zaproszenie i reset
+ * Mailer do maili systemowych albo null. `wiadomosci.mailer` to plik .env, atrapa piaskownicy albo (zawsze,
+ * gdy pliku nie ma) pośrednik poczty z Ustawień, czytający zapis przy każdej wysyłce — zaproszenie i reset
  * hasła działają od razu po zapisie, bez restartu. Zapasowo `pocztaWychodzaca.ustawien` (stary skład usług).
  * Mailer z Ustawień bez kompletnego zapisu (nieustawiony albo odłączony) = null.
  * Łapie wyłącznie brak usługi (moduł wiadomości niezbudowany).
@@ -40,7 +40,7 @@ export function mailerOpcjonalny(usluga) {
 }
 
 /**
- * Treść maila do pracownika. `szablon` (PRZ-101.06) = zapis z Ustawień → Szablony wiadomości → Maile do zespołu;
+ * Treść maila do pracownika. `szablon` = zapis z Ustawień → Szablony wiadomości → Maile do zespołu;
  * `null` = dzisiejsza treść niżej, co do znaku (test równości: tests/moduly/ustawienia/szablony-konta.test.js).
  * ⚠️ Link trafia WYŁĄCZNIE do maila — ta funkcja niczego nie loguje, a podgląd w Ustawieniach podaje link zmyślony.
  */
@@ -60,7 +60,7 @@ export function trescMaila({ cel, imie, link, szablon = null }) {
 
 const BRAK_PODPISU = '„wiadomosci.podpisMaili" nie istnieje';
 
-/** Usługa podpisu maili (PRZ-102.10) albo null — bez modułu wiadomości sekcja „Podpis maili” znika z ekranu Poczty. */
+/** Usługa podpisu maili albo null — bez modułu wiadomości sekcja „Podpis maili” znika z ekranu Poczty. */
 export function podpisOpcjonalny(usluga) {
   return () => {
     try { return usluga('wiadomosci', 'podpisMaili') ?? null; }

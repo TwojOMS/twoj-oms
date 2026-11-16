@@ -1,14 +1,14 @@
 <%# Ekran podgladu przed wystawieniem faktur hurtem. NIC tu jeszcze nie poszlo do inFaktu %>
 <%# i to jest caly sens tego ekranu: faktury nie da sie cofnac, mozna ja tylko skorygowac %>
 <%# drugim dokumentem. Podzial pokazany nizej liczy TA SAMA funkcja, ktora policzy go %>
-<%# trasa zatwierdzajaca (domain/masowe.js: podzielDoFaktury). %>
+<%# trasa zatwierdzajaca (domena/masowe.js: podzielDoFaktury). %>
 <%# Widok NICZEGO NIE LICZY — liczby i podzial (doWystawienia/pominiete/zaDuzo) przychodza %>
 <%# gotowe z trasy. Jedyne warunki tutaj to widocznosc sekcji, nigdy regula ksiegowa. %>
 <%
   // Liczebnik po polsku ma TRZY formy: „1 fakturę", „3 faktury", „5 faktur" — wariant
   // dwuformowy pisalby „3 fakturę/faktur", a to jest ekran o dokumentach ksiegowych.
   // ⚠️ 12, 13, 14 IDA DO FORMY MNOGIEJ mimo koncowek 2/3/4 — ten sam wzorzec, co w
-  // views/faktury.ejs.
+  // moduly/faktury/widoki/faktury.ejs.
   const ile = (n, jeden, kilka, wiele) => {
     const d = Math.abs(n) % 10;
     const s = Math.abs(n) % 100;
@@ -16,7 +16,7 @@
     return `${n} ${d >= 2 && d <= 4 && (s < 12 || s > 14) ? kilka : wiele}`;
   };
 %>
-<%# Powrot na TEN widok, z ktorego przyszlo zaznaczenie (4.13d) — zakladka, fraza i filtry. %>
+<%# Powrot na TEN widok, z ktorego przyszlo zaznaczenie — zakladka, fraza i filtry. %>
 <%# `powrot` przechodzi przez bariere w trasie (bezpiecznyPowrotNaListe). %>
 <p class="wroc"><a href="<%= powrot %>">← Zamówienia</a></p>
 
@@ -54,7 +54,7 @@
 
     <% if (pominiete.length) { %>
       <%# Pominiete wracaja Z POWODEM i musza byc widoczne — ciche wyrzucenie ich z listy %>
-      <%# byloby gorsze niz odmowa calosci (domain/masowe.js). %>
+      <%# byloby gorsze niz odmowa calosci (domena/masowe.js). %>
       <h3 class="wynik-naglowek">Pominięte — <%= pominiete.length %></h3>
       <ul class="lista-wyniku">
         <% pominiete.forEach(function (p) { %>
@@ -65,7 +65,7 @@
 
     <div class="stopka-edycji">
       <% if (doWystawienia.length && !zaDuzo && wystawianieDziala) { %>
-        <%# Przycisk zatwierdzajacy ISTNIEJE WYLACZNIE wtedy, gdy jest co wystawic — ale %>
+        <%# Przycisk zatwierdzajacy ISTNIEJE WYLACZNIE wtedy, gdy jest co wystawic i program dziala — ale %>
         <%# to jest UPRZEJMOSC, nie zabezpieczenie: odmowa ponad sufit jest twarda takze %>
         <%# na trasie wykonania (operator mogl otworzyc druga zakladke). %>
         <form method="post" action="/zamowienia/faktury-hurtem">
@@ -84,7 +84,7 @@
       <% } else if (!zaDuzo) { %>
         <p class="pusto-sekcja">Z zaznaczonych zamówień żadnemu nie da się wystawić faktury hurtem.</p>
       <% } %>
-      <%# ⚠️ DRUGIE WYJSCIE z ekranu, obok odnosnika na gorze — gubilo zawezenie osobno. %>
+      <%# ⚠️ DRUGIE WYJSCIE z ekranu, obok odnosnika na gorze — oba muszą nieść to samo `powrot` — zmieniaj je razem. %>
       <a class="btn" href="<%= powrot %>">Anuluj</a>
     </div>
   </div>

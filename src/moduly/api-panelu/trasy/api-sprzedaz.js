@@ -10,8 +10,9 @@ import { czyKanalAllegro } from '../../../domena/wysylka.js';
 // jedna paczke za kilkaset zlotych raz w miesiacu — ten endpoint oddaje mu te same
 // zamowienia sztuka po sztuce, w oknie, o ktore pyta.
 //
-// ⚠️ KANAL WYNIKA ZE ZRODLA ZAMOWIENIA, a nie z samego braku okresu (ustalenie recenzji
-// Zadania 10). Reguly sa trzy i ida DOKLADNIE w tej kolejnosci:
+// ⚠️ KANAŁ WYNIKA ZE ŹRÓDŁA ZAMÓWIENIA, a nie z samego braku okresu. Reguły są trzy
+// i idą DOKŁADNIE w tej kolejności; między 1 a 2 stoi jeszcze kanał Allegro (opis przy
+// `KANAL_ALLEGRO` niżej):
 //
 //   1. zamowienie ze znacznikiem `indywidualne` to zamowienie z PANELU OFERT INDYWIDUALNYCH
 //      — kanal 'SKLEP_INDYWIDUALNE'. Ta regula stoi PIERWSZA, bo takie zamowienie ma
@@ -24,7 +25,7 @@ import { czyKanalAllegro } from '../../../domena/wysylka.js';
 // ⚠️ TO JEST GRANICA MIEDZY TYM, CO RAPORT BIERZE Z APILO, A TYM, CO BIERZE Z OMS-U.
 // Konsument historyczny ma juz osobne kanaly SKLEP_WOO
 // i B2B i liczy je Z APILO. Gdyby zamowienie ze sklepu
-// wyszlo stad jako 'B2B' — a tak bylo przed ta poprawka, bo sklepowe zamowienia nie maja
+// wyszło stąd jako 'B2B' — a tak by było bez reguły nr 2, bo sklepowe zamówienia nie mają
 // okresu — raport sumujacy oba zrodla policzylby detal ze sklepu DWA RAZY: raz jako
 // sklep z Apilo, raz jako B2B z OMS-u. Zawyzona sprzedaz, nie blad; nikt by tego nie zauwazyl.
 // Etykieta 'SKLEP' jest CELOWO inna niz konsumenckie 'SKLEP_WOO' — ma sie nie dac zsumowac
@@ -49,30 +50,26 @@ const KANAL_SKLEP = 'SKLEP';
 //
 // ⚠️⚠️ KAZDY NOWY KANAL WYMAGA ZMIANY PO STRONIE RAPORTOW — I TO ZANIM WEJDZIE TUTAJ.
 //
-// Wczesniejsza wersja tego komentarza twierdzila, ze „nazwa nieznana konsumentowi trafia
-// do worka «pozostale» i nie zsumuje sie z niczym". TO BYLA NIEPRAWDA i sprawdzenie tego
-// jest jedynym powodem, dla ktorego dzis raport dziala: `sprzedazDropshippinguZOms`
-// (zewnetrzny raport sprzedazy) na nieznany kanal RZUCA WYJATKIEM
-// i PRZERYWA CALY RAPORT — celowo, bo worek „pozostale" jest u konsumenta kanalem
-// LICZONYM i ciche wrzucenie tam czegokolwiek zawyzyloby sprzedaz.
+// Nazwa nieznana konsumentowi NIE trafia do worka „pozostałe": `sprzedazDropshippinguZOms`
+// (zewnętrzny raport sprzedaży) na nieznany kanał RZUCA WYJĄTKIEM i PRZERYWA CAŁY RAPORT
+// — celowo, bo worek „pozostałe" jest u konsumenta kanałem LICZONYM i ciche wrzucenie tam
+// czegokolwiek zawyżyłoby sprzedaż.
 //
-// Dopisanie kanalu do `KANALY_OMS` po tamtej stronie musialo wiec
-// wyprzedzic wdrozenie tej galezi. Kolejnosc jest odwrotna niz zwykle: NAJPIERW raporty,
-// POTEM panel.
+// Dopisanie kanału do `KANALY_OMS` po tamtej stronie musi więc wyprzedzić wdrożenie panelu,
+// który ten kanał oddaje. Kolejność jest odwrotna niż zwykle: NAJPIERW raporty, POTEM panel.
 //
 // Gdy OMS bedzie zastepowal Apilo, przelaczenie roli tego kanalu z 'apilo' na 'liczony'
 // bedzie SWIADOMA zmiana po tamtej stronie, a nie cichym efektem ubocznym tej.
 const KANAL_SKLEP_INDYWIDUALNE = 'SKLEP_INDYWIDUALNE';
 
-// ⚠️⚠️ KANAL ALLEGRO — dopisany przy recenzji calej galezi (04.08.2026, usterka I-2).
+// ⚠️⚠️ KANAŁ ALLEGRO (`zamowienia.sklep` = 'allegro_konto-a' / 'allegro_konto-b').
 //
-// Galaz dodala kanaly sprzedazy (`zamowienia.sklep` = 'allegro_konto-a' / 'allegro_konto-b')
-// i TEGO PLIKU NIE TKNELA. Regula nr 2 wyzej brzmi „wszystko, co nie jest `reczne`, to SKLEP",
-// wiec sprzedaz z Allegro wychodzila stad OZNACZONA JAKO DETAL ZE SKLEPU — a mechanizm
-// ostrzegawczy opisany akapit wyzej („kazdy nowy kanal wymaga zmiany po stronie raportow")
-// zostal przez to obejsciem WYLACZONY: konsument nie widzial nowej nazwy, wiec nie mial na
-// czym rzucic. Cichy skutek: zamowienia z Allegro doliczone do kanalu, ktory konsument
-// odrzuca jako „liczony z Apilo" — czyli w raporcie nie widac ich WCALE, mimo ze sa.
+// Reguła nr 2 wyżej brzmi „wszystko, co nie jest `reczne`, to SKLEP", więc bez tego kanału
+// sprzedaż z Allegro wychodziłaby stąd OZNACZONA JAKO DETAL ZE SKLEPU — a mechanizm
+// ostrzegawczy opisany akapit wyżej („każdy nowy kanał wymaga zmiany po stronie raportów")
+// zostałby obejściem WYŁĄCZONY: konsument nie widziałby nowej nazwy, więc nie miałby na
+// czym rzucić. Cichy skutek: zamówienia z Allegro doliczone do kanału, który konsument
+// odrzuca jako „liczony z Apilo" — czyli w raporcie nie byłoby ich WCALE, mimo że są.
 //
 // ⚠️ NAZWA CELOWO INNA NIZ NAZWY KONT ALLEGRO — dokladnie ta sama
 // zasada, co przy 'SKLEP' vs 'SKLEP_WOO'. Konsument historyczny
@@ -89,7 +86,7 @@ const KANAL_SKLEP_INDYWIDUALNE = 'SKLEP_INDYWIDUALNE';
 // ⚠️⚠️ WARUNEK WDROZENIA, NIE ZALECENIE: `sprzedazDropshippinguZOms`
 // (zewnetrzny raport sprzedazy) na NIEZNANY kanal RZUCA WYJATKIEM i PRZERYWA
 // CALY RAPORT — celowo. Dopisanie `ALLEGRO: 'apilo'` do `KANALY_OMS` po TAMTEJ stronie MUSI
-// wyprzedzic wdrozenie tej galezi. Kolejnosc jest odwrotna niz zwykle: NAJPIERW raporty,
+// wyprzedzić wdrożenie panelu z tym kanałem. Kolejność jest odwrotna niż zwykle: NAJPIERW raporty,
 // POTEM panel. To nie jest niedogodnosc, tylko cala wartosc tego mechanizmu: raport, ktory
 // staje, jest nieporownanie lepszy od raportu, ktory po cichu policzy detal dwa razy albo
 // zgubi sprzedaz z Allegro.
@@ -104,9 +101,9 @@ function kanalZamowienia(w) {
   // sie `undefined`, warunek nigdy by nie zadzialal, a zamowienie po cichu wyszloby jako
   // 'SKLEP' — awaria bez ani jednego bledu na ekranie.
   if (w.indywidualne) return KANAL_SKLEP_INDYWIDUALNE;
-  // ⚠️ IDZIE PRZED REGULA SKLEPOWA, bo dokladnie ona wchlaniala te zamowienia: warunek
+  // ⚠️ IDZIE PRZED REGUŁĄ SKLEPOWĄ, bo inaczej to ona wchłonęłaby te zamówienia: warunek
   // `sklep !== 'reczne'` jest prawdziwy takze dla `allegro_*`. Predykat jest TEN SAM, ktory
-  // pilnuje odmowy nadania (domain/wysylka.js) — jedno zrodlo prawdy o tym, co jest kanalem
+  // pilnuje odmowy nadania (domena/wysylka.js) — jedno zrodlo prawdy o tym, co jest kanalem
   // Allegro; druga kopia prefiksu rozjechalaby sie po cichu przy trzecim koncie.
   if (czyKanalAllegro(w)) return KANAL_ALLEGRO;
   if (w.sklep !== 'reczne') return KANAL_SKLEP;
@@ -121,7 +118,7 @@ const WZORZEC_DNIA = /^\d{4}-\d{2}-\d{2}$/;
 /**
  * Dzien z parametru albo `null`, gdy wartosc nie jest poprawna data kalendarzowa.
  *
- * ⚠️ WALIDACJE ROBI `kluczOkresu` (domain/okres-rozliczeniowy.js), a nie `new Date`, i to
+ * ⚠️ WALIDACJE ROBI `kluczOkresu` (domena/okres-rozliczeniowy.js), a nie `new Date`, i to
  * jest cala pointa tej funkcji: V8 NIE odrzuca dat kalendarzowo niepoprawnych, tylko je
  * cicho przewija — `new Date('2026-02-30')` to 2 marca, a nie Invalid Date. Bez tego
  * literowka w adresie dalaby raportowi tydzien przesuniety o dzien, wygladajacy zupelnie
@@ -177,9 +174,9 @@ export function obslugaSprzedazy({ db }) {
     //     i przy oknie liczonym w UTC wypadaloby z lipca do czerwca (albo z tygodnia,
     //     o ktory pyta raport, w ogole);
     //   • zamowienia ze sklepu — `date_created` z Woo, czyli czas Warszawy BEZ oznaczenia
-    //     strefy (domain/mapowanie.js), ktorego nie wolno przeliczac drugi raz.
-    // Rozroznia je `dzienWarszawa` z domain/format-daty.js — TA SAMA funkcja, ktora liczy
-    // dzien drukowany w tabeli i ktora filtruje liste (domain/filtry-listy.js). Filtr
+    //     strefy (domena/mapowanie.js), ktorego nie wolno przeliczac drugi raz.
+    // Rozroznia je `dzienWarszawa` z domena/format-daty.js — TA SAMA funkcja, ktora liczy
+    // dzien drukowany w tabeli i ktora filtruje liste (domena/filtry-listy.js). Filtr
     // „lipiec" na ekranie i „lipiec" w raporcie musza brac te same zamowienia; druga
     // implementacja tej reguly rozjechalaby sie na pierwszym zamowieniu z nocy.
     //
@@ -201,23 +198,23 @@ export function obslugaSprzedazy({ db }) {
       // ja poller), a zamowienia rozliczane zbiorczo sa RECZNE — zadny sklep ich nie anuluje,
       // wiec operator anuluje je kolumna `anulowane_recznie`. Warunek o samym `anulowane`
       // wliczalby anulowane zamowienie do sprzedazy. Regula jest JEDNA i mieszka
-      // w domain/status-reczny.js — dwie definicje tego, co wchodzi do sumy, juz raz sie
+      // w domena/status-reczny.js — dwie definicje tego, co wchodzi do sumy, juz raz sie
       // w tym module rozjechaly.
       .filter((w) => !anulowaneEfektywnie(w))
       .filter((w) => {
         const dzien = dzienWarszawa(w.utworzone_at);
         // Zamowienie z data nie do odczytania NIE ma prawa udawac, ze miesci sie w kazdym
-        // oknie — tak samo jak przy filtrach listy (domain/filtry-listy.js).
+        // oknie — tak samo jak przy filtrach listy (domena/filtry-listy.js).
         //
-        // ⚠️ `Boolean(dzien)` jest dzis REDUNDANTNY I NIE DA SIE GO ZABIC TESTEM — zmierzone
-        // przy recenzji Zadania 10 (mutacja: usuniety straznik, cala suita nadal zielona).
+        // ⚠️ `Boolean(dzien)` jest dziś REDUNDANTNY I NIE DA SIĘ GO ZABIĆ TESTEM — mutacja
+        // usuwająca strażnika zostawia cały zestaw testów zielony.
         // Dowod rownowaznosci: `dzienWarszawa` zawsze oddaje napis, a jedyna jego falszywa
         // wartoscia jest '' — i '' >= od jest FALSZEM dla kazdego `od`, bo `dzienZParametru`
         // gwarantuje niepusty 'RRRR-MM-DD' (sprawdzone takze dla od='0000-01-01'). Zostaje
         // JAKO PASY OBOK SZELEK: chroni przed przyszla zmiana po drugiej stronie warunku
         // (domyslne/opcjonalne `od`, przejscie na porownanie inne niz napisowe), a nie przed
-        // dzisiejszym wejsciem. Zamiast pisac test, ktory niczego nie pilnuje, zostawiamy
-        // tu ten pomiar — zeby kolejna recenzja nie szukala po raz drugi.
+        // dzisiejszym wejściem. Zamiast testu, który niczego by nie pilnował, zostaje tu
+        // ten dowód.
         return Boolean(dzien) && dzien >= od && dzien <= doDnia;
       })
       // Kolejnosc chronologiczna liczona po czasie WARSZAWSKIM, a nie przez `ORDER BY
@@ -237,7 +234,7 @@ export function obslugaSprzedazy({ db }) {
         kanal: kanalZamowienia(w),
         // ⚠️ Kwota WPROST z kolumny, bez przeliczania. Dla zamowien recznych `kwota_brutto`
         // jest utrzymywana przy zapisie pozycji i ma juz doklejona oplate za obsluge
-        // (kwotaOczekiwanaGrosze w domain/suma-pozycji.js oddaje dla nich po prostu kwote
+        // (kwotaOczekiwanaGrosze w domena/suma-pozycji.js oddaje dla nich po prostu kwote
         // zamowienia) — wlasne sumowanie pozycji byloby druga arytmetyka tych samych pieniedzy.
         kwotaBrutto: w.kwota_brutto,
         // ⚠️ SUROWA kolumna, w dwoch skalach czasu naraz — i tak ma zostac (kontrakt).

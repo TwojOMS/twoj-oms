@@ -31,7 +31,7 @@
     <% }); %>
   </ol>
   <form method="post" action="/magazyn/<%= karta.id %>/zdjecia/wgraj" enctype="multipart/form-data" class="karta-galeria-wgrywanie">
-    <%# PRZ-160 P3a.04b: strefa przeciągania obejmuje to samo pole `multiple` (public/strefa-pliku.js); bez skryptu zwykłe pole i przycisk. %>
+    <%# Strefa przeciągania obejmuje to samo pole `multiple` (public/strefa-pliku.js); bez skryptu zostaje zwykłe pole i przycisk. %>
     <% const wolneMiejsce = Math.max(0, 20 - galeriaKarty.length); %>
     <div class="strefa-pliku" data-strefa-pliku data-maks-plikow="<%= wolneMiejsce %>" data-maks-bajtow="10485760" data-opis-typow="JPEG, PNG lub WebP" role="group" aria-labelledby="zdjecie-karty-opis"<%- wolneMiejsce === 0 ? ' data-stan="pelna" aria-disabled="true"' : '' %>>
       <label for="zdjecie-karty" class="strefa-pliku-opis" id="zdjecie-karty-opis">Przeciągnij zdjęcia tutaj albo wybierz z dysku</label>

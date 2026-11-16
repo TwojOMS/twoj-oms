@@ -1,8 +1,8 @@
-<%# PRZ-167 (właściciel 15.11): ANALITYKA — podsumowanie dzisiejszej sprzedaży i wejście do podstron.
-    Kafle (prośba właściciela po piaskownicy 15.11): Przychód · Nowe zamówienia · W realizacji · Wysłane — bez „dziś” w tytułach,
+<%# ANALITYKA — podsumowanie dzisiejszej sprzedaży i wejście do podstron.
+    Kafle: Przychód · Nowe zamówienia · W realizacji · Wysłane — bez „dziś” w tytułach,
     dzień stoi pod tytułem ekranu i w dopiskach.
-    ⚠️ WIDOK NICZEGO NIE LICZY — liczby przychodzą z trasy (trasy/analityka.js), która bierze je z tych samych
-    źródeł co Raporty („Dzisiaj”) i lista zamówień (licznik statusu „W realizacji”). Tutaj zostaje zapis po polsku. %>
+    ⚠️ WIDOK NICZEGO NIE LICZY — liczby przychodzą z trasy (moduly/raporty/trasy/analityka.js),
+    która bierze je z tych samych źródeł co Raporty („Dzisiaj”) i lista zamówień (licznik statusu „W realizacji”). Tutaj zostaje zapis po polsku. %>
 <%
   const kwota = (napis) => {
     const [calosc, ulamek = ''] = String(napis).split('.');

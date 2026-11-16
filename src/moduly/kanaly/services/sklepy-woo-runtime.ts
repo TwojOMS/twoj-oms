@@ -25,7 +25,7 @@ export function createSklepyWooRuntime(o:{db:DatabaseSync;repozytorium:Repozytor
   const bezpieczneHttp=async(url:string,init?:RequestInit)=>{
    let r:Response;
    try{r=await http(url,init);}catch{throw new Error('Nie udało się połączyć ze sklepem WooCommerce.');}
-   // PRZ-149.04: klucz bez prawa zapisu przy trybie „Zapis/odczyt” — własny komunikat (treść sklepu tylko do porównania).
+   // Klucz bez prawa zapisu przy trybie „Zapis/odczyt” — własny komunikat (treść sklepu tylko do porównania).
    if(r.status===401||r.status===403){let dane:unknown=null;try{dane=await r.clone().json();}catch{dane=null;}
     if(czyOdmowaZapisu(r.status,dane,init?.method))throw bladKluczaTylkoOdczyt();}
    if(!r.ok&&(r.status<300||r.status>=400))throw new Error(`WooCommerce: HTTP ${r.status}.`);

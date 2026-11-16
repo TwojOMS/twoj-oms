@@ -25,9 +25,9 @@ import { zl } from '../../../domena/suma-pozycji.js';
 // mieszkaja pietro nizej. Jego jedynym zadaniem jest KOLEJNOSC FAZ, bo to ona rozstrzyga,
 // co zostaje w bazie i u klienta, gdy ktoras faza padnie.
 //
-// ⚠️ PROFORMA NIE JEST DOKUMENTEM KSIEGOWYM: nie idzie do inFaktu, nie idzie do KSeF i wolno
-// ja wystawic ponownie. Cala roznica wobec services/faktura.js wynika z tego jednego zdania —
-// tam nieodwracalny dokument powstawal u kogos innego i nasz wiersz byl tylko jego odbiciem,
+// ⚠️ PROFORMA NIE JEST DOKUMENTEM KSIĘGOWYM: nie idzie do programu fakturowego, nie idzie do KSeF
+// i wolno ją wystawić ponownie. Cała różnica wobec services/faktura.js wynika z tego jednego zdania —
+// tam nieodwracalny dokument powstaje w programie fakturowym i nasz wiersz jest tylko jego odbiciem,
 // tutaj dokument powstaje U NAS i jest nim plik PDF.
 
 /**
@@ -65,10 +65,10 @@ export function createProforma({
   if (!ustawienia?.katalog) {
     throw new Error('Brak OMS_PROFORMY_KATALOG — proformy nie mialyby gdzie lezec.');
   }
-  // ⚠️ BUDOWA USLUGI NIE DOTYKA DYSKU — i to jest decyzja, nie przeoczenie. Katalog zakladal
-  // sie tutaj (jak katalog etykiet w services/nadanie.js) do chwili, w ktorej okazalo sie,
-  // co to znaczy w produkcji: kontener chodzi z `read_only: true` (deploy/nas/compose.yaml),
-  // wiec przy zle ustawionej sciezce `mkdirSync` konczy sie EROFS, `zbudujOms` rzuca, a
+  // ⚠️ BUDOWA USLUGI NIE DOTYKA DYSKU — i to jest decyzja, nie przeoczenie. Katalog zakładał
+  // się tutaj (jak katalog etykiet w wysylka/services/nadanie.js) do chwili, w której okazało się,
+  // co to znaczy w kontenerze: kontener chodzi z `read_only: true`,
+  // więc przy źle ustawionej ścieżce `mkdirSync` kończy się EROFS, `zbudujOms` rzuca, a
   // `restart: unless-stopped` zamienia to w PETLE RESTARTOW — panel przestaje przyjmowac
   // zamowienia, nadawac paczki i wystawiac faktury przez katalog na dokument pomocniczy.
   // Awaria jednej funkcji ma kosztowac jedna funkcje: proforma odmawia CZYTELNIE, w chwili
@@ -90,19 +90,19 @@ export function createProforma({
     }
   }
 
-  // Sprzedawca to NAZWA I ADRES FIRMY z `config.nadawca` — TEN SAM obiekt, ktorym jada paczki
-  // (patrz config.js). Osobnego zestawu zmiennych na ten adres tu nie ma i byc nie moze:
-  // w lipcu 2026 istnial drugi, nieprefiksowany zestaw `NADAWCA_*` z pustymi domyslnymi
-  // wartosciami i PRZESLANIAL nim adres zwalidowany — kazda paczka jechala z pusta ulica,
-  // calkowicie po cichu. NIP dokladamy z konfiguracji, bo kurierowi nie byl do niczego
+  // Sprzedawca to NAZWA I ADRES FIRMY z `adresSprzedawcy` — TEN SAM adres, z którym jadą paczki
+  // (jedna kolejność źródeł: core/adres-firmy.ts). Osobnego zestawu zmiennych na ten adres tu nie ma
+  // i być nie może: kiedyś istniał drugi, nieprefiksowany zestaw `NADAWCA_*` z pustymi domyślnymi
+  // wartościami i PRZESŁANIAŁ nim adres zwalidowany — każda paczka jechała z pustą ulicą,
+  // całkowicie po cichu. NIP dokladamy z konfiguracji, bo kurierowi nie byl do niczego
   // potrzebny, a na dokumencie dla klienta jest obowiazkowy.
-  // PRZ-108.10: NIP z bieżącej konfiguracji (plik → Ustawienia → Firma), czytany przy KAŻDYM wystawieniu; bez NIP-u
+  // NIP z bieżącej konfiguracji (plik → Ustawienia → Firma), czytany przy KAŻDYM wystawieniu; bez NIP-u
   // odmowa w FAZIE 1 (numer z serii nie przepada). Skład bez `config.nipBdoFirmy` czyta config.proforma jak dotąd.
   function daneSprzedawcy() {
     return { ...adresSprzedawcy(config), nip: nipSprzedawcy(config) };
   }
 
-  // PRZ-102.20: rachunek i bank z bieżącej konfiguracji (plik → Ustawienia → Firma), czytane przy KAŻDYM wystawieniu
+  // Rachunek i bank z bieżącej konfiguracji (plik → Ustawienia → Firma), czytane przy KAŻDYM wystawieniu
   // — zapis w panelu działa od następnej proformy, bez restartu. Skład bez `config.rachunekFirmy` czyta
   // config.proforma jak dotąd. Proforma to prośba o przelew („Przelew bankowy PLN, na rachunek”) — bez numeru
   // rachunku jej nie wystawiamy (odmowa w FAZIE 1, zanim przepadnie numer z serii).
@@ -134,11 +134,11 @@ export function createProforma({
    *
    * Zwraca ZAPISANY wiersz proformy (z numerem, id i sciezka pliku).
    */
-  // PRZ-122.B07c: `{ zw: true }` podaje trasa przy programie wbudowanym (TwojeFaktury) — pozycja „zw” na proformie jako
+  // `{ zw: true }` podaje trasa przy programie wbudowanym (TwojeFaktury) — pozycja „zw” na proformie jako
   // „zw” z osobnym wierszem „zw” (VAT 0) w podsumowaniu. Usługa powstaje przed wyborem programu, więc flaga idzie
   // z wywołaniem; bez niej (program zewnętrzny, API panelu) wynik jak dotąd.
   function wystaw(zamowienieId, { zw = false } = {}) {
-    // PRZ-101.04: główne grupy scalonej — pozycje całej grupy (jak faktura, oms/db/scalenia.js).
+    // Główne grupy scalonej — pozycje całej grupy (jak faktura, oms/db/scalenia.js).
     const z = zamowienieDoDokumentu(db, zamowienieId);
 
     // ── FAZA 1: odmowy lokalne ────────────────────────────────────────────────
@@ -154,11 +154,11 @@ export function createProforma({
     zapewnijKatalog();
 
     // ── FAZA 2: bariera arytmetyczna, PRZED nadaniem numeru ───────────────────
-    // TE SAME funkcje, ktore licza fakture VAT (domain/pozycje-faktury.js). Druga kopia
+    // TE SAME funkcje, ktore licza fakture VAT (domena/pozycje-faktury.js). Druga kopia
     // arytmetyki rozjechalaby sie przy pierwszej zmianie i klamalaby o kwocie, ktora klient
     // ma przelac — a na proformie ta kwota jest calym sensem dokumentu.
-    // PRZ-105: stawka per pozycja, domyslna z Ustawien — ta sama, ktora dostaje faktura VAT.
-    // PRZ-122.B07f: firma zwolniona (flaga `zw` + zapisane zwolnienie) — nabywca z numerem UE to nie WDT,
+    // Stawka per pozycja, domyslna z Ustawien — ta sama, ktora dostaje faktura VAT.
+    // Firma zwolniona (flaga `zw` + zapisane zwolnienie) — nabywca z numerem UE to nie WDT,
     // pozycje dostają „zw”, nie 0%. Zwolnienie czytane przy każdym wystawieniu (obie trasy proformy).
     const zwolniona = zwolnionaZFlagi(db, { zw });
     const pozycje = pozycjeDokumentu(z, { stawkaDomyslna: czytajStawkeDomyslna(db, { zw }), zw, zwolniona });
@@ -180,8 +180,8 @@ export function createProforma({
     // przy dacie wystawienia z drugiego.
     //
     // ⚠️ DZIEN LICZYMY W CZASIE WARSZAWSKIM, `dzienWarszawa` — TA SAMA funkcja, ktora drukuje
-    // daty na karcie (domain/format-daty.js) i ktora liczy „dzisiaj" fakturze VAT
-    // (domain/termin-platnosci.js). Kontener chodzi z TZ=UTC, wiec gole `getFullYear()`/
+    // daty na karcie (domena/format-daty.js) i ktora liczy „dzisiaj" fakturze VAT
+    // (domena/termin-platnosci.js). Kontener chodzi z TZ=UTC, wiec gole `getFullYear()`/
     // `getMonth()`/`getDate()` miedzy polnoca a druga w nocy oddawaly DZIEN POPRZEDNI:
     // dokument z wczorajsza data, a na przelomie miesiaca numer z WYCZERPANEJ juz serii
     // poprzedniego miesiaca — podczas gdy karta pokazywala przy nim miesiac nastepny.
@@ -225,7 +225,7 @@ export function createProforma({
       // czyli panel pokazywalby dokument, ktorego nikt nigdy nie widzial.
       //
       // To jest DOKLADNIE ODWROTNIE niz przy fakturze VAT (services/faktura.js), gdzie wiersz
-      // zostaje nawet przy niepewnej awarii: tam dokument powstawal w inFakcie, poza nami,
+      // zostaje nawet przy niepewnej awarii: tam dokument powstaje w programie fakturowym, poza tym plikiem,
       // wiec „nie wiem, czy istnieje" znaczylo „zakladaj, ze istnieje". Tutaj wiemy na pewno.
       //
       // Skasowanie ODDAJE NUMER DO PULI, gdy byl to numer NAJWYZSZY (`nastepnyNumer` liczy
@@ -270,8 +270,8 @@ export function createProforma({
    * plik, a zamowienie zyje dalej (operator dopisuje pozycje, poprawia adres). Ponowna
    * generacja oddawalaby dokument o tym samym numerze, ale innej tresci niz ten, ktory
    * klient ma przed soba — czyli dokladnie to, przed czym broni migawka kwoty w bazie.
-   * Inaczej niz faktura VAT, ktorej PDF pobiera sie z inFaktu na swiezo, bo tam prawda
-   * o dokumencie zyje po tamtej stronie.
+   * Inaczej niż faktura VAT, której PDF pobiera się na świeżo z programu fakturowego
+   * (`program.pobierzPdf` w services/faktura.js), bo tam prawda o dokumencie żyje po stronie programu.
    */
   function pdf(proformaId) {
     const p = pobierzProforme(db, proformaId);

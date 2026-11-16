@@ -1,9 +1,8 @@
-// PRZ-117 — notatka z numerem listu w sklepie i jej ponawianie.
+// Notatka z numerem listu w sklepie i jej ponawianie.
 //
 // Notatka jest „best effort": paczka już istnieje, więc jej awaria nie cofa nadania (services/nadanie.js),
-// tylko zostawia ślad `przesylki.sync_woo_blad` z przedrostkiem „notatka: ". Do 26.10.2026 ten ślad nie miał
-// innego wyjścia niż „załatw ręcznie": 3 z 110 notatek padły na chwilowym „błędzie sieci" (1419 i 1437 wisiały
-// 13 dni, 1491 26.10), a każde następne zapytanie do tego samego sklepu przechodziło. Stąd trzy drogi ponowienia:
+// tylko zostawia ślad `przesylki.sync_woo_blad` z przedrostkiem „notatka: ". Notatki padają czasem na chwilowym
+// „błędzie sieci", a następne zapytanie do tego samego sklepu przechodzi. Stąd trzy drogi ponowienia:
 // jedna szybka powtórka przy samym nadaniu (tylko błąd sieci — odmowy sklepu 4xx za 3 s się nie zmienią),
 // przycisk „Spróbuj ponownie" na karcie i zegar przesyłek przez OKNO_PONAWIANIA_NOTATKI_H godzin.
 //
@@ -54,7 +53,7 @@ export async function ponowNotatkeNadania({ db, klienci, klienciKanalow = {} }, 
   const numerKanalu = await przekazNumerKanalu({ db, klienci, klienciKanalow }, p.id, p.sync_woo_blad === 'notatka: numer kanału: usuwanie');
   if (numerKanalu) return numerKanalu;
   if (!klient) throw bladOperatora(`Panel nie ma połączenia ze sklepem „${z?.sklep ?? '?'}” — notatki nie ma dokąd wysłać.`);
-  // PRZ-149.04: sklep „Odczyt” — nie wołamy go wcale; ślad sprzed zmiany uprawnień w kreatorze zdejmujemy,
+  // Sklep „Odczyt” — nie wołamy go wcale; ślad sprzed zmiany uprawnień w kreatorze zdejmujemy,
   // żeby zegar ponowień nie liczył go przez 48 h jako błędu.
   if (czyTylkoOdczyt(klient)) {
     zapiszBladSync(db, p.id, null);

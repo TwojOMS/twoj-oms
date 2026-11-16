@@ -1,8 +1,8 @@
-<%# Lista przesylek (23.08). Jeden wiersz = jedna paczka; przedmiotem jest RUCH paczki,
-    nie zamowienie — stad etap z dniami w drodze i filtr „bez ruchu" zamiast statusow
-    zamowienia. Widok NIE LICZY NICZEGO SAM: etap, dni i „bez ruchu" przychodza z trasy
-    (web/routes/przesylki.js), ktora pyta te same reguly, co pastylka na karcie i czuwacz
-    (domain/etap-przesylki.js). %>
+<%# Lista przesyłek. Jeden wiersz = jedna paczka; przedmiotem jest RUCH paczki,
+    nie zamówienie — stąd etap z dniami w drodze i filtr „bez ruchu" zamiast statusów
+    zamówienia. Widok NIE LICZY NICZEGO SAM: etap, dni i „bez ruchu" przychodzą z trasy
+    (moduly/wysylka/trasy/przesylki.js), która pyta te same reguły, co pastylka na karcie i czuwacz
+    (domena/etap-przesylki.js). %>
 <link rel="stylesheet" href="<%= zasob('tabele-prz065.css') %>">
 <section class="prz065-tabele prz065-przesylki">
 
@@ -14,9 +14,9 @@
   <div class="panel-glowa prz065-ukryta-glowa"><h2>Przesyłki</h2></div>
   <div class="panel-cialo">
     <form class="filtry" method="get" action="/przesylki">
-      <%# ⚠️ STATUS JEDZIE UKRYTYM POLEM. Formularz idzie GET-em, wiec bez tego zatwierdzenie
-          filtra gubi chip i trasa spada na domyslne „W drodze" — operator stojacy na
-          „Doręczone" po zmianie przewoznika ladowal na innej liscie (zgloszenie 18.09). %>
+      <%# ⚠️ STATUS JEDZIE UKRYTYM POLEM. Formularz idzie GET-em, więc bez tego zatwierdzenie
+          filtra gubi chip i trasa spada na domyślny widok „Utworzone" — operator stojący na
+          „Doręczone" po zmianie przewoźnika lądował na innej liście. %>
       <input type="hidden" name="pokaz" value="<%= pokaz %>">
       <div class="filtry-rzad">
         <label class="pole-filtra">
@@ -31,7 +31,7 @@
           <span>Przewoźnik</span>
           <select name="kurier">
             <option value="">Wszystkie</option>
-            <%# PRZ-067: prawdziwy przewoznik (DPD, InPost, DHL, ORLEN Paczka, Allegro One, Packeta),
+            <%# Prawdziwy przewoznik (DPD, InPost, DHL, ORLEN Paczka, Allegro One, Packeta),
                 wartosc = klucz. Lista z pelnego zbioru, liczona w trasie. %>
             <% przewozcy.forEach(function (k) { %>
               <option value="<%= k.klucz %>"<%- filtry.kurier === k.klucz ? ' selected' : '' %>><%= k.nazwa %></option>
@@ -52,7 +52,7 @@
       </div>
       <%# Gotowe przedzialy — odnosniki, nie przyciski formularza: maja USTAWIC zakres i od
           razu przeladowac liste, a nie czekac na „Filtruj". Niosa status i pozostale filtry. %>
-      <%# PRZ-067: klucz z adresu, ktorego nie ma na liscie (stara zakladka `?kurier=allegro_wza`
+      <%# Klucz z adresu, ktorego nie ma na liscie (stara zakladka `?kurier=allegro_wza`
           albo przewoznik bez paczek w tym oknie). Lista jest pusta — mowimy dlaczego, zamiast
           pokazywac w rozwijanym „Wszystkie" przy pustej tabeli. %>
       <% if (kurierNieznany) { %>
@@ -100,9 +100,9 @@
         <tr>
           <% if (pokaz === 'utworzone') { %><th>Wybór</th><% } %>
           <th>Zamówienie</th><th>Kurier</th><th>Numer listu</th>
-          <%# Kolumna daty nadania ma nazwe w naglowku, a nie slowo „nadana" powtorzone
-              w kazdym wierszu (zgloszenie właściciela 18.09). Ostatnia kolumna zostaje bez
-              naglowka celowo — mieszcza sie w niej przyciski akcji, nie dane. %>
+          <%# Kolumna daty nadania ma nazwę w nagłówku, a nie słowo „nadana" powtórzone
+              w każdym wierszu. Ostatnia kolumna zostaje bez
+              nagłówka celowo — mieszczą się w niej przyciski akcji, nie dane. %>
           <th>Etap</th><th>Ostatni ruch</th><th>Nadana</th><th></th>
         </tr>
       </thead>
@@ -116,7 +116,7 @@
               <% if (p.zamowienie) { %><a class="link-numer" title="<%= p.zamowienie.numer %>" href="/zamowienia/<%= p.zamowienie_id %>"><%= p.zamowienie.numer %></a>
               <% } else { %>#<%= p.zamowienie_id %><% } %>
             </td>
-            <%# PRZ-067: logo PRAWDZIWEGO przewoznika; pod nim nazwa uslugi Allegro (pobranie, rodzaj
+            <%# Logo PRAWDZIWEGO przewoznika; pod nim nazwa uslugi Allegro (pobranie, rodzaj
                 uslugi). Przewoznik nieznany → tekst jak dawniej, nigdy puste pole. %>
             <% if (p.przewoznik) { %>
               <td class="prz067-kurier"><img class="prz067-logo" src="<%= p.przewoznik.logo %>" alt="<%= p.przewoznik.nazwa %>" title="<%= p.usluga || p.przewoznik.nazwa %>" height="18" loading="lazy"><% if (p.usluga) { %><span class="prz067-usluga drobne"><%= p.usluga %></span><% } %></td>
@@ -150,7 +150,7 @@
                 etykieta zrobiona i nigdy przez kuriera niepodjeta. Zdejmuje wiersz stad ORAZ
                 sprawe „paczka bez ruchu" z karty — inaczej zamowienie zostaloby na liscie
                 roboczej z odznaka, ktorej juz nic nie zdejmie.
-                Formularz BEZ ukrytego pola z tokenem: ochrona CSRF (src/security/csrf.js)
+                Formularz BEZ ukrytego pola z tokenem: ochrona CSRF (src/core/bezpieczenstwo/csrf.js)
                 stoi na naglowku `Origin`, tak samo jak przy formularzach magazynu. %>
             <td class="drobne">
               <% if (p.maProtokol) { %>
@@ -185,4 +185,4 @@
   </div>
 </div>
 </section>
-<%# PRZ-100: usunięty skrypt podjazdy-wybor.js — pliku nie było w repo (404); wybór przesyłek działa formularzem bez skryptu. %>
+<%# Wybór przesyłek działa formularzem, bez skryptu. %>

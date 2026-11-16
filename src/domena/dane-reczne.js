@@ -2,12 +2,11 @@
 //
 // ⚠️ PO CO TO W OGÓLE ISTNIEJE. Klient potrafi podać zły adres i napisać w wiadomości, że
 // chce go zmienić. Panel musi umieć tę poprawkę zapisać — ale poller synchronizuje sklep
-// CO DWIE MINUTY i przy każdym przebiegu przepisuje `klient_json`, `dostawa_json`, `nip`
-// i `chce_fakture` (patrz UPDATE w db/zamowienia.js). Poprawka zapisana w TAMTYCH polach
+// CO KILKA MINUT i przy każdym przebiegu przepisuje `klient_json`, `dostawa_json`, `nip`
+// i `chce_fakture` (patrz UPDATE w oms/db/zamowienia.js). Poprawka zapisana w TAMTYCH polach
 // działałaby w testach jednostkowych i znikała na produkcji, zanim ktokolwiek zdążyłby
 // nadać paczkę. Dlatego poprawki mieszkają w OSOBNYCH kolumnach, których synchronizacja
-// nigdy nie dotyka — dokładnie tak samo jak `oplacone_recznie` (ta ochrona powstała po
-// tym, jak ten błąd raz wystąpił).
+// nigdy nie dotyka — dokładnie tak samo jak `oplacone_recznie`.
 //
 // ⚠️ NADPISANIE JEST POLOWE, NIE OBIEKTOWE. W kolumnie leży `{"kod":"00-002"}`, a nie cała
 // kopia adresu. Gdyby leżała cała kopia, poprawka jednego kodu pocztowego ZAMRAŻAŁABY
@@ -39,8 +38,8 @@ export function odczytajNadpisania(surowy) {
  * `Object.hasOwn` na tablicy przepuściłby indeks jako nazwę pola.
  *
  * Mieszka tutaj, przy `odczytajNadpisania`, bo czytają ją DWA moduły nadpisań polowych —
- * pozycje (`pozycje-reczne.js`) i wysyłka (`wysylka-kwota.js`). Do 07.08.2026 była prywatna
- * w tym pierwszym; drugi musiałby ją skopiować.
+ * pozycje (`pozycje-reczne.js`) i wysyłka (`wysylka-kwota.js`). Gdyby była prywatna
+ * w jednym z nich, drugi musiałby ją skopiować.
  */
 export const obiektAlboPusty = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
 
@@ -51,9 +50,8 @@ export function tekst(surowa) {
   return t || null;
 }
 
-// Sklep B rozbija adres na DWA pola formularza: nazwa ulicy w address_1,
-// numer budynku w address_2 (potwierdzone na żywych zamówieniach — patrz PRZEWODNIK 4.7 i
-// nagłówki adres-odbiorcy.js / dane-faktury.js). Sklejenie mieszka TUTAJ, w module
+// Sklep WooCommerce bywa skonfigurowany z adresem w DWÓCH polach formularza: nazwa ulicy w address_1,
+// numer budynku w address_2 (użycia w adres-odbiorcy.js i dane-faktury.js). Sklejenie mieszka TUTAJ, w module
 // WSPÓLNYM dla adresu wysyłki i danych do faktury, żeby obie strony (adresOdbiorcy,
 // daneFaktury) używały jednej reguły zamiast dwóch kopii, które prędzej czy później by się
 // rozjechały.
@@ -107,8 +105,8 @@ export function polaZmienione(zeSklepu, efektywne, pola) {
  * Dlatego pola NIEOBECNE w żądaniu przechodzą ze starej mapy nietknięte, a pola obecne
  * rozstrzyga `roznice` — czyli tak jak dotąd.
  *
- * Zaczęło mieć znaczenie, gdy do danych faktury doszedł e-mail (2026-07-31): każdy zapis
- * z formularza sprzed tej zmiany kasowałby zapisany adres do faktury.
+ * Ma to znaczenie np. przy e-mailu do faktury: zapis ze starszego formularza kasowałby
+ * zapisany adres do faktury.
  */
 export function nadpisaniaPoZapisie(stare, zeSklepu, zFormularza, pola) {
   const obecne = pola.filter((p) => zFormularza?.[p] !== undefined);
@@ -122,9 +120,9 @@ export function roznice(zeSklepu, zFormularza, pola) {
   const wynik = {};
   for (const pole of pola) {
     // ⚠️ Pole, którego w żądaniu NIE MA, to nie jest pole wyczyszczone — to pole, o które
-    // ten formularz w ogóle nie pytał. Rozróżnienie zaczęło mieć znaczenie, gdy do danych
-    // faktury doszedł e-mail (2026-07-31): starszy formularz albo urwane żądanie kasowałoby
-    // wtedy wartość, której nikt nie tknął. Wyczyszczenie RĘKĄ dalej działa, bo przeglądarka
+    // ten formularz w ogóle nie pytał. Rozróżnienie ma znaczenie np. przy e-mailu
+    // do faktury: starszy formularz albo urwane żądanie kasowałoby wartość, której nikt
+    // nie tknął. Wyczyszczenie RĘKĄ dalej działa, bo przeglądarka
     // odsyła wtedy klucz z pustą wartością i przez to sito przechodzi.
     if (zFormularza?.[pole] === undefined) continue;
     const nowa = tekst(zFormularza[pole]);

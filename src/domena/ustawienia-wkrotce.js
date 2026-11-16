@@ -1,8 +1,8 @@
-// PRZ-101.01: strony-atrapy Ustawień („wkrótce”). Jedna tablica — trasa i widok są wspólne
-// (moduly/ustawienia/trasy/wkrotce.js). Każde „Dziś” sprawdzone w kodzie 18.10.2026; bez dat i obietnic.
+// Strony-atrapy Ustawień („wkrótce”). Jedna tablica — trasa i widok są wspólne
+// (moduly/ustawienia/trasy/wkrotce.js). Każde „Dziś” ma opisywać to, co program naprawdę robi; bez dat i obietnic.
 export const STRONY_WKROTCE = Object.freeze([
   {
-    // PRZ-126: drukowanie faktur już działa (sekcja niżej) — bez ramki „nie działa” i plakietki w menu.
+    // Drukowanie faktur już działa (sekcja niżej) — bez ramki „nie działa” i plakietki w menu.
     klucz: 'druk', href: '/ustawienia/druk', tytul: 'Etykiety i druk', dziala: true,
     opis: 'Jedno miejsce na ustawienia wydruków, niezależnie od kuriera.',
     punkty: [

@@ -1,5 +1,5 @@
-// PRZ-094.04 — poczta wychodząca (SMTP) z Ustawień (Ustawienia → Integracje → Poczta wychodząca, wiersz „poczta”
-// w konfiguracja_integracji). Wzór: infaktZUstawien (faktury/infakt-ustawien.ts) i kurierzy z Ustawień (PRZ-092).
+// Poczta wychodząca (SMTP) z Ustawień (Ustawienia → Integracje → Poczta wychodząca, wiersz „poczta”
+// w konfiguracja_integracji). Wzór: infaktZUstawien (faktury/infakt-ustawien.ts) i kurierzy z Ustawień.
 //
 // ⚠️ .env WYGRYWA w całości: gdy plik ma sekcję SMTP_*, ten pośrednik w ogóle nie powstaje (uslugi.ts) — instalacja
 // skonfigurowana plikiem działa dokładnie jak przed zmianą.
@@ -114,7 +114,7 @@ export function komunikatBleduPoczty(e: { code?: unknown; dlaOperatora?: boolean
 }
 
 /**
- * PRZ-109.03: znacznik „ten błąd dał transport poczty”. Stawia go WYŁĄCZNIE `catch` wokół `sendMail` (usługi wiadomości
+ * Znacznik „ten błąd dał transport poczty”. Stawia go WYŁĄCZNIE `catch` wokół `sendMail` (usługi wiadomości
  * i potwierdzenia) i tylko przy kodzie nodemailera — ENOENT ze złożenia treści albo TypeError bez kodu znacznika nie
  * dostają i zostają „błędem technicznym panelu”. Rozróżnienie po miejscu złapania i kodzie, nigdy po treści błędu.
  */

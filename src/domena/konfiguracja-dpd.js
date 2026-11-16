@@ -1,12 +1,12 @@
-// PRZ-092 — kurier DPD Polska skonfigurowany w Ustawieniach (wzór: formularz kuriera w Apilo).
+// Kurier DPD Polska skonfigurowany w Ustawieniach (wzór: formularz kuriera w Apilo).
 //
 // Dla instalacji klientów Twojego OMS-u: dane API od DPD (login, główny numer klienta = Master FID, hasło)
 // wpisuje się na ekranie zamiast do oms.env. ⚠️ Gdy DPD jest w .env (DPD_URL), .env WYGRYWA i formularz tylko to
-// pokazuje — instalacja skonfigurowana plikiem nie zmienia zachowania po tej zmianie.
+// pokazuje — instalacja skonfigurowana plikiem nie zmienia zachowania.
 //
 // Adres nadawcy NIE jest polem formularza: to wspólny adres firmy (etykiety DPD i InPost, proformy,
-// specyfikacje, potwierdzenie wywozu) — z pliku (DPD_NADAWCA_*) albo z Ustawień → Firma (PRZ-093.08,
-// src/oms/db/adres-firmy.js). Osobny adres tylko dla DPD rozjechałby się z fakturami.
+// specyfikacje, potwierdzenie wywozu) — z pliku (DPD_NADAWCA_*) albo z Ustawień → Firma
+// (src/oms/db/adres-firmy.js). Osobny adres tylko dla DPD rozjechałby się z fakturami.
 
 /** Adresy produkcyjnych usług DPD Polska (te same co w działającej konfiguracji .env). */
 export const ADRESY_DPD = Object.freeze({

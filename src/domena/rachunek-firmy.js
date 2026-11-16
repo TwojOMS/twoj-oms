@@ -1,5 +1,5 @@
-// PRZ-102.20 — rachunek bankowy firmy (i nazwa banku) wpisany w Ustawieniach → Firma, dla instalacji bez OMS_RACHUNEK
-// w pliku. Decyzja właściciela (20.10): „po prostu pole do wpisania rachunku. tylko przez admina” — bez podwójnego wpisywania,
+// Rachunek bankowy firmy (i nazwa banku) wpisany w Ustawieniach → Firma, dla instalacji bez OMS_RACHUNEK
+// w pliku. Proste pole, zapis tylko dla admina — bez podwójnego wpisywania,
 // bez hasła i bez maili do adminów. Zapis i odczyt z bazy: src/oms/db/rachunek-firmy.js (wiersz „rachunek_firmy”
 // w konfiguracja_integracji, osobny od adresu „firma”: zapis i usunięcie adresu nie ruszają rachunku).
 // Rachunek nie jest sekretem — stoi w każdym mailu o płatności i na każdej proformie — więc trzymamy go w jawnych ustawieniach.

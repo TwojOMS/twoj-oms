@@ -2,16 +2,16 @@ import { bladOperatora } from './bledy.js';
 import { grosze, zl } from './kwoty.js';
 import { cenaWdtGrosze } from './wdt.js';
 
-// RABAT STAŁEGO KLIENTA (21.08.2026, prośba właściciela: „rabat może być przypisany do
-// konkretnego klienta w bazie, z możliwością późniejszej edycji rabatu w karcie zamówienia").
+// RABAT STAŁEGO KLIENTA: rabat przypisany do konkretnego klienta w bazie, z możliwością
+// późniejszej edycji rabatu w karcie zamówienia.
 //
 // ⚠️⚠️ RABAT WCHODZI W CENĘ POZYCJI, a cena katalogowa zostaje zapisana OBOK. To jest
 // najważniejsza decyzja tego modułu i ma dwa powody, oba zmierzone:
 //
-//  1. Przy zamówieniu ręcznym `kwotaOczekiwanaGrosze` (domain/suma-pozycji.js) oddaje WPROST
+//  1. Przy zamówieniu ręcznym `kwotaOczekiwanaGrosze` (domena/suma-pozycji.js) oddaje WPROST
 //     `kwota_brutto`, a tę utrzymuje `przeliczKwoteRecznego` z sumy pozycji i wysyłki. Cena
 //     obniżona w pozycji przechodzi więc JEDNYM ruchem przez sumę na karcie, kwotę pobrania,
-//     saldo wpłat, barierę arytmetyczną faktury, `gross_price` wysyłane do inFaktu, mail
+//     saldo wpłat, barierę arytmetyczną faktury, kwotę wysyłaną do programu faktur, mail
 //     z potwierdzeniem i raport sprzedaży — bez ani jednej linijki kodu w żadnym z tych
 //     miejsc. Warstwa licząca rabat „przy odczycie" musiałaby się z każdym z nich dogadać.
 //  2. Osobna pozycja „Rabat −30%" jest zamknięta na poziomie reguły pieniężnej:
@@ -19,7 +19,7 @@ import { cenaWdtGrosze } from './wdt.js';
 //     od klienta"), a ujemny wiersz przesuwałby próg darmowej dostawy liczony przez
 //     `wartoscTowaruGrosze`. To nie jest kwestia gustu.
 //
-// ⚠️ RABAT JEST SPRAWĄ WEWNĘTRZNĄ (decyzja właściciela, 21.08.2026: „tylko niższe ceny").
+// ⚠️ RABAT JEST SPRAWĄ WEWNĘTRZNĄ — klient widzi tylko niższe ceny.
 // Ani mail z potwierdzeniem, ani faktura nie mówią o nim ani słowa — klient widzi kwoty.
 // Cena katalogowa i procent są widoczne WYŁĄCZNIE na karcie w panelu. Dlatego ten moduł nie
 // eksportuje żadnej funkcji składającej tekst dla klienta: gdyby ją miał, ktoś by jej użył.
@@ -27,10 +27,9 @@ import { cenaWdtGrosze } from './wdt.js';
 /**
  * Górna granica rabatu.
  *
- * ⚠️ ISTNIEJE, BO GDZIE INDZIEJ JEJ ZABRAKŁO. Wpis w `OMS_KLIENCI_ZBIORCZY` przyjmuje dziś
- * rabat 300% bez słowa (znane od 01.08.2026,
- * `.superpowers/sdd/progress-2026-08-01-rozliczenie-zbiorcze.md`) — a rabat powyżej stu
- * procent to cena ujemna, czyli dopłacanie klientowi do zakupu. 90% jest granicą arbitralną,
+ * ⚠️ ISTNIEJE, BO RABAT POWYŻEJ STU PROCENT to cena ujemna, czyli dopłacanie klientowi do
+ * zakupu — a gdzie indziej tej granicy brakuje: wpis w `OMS_KLIENCI_ZBIORCZY`
+ * (domena/klient-zbiorczy.js, `liczba`) przyjmuje rabat 300% bez słowa. 90% jest granicą arbitralną,
  * ale po właściwej stronie: rabat głębszy niż dziewięć dziesiątych ceny katalogowej jest
  * literówką częściej niż uzgodnieniem, a gdy naprawdę jest uzgodnieniem — wpisuje się cenę.
  */
@@ -76,7 +75,7 @@ export function parsujRabat(surowy) {
  * Cena jednostkowa po rabacie, w groszach.
  *
  * ⚠️ ZAOKRĄGLAMY CENĘ ZA SZTUKĘ, A DOPIERO POTEM MNOŻYMY PRZEZ ILOŚĆ — dokładnie tak, jak
- * robi to dziś `pozycjaZProduktu` (`zl(cenaGr * ilosc)`). Odwrotna kolejność (rabat od sumy
+ * robi to `pozycjaZProduktu` (domena/magazyn-do-zamowienia.js: `zl(doZaplatyGr * ilosc)`). Odwrotna kolejność (rabat od sumy
  * linii) dawałaby cenę jednostkową, która pomnożona przez ilość nie daje sumy linii — czyli
  * ten sam rozjazd „33,33 × 3 = 99,99 przy totalu 100,00", o który panel odbijał się na
  * barierze arytmetycznej, zanim `gross_price` zaczęło jechać jako suma linii.
@@ -88,8 +87,8 @@ export function cenaPoRabacieGrosze(cenaKatalogowaGr, rabatProcent) {
   const rabat = parsujRabat(rabatProcent);
   if (rabat === 0) return cenaKatalogowaGr;
   const po = Math.round((cenaKatalogowaGr * (100 - rabat)) / 100);
-  // ⚠️ PODŁOGA JEDEN GROSZ. Rabat 90% na pozycji za grosz dałby zero, a cena zero jest
-  // w tym panelu ODMOWĄ (`parsujCeneBrutto`) — pozycja gratis wpisuje się jawnie, a nie
+  // ⚠️ PODŁOGA JEDEN GROSZ. Rabat 90% na pozycji za grosz dałby zero, a cena zero nowej
+  // pozycji jest ODMOWĄ (`parsujCeneBrutto`) — pozycja gratis wpisuje się jawnie, a nie
   // wypada z zaokrąglenia. Bez tego zamówienie z drobną pozycją nie dałoby się założyć,
   // a komunikat mówiłby o cenie, której operator nigdzie nie wpisał.
   return Math.max(1, po);
@@ -99,10 +98,10 @@ export function cenaPoRabacieGrosze(cenaKatalogowaGr, rabatProcent) {
 export const cenaPoRabacie = (cenaKatalogowaGr, rabatProcent) => zl(cenaPoRabacieGrosze(cenaKatalogowaGr, rabatProcent));
 
 // Cena, jaką panel SAM wpisuje do pozycji z ceny katalogowej: rabat, a przy zamówieniu WDT
-// dodatkowo ÷1,23 na sztuce (cenaWdtGrosze — tam cała wykładnia). JEDNO miejsce, którym
+// dodatkowo ÷(1 + stawka) na sztuce (cenaWdtGrosze — tam cała wykładnia). JEDNO miejsce, którym
 // liczy i rozpoznanie „pozycji panelu", i nowa cena po zmianie rabatu — druga kopia tej
 // pary rozjechałaby się przy pierwszej zmianie i przeliczenie pomijałoby własne pozycje.
-// PRZ-105: przy WDT dzielimy przez stawkę domyślną z Ustawień (`stawkaDomyslna`), nie przez stałe 1,23.
+// Przy WDT dzielimy przez stawkę domyślną z Ustawień (`stawkaDomyslna`), nie przez stałe 1,23.
 const cenaPanelowaGrosze = (katalogowaGr, rabatProcent, wdt, stawkaDomyslna) => {
   const po = cenaPoRabacieGrosze(katalogowaGr, rabatProcent);
   return wdt ? cenaWdtGrosze(po, stawkaDomyslna) : po;
@@ -132,7 +131,7 @@ export function czyPozycjaPanelu(pozycja, rabatPoprzedni, { wdt = false, stawkaD
   // jej poprawka mieszka obok, jako nadpisanie. Przeliczenie takiego wiersza odbiłoby się
   // od bazy w połowie pętli, więc odsiewamy go tutaj, a nie tam.
   if (pozycja?.zrodlo !== 'reczna') return false;
-  // Przy zamówieniu WDT „cena panelu" zawiera też ÷1,23 (cenaPanelowaGrosze) — bez tego
+  // Przy zamówieniu WDT „cena panelu" zawiera też ÷(1 + stawka) (cenaPanelowaGrosze) — bez tego
   // każda pozycja WDT wyglądałaby na ręcznie wycenioną i zmiana rabatu pomijałaby cały
   // wsad z magazynu, z komunikatem mylącym dokładnie tam, gdzie miał wyjaśniać.
   const oczekiwana = cenaPanelowaGrosze(grosze(katalogowa, `cena katalogowa "${pozycja?.nazwa}"`), rabatPoprzedni, wdt, stawkaDomyslna);
@@ -165,7 +164,7 @@ export function przeliczenieRabatu(pozycje, { rabatPoprzedni, rabatNowy, wdt = f
       pominiete.push({ id: p.id, nazwa: p.nazwa });
       continue;
     }
-    // TA SAMA transformacja, którą rozpoznaliśmy pozycję wyżej — rabat, a przy WDT ÷1,23.
+    // TA SAMA transformacja, którą rozpoznaliśmy pozycję wyżej — rabat, a przy WDT ÷(1 + stawka).
     const cenaGr = cenaPanelowaGrosze(grosze(katalogowa, `cena katalogowa "${p.nazwa}"`), nowy, wdt, stawkaDomyslna);
     const ilosc = Number(p.ilosc) || 1;
     // Pozycja, której cena po zmianie wychodzi TAKA SAMA (rabat 0 → 0, albo zaokrąglenie

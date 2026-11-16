@@ -1,7 +1,7 @@
-// PRZ-108.07 (zmiana B planu automatyzacji, właściciel 21.10): czyste reguły automatyzacji „zdarzenie → warunki → akcja”.
+// Czyste reguły automatyzacji „zdarzenie → warunki → akcja”.
 // Bez bazy i bez zegara — wszystko, co tu jest, da się sprawdzić w teście bez serwera (tests/domena/automatyzacje.test.js).
 //
-// Liczby z decyzji właściciela 21.10 (plan, „Zmiany po akceptacji”):
+// Limity i terminy:
 //  • 20 maili/h na regułę (zakres 1–200), 100/h na cały OMS;
 //  • więcej niż 50 nowych wykonań jednej reguły w jednym przebiegu → reguła WSTRZYMANA (błąd albo import historii);
 //  • 48 h liczone od `termin_at` (planowanej chwili wykonania), nie od zdarzenia — opóźnienie 7 dni się nie przeterminuje;
@@ -34,9 +34,8 @@ export const GRUPY_ZDARZEN = Object.freeze([
 ]);
 
 /**
- * Pełny katalog zdarzeń z planu (sekcja 2) — do wyświetlenia w kreatorze. DOSTĘPNE jest tylko to, co jest w
+ * Pełny katalog zdarzeń — do wyświetlenia w kreatorze. DOSTĘPNE jest tylko to, co jest w
  * rejestrze zdarzeń modułu (moduly/automatyzacje/zdarzenia); reszta jest przygaszona z dopiskiem „wkrótce”.
- * W zmianie B rejestr jest pusty: „Paczka nadana” i „Status zmienił się na” wchodzą w C1, „Kurier odebrał” w C2.
  */
 export const KATALOG_ZDARZEN = Object.freeze([
   { klucz: 'paczka_nadana', grupa: 'przesylka', etykieta: 'Paczka nadana — ma numer listu' },
@@ -48,14 +47,14 @@ export const KATALOG_ZDARZEN = Object.freeze([
   { klucz: 'faktura_wystawiona', grupa: 'dokumenty', etykieta: 'Faktura wystawiona' },
 ]);
 
-/** Akcje z planu; dostępne = w rejestrze akcji modułu (w B pusty — mail do kupującego wchodzi w C1). */
+/** Akcje; dostępne = w rejestrze akcji modułu. */
 export const KATALOG_AKCJI = Object.freeze([
   { klucz: 'mail_kupujacy', etykieta: 'Wyślij mail do kupującego' },
   { klucz: 'zmien_status', etykieta: 'Zmień status zamówienia' },
   { klucz: 'mail_zespol', etykieta: 'Wyślij mail do zespołu' },
 ]);
 
-// Plan, sekcja 4: szablon filtrowany zgodnością ze zdarzeniem, żeby nie dało się zbudować reguły, która zawsze odmówi.
+// Szablon filtrowany zgodnością ze zdarzeniem, żeby nie dało się zbudować reguły, która zawsze odmówi.
 // „Przypomnienie o płatności” potrzebuje zdarzenia czasowego („X dni po terminie”) — poza zakresem, więc nigdzie.
 const ZDARZENIA_SZABLONU = Object.freeze({
   wyslane: ['paczka_nadana', 'paczka_odebrana', 'paczka_doreczona', 'status_zmieniony'],
@@ -86,7 +85,7 @@ function liczbaCalkowita(w, { pusta, min, max }) {
  * Walidacja formularza reguły (kreator i edycja). `kanaly` = kanały konfiguracji (`kanalyWidoku`), `zdarzenia` i `akcje`
  * = DOSTĘPNE wpisy rejestrów, `szablony` = identyfikatory istniejących szablonów (wbudowane + własne).
  * Zwraca `{ ok: true, regula }` albo `{ ok: false, bledy }`. Warunki to biała lista kanałów plus migawka kanałów
- * znanych w chwili zapisu — z niej ekran liczy „nowe kanały od zapisu”. PRZ-108.08 (C1): do tego parametr zdarzenia
+ * znanych w chwili zapisu — z niej ekran liczy „nowe kanały od zapisu”. Do tego parametr zdarzenia
  * (`zdarzenie_status`) i warunki status / numer listu / dostawa / pobranie — sprawdza je silnik w chwili wykonania
  * (domena/warunki-automatyzacji.js). `statusy` = klucze wszystkich statusów z Ustawień (wbudowane + własne).
  */
@@ -123,7 +122,7 @@ export function sprawdzRegule(formularz = {}, { kanaly = [], zdarzenia = [], akc
     akcja_json.szablon = szablon;
   }
 
-  // PRZ-108.08 (C1): parametr zdarzenia (np. „status zmienił się na: Wysłane”) i warunki sprawdzane w chwili wykonania.
+  // Parametr zdarzenia (np. „status zmienił się na: Wysłane”) i warunki sprawdzane w chwili wykonania.
   const zdarzenie_json = parametrZdarzenia(formularz, zdarzenia.find((z) => z.klucz === zdarzenie), bledy);
   const warunkiWykonania = warunkiZFormularza(formularz, { statusy, szablon: akcja_json.szablon, bledy });
 
@@ -135,7 +134,7 @@ export function sprawdzRegule(formularz = {}, { kanaly = [], zdarzenia = [], akc
   } };
 }
 
-/** Szablony, które same wymagają warunku (plan, „Zmiany po akceptacji”, pkt 4): mail twierdzi, że paczka ma numer listu. */
+/** Szablony, które same wymagają warunku: mail twierdzi, że paczka ma numer listu. */
 export const SZABLONY_Z_NUMEREM_LISTU = Object.freeze(['wyslane']);
 export const wymagaNumeruListu = (szablon) => SZABLONY_Z_NUMEREM_LISTU.includes(szablon);
 
@@ -157,7 +156,7 @@ function parametrZdarzenia(formularz, wpis, bledy) {
  * Warunki w chwili wykonania z formularza (kreator, krok 2):
  *  • „status jest …”: `status_warunek` = dowolny | jeden_z, `statusy` z konfiguracji statusów (wbudowane + własne);
  *  • „przesyłka ma numer listu”: `ma_numer_listu` — formularz wysyła ukryte „0” i pole wyboru „1”, liczy się ostatnie.
- *    Szablon „Zamówienie wysłane” wymusza warunek: brak pola → wymuszony, jawne „0” → błąd (plan, C1, test 9);
+ *    Szablon „Zamówienie wysłane” wymusza warunek: brak pola → wymuszony, jawne „0” → błąd;
  *  • sposób dostawy (`dostawa`, puste = wszystkie) z METODY_WYSYLKI; pobranie dowolne | tak | nie.
  */
 function warunkiZFormularza(formularz, { statusy, szablon, bledy }) {
@@ -187,7 +186,7 @@ function warunkiZFormularza(formularz, { statusy, szablon, bledy }) {
 
 /**
  * BIAŁA LISTA: zamówienie pasuje tylko, gdy jego kanał jest zaznaczony. Kanał dodany do konfiguracji po zapisie
- * reguły nie jest zaznaczony, więc reguła go nie obejmuje (decyzja właściciela: nowy kanał domyślnie odznaczony).
+ * reguły nie jest zaznaczony, więc reguła go nie obejmuje (nowy kanał jest domyślnie odznaczony).
  */
 export function czyPasujeKanalom(sklep, warunki) {
   const kanaly = Array.isArray(warunki?.kanaly) ? warunki.kanaly : [];
@@ -238,7 +237,7 @@ export function odKursora({ granica_at, kursor_json }) {
 }
 
 /**
- * Kursor złożony (PRZ-108.07, recenzja 07, usterka 3). Zwykły przebieg: `{ od: kursor − 5 min, po: null }`. Gdy poprzedni
+ * Kursor złożony. Zwykły przebieg: `{ od: kursor − 5 min, po: null }`. Gdy poprzedni
  * przebieg dostał obciętą listę (LIMIT_KANDYDATOW), kursor trzyma `po = { at, id }` ostatniego przeczytanego kandydata
  * i to samo `od` — detektor czyta ŚCIŚLE po (at, id), więc 1100 zdarzeń z tej samej sekundy przechodzi w dwóch
  * przebiegach, zamiast w kółko czytać te same 1000.
@@ -274,7 +273,7 @@ export const ponowienieOd = (teraz) => new Date(teraz.getTime() + PONOWIENIE_MIN
 
 // core/poczta/smtp.js przenosi `err.code` nodemailera. Ponawiamy WYŁĄCZNIE kody, które nodemailer (10.x,
 // smtp-connection/index.js) daje na pewno przed `MAIL FROM`: EDNS (nie rozwiązano nazwy serwera), ETLS (nawiązanie /
-// podniesienie TLS przy łączeniu i STARTTLS), EAUTH (logowanie). ⚠️ NIE ECONNECTION (PRZ-108.07, recenzja 07, usterka 1):
+// podniesienie TLS przy łączeniu i STARTTLS), EAUTH (logowanie). ⚠️ NIE ECONNECTION:
 // ten sam kod dostaje każde zamknięcie połączenia, na które czekała odpowiedź — także czekanie na `250` po kropce
 // kończącej DATA, gdy serwer ma już całą treść; ponowienie wysłałoby drugi mail. Wszystko inne (ECONNECTION, ESOCKET,
 // ETIMEDOUT, EMESSAGE, brak kodu) → „niepewne” bez ponowienia: wolimy jeden brakujący mail niż dwa wysłane.
@@ -283,7 +282,7 @@ export function klasyfikujBladPoczty(err) {
   return KODY_PRZED_PRZYJECIEM.has(err?.code) ? 'ponow' : 'niepewne';
 }
 
-/** Czy reguła ma warunki poza kanałem (sprawdzane w chwili wykonania, zmiana C1). */
+/** Czy reguła ma warunki poza kanałem (sprawdzane w chwili wykonania). */
 export function maWarunkiWykonania(warunki = {}) {
   const { kanaly: _k, kanalyZnane: _z, ...reszta } = warunki ?? {};
   return Object.values(reszta).some((w) => (Array.isArray(w) ? w.length > 0 : w !== null && w !== undefined

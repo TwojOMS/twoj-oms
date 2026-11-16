@@ -1,12 +1,11 @@
 import type { Migracja } from '../../../core/kontrakty.ts';
 
-// PRZ-108.08 (poprawki po recenzji 08, usterki 4 i 5): indeksy dla detektorów „Status zmienił się na” i „Paczka nadana”
-// (okno 14 dni po `utworzona_at`) oraz ostrzeżeń.
+// Indeksy dla detektorów „Status zmienił się na” i „Paczka nadana” (okno 14 dni po `utworzona_at`) oraz ostrzeżeń.
 // Migracja ADDYTYWNA — same zwykłe (nie UNIQUE) indeksy; strażnik migracji je dopuszcza także na tabelach innych modułów
 // (precedens: zamowienia/0001 zakłada indeksy na `przesylki` i `platnosci` z rdzenia). W module automatyzacji, bo tylko
 // on ich potrzebuje; tabele `zamowienia` i `zamowienia_status_wlasny` istnieją, bo moduł wymaga `zamowienia`.
-// Pomiar (kopia bazy recenzenta: 50 000 zamówień, surowe_json 4 KB, laptop): status → Wysłane 365 ms → patrz raport
-// PRZ-108.08; bez indeksu `wyslane_at` każde sprawdzenie czytało całą tabelę razem ze stronami przepełnienia.
+// Pomiar na kopii bazy z kilkudziesięcioma tysiącami zamówień: sprawdzenie „status → Wysłane” bez indeksu `wyslane_at`
+// trwało setki milisekund, bo czytało całą tabelę razem ze stronami przepełnienia.
 export const migracjaIndeksow: Migracja = {
   numer: 2,
   nazwa: 'indeksy detektora statusu i ostrzeżeń automatyzacji',

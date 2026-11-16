@@ -67,7 +67,7 @@ function nowsza(a, b) {
  * i tylko czlowiek wie, czy klient ma doplacic, czy dokument ma byc wystawiony na nowo.
  *
  * Porownujemy z `kwotaOczekiwanaGrosze` — TA SAMA miara, ktorej uzywa bariera arytmetyczna
- * (domain/pozycje-faktury.js) i saldo wplat. Porownanie z `kwota_brutto` krzyczaloby przy
+ * (domena/pozycje-faktury.js) i saldo wplat. Porownanie z `kwota_brutto` krzyczaloby przy
  * KAZDYM zamowieniu z recznie dopisana pozycja, bo kwota sklepowa o naszych dopiskach nie wie.
  *
  * Uszkodzona kwota daje `null`, nie ostrzezenie: „nie wiem, ile to jest" ma swoje wlasne
@@ -118,7 +118,7 @@ export function czyWolnoWystawic(zamowienie) {
   if (!zamowienie) {
     return { wolno: false, powod: 'Nie ma takiego zamówienia — nie ma do czego wystawić proformy.' };
   }
-  // PRZ-101.04: dołączone nie ma własnych dokumentów — proforma tylko z zamówienia głównego.
+  // Dołączone nie ma własnych dokumentów — proforma tylko z zamówienia głównego.
   if (zamowienie.scalone_do) {
     return { wolno: false, powod: `Zamówienie jest scalone z zamówieniem ${zamowienie.scalone_do_numer ?? `#${zamowienie.scalone_do}`} — proforma w zamówieniu głównym.` };
   }
@@ -153,14 +153,14 @@ export function czyWolnoWystawic(zamowienie) {
 }
 
 // Kwota, na ktora wyszedlby dokument — TA SAMA suma, ktora trafia na proforme
-// (pozycje + wysylka, domain/suma-pozycji.js). Druga kopia tej arytmetyki rozjechalaby sie
+// (pozycje + wysylka, domena/suma-pozycji.js). Druga kopia tej arytmetyki rozjechalaby sie
 // z dokumentem przy pierwszej zmianie.
 //
 // ⚠️ NIECZYTELNA KWOTA TO `null`, A NIE ZERO. „Nie wiem, ile to jest" i „to jest zero" to
-// dwie rozne odpowiedzi: pierwsza nalezy do bariery arytmetycznej (domain/pozycje-faktury.js),
+// dwie rozne odpowiedzi: pierwsza nalezy do bariery arytmetycznej (domena/pozycje-faktury.js),
 // ktora umie wskazac zepsuta pozycje. Ta funkcja NIE MOZE tez rzucic — wola ja karta przy
 // kazdym otwarciu zamowienia (routes/zamowienia.js), a uszkodzona cena nie ma prawa
-// wywalic ekranu. Ta sama zasada, co w `podsumowaniePozycji` (domain/tabela-pozycji.js).
+// wywalic ekranu. Ta sama zasada, co w `podsumowaniePozycji` (domena/tabela-pozycji.js).
 function kwotaDokumentuGrosze(zamowienie) {
   try {
     return sumaPozycjiZWysylkaGrosze(zamowienie);

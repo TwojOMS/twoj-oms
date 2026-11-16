@@ -1,4 +1,4 @@
-// PRZ-102.12 — zapis automatu wysyłki do KSeF w tabeli `ustawienia` (klucz → wartość, bez migracji).
+// Zapis automatu wysyłki do KSeF w tabeli `ustawienia` (klucz → wartość, bez migracji).
 //
 // Ustawienia człowieka: `ksef.automat.wlaczony` ('1'/'0'), `ksef.automat.godzina` ('HH:MM', Warszawa),
 // `ksef.automat.zmienil` (login). Stan automatu: `ksef.automat.ostatni_przebieg` (dzień `RRRR-MM-DD`) i
@@ -14,7 +14,7 @@ export const KLUCZE_AUTOMATU_KSEF = Object.freeze({
   ostatni: 'ksef.automat.ostatni_przebieg',
   wynik: 'ksef.automat.wynik',
   wstrzymane: 'ksef.automat.wstrzymane',
-  // PRZ-123 C09 — tylko program z własną wysyłką (TwojeFaktury); inFakt czyta wyłącznie `wlaczony` i `godzina`.
+  // Tylko program z własną wysyłką (TwojeFaktury); inFakt czyta wyłącznie `wlaczony` i `godzina`.
   tryb: 'ksef.automat.tryb',
   odstep: 'ksef.automat.odstep_edycji',
 });
@@ -58,7 +58,7 @@ export function wczytajAutomatKsef(db) {
 }
 
 /**
- * PRZ-123 C09: odstęp na poprawki (minuty, 0–120, domyślnie 15) — ile czeka faktura po zapisie ostatniej wersji,
+ * Odstęp na poprawki (minuty, 0–120, domyślnie 15) — ile czeka faktura po zapisie ostatniej wersji,
  * zanim tryb „po wystawieniu” wyśle ją do KSeF. Zapisane 0 to 0 (wysyłka w najbliższym przebiegu), nie domyślne.
  */
 export function odstepEdycjiMin(db) {
@@ -77,14 +77,14 @@ function parsujWstrzymane(tekst) {
 const zapiszWstrzymane = (db, lista, kiedy) => db.prepare(UPSERT).run(K.wstrzymane, JSON.stringify(lista), kiedy);
 
 /**
- * Poprawka po recenzji PRZ-102.12 (WAŻNE 1): faktura, którą inFakt ODRZUCIŁ (4xx) przy wysyłce z automatu.
+ * Faktura, którą inFakt ODRZUCIŁ (4xx) przy wysyłce z automatu.
  * Usługa zdejmuje wtedy rezerwację (dokumentu u organu na pewno nie ma), więc bez tej listy faktura wracałaby jutro
  * pierwsza i blokowała cały automat stopem na błędzie — dzień po dniu, do 61 dni. Automat ją pomija, dopóki człowiek
  * nie wyśle jej ręcznie (numer KSeF albo rezerwacja zdejmują wpis przy następnym przebiegu) albo nie kliknie „Zwolnij”.
  */
 export function wstrzymajFakture(db, { uuid, numer, dzien, powod, kod, wersja }, kiedy = terazIso()) {
   const lista = wczytajAutomatKsef(db).wstrzymane.filter((w) => w.uuid !== uuid);
-  // C09: `kod` (np. 'korekta-nieaktualna') i `wersja` dokumentu — tylko automat TwojeFaktury; wpis inFaktu bez zmian.
+  // `kod` (np. 'korekta-nieaktualna') i `wersja` dokumentu — tylko automat TwojeFaktury; wpis inFaktu bez zmian.
   lista.push({ uuid, numer: numer ?? null, dzien, powod: powod ?? null, ...(kod ? { kod } : {}), ...(wersja != null ? { wersja } : {}) });
   zapiszWstrzymane(db, lista, kiedy);
 }
@@ -100,20 +100,20 @@ export function zwolnijWstrzymane(db, uuidy, kiedy = terazIso()) {
 }
 
 /**
- * PRZ-123 C09ca: wpisy, których „Zwolnij” nie dotyczy (TwojeFaktury). Ta wersja dokumentu ma już wiersz tf_ksef, więc
+ * Wpisy, których „Zwolnij” nie dotyczy (TwojeFaktury). Ta wersja dokumentu ma już wiersz tf_ksef, więc
  * nie wraca do kolejki automatu — zdjęcie wpisu niczego by nie wysłało, a ekran obiecywałby wysyłkę.
  */
 export const KODY_BEZ_ZWOLNIENIA = Object.freeze(['odrzucona', 'nie-wyslano']);
 export const czyDoZwolnienia = (w) => !KODY_BEZ_ZWOLNIENIA.includes(w?.kod);
 
 /**
- * PRZ-123 C09ca: wpis „nie-wyslano” odzwierciedla OSTATNI wynik tej wersji — po każdej wysyłce (ręcznej też):
+ * Wpis „nie-wyslano” odzwierciedla OSTATNI wynik tej wersji — po każdej wysyłce (ręcznej też):
  * KSeF odrzucił → wpis „odrzucona” (powód: kod i opis KSeF); otwarty wpis „nie wysłano” → zostaje; inny stan (w toku,
  * niepewna, przyjęta, w KSeF) → wpis znika: nie wiadomo / w toku rozstrzyga czuwacz, a numer KSeF zamyka sprawę.
- * ZDROWIE-RECZNIE: wpis „odrzucona” / „nie-wyslano” starszej wersji znika, gdy wysłano nowszą wersję i KSeF jej nie
+ * Wpis „odrzucona” / „nie-wyslano” starszej wersji znika, gdy wysłano nowszą wersję i KSeF jej nie
  * odrzucił, a jej wysyłka nie stoi jako „nie wysłano” (w trybie „ręcznie” nie zdejmie go automat). Nowsza wersja
  * odrzucona albo niewysłana — wpis starszej bez zmian. Zwraca, czy coś zmieniono.
- * PRZ-122.ZGODA-TFb: odczyt wersji z KSeF (`wpisTf` = { stanKsef, otwartaNieWyslana }) przychodzi z parametru — ten plik
+ * Odczyt wersji z KSeF (`wpisTf` = { stanKsef, otwartaNieWyslana }) przychodzi z parametru — ten plik
  * nie importuje kodu TwojeFaktury; składa go db/ksef-automat-twojefaktury.js. Bez `wpisTf` (inFakt) nic się nie zmienia.
  */
 export function uzgodnijWstrzymane(db, uuidy, kiedy = terazIso(), wpisTf = null) {
@@ -159,7 +159,7 @@ export function zapiszUstawieniaAutomatu(db, { wlaczony, godzina, ostatniPrzebie
 }
 
 /**
- * PRZ-123 C09: zapis trybu z ekranu (program z własną wysyłką) — jedną transakcją. `wlaczony` idzie razem z trybem
+ * Zapis trybu z ekranu (program z własną wysyłką) — jedną transakcją. `wlaczony` idzie razem z trybem
  * („reczna” = wyłączony), więc stan i zdania wspólne z inFaktem (Zdrowie, ekran) czytają go jak dotąd.
  */
 export function zapiszTrybAutomatu(db, { tryb, odstepEdycji: odstep, godzina, ostatniPrzebieg, login }, kiedy = terazIso()) {

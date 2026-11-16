@@ -8,13 +8,13 @@ import { wierszArchiwum, zapiszWiersz, oznaczSkasowana } from '../db/archiwum-sp
 import { bladOperatora } from '../../../domena/bledy.js';
 import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
-// Archiwum PDF-ow faktur sprzedazowych i korekt na NAS-ie (spec 2026-09-02, Czesc B).
-// Jeden dokument na raz; petle, budzet czasu i pore nocna trzyma czuwacz
-// (services/czuwacz-archiwum-sprzedazy.js). Wzorzec i uzasadnienia: services/archiwum-kosztow.js.
+// Archiwum PDF-ów faktur sprzedażowych i korekt na NAS-ie.
+// Jeden dokument na raz; pętle, budżet czasu i porę nocną trzyma czuwacz
+// (services/czuwacz-archiwum-sprzedazy.js). Wzorzec i uzasadnienia: koszty/services/archiwum-kosztow.js.
 //
-// ⚠️⚠️ ZRODLEM PRAWDY JEST inFAKT. Plik na dysku i wiersz w bazie to lustro: awaria NAS-a nie
-// przerywa niczego (blad zapisu jest zjadany i logowany, wiersz NIE powstaje, wiec dokument
-// wraca nastepnej nocy sam). Blad POBRANIA z inFaktu leci wyzej — czuwacz liczy bledy z rzedu.
+// ⚠️⚠️ ŹRÓDŁEM PRAWDY JEST PROGRAM FAKTUROWY. Plik na dysku i wiersz w bazie to lustro: awaria NAS-a
+// nie przerywa niczego (błąd zapisu jest zjadany i logowany, wiersz NIE powstaje, więc dokument
+// wraca następnej nocy sam). Błąd POBRANIA z programu leci wyżej — czuwacz liczy błędy z rzędu.
 
 const PREFIKS_SKASOWANEJ = 'SKASOWANA_';
 
@@ -42,7 +42,7 @@ function zapiszAtomowo(pelna, bajty) {
   }
 }
 
-// PRZ-118.07: PDF pobiera PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`).
+// PDF pobiera PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`).
 export async function zarchiwizujDokument({
   db, program: programPodany = null, infakt = null, dokument, katalogBazowy, teraz = () => new Date(), log = console.error, usun = unlinkSync,
 }) {
@@ -52,9 +52,9 @@ export async function zarchiwizujDokument({
   const pelna = join(katalogBazowy, sciezka);
   const wiersz = wierszArchiwum(db, dokument.uuid);
   let decyzja = rozstrzygnij({ dokument, wiersz });
-  // Dokument oznaczony jako skasowany, ktory wrocil w inFakcie z tym samym odciskiem (np. byl
-  // usuniety i przywrocony recznie) — bez tej bramki zostalby na zawsze „bez zmian" ze starym
-  // wpisem skasowana_at, mimo ze inFakt znowu go widzi. Traktujemy jak zmiane: sciagamy na nowo
+  // Dokument oznaczony jako skasowany, który wrócił w programie fakturowym z tym samym odciskiem
+  // (np. był usunięty i przywrócony ręcznie) — bez tej bramki zostałby na zawsze „bez zmian” ze
+  // starym wpisem skasowana_at, mimo że program znowu go widzi. Traktujemy jak zmiane: sciagamy na nowo
   // na czysta sciezke, a zapiszWiersz nizej czysci skasowana_at przy okazji (ON CONFLICT).
   if (decyzja === 'bez_zmian' && wiersz?.skasowana_at) decyzja = 'zmieniony';
   if (decyzja === 'bez_zmian') return { stan: 'bez_zmian', sciezka: wiersz.sciezka_pdf };
@@ -66,16 +66,16 @@ export async function zarchiwizujDokument({
     odcisk: odciskDokumentu(dokument), sciezkaPdf: sciezka, zapisanyAt: teraz().toISOString(),
   };
 
-  // ⚠️ ADOPCJA: foldery z 1.08.2026 maja juz ~292 pliki o dokladnie tych nazwach. Nowy
-  // dokument z plikiem na dysku dostaje wiersz BEZ pobierania — inaczej pierwsza noc
-  // sciagalaby cale archiwum od nowa. Adoptujemy TYLKO nowe: zmieniony odcisk znaczy, ze
+  // ⚠️ ADOPCJA: archiwum prowadzone wcześniej ręcznie ma już setki plików o dokładnie tych
+  // nazwach. Nowy dokument z plikiem na dysku dostaje wiersz BEZ pobierania — inaczej pierwsza
+  // noc ściągałaby całe archiwum od nowa. Adoptujemy TYLKO nowe: zmieniony odcisk znaczy, ze
   // plik na dysku moze byc stara wersja, wiec go nadpisujemy.
   if (decyzja === 'nowy' && maTresc(pelna)) {
     zapiszWiersz(db, wierszDoZapisu);
     return { stan: 'adoptowany', sciezka };
   }
 
-  // PRZ-122.B10c: `pobierzPdf` programu wbudowanego zamyka fakturę (wydano_nabywcy), więc archiwum nie bierze jej
+  // `pobierzPdf` programu wbudowanego zamyka fakturę (wydano_nabywcy), więc archiwum nie bierze jej
   // w odstępie na poprawki (reguła w adapterze: `gotowyDoWydania`). Pominięcie bez pliku i wiersza = wraca następnej
   // nocy; to nie błąd. Program bez tej metody (inFakt) — jak dotąd.
   if (rodzaj !== 'korekta' && typeof program.gotowyDoWydania === 'function'
@@ -89,7 +89,7 @@ export async function zarchiwizujDokument({
       ? await program.pobierzPdfKorekty(dokument.uuid)
       : await program.pobierzPdf(dokument.uuid);
   } catch (e) {
-    // PRZ-122.B10a: faktura VAT (B2B i B2C — B2C-QR) bez numeru KSeF — archiwum trzyma PDF dla nabywcy, więc czeka (bez pliku i wiersza);
+    // Faktura VAT (B2B i B2C — B2C-QR) bez numeru KSeF — archiwum trzyma PDF dla nabywcy, więc czeka (bez pliku i wiersza);
     // następny przebieg pobierze ją po numerze. To nie błąd przebiegu.
     if (e?.czekaNaKsef) return { stan: 'czeka_na_ksef', sciezka };
     throw e;
@@ -128,8 +128,8 @@ export async function zarchiwizujDokument({
   return { stan: decyzja === 'nowy' ? 'pobrany' : 'nadpisany', sciezka };
 }
 
-// Dokument zniknal z inFaktu. NIE kasujemy pliku — papier mogl juz pojsc do biura, a slad
-// „byla taka faktura" jest cenniejszy niz porzadek na dysku. Nazwa mowi, co sie stalo.
+// Dokument zniknął z programu fakturowego. NIE kasujemy pliku — papier mógł już pójść do biura,
+// a ślad „była taka faktura” jest cenniejszy niż porządek na dysku. Nazwa mówi, co się stało.
 export async function oznaczSkasowanyDokument({
   db, wiersz, katalogBazowy, teraz = () => new Date(), log = console.error, przemianuj = renameSync,
 }) {

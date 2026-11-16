@@ -1,5 +1,5 @@
 // Rozpoznanie wyłącznie ze słowników ERLI. Prefiks identyfikatora nie określa umowy.
-// PRZ-157.11b: `mapa` (krok 3 konfiguratora, {typeId: kurier}) wybiera kuriera metody umowy firmy;
+// `mapa` (krok 3 konfiguratora, {typeId: kurier}) wybiera kuriera metody umowy firmy;
 // metody Przesyłek Erli zawsze nadaje ERLI. 'brak' i każda wartość spoza listy = blokada przed nadaniem.
 export const KURIERZY_MAPY_ERLI = /** @type {const} */ (['dpd', 'inpost_paczkomat', 'odbior']);
 

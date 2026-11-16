@@ -1,11 +1,11 @@
 // ⚠️⚠️ KSeF OGRANICZA POBIERANIE DOKUMENTOW DO 16 ZADAN NA MINUTE — i to jest liczba
-// ZMIERZONA NA PRODUKCJI (2026-09-02), a nie odczytana z dokumentacji: nocny przebieg
-// archiwum kosztow pobral 16 XML-i w ~20 s, a potem KAZDE kolejne zadanie wracalo jako
+// ZMIERZONA, a nie odczytana z dokumentacji: przebieg
+// archiwum kosztów pobrał 16 XML-i w ~20 s, a potem KAZDE kolejne zadanie wracalo jako
 // „HTTP 429 — Przekroczono limit 16 zadan na minute. Sprobuj ponownie po 54 sekundach".
 //
 // ⚠️ ODMOWA Z LIMITU NIE JEST AWARIA ZRODLA — JEST PROSBA O CHWILE PRZERWY. To rozroznienie
 // jest cala trescia tego modulu. Czuwacz kosztow ma hamulec na martwe zrodlo (trzy bledy
-// z rzedu przerywaja archiwizacje, services/czuwacz-kosztow.js) i bez tego rozroznienia
+// z rzedu przerywaja archiwizacje, moduly/koszty/services/czuwacz-kosztow.js) i bez tego rozroznienia
 // liczyl 429 jak awarie: przebieg dociagal 16 dokumentow na dobe i konczyl sie „bledem",
 // a przy backfillu od stycznia znaczylo to miesiace zamiast kilku nocy.
 //
@@ -44,7 +44,7 @@ const MAKS_PONOWIEN = 3;
  * ⚠️⚠️ CZEKANIE MUSI SIE ZMIESCIC W BUDZECIE WOLAJACEGO (`doKiedy`, znacznik czasu w ms).
  * Archiwum kosztow ma na caly przebieg 10 minut (BUDZET_ARCHIWUM_MS): bez tego straznika
  * kolejka setek zaleglych dokumentow spalaby po 55 s przy kazdym z nich, przebieg przekraczalby
- * godzine i zjadal kolejne tykniecia zegara (bootstrap.js) — po cichu, bo z punktu widzenia
+ * godzinę i zjadał kolejne tyknięcia zegara (moduly/koszty/zegary.ts) — po cichu, bo z punktu widzenia
  * wolajacego wszystko szloby zgodnie z planem.
  *
  * Gdy budzet nie pozwala poczekac, blad leci dalej z dopisanym `powod: 'limit'` — po TYM

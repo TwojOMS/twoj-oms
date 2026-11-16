@@ -51,8 +51,8 @@ type KonfiguracjaWysylki = {
 
 type Odmowa = (...a: unknown[]) => Promise<never>;
 /**
- * PRZ-092/093.09/135: piaskownica bez atrapy kuriera (opis.piaskownica.atrapa) — czytelna odmowa zamiast żądania do
- * kuriera: dane wpisane na :3005 nie mogą wyjść do DPD ani InPostu. Metody DOKŁADNIE jak u adaptera (R3) — wynikają
+ * Piaskownica bez atrapy kuriera (opis.piaskownica.atrapa) — czytelna odmowa zamiast żądania do
+ * kuriera: dane wpisane w piaskownicy nie mogą wyjść do DPD ani InPostu. Metody DOKŁADNIE jak u adaptera — wynikają
  * z umiejętności opisu; dodatkowe sprawdzPrzesylke u DPD przestawiłoby nadanie.js na drogę asynchroniczną.
  * Zgodność z adapterem pilnuje tests/moduly/wysylka/kurierzy-kontrakt-prz135.test.ts.
  */
@@ -69,7 +69,7 @@ export const odmowaWProbie = (opis: OpisKuriera) => (_opcjeKlienta?: unknown) =>
 };
 
 /**
- * PRZ-135.07b (D6): kurier z `konfigurator.kroki` dostaje wspólny widok kroków (src/core/web/konfigurator/) pod swoją
+ * Kurier z `konfigurator.kroki` dostaje wspólny widok kroków (src/core/web/konfigurator/) pod swoją
  * `konfigurator.sciezka`, z pierwszym krokiem jako bieżącym. Zapis kroków (trasy POST) dopisuje moduł kuriera.
  * Dziś żaden kurier nie ma kroków (DPD i InPost mają własne formularze), więc trasa nie powstaje.
  */
@@ -92,7 +92,7 @@ function odstep(env: Srodowisko, klucz: string, domyslny: number): number {
 export function createModulWysylka({ fabryki = {} }: { fabryki?: FabrykiKurierow } = {}): ModulOms<KonfiguracjaWysylki> {
 return {
   nazwa: 'wysylka', wersja: '1.0.0', wymaga: ['rdzen', 'web', 'kanaly', 'zamowienia', 'faktury'],
-  // PRZ-135: klucze kurierów z opisów (bez powtórzeń, w kolejności rejestru) + inFakt (oznaczanie pobrań).
+  // Klucze kurierów z opisów (bez powtórzeń, w kolejności rejestru) + inFakt (oznaczanie pobrań).
   kluczeIntegracji: [...new Set(Object.values(MODULY_KURIEROW).flatMap(opis => [...opis.kluczeEnv])),
     ...integracje.infakt.kluczeIntegracji],
   konfiguracja: (env) => {
@@ -122,25 +122,25 @@ return {
     const klienciKanalow = ctx.usluga<MapaKlientow>('kanaly', 'klienciKanalow');
     const klienciAllegro = mapaNaZadanie(() => Object.keys(klienciKanalow).filter(sklep => modulZamowienia({sklep}).typ === MODUL_ALLEGRO.typ), sklep => klienciKanalow[sklep]);
     const config = ctx.usluga<any>('kanaly', 'config');
-    // PRZ-102.20: źródło bez stanu (czyta bazę przy każdym wywołaniu) nad rachunkiem z pliku z rdzenia.
+    // Źródło bez stanu (czyta bazę przy każdym wywołaniu) nad rachunkiem z pliku z rdzenia.
     const rachunekFirmy = zrodloRachunkuFirmy({ db, zPliku: ctx.usluga<DaneSprzedawcy>('rdzen', 'sprzedawca') });
     const adresFirmy = zrodloAdresuFirmy({ db, zPliku: k.kurierzy.adresFirmyZPliku });
-    // WzA czyta nazwę przy żądaniu, także bez DPD/ShipX z pliku i po zmianie Firmy w panelu. PRZ-102.20: rachunek też —
-    // z bieżącej konfiguracji (plik → Ustawienia → Firma → brak); bez rachunku domena odmawia pobrania wymagającego konta.
+    // WzA czyta nazwę przy żądaniu, także bez DPD/ShipX z pliku i po zmianie Firmy w panelu. Rachunek też
+    // pochodzi z bieżącej konfiguracji (plik → Ustawienia → Firma → brak); bez rachunku domena odmawia pobrania wymagającego konta.
     const pobranieNadawca = { get nazwa() { return adresFirmy.adres()?.nazwa ?? ''; },
       get rachunek() { return rachunekFirmy.biezacy().rachunek ?? undefined; } };
     const kurierzy = zbudujKurierow({ ...k.kurierzy,
       pobranieNadawca,
       punktNadaniaErliDla: (z: any) => punktNadaniaErli(db, z?.sklep),
     }, klienciKanalow, fabryki);
-    // PRZ-092: DPD z Ustawień tylko, gdy .env go nie ustawia (.env wygrywa). Piaskownica bez atrapy nie dostaje
-    // prawdziwego klienta DPD: wpisane na :3005 dane nie mogą wyjść do DPD.
+    // DPD z Ustawień tylko, gdy .env go nie ustawia (.env wygrywa). Piaskownica bez atrapy nie dostaje
+    // prawdziwego klienta DPD: dane wpisane w piaskownicy nie mogą wyjść do DPD.
     const wczytajDpd = () => wczytajKonfiguracjeIntegracji(db, 'dpd');
-    // PRZ-093.08: nadawca DPD z Ustawień = adres firmy (plik → Ustawienia → Firma), czytany przy każdej paczce.
+    // Nadawca DPD z Ustawień = adres firmy (plik → Ustawienia → Firma), czytany przy każdej paczce.
     const dpdUstawien = k.kurierzy.dpd ? null : kurierDpdZUstawien({ wczytaj: wczytajDpd, nadawca: adresFirmy.adres,
       fabryka: fabryki.createDpd ?? (k.proba ? odmowaWProbie(MODULY_KURIEROW.dpd) : createDpdClient) });
     if (dpdUstawien && wczytajDpd()) kurierzy.dpd = dpdUstawien;
-    // PRZ-093.09: InPost z Ustawień — ta sama zasada: tylko gdy plik nie ma INPOST_TOKEN (.env wygrywa), nadawca =
+    // InPost z Ustawień — ta sama zasada: tylko gdy plik nie ma INPOST_TOKEN (.env wygrywa), nadawca =
     // adres firmy czytany przy każdej paczce, piaskownica bez atrapy dostaje odmowę zamiast prawdziwego klienta.
     const wczytajInpost = () => wczytajKonfiguracjeIntegracji(db, 'inpost');
     const inpostUstawien = k.kurierzy.inpost ? null : kurierInpostZUstawien({ wczytaj: wczytajInpost, nadawca: adresFirmy.adres,
@@ -221,7 +221,7 @@ return {
       zegary,
       zdrowie: () => {
         const ocena = ocenZdrowie({ teraz: teraz(), startAt: puls.startAt,
-          // PRZ-092: liczone z czuwacza zbudowanego przy starcie, nie z żywej mapy — kurier dodany w Ustawieniach do
+          // Liczone z czuwacza zbudowanego przy starcie, nie z żywej mapy — kurier dodany w Ustawieniach do
           // panelu bez kurierów nie ma czuwacza do restartu, więc nie może dawać alarmu „brak przebiegu” ani gasić uwagi.
           przesylkiWlaczone: kurierzyDostepni() || Object.keys(klienciKanalow).length > 0, pulsPrzesylek: puls.stan().czuwaczPrzesylek ?? null });
         if (!kurierzyDostepni()) ocena.uwagi.push('Nadawanie nie jest skonfigurowane.');

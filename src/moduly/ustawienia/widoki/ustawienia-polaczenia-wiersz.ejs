@@ -1,4 +1,4 @@
-<%# PRZ-136.07: jeden wiersz listy „Moje połączenia” (model z services/polaczenia-integracji.ts). Dane: p, idWiersza. %>
+<%# Jeden wiersz listy „Moje połączenia” (model z services/polaczenia-integracji.ts). Dane: p, idWiersza. %>
 <% const u = wszystkieUslugi.find(x => x.id === p.usluga);
    const kanal = p.kanal ? kanaly.find(k => k.stan.kanal === p.kanal) : undefined;
    const tytul = p.nazwaLudzka ?? (p.nazwa === p.usluga ? (u?.nazwa ?? p.nazwa) : p.nazwa);

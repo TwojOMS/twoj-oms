@@ -1,19 +1,19 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { Migracja } from '../../../core/kontrakty.ts';
 
-// PRZ-160 E3.01 — wystawianie ofert Allegro z karty (plan PRZ-160 etap 3, rozdz. 4, E3.01). Wyłącznie dokładanie:
+// Wystawianie ofert Allegro z karty. Wyłącznie dokładanie:
 // sześć nowych tabel i kolumny bez CHECK na `oferty_ustawienia_kont`; odporna na ponowienie (`IF NOT EXISTS`,
-// kolumny dodawane tylko, gdy ich brak). Rejestr ofert (`oferty_kanalow`) bez zmian schematu — D31 trzyma
-// `ext:<external.id>` w istniejącej kolumnie `id_zewnetrzne`, a `UNIQUE (kanal, id_zewnetrzne)` z magazyn/0001
+// kolumny dodawane tylko, gdy ich brak). Rejestr ofert (`oferty_kanalow`) bez zmian schematu — znacznik
+// `ext:<external.id>` trzyma istniejąca kolumna `id_zewnetrzne`, a `UNIQUE (kanal, id_zewnetrzne)` z magazyn/0001
 // odrzuca dwa szkice z tym samym znacznikiem na jednym koncie.
 //
 // Mapy (kategorie, reguły parametrów, marki) są per środowisko Allegro (`produkcja`/`sandbox`), bo identyfikatory
 // kategorii i wartości słowników różnią się między środowiskami. Kategoria i marka karty to nazwy ze słowników
 // `kategorie_kart` / `marki` — bez klucza obcego, bo zmiana nazwy w słowniku jest usunięciem i wstawieniem.
-// GPSR marki (D28) jest per konto, bo producent i osoba odpowiedzialna są zasobami konta.
+// GPSR marki jest per konto, bo producent i osoba odpowiedzialna są zasobami konta.
 //
-// `karty_allegro` — D37: nadpisania karty tylko dla Allegro (nazwa do 75 znaków, kategoria, parametry), znikają
-// z kartą. `zdjecia_kart_allegro` — D32: adres zdjęcia wgranego na konto Allegro i znacznik AI z chwili wgrania;
+// `karty_allegro` — nadpisania karty tylko dla Allegro (nazwa do 75 znaków, kategoria, parametry), znikają
+// z kartą. `zdjecia_kart_allegro` — adres zdjęcia wgranego na konto Allegro i znacznik AI z chwili wgrania;
 // znika ze zdjęciem (synchronizacja treści, która podmienia zdjęcia, wymusza ponowne wgranie).
 const TABELE = [
   `CREATE TABLE IF NOT EXISTS allegro_mapa_kategorii (
@@ -77,8 +77,8 @@ const TABELE = [
 )`,
 ];
 
-// Ustawienia konta dla Allegro (§1.6, E3.13): identyfikatory warunków zwrotów, reklamacji i gwarancji, lokalizacja
-// wysyłki, „Aktywuj po sprawdzeniu” (D30 — domyślnie nie), domyślna informacja o bezpieczeństwie (≤ 5000 znaków,
+// Ustawienia konta dla Allegro: identyfikatory warunków zwrotów, reklamacji i gwarancji, lokalizacja
+// wysyłki, „Aktywuj po sprawdzeniu” (domyślnie nie), domyślna informacja o bezpieczeństwie (≤ 5000 znaków,
 // pilnuje zapis w kodzie) i nazwy słowników do ekranu. Bez CHECK — runner nie pozwala dodać go do starej tabeli.
 const KOLUMNY_USTAWIEN: readonly (readonly [string, string])[] = [
   ['zwroty_id', 'ALTER TABLE oferty_ustawienia_kont ADD COLUMN zwroty_id TEXT'],

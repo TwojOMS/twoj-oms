@@ -354,7 +354,7 @@ export function registerOfertyMagazynu(app, { db, pomoc, kontaErli, kontaAllegro
     if (!uprawniony(req)) return odmowa(reply, 403, 'Brak prawa edycji magazynu.');
     let konto = pomoc.pole(req.body, 'konto');
     let wybrane = kontoOfert(konto);
-    // PRZ-160.E3.29: Aktywacja przy wybranym koncie ERLI używa jedynego konta Allegro ze zgodą; nieznany klucz
+    // Aktywacja przy wybranym koncie ERLI używa jedynego konta Allegro ze zgodą; nieznany klucz
     // (np. konto rozłączone po otwarciu strony) zostaje przy odmowie — inaczej szkice poszłyby na inne konto.
     if (wybrane?.rodzaj === 'erli') {
       const dostepne = kontaAllegro().filter(k => k.zgoda !== false);

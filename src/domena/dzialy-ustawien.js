@@ -1,4 +1,4 @@
-// PRZ-127: prezentacja działów nie zmienia praw do obsługujących je tras.
+// Prezentacja działów nie zmienia praw do obsługujących je tras.
 const z = (klucz, etykieta, href, tylkoAdmin = false) => ({ klucz, etykieta, href, tylkoAdmin });
 export const DZIALY_USTAWIEN = [
   { klucz: 'firma', etykieta: 'Firma', zakladki: [z('dane', 'Dane i logo', '/ustawienia/firma'), z('rejestrowe', 'Dane rejestrowe', '/ustawienia/firma/rejestrowe'), z('rachunek', 'Rachunek bankowy', '/ustawienia/firma/rachunek')] },
@@ -39,7 +39,7 @@ export function modelNawigacjiUstawien(url = '/ustawienia', { admin = false, pod
   if (sciezka === '/ustawienia/integracje/poczta' && adres.searchParams.has('podglad')) [aktywnyDzial, aktywnaZakladka] = ['komunikacja', 'podpis'];
   const aktywny = dzialy.find(d => d.klucz === aktywnyDzial);
   const zakladki = (aktywny?.zakladki ?? []).map(p => ({ ...p, aktywna: p.klucz === aktywnaZakladka, dostepna: true }));
-  // PRZ-167 (właściciel 15.11): aktywny dział z więcej niż jedną zakładką niesie `podstrony` — podmenu w lewym menu Ustawień.
+  // Aktywny dział z więcej niż jedną zakładką niesie `podstrony` — podmenu w lewym menu Ustawień.
   // `page` tylko pod własnym adresem; formularz pod aliasem (np. /ustawienia/paczka) zaznacza podstronę jako `true`.
   const podstrony = d => d.klucz === aktywnyDzial && d.zakladki.length > 1 ? { podstrony: d.zakladki.map(p => ({ etykieta: p.etykieta, href: p.href,
     biezaca: p.klucz !== aktywnaZakladka ? null : sciezka === p.href ? 'page' : 'true' })) } : {};

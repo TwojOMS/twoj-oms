@@ -1,9 +1,9 @@
-// PRZ-093.10 — inFakt (faktury sprzedaży) skonfigurowany w Ustawieniach. Wzór: kurierzy z PRZ-092 (DPD) i
-// PRZ-093.09 (InPost), domena/konfiguracja-inpost.js.
+// inFakt (faktury sprzedaży) skonfigurowany w Ustawieniach. Wzór: kurierzy (DPD, InPost),
+// domena/konfiguracja-inpost.js.
 //
 // Dla instalacji klientów Twojego OMS-u: klucz API inFaktu wpisuje się na ekranie zamiast do oms.env.
 // ⚠️ Gdy inFakt jest w .env (INFAKT_API_KEY), .env WYGRYWA w całości i ekran tylko to pokazuje — instalacja
-// skonfigurowana plikiem (w tym produkcja właściciela) nie zmienia zachowania po tej zmianie.
+// skonfigurowana plikiem nie zmienia zachowania.
 //
 // Adres API NIE jest polem formularza: klucz z ekranu idzie zawsze do produkcyjnego inFaktu. Dowolny adres z ekranu
 // znaczyłby, że konto z dostępem do Ustawień może wysłać klucz pod obcy adres. Inny adres (np. środowisko testowe
@@ -14,7 +14,7 @@
 export const ADRES_INFAKT = 'https://api.infakt.pl/api';
 /** Ekran Ustawienia → Integracje → inFakt — tu odsyłają komunikaty „inFakt nie jest skonfigurowany”. */
 export const EKRAN_INFAKTU = '/ustawienia/integracje/infakt';
-/** Odmiana nazwy „inFakt” do zdań dla człowieka (PRZ-118: `opis.nazwa` programu inFakt; jedno źródło z adapterem). */
+/** Odmiana nazwy „inFakt” do zdań dla człowieka (`opis.nazwa` programu inFakt; jedno źródło z adapterem). */
 export const NAZWA_INFAKTU = Object.freeze({
   mianownik: 'inFakt', dopelniacz: 'inFaktu', miejscownik: 'inFakcie', narzednik: 'inFaktem',
 });

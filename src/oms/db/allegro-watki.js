@@ -1,5 +1,5 @@
 // Lustro watkow Centrum wiadomosci + dowody wysylki. Ten modul NIE zna Allegro i NIE zna
-// regul autorespondera — sam zapis i odczyt. Decyzje siedza w domain/ i services/.
+// regul autorespondera — sam zapis i odczyt. Decyzje siedzą w src/domena/ i w usługach modułu wiadomości.
 
 import { tekstZAllegro } from '../../domena/tekst-allegro.js';
 
@@ -57,11 +57,11 @@ export function watek(db, kanal, threadId) {
 }
 
 /**
- * Zamówienie, którego dotyczy wątek — PRZ-101.03 („Wstaw szablon" podstawia jego pola) — albo `null`.
+ * Zamówienie, którego dotyczy wątek („Wstaw szablon" podstawia jego pola), albo `null`.
  *
  * Wątek Allegro nie niesie numeru zamówienia, więc dopasowanie jest po kupującym: NAJNOWSZE zamówienie z tego
- * samego konta (`sklep` = kanał) i z tym samym loginem. Login stoi w `klient_json.login` od PRZ-094.19; starsze
- * zamówienia mają go tylko w surowej odpowiedzi Allegro (`buyer.login`). `json_valid` przed `json_extract`, bo
+ * samego konta (`sklep` = kanał) i z tym samym loginem. Nowsze zamówienia mają login w `klient_json.login`,
+ * starsze tylko w surowej odpowiedzi Allegro (`buyer.login`). `json_valid` przed `json_extract`, bo
  * jeden uszkodzony wiersz wywróciłby całe zapytanie. Kupujący z kilkoma zamówieniami dostaje pola najnowszego —
  * operator widzi numer nad listą szablonów.
  */
@@ -80,7 +80,7 @@ export function zamowienieWatku(db, kanal, login) {
  * Reczne „Zalatwione" przy watku.
  *
  * ⚠️ ZAPISUJEMY DATE OSTATNIEJ WIADOMOSCI, nie sam znacznik. Dzieki temu nowa wiadomosc
- * kupujacego otwiera watek z powrotem SAMA (domain/czyj-ruch-watku.js) — przelacznik bez
+ * kupujacego otwiera watek z powrotem SAMA (domena/czyj-ruch-watku.js) — przelacznik bez
  * daty uciszalby go na zawsze, a nowe pytanie przepadaloby po cichu.
  *
  * ⚠️ NADPISUJE: po nowej wiadomosci wolno zamknac watek jeszcze raz.

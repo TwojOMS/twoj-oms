@@ -2,9 +2,9 @@ import { normalizujNip } from './klient-zbiorczy.js';
 import { STAWKA_VAT } from './vat.js';
 
 // WEWNĄTRZWSPÓLNOTOWA DOSTAWA TOWARÓW (WDT) — jedyne miejsce rozstrzygające, czy dokument
-// jest WDT i co z tego wynika dla payloadu inFaktu. Spec: 2026-08-26-oms-faktury-wdt-design.md.
+// jest WDT i co z tego wynika dla payloadu inFaktu.
 //
-// Rozpoznanie idzie po NIP-ie NABYWCY DOKUMENTU: `normalizujNip` (domain/klient-zbiorczy.js)
+// Rozpoznanie idzie po NIP-ie NABYWCY DOKUMENTU: `normalizujNip` (domena/klient-zbiorczy.js)
 // zachowuje prefiks wyłącznie dla zamkniętego słownika kodów UE (a `PL` zdejmuje), więc
 // „numer zaczyna się od dwóch liter" znaczy dokładnie „nabywca z innego państwa Unii".
 // Śmieci archiwalne („brak", „XY123") wychodzą z normalizacji jako same cyfry i stawki 0%
@@ -12,7 +12,7 @@ import { STAWKA_VAT } from './vat.js';
 // tu drugą listą kodów.
 //
 // ⚠️ MODUŁ JEST CZYSTY: bez bazy, bez sieci, bez zegara. Licznik serii mieszka
-// w db/wdt-numery.js, weryfikacja numeru w services/vies.js.
+// w moduly/faktury/db/wdt-numery.js, weryfikacja numeru w src/oms/services/vies.js.
 
 const WZORZEC_UE = /^([A-Z]{2})([0-9A-Z]+)$/;
 
@@ -22,16 +22,16 @@ export function czyNipUe(nip) {
 }
 
 /**
- * PRZ-122.B07d: czy dokument dla tego nabywcy jest WDT. Sprzedawca zwolniony z VAT (art. 113) nie robi WDT — 0% wymaga
- * czynnego podatnika VAT-UE; sprzedaż firmie z UE to wtedy zwykła sprzedaż krajowa „zw” (decyzja właściciela 27.10).
+ * Czy dokument dla tego nabywcy jest WDT. Sprzedawca zwolniony z VAT (art. 113) nie robi WDT — 0% wymaga
+ * czynnego podatnika VAT-UE; sprzedaż firmie z UE to wtedy zwykła sprzedaż krajowa „zw”.
  * Flagę liczy wołający (`sprzedawcaZwolniony` w moduly/faktury/db/zwolnienie-vat.js — tylko program wbudowany).
- * Bez flagi = `czyNipUe`, czyli dokładnie jak przed zmianą. `czyNipUe` zostaje do samego rozpoznania numeru.
+ * Bez flagi = `czyNipUe`. `czyNipUe` zostaje do samego rozpoznania numeru.
  */
 export function czyWdt(nip, { zwolniona = false } = {}) {
   return czyNipUe(nip) && zwolniona !== true;
 }
 
-/** PRZ-122.B07d: początek komunikatu „to nie WDT” — log przy wystawieniu, pas na karcie, odmowa straży adaptera. */
+/** Początek komunikatu „to nie WDT” — log przy wystawieniu, pas na karcie, odmowa straży adaptera. */
 export const NIE_WDT_ZWOLNIONA = 'Sprzedawca zwolniony z VAT — to nie jest WDT';
 
 /** Wpis w logu zamówienia przy wystawieniu faktury „zw” firmy zwolnionej dla nabywcy z numerem VAT UE. */
@@ -44,13 +44,12 @@ export function rozbijNipUe(nip) {
 }
 
 /**
- * Stawka DOKUMENTU dla tego nabywcy. Jedyne miejsce, któremu wolno oddać co innego niż
- * STAWKA_VAT — domain/vat.js zastrzega, że inna stawka ma być świadomą zmianą z testem,
- * i to jest dokładnie ta zmiana.
+ * Stawka DOKUMENTU dla tego nabywcy: '0' przy nabywcy z innego państwa UE (WDT), inaczej wbudowana `STAWKA_VAT`.
+ * Odstępstwo od stawki domyślnej jest świadome i przypięte testem (tests/domena/wdt.test.js).
  *
  * ⚠️ Przy 0% kwoty zamówienia SĄ kwotami netto (netto = brutto), więc arytmetyka pozycji,
  * bariera i saldo wpłat działają bez ani jednej zmiany — regułę cenową (cena sklepowa
- * − rabat → ÷1,23) wykonuje operator przy zakładaniu zamówienia, jak dotąd w Apilo.
+ * − rabat → ÷1,23) wykonuje operator przy zakładaniu zamówienia.
  */
 export function stawkaDokumentu(nip) {
   return czyNipUe(nip) ? '0' : STAWKA_VAT;
@@ -58,26 +57,26 @@ export function stawkaDokumentu(nip) {
 
 /**
  * Cena jednostkowa WDT z ceny brutto (w groszach): zdjęcie 23% polskiego VAT-u wliczonego
- * w cenę sklepową. Reguła cenowa z wiki: cena sklepowa − rabat → ÷1,23 = kwota netto na
+ * w cenę sklepową. Reguła cenowa: cena sklepowa − rabat → ÷1,23 = kwota netto na
  * dokumencie WDT (przy 0% netto = brutto = kwota do zapłaty).
  *
- * ⚠️ TRZECIE sankcjonowane miejsce dzielenia brutta w module (po domain/vat.js
- * i domain/podsumowanie-vat.js — tam stoi cała wykładnia zakazu z przewodnika 4.5)
+ * ⚠️ Jedno z sankcjonowanych miejsc dzielenia brutta (obok domena/vat.js
+ * i domena/podsumowanie-vat.js — tam stoi wykładnia reguły netto ze źródła)
  * i jedyne, którego wynik JEST wartością źródłową: cena WDT nie istnieje nigdzie indziej
  * (sklep zna wyłącznie brutto z 23%), więc nie ma czego zgubić ani z czym się rozjechać.
  * Wolno jej użyć WYŁĄCZNIE przy WSTAWIANIU pozycji (magazyn → zamówienie, przeliczenie
  * rabatu) — nigdy przy wystawianiu faktury: tam kwoty zamówienia są już gotowe.
  *
- * ⚠️ DZIELIMY CENĘ ZA SZTUKĘ, a linia = cena × ilość — dokładnie jak w Apilo
- * (WDT/1/06/2026: cyfry 5cm 12,50 × 3 = 37,50, a NIE 46,14 ÷ 1,23 = 37,51). Ta sama
- * zasada, co przy rabacie (cenaPoRabacieGrosze): zaokrąglamy sztukę, mnożymy potem.
+ * ⚠️ DZIELIMY CENĘ ZA SZTUKĘ, a linia = cena × ilość (np. 12,50 × 3 = 37,50, a NIE
+ * 46,14 ÷ 1,23 = 37,51). Ta sama zasada, co przy rabacie (cenaPoRabacieGrosze): zaokrąglamy
+ * sztukę, mnożymy potem.
  *
  * Podłoga jeden grosz — ta sama, co przy rabacie: cena zero jest w tym panelu odmową,
  * pozycja gratis wpisuje się jawnie.
  */
 //
-// PRZ-105 (decyzja właściciela 21.10): dzielimy przez stawkę DOMYŚLNĄ z Ustawień (wołający czyta
-// moduly/faktury/db/stawka-vat.js) — w cenie sklepowej siedzi stawka sklepu, nie stałe 23.
+// Dzielimy przez stawkę DOMYŚLNĄ z Ustawień (wołający czyta moduly/faktury/db/stawka-vat.js)
+// — w cenie sklepowej siedzi stawka sklepu, nie stałe 23.
 // Domyślny parametr STAWKA_VAT jest tu dopuszczalny: funkcja liczy tylko cenę wstawianą do
 // formularza (operator widzi ją przed zapisem), a nie stawkę, która idzie na fakturę.
 export function cenaWdtGrosze(cenaBruttoGr, stawka = STAWKA_VAT) {
@@ -86,8 +85,8 @@ export function cenaWdtGrosze(cenaBruttoGr, stawka = STAWKA_VAT) {
 }
 
 /**
- * Numer serii WDT — dokładnie wzorzec z Apilo (`WDT/1/06/2026`): licznik miesięczny,
- * miesiąc z zerem wiodącym, pozycja bez padu. Sam licznik siedzi w db/wdt-numery.js.
+ * Numer serii WDT — wzorzec `WDT/1/06/2026`: licznik miesięczny,
+ * miesiąc z zerem wiodącym, pozycja bez padu. Sam licznik siedzi w moduly/faktury/db/wdt-numery.js.
  */
 export function numerWdt(rok, miesiac, kolejny) {
   return `WDT/${kolejny}/${String(miesiac).padStart(2, '0')}/${rok}`;
@@ -95,12 +94,12 @@ export function numerWdt(rok, miesiac, kolejny) {
 
 /**
  * Pola payloadu inFaktu, które dokłada WYŁĄCZNIE dokument WDT. Dla nabywcy krajowego —
- * pusty obiekt, żeby payload faktury krajowej został bajt w bajt taki, jaki był
+ * pusty obiekt, żeby payload faktury krajowej nie dostał żadnego pola WDT
  * (ta sama zasada, co `sposobPlatnosciFaktury`).
  *
- * Kształt zmierzony na żywym koncie 26.08.2026 (dokument próbny, skasowany):
+ * Kształt zmierzony na żywym koncie (dokument próbny, skasowany):
  * `sale_type: 'merchandise'` jest przy nabywcy zagranicznym WYMAGANE („Proszę określić
- * rodzaj sprzedaży"), `sales_kind: 'sprzedaz_podstawowa'` to wartość dowiedziona tamtym
+ * rodzaj sprzedaży"), `sales_kind: 'sprzedaz_podstawowa'` to wartość potwierdzona tym
  * dokumentem. Adnotacja w `notes` niesie NIP sprzedawcy z prefiksem `PL`, bo inFakt sam
  * go nie drukuje, a art. 106e ust. 1 pkt 24 w zw. z art. 97 ust. 10 ustawy o VAT wymaga
  * go przy WDT na dokumencie.
@@ -129,7 +128,7 @@ export function polaWdtKorekty(nip, { nipSprzedawcy, uwagi }) {
 }
 
 /**
- * PRZ-108.10: NIP sprzedawcy do adnotacji WDT, rozstrzygnięty PRZED rezerwacją faktury. NIP przychodzi tekstem (stary
+ * NIP sprzedawcy do adnotacji WDT, rozstrzygnięty PRZED rezerwacją faktury. NIP przychodzi tekstem (stary
  * kształt) albo funkcją (NIP z Ustawień → Firma, czytany przy każdym wystawieniu). Dla nabywcy krajowego nie jest
  * potrzebny (null — payload bez pól WDT). Dla WDT bez NIP-u — odmowa operatorska: adnotacja „NIP sprzedawcy: PL.” bez
  * cyfr to dokument wbrew art. 106e ust. 1 pkt 24, a odmowa po rezerwacji mogłaby zostawić zajęty numer serii.

@@ -1,9 +1,9 @@
-// PRZ-160.E3.11 — jedyny ekran mapowania PRZ-160: kategoria karty → kategoria Allegro (liść) z regułami
-// wymaganych parametrów oraz marka → wartość słownika marek Allegro (D33, D36).
+// Jedyny ekran mapowania: kategoria karty → kategoria Allegro (liść) z regułami
+// wymaganych parametrów oraz marka → wartość słownika marek Allegro.
 // Mapy i reguły są na środowisko (produkcja/sandbox), nie na konto. Opis kategorii i podpowiedzi czytamy
 // przez `kontoOpisuSrodowiska` (pierwsze połączone konto środowiska ze zgodą na odczyt ofert).
 // Uprawnienie: ekran „magazyn” (prefiks /magazyn, jak strony słowników); CSRF pilnuje rdzeń dla każdego POST.
-// Producent marki na koncie — nie tutaj (E3.13).
+// Producent marki jest ustawieniem konta — nie tutaj.
 import { listaSlownika, czystaNazwa, wTransakcji } from './services/slowniki-kart.js';
 import { opisKategoriiAllegro, kontoOpisuSrodowiska, szukajWartosciSlownika } from './services/kategorie-allegro.js';
 import { uprawnieniaZTokenu } from '../../domena/uprawnienia-kanalu.js';
@@ -15,7 +15,7 @@ const NAJWIECEJ_PODPOWIEDZI = 10;
 const NAJWIECEJ_ZAPYTAN_LISCIA = 2 * NAJWIECEJ_PODPOWIEDZI;
 const PRZYKLADOWE_KARTY = 3;
 const PARAMETR_STAN = '11323';
-// Pola karty, z których reguła „pole karty” może brać wartość; `marka` idzie przez mapę marek (D36).
+// Pola karty, z których reguła „pole karty” może brać wartość; `marka` idzie przez mapę marek.
 export const POLA_KARTY = Object.freeze({
   sku: 'SKU', ean: 'EAN', nazwa: 'Nazwa', marka: 'Marka (mapa marek)',
   szerokosc_mm: 'Szerokość [mm]', wysokosc_mm: 'Wysokość [mm]', glebokosc_mm: 'Głębokość [mm]', waga_g: 'Waga [g]',
@@ -183,7 +183,7 @@ export function registerKategorieAllegro(app, { db, kontaAllegro = () => [] }) {
   });
 
   app.post('/magazyn/kategorie/:nazwa/allegro', async (req, reply) => {
-    // E3c (N6): mapę kategorii (wpływa na wszystkie oferty kategorii) zatwierdza tylko administrator.
+    // Mapę kategorii (wpływa na wszystkie oferty kategorii) zatwierdza tylko administrator.
     if (req.konto?.admin !== true) {
       return stronaOdmowy(reply, 403, 'Tylko administrator może zatwierdzić kategorię Allegro.', { wroc: '/magazyn/kategorie', napisWroc: 'Kategorie' });
     }
@@ -225,7 +225,7 @@ export function registerKategorieAllegro(app, { db, kontaAllegro = () => [] }) {
         db.prepare(`INSERT OR IGNORE INTO allegro_reguly_parametrow (srodowisko, kategoria_allegro_id, parametr_id, rodzaj, wartosc_json, potwierdzil, zmieniono_at)
           VALUES (?, ?, ?, 'stala', ?, ?, ?)`).run(srodowisko, kategoriaId, PARAMETR_STAN, JSON.stringify({ valuesIds: [nowy.id] }), login(req), teraz);
       }
-      // D36: słownik każdej zmapowanej marki w tej kategorii — dopisanie albo zdjęcie z `kategorie_sprawdzone_json`.
+      // Słownik każdej zmapowanej marki w tej kategorii — dopisanie albo zdjęcie z `kategorie_sprawdzone_json`.
       for (const m of surowe ? marki : []) {
         const jest = slownikParametru(surowe, m.parametr_id).some(w => String(w?.id) === m.wartosc_id);
         const lista = jsonLista(m.kategorie_sprawdzone_json).map(String).filter(id => id !== kategoriaId);
@@ -238,7 +238,7 @@ export function registerKategorieAllegro(app, { db, kontaAllegro = () => [] }) {
   });
 
   app.post('/magazyn/kategorie/:nazwa/allegro/regula', async (req, reply) => {
-    // E3c (N6): reguła parametru zmienia treść żywych ofert kategorii — tylko administrator.
+    // Reguła parametru zmienia treść żywych ofert kategorii — tylko administrator.
     if (req.konto?.admin !== true) {
       return stronaOdmowy(reply, 403, 'Tylko administrator może ustalać reguły parametrów Allegro.', { wroc: '/magazyn/kategorie', napisWroc: 'Kategorie' });
     }
@@ -322,7 +322,7 @@ export function registerKategorieAllegro(app, { db, kontaAllegro = () => [] }) {
       try {
         stan.parametrId = await parametrMarki(konto, srodowisko, kategorie);
         if (stan.parametrId) {
-          // Jedno pobranie słownika na żądanie ekranu (słownik marek nie trafia do bazy — D36).
+          // Jedno pobranie słownika na żądanie ekranu (słownik marek nie trafia do bazy).
           const pamiec = new Map();
           const klient = { pobierzParametryKategorii: id => {
             if (!pamiec.has(id)) pamiec.set(id, konto.klient.pobierzParametryKategorii(id));
@@ -330,7 +330,7 @@ export function registerKategorieAllegro(app, { db, kontaAllegro = () => [] }) {
           } };
           const szukaj = tekst => szukajWartosciSlownika({ klient, kategoriaId: kategorie[0].id, parametrId: stan.parametrId, tekst });
           const trafienia = await szukaj(stan.szukaj || marka);
-          // Podpowiedź D36: dokładne trafienie (bez wielkości liter i spacji brzegowych) na górze.
+          // Podpowiedź: dokładne trafienie (bez wielkości liter i spacji brzegowych) na górze.
           stan.propozycje = trafienia.map(w => ({ ...w, dokladna: bezWielkosci(w.wartosc) === bezWielkosci(marka) }))
             .sort((a, b) => Number(b.dokladna) - Number(a.dokladna));
           stan.bezMarki = await szukaj('bez marki');
@@ -353,7 +353,7 @@ export function registerKategorieAllegro(app, { db, kontaAllegro = () => [] }) {
   });
 
   app.post('/magazyn/marki/:marka/allegro', async (req, reply) => {
-    // E3c (N6): marka trafia do treści żywych ofert — tylko administrator.
+    // Marka trafia do treści żywych ofert — tylko administrator.
     if (req.konto?.admin !== true) {
       return stronaOdmowy(reply, 403, 'Tylko administrator może zatwierdzić markę Allegro.', { wroc: '/magazyn/marki', napisWroc: 'Marki' });
     }
@@ -370,7 +370,7 @@ export function registerKategorieAllegro(app, { db, kontaAllegro = () => [] }) {
     if (!konto) return odmowa(400, brakKonta(srodowisko));
     const kategorie = kategorieSrodowiska(srodowisko);
     if (!kategorie.length) return odmowa(400, `Najpierw przypisz kategorię Allegro w środowisku ${srodowisko} (Magazyn → Kategorie).`);
-    // D36: wartość sprawdzana w słowniku KAŻDEJ zmapowanej kategorii środowiska.
+    // Wartość sprawdzana w słowniku KAŻDEJ zmapowanej kategorii środowiska.
     const sprawdzone = [];
     let tekst = null;
     try {

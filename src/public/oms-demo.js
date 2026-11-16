@@ -1,4 +1,4 @@
-// PRZ-083 — pasek demo publicznego: licznik do resetu danych, ostrzeżenie w ostatnich 2 minutach i nakładka
+// Pasek demo publicznego: licznik do resetu danych, ostrzeżenie w ostatnich 2 minutach i nakładka
 // „Trwa restart demo”, która czeka na nową instancję panelu i przenosi do logowania.
 //
 // Skąd wiadomo, że restart minął: termin resetu instancji (data-demo-reset) stoi też na ekranie logowania, a nowa
@@ -42,7 +42,7 @@ function uruchom() {
       dopisek.textContent = `Po restarcie zaloguj się ponownie: ${login} / ${haslo}.`;
     } else {
       tekst.innerHTML = `Wersja DEMO — restart danych za <strong>${stan.licznik}</strong>`;
-      // PRZ-167: dopisek zawiera też informację o generatorze (tak jak wersja bez JS w layout-oms.ejs).
+      // Dopisek zawiera też informację o generatorze (tak jak wersja bez JS w layout-oms.ejs).
       dopisek.textContent = 'Dane z generatora, połączenia ze sklepami, Allegro i kurierami są wyłączone. Zmiany gości znikają przy każdym restarcie.';
     }
   };

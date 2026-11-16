@@ -1,10 +1,10 @@
-// Haszowanie hasel kont panelu — scrypt z node:crypto (spec 2026-09-12).
+// Haszowanie haseł kont panelu — scrypt z node:crypto.
 //
-// ⚠️ DLACZEGO SCRYPT, A NIE bcrypt ANI argon2. Obraz panelu budowany jest NA NAS-IE,
-// a bcrypt i argon2 to paczki natywne — kompilowane przy `npm ci`, na Celeronie, bez
-// kompilatora w obrazie. Kazda z nich to dodatkowy sposob, na jaki instalacja moze nie
-// wstac; u kupujacego „Twoj OMS" bylby to pierwszy ekran, jaki zobaczy. scrypt jest
-// w standardowej bibliotece Node i nie ma czego instalowac.
+// ⚠️ DLACZEGO SCRYPT, A NIE bcrypt ANI argon2. Obraz panelu bywa budowany na małym serwerze,
+// a bcrypt i argon2 to paczki natywne — kompilowane przy `npm ci`, bez
+// kompilatora w obrazie. Każda z nich to dodatkowy sposób, na jaki instalacja może nie
+// wstać; u nowego użytkownika „Twój OMS" byłby to pierwszy ekran, jaki zobaczy. scrypt jest
+// w standardowej bibliotece Node i nie ma czego instalować.
 
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 

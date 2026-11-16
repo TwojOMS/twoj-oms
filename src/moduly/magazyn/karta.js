@@ -57,8 +57,8 @@ function listaTekstow(surowe) {
  * naprawde lezy. Kafelki dalsze ida wiec dotychczasowa reguła — dokladnie tak, jak dzis.
  *
  * ⚠️ REGULA „lustro wygrywa, zgadywanie zostaje siatka" JEST TA SAMA, ktora dostaja ekrany
- * zamowien (`domain/miniatura-pozycji.js`). Osobna kopia tutaj rozjechalaby sie z nimi przy
- * pierwszej zmianie — a wlasnie z takiego rozjazdu wzieła sie cala ta poprawka.
+ * zamowien (`domena/miniatura-pozycji.js`). Osobna kopia tutaj rozjechalaby sie z nimi przy
+ * pierwszej zmianie.
  */
 function galeriaProduktu(surowe, zapisanaMiniaturaGlownego) {
   const zdjecia = [];
@@ -111,7 +111,7 @@ const kandydatKarty = (oferta, propozycja, definicje) => ({
 // w wierszu tabeli), bo tutaj lista stoi w kolumnie i sluzy JEDNEJ karcie.
 const ILE_PODPOWIEDZI = 5;
 
-// Adres powrotu na liste (Zadanie 6). WYLACZNIE wlasny ekran magazynu — wartosc przychodzi
+// Adres powrotu na liste. WYLACZNIE wlasny ekran magazynu — wartosc przychodzi
 // z paska adresu (albo od kogos, kto podesle spreparowany odnosnik), wiec bez tej bariery
 // karta bylaby przekaznikiem na DOWOLNY adres (open redirect), a `//host` przegladarka
 // czyta jako adres absolutny bez schematu (`//evil.example` == `https://evil.example`
@@ -122,13 +122,13 @@ const bezpiecznyWroc = (surowy) => (
 );
 
 // Adres karty z PELNYM kompletem stanu ekranu: otwarta sekcja edycji, fraza, filtr konta
-// i — od Zadania 6 — adres powrotu na liste (`wroc`, JUZ zwalidowany przez `bezpiecznyWroc`
+// i adres powrotu na liste (`wroc`, JUZ zwalidowany przez `bezpiecznyWroc`
 // u kazdego wywolujacego). ⚠️ Ten sam powod, co przy `adresMagazynu` i `adresPowiazan`
-// (niezmiennik 4.13b): odnosnik budowany od zera gubilby to, co czlowiek przed chwila
+// (reguła: filtry nie kasują frazy): odnosnik budowany od zera gubilby to, co czlowiek przed chwila
 // ustawil — a tu gubilby TAKZE otwarty formularz i to, na jaka liste ma wrocic.
 //
 // ⚠️ `wroc` DOKLEJA SIE JAKO OSTATNI — kolejnosc parametrow ma zostac STALA (ta sama zasada,
-// co przy `POLA` w domain/magazyn-filtry.js), zeby ten sam stan ekranu mial zawsze ten sam
+// co przy `POLA` w domena/magazyn-filtry.js), zeby ten sam stan ekranu mial zawsze ten sam
 // adres (zakladki, historia przegladarki, testy porownujace adresy).
 function adresKarty(id, {
   edytuj, fraza, kanal, wroc,
@@ -162,7 +162,7 @@ const BEZ_SKLEPOW = {
  * @param {readonly {klucz:string;etykieta?:string}[]} opcje.definicje
  * @param {string[]} opcje.kanalyAllegro — jawna lista kont do filtra i zapytania kandydatów
  * @param {() => readonly {klucz:string}[]} [opcje.kontaErli]
- * @param {() => readonly {klucz:string, zgoda?:boolean, tylkoOdczyt?:() => boolean}[]} [opcje.kontaAllegro] — PRZ-160.E3.09a; sekcję „Allegro” karty dokłada E3.12
+ * @param {() => readonly {klucz:string, zgoda?:boolean, tylkoOdczyt?:() => boolean}[]} [opcje.kontaAllegro] — konta Allegro do sekcji „Allegro” karty
  */
 export function createKartaMagazynu({ db, kanalyAllegro, definicje, kontaErli = /** @returns {{ klucz: string }[]} */ () => [], kontaAllegro = /** @returns {{ klucz: string }[]} */ () => [] }) {
   const kanalAllegro = (surowy) => { const s = napis(surowy); return s !== null && kanalyAllegro.includes(s) ? s : null; };
@@ -181,7 +181,7 @@ export function createKartaMagazynu({ db, kanalyAllegro, definicje, kontaErli = 
     const edytujParam = typeof req.query?.edytuj === 'string' ? req.query.edytuj : null;
     const edytujDane = edytujParam === 'dane' || Boolean(blad);
 
-    // Adres powrotu na liste (Zadanie 6) — WYLACZNIE wlasny ekran magazynu, patrz
+    // Adres powrotu na liste — WYLACZNIE wlasny ekran magazynu, patrz
     // `bezpiecznyWroc`. Czytany TUTAJ (a nie osobno w kazdej trasie karty), zeby odczyt
     // i kazda odmowa pokazywaly ten sam odnosnik „Wróć" — ten sam powod, dla ktorego caly
     // ekran karty sklada sie w jednym miejscu.
@@ -196,8 +196,8 @@ export function createKartaMagazynu({ db, kanalyAllegro, definicje, kontaErli = 
     const szukamy = Boolean(filtry.fraza || filtry.kanal);
     const oferty = niepowiazaneOfertyAllegro(db, kanalyAllegro);
 
-    // ⚠️⚠️ SZUKANIE ZASTEPUJE PODPOWIEDZI, a nie doklada sie do nich. Pomiar obalil zalozenie
-    // planu: tytuly na Allegro sa SPRZEDAZOWE, wiec podpowiedz trafia w mniejszosc przypadkow
+    // ⚠️⚠️ SZUKANIE ZASTEPUJE PODPOWIEDZI, a nie doklada sie do nich. Tytuly na Allegro sa
+    // SPRZEDAZOWE, wiec podpowiedz trafia w mniejszosc przypadkow
     // („Lampa stołowa Grzybek - DUŻA lampka nocna do sypialni" wobec „Lampa Grzybek – 30cm") —
     // i wlasnie wtedy czlowiek siega po fraze. Podpowiedzi domieszane do wynikow znaczylyby,
     // ze wyszukiwarka oddaje takze to, o co nikt nie pytal.
@@ -218,7 +218,7 @@ export function createKartaMagazynu({ db, kanalyAllegro, definicje, kontaErli = 
     // powiazanych produktow. ⚠️ Wybor ma byc SWIADOMY (stad komplet obok kazdego produktu),
     // ale nie moze zgubic wartosci juz ustawionej — inaczej zapis czegokolwiek innego
     // kasowalby kategorie po cichu, bo pole wyboru nie mialoby jej wsrod pozycji.
-    // PRZ-160.P3b.01: do tego dochodzi słownik kategorii (strona Magazyn → Kategorie); nazwy sklepu bez encji HTML.
+    // Do tego dochodzi słownik kategorii (strona Magazyn → Kategorie); nazwy sklepu bez encji HTML.
     const kategorie = [...new Set([
       ...(karta.kategoria_glowna ? [karta.kategoria_glowna] : []),
       ...nazwySlownika(db, 'kategorie'),
@@ -273,7 +273,7 @@ export function createKartaMagazynu({ db, kanalyAllegro, definicje, kontaErli = 
         wycofana: karta.wycofana === 1,
         nazwa: karta.nazwa,
         sku: karta.sku || null,
-        // Milimetry → „70 × 100 cm" liczy domena, nie widok (domain/rozmiar.js).
+        // Milimetry → „70 × 100 cm" liczy domena, nie widok (domena/rozmiar.js).
         wymiary: opisWymiarow(karta),
         kategoria: karta.kategoria_glowna || null,
         marka: karta.marka || null,
@@ -281,14 +281,14 @@ export function createKartaMagazynu({ db, kanalyAllegro, definicje, kontaErli = 
         paczkomat: czyPaczkomat(karta),
         opis: karta.opis || null,
         waga: kilogramyZGramow(karta.waga_g),
-        // PRZ-153.E5.3c: grosze w bazie → „12,34 zł" na ekranie.
+        // Grosze w bazie → „12,34 zł" na ekranie.
         ean: karta.ean || null,
         cena: Number.isSafeInteger(karta.cena_gr) ? zlotowki(zl(karta.cena_gr)) : null,
         stawkaVat: karta.stawka_vat || null,
       },
       stawkiVat: STAWKI_VAT,
       opisKarty: daneOpisu(db, karta.id, req.opisFormularz),
-      // PRZ-091: stan magazynowy — `null`, gdy stany są wyłączone (sekcji na karcie wtedy nie ma).
+      // Stan magazynowy — `null`, gdy stany są wyłączone (sekcji na karcie wtedy nie ma).
       stanMagazynowy: stanMagazynowyKarty(karta.id, bladRuchu, req.body, req.query?.ruch === 'powtorzony'),
       produkty,
       kandydaci,
@@ -299,7 +299,7 @@ export function createKartaMagazynu({ db, kanalyAllegro, definicje, kontaErli = 
       wartosci,
       szukamy,
       filtry,
-      // Formularz szukania niesie UKRYTYM POLEM otwarta sekcje edycji i — od Zadania 6 —
+      // Formularz szukania niesie UKRYTYM POLEM otwarta sekcje edycji i
       // adres powrotu. ⚠️ `wroc` MUSI byc TU, nie tylko w adresie akcji formularza: submit
       // formularza GET WYRZUCA query string z `action` i skleja nowy WYLACZNIE z named pol
       // (ten sam powod, dla ktorego tu juz stoi `edytuj`) — bez ukrytego pola szukanie
@@ -336,7 +336,7 @@ export function createKartaMagazynu({ db, kanalyAllegro, definicje, kontaErli = 
         kiedy: fmtDataCzas(w.utworzono_at),
         co: w.typ === 'zamowienie' ? `zamówienie ${w.numer}` : w.typ === 'przepiecie' ? 'przepięcie oferty' : ETYKIETY_RUCHU[w.rodzaj],
         adres: w.typ === 'zamowienie' ? `/zamowienia/${w.zamowienie_id}` : null,
-        // Ślad przepięcia (E4.14) sam nie zmienia stanu — zamówienia przechodzą z ofertą i stoją we własnych wierszach.
+        // Ślad przepięcia sam nie zmienia stanu — zamówienia przechodzą z ofertą i stoją we własnych wierszach.
         ilosc: w.typ === 'przepiecie' ? '—' : w.ilosc > 0 ? `+${w.ilosc}` : String(w.ilosc),
         kto: w.konto_login ?? null,
         powod: w.powod ?? null,
@@ -352,9 +352,9 @@ export function createKartaMagazynu({ db, kanalyAllegro, definicje, kontaErli = 
   return { ekranKarty, brakKarty };
 }
 
-// ——— PRZ-160.E3.12 — sekcja „Allegro” karty ————————————————————————————————————————————
-// Braki liczy usługa E3.06b (bez konta). Tu tylko: skąd kategoria i parametry (D33), formularz nadpisań
-// w `karty_allegro` (D37) i wybór produktu przy problemie oferty (D34).
+// ——— sekcja „Allegro” karty ————————————————————————————————————————————
+// Braki liczy `ofertaAllegroKarty` (bez konta). Tu tylko: skąd kategoria i parametry, formularz nadpisań
+// w `karty_allegro` i wybór produktu przy problemie oferty.
 const ID_KATEGORII_ALLEGRO = /^[0-9A-Za-z-]{1,64}$/;
 const PRZEDROSTEK_PARAMETRU = 'parametr:';
 const idTekst = (v) => (v == null ? null : napis(String(v)));
@@ -365,7 +365,7 @@ function jsonLubNull(surowe) {
   try { return JSON.parse(surowe); } catch { return null; }
 }
 /**
- * E3c (N7): konta Allegro, na których wycofanie karty nie zakończy jej ofert — pętla pomija konto z wyłączonymi
+ * Konta Allegro, na których wycofanie karty nie zakończy jej ofert — pętla pomija konto z wyłączonymi
  * ofertami (`oferty_czynne = 0`), konto w trybie tylko odczyt i konto bez zgody na oferty (nie wysyła ENDED).
  * Liczą się oferty zarządzane z numerem Allegro, jeszcze nie zakończone (synchronizacja w
  * `petla-ofert-allegro.js` bierze tylko takie).
@@ -396,7 +396,7 @@ function kontaSrodowiskaAllegro(db, srodowisko) {
   } catch { return []; } // baza bez modułu kanałów
 }
 
-/** Najświeższy opis kategorii wersji 2 z pamięci kont środowiska (ten sam zapis, który czyta E3.06b). */
+/** Najświeższy opis kategorii wersji 2 z pamięci kont środowiska (ten sam zapis, który czyta `ofertaAllegroKarty`). */
 function opisKategoriiAllegro(db, kategoria, konta) {
   if (!kategoria) return null;
   const wiersze = db.prepare('SELECT polaczenie, sciezka_json, parametry_json FROM kanaly_kategorie WHERE kategoria_id = ? ORDER BY pobrano_at DESC')
@@ -412,7 +412,7 @@ function opisKategoriiAllegro(db, kategoria, konta) {
   return null;
 }
 
-/** Stan Allegro karty z bazy: nadpisania, import i kategoria skuteczna (kolejność D33: nadpisanie → import → mapa). */
+/** Stan Allegro karty z bazy: nadpisania, import i kategoria skuteczna (kolejność: nadpisanie → import → mapa). */
 function stanAllegroKarty(db, karta, srodowisko) {
   const konta = kontaSrodowiskaAllegro(db, srodowisko);
   const ka = db.prepare('SELECT nazwa, kategoria_id, parametry_json, produkt_id FROM karty_allegro WHERE karta_id = ?').get(karta.id) ?? null;
@@ -562,7 +562,7 @@ function napisMapy(db, karta, srodowisko) {
     .get(srodowisko, glowna)?.kategoria_allegro_id) : null;
 }
 
-// PRZ-160 E3d.02-03 — wyjątek cennika dostaw na karcie, osobno dla każdego bieżącego konta Allegro i ERLI.
+// Wyjątek cennika dostaw na karcie, osobno dla każdego bieżącego konta Allegro i ERLI.
 const MAKS_ZNAKOW_CENNIKA = 200;
 const kontaCennikow = (kontaAllegro, kontaErli) => [
   ...kontaAllegro().map(k => ({ klucz: k.klucz, rodzaj: 'allegro' })),
@@ -636,7 +636,7 @@ export function registerKartaMagazynu(app, { db, magazyn, kanalyAllegro, definic
     return ekranKarty(req, reply, { karta });
   });
 
-  // E3.24: CSRF sprawdza wspólny hak panelu; zmiana sprzedaży wymaga flagi admina, jak akcje ofert.
+  // CSRF sprawdza wspólny hak panelu; zmiana sprzedaży wymaga flagi admina, jak akcje ofert.
   for (const akcja of ['wycofaj', 'przywroc']) app.post(`/magazyn/:id/${akcja}`, async (req, reply) => {
     const odmowa = (kod, tekst) => stronaOdmowy(reply, kod, tekst, {
       tytul: 'Nie zmieniono sprzedaży karty', wroc: `/magazyn/${encodeURIComponent(req.params.id)}#sprzedaz-karty`,
@@ -653,7 +653,7 @@ export function registerKartaMagazynu(app, { db, magazyn, kanalyAllegro, definic
     return reply.code(303).redirect(`/magazyn/${karta.id}#sprzedaz-karty`);
   });
 
-  // PRZ-091 — ruch ręczny (przyjęcie / korekta). Odmowa wraca na kartę z kodem 400 i tym, co wpisano.
+  // Ruch ręczny (przyjęcie / korekta). Odmowa wraca na kartę z kodem 400 i tym, co wpisano.
   // Ten sam klucz drugi raz (podwójne kliknięcie) — przekierowanie jak po sukcesie, bez drugiego ruchu.
   app.post('/magazyn/:id/ruch', async (req, reply) => {
     if (!magazyn || magazyn.gotowy?.() === false) return reply.view('pusta-strona.ejs', BEZ_SKLEPOW);
@@ -666,15 +666,15 @@ export function registerKartaMagazynu(app, { db, magazyn, kanalyAllegro, definic
     if (blad) return ekranKarty(req, reply, { karta, kod: 400, bladRuchu: blad });
     const { dopisano } = dodajRuch(db, { kartaId: karta.id, ...ruch, konto: req.konto ?? null });
     // Powtórzony klucz (podwójne kliknięcie, cofnięcie w przeglądarce do starego formularza) — ruch NIE wszedł drugi raz
-    // i ekran ma to powiedzieć, zamiast udawać zapis (recenzja PRZ-091).
+    // i ekran ma to powiedzieć, zamiast udawać zapis.
     return reply.code(303).redirect(`/magazyn/${karta.id}${dopisano ? '' : '?ruch=powtorzony'}#stan-karty`);
   });
 
-  // PRZ-160.E3.12 — sekcja „Allegro”. CSRF i uprawnienie magazyn zapewniają wspólne haki panelu (jak galeria).
+  // Sekcja „Allegro”. CSRF i uprawnienie magazyn zapewniają wspólne haki panelu (jak galeria).
   const odmowaAllegro = (reply, id, kod, tekst) => stronaOdmowy(reply, kod, tekst, {
     tytul: 'Nie zapisano danych dla Allegro', wroc: `/magazyn/${encodeURIComponent(id)}#allegro-karty`, napisWroc: 'Wróć do sekcji Allegro',
   });
-  // E3c (N6): dane Allegro karty i wybór produktu zmienia tylko administrator — jak „Wystaw” i „Ponów”.
+  // Dane Allegro karty i wybór produktu zmienia tylko administrator — jak „Wystaw” i „Ponów”.
   const TYLKO_ADMIN_ALLEGRO = 'Tylko administrator może zmieniać dane Allegro tej karty.';
   app.post('/magazyn/:id/allegro', async (req, reply) => {
     if (!magazyn || magazyn.gotowy?.() === false) return reply.view('pusta-strona.ejs', BEZ_SKLEPOW);
@@ -690,7 +690,7 @@ export function registerKartaMagazynu(app, { db, magazyn, kanalyAllegro, definic
     return reply.code(303).redirect(`/magazyn/${karta.id}#allegro-karty`);
   });
 
-  // E3d.02-03 — wyjątek cennika dostaw karty. CSRF zapewnia wspólny hak panelu; zapis to prawo edycji magazynu
+  // Wyjątek cennika dostaw karty. CSRF zapewnia wspólny hak panelu; zapis to prawo edycji magazynu
   // (administrator), jak „Wystaw na…” i dane Allegro karty.
   const odmowaCennika = (reply, id, kod, tekst) => stronaOdmowy(reply, kod, tekst, {
     tytul: 'Nie zapisano cennika dostaw', wroc: `/magazyn/${encodeURIComponent(id)}#cenniki-karty`, napisWroc: 'Wróć do karty',
@@ -715,7 +715,7 @@ export function registerKartaMagazynu(app, { db, magazyn, kanalyAllegro, definic
     return reply.code(303).redirect(`/magazyn/${karta.id}#cenniki-karty`);
   });
 
-  // D34: wybór produktu dla oferty bez numeru Allegro (`ext:`) — wiersz wraca do wysyłki.
+  // Wybór produktu dla oferty bez numeru Allegro (`ext:`) — wiersz wraca do wysyłki.
   app.post('/magazyn/:id/allegro/produkt', async (req, reply) => {
     if (!magazyn || magazyn.gotowy?.() === false) return reply.view('pusta-strona.ejs', BEZ_SKLEPOW);
     if (req.konto?.admin !== true) return odmowaAllegro(reply, req.params.id, 403, TYLKO_ADMIN_ALLEGRO);
@@ -726,7 +726,7 @@ export function registerKartaMagazynu(app, { db, magazyn, kanalyAllegro, definic
     const oferta = Number.isSafeInteger(ofertaId) && ofertaId > 0 ? ofertaPoId(db, ofertaId) : null;
     if (!oferta || oferta.kartaId !== karta.id) return odmowaAllegro(reply, karta.id, 404, 'Nie ma takiej oferty na tej karcie.');
     if (oferta.stan !== 'problem') return odmowaAllegro(reply, karta.id, 409, 'Ta oferta nie czeka już na wybór produktu — odśwież kartę.');
-    // E3c (N6): oferta z numerem już istnieje w Allegro — zmiana produktu tutaj by jej nie dotknęła.
+    // Oferta z numerem już istnieje w Allegro — zmiana produktu tutaj by jej nie dotknęła.
     const numer = String(oferta.idZewnetrzne ?? '');
     if (numer !== '' && !numer.startsWith('ext:')) {
       return odmowaAllegro(reply, karta.id, 409, `Oferta ${numer} ma już numer w Allegro — produktu nie da się tu zmienić. Popraw ją w Allegro.`);

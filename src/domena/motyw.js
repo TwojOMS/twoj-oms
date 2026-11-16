@@ -45,7 +45,7 @@ export function ciasteczkoMotywu(motyw) {
   return `${NAZWA_CIASTECZKA}=${bezpieczny}; Path=/; Max-Age=31536000; SameSite=Lax; HttpOnly`;
 }
 
-// ⚠️ `bezpiecznyPowrot` PRZEPROWADZILA SIE do src/security/powrot.js (2026-08-09), bo tej
+// ⚠️ `bezpiecznyPowrot` MIESZKA w src/core/bezpieczenstwo/powrot.js, bo tej
 // samej bramki potrzebuje logowanie w OBU panelach. Re-eksport zostaje, zeby kilkanascie
 // istniejacych importow nie musialo sie zmieniac — a druga implementacja tej reguly
 // rozjechalaby sie z ta przy pierwszej poprawce.

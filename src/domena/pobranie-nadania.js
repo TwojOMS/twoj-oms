@@ -6,7 +6,7 @@
 //
 // Wzorzec jest ten sam, co przy kodzie paczkomatu (`punktOdbioru`): wartosc z formularza
 // leci do klienta kuriera przy TYM nadaniu i NIE ZAPISUJE SIE do zamowienia. Trwala
-// korekta kwoty ma swoje miejsce na karcie zamowienia (domain/wysylka.js:
+// korekta kwoty ma swoje miejsce na karcie zamowienia (domena/wysylka.js:
 // sprawdzZmianeMetody) — to jest INNE pole, nie duplikat tamtego.
 //
 // ⚠️ WARUNEK „NA KTOREJ PACZCE JEDZIE POBRANIE" ZOSTAJE W KLIENCIE KURIERA
@@ -14,7 +14,7 @@
 // jest jego druga kopia ani obejsciem: on tylko pilnuje, zeby wartosc w ogole nie
 // wyruszyla w strone kuriera tam, gdzie pola na ekranie nie ma.
 //
-// ⚠️ Od 04.09.2026 to NIE JEST juz zawsze „paczka nr 1": operator moze wskazac paczke
+// ⚠️ To NIE JEST zawsze „paczka nr 1": operator moze wskazac paczke
 // N > 1 jako ZAMIENNIK pierwszej (wyrzucona etykieta). Oba miejsca — to i klient kuriera —
 // czytaja wtedy TEN SAM fakt (`pobranieNaTejPaczce`), a nie kazde swoj numer.
 
@@ -23,13 +23,13 @@
 // „212.900” to ta sama kwota co „212.90”). Number() samo w sobie NIE WYSTARCZA, bo
 // przepuszcza zapisy, ktore do kuriera jada ZNAK W ZNAK: '1e3' i '0x10' sa dla niego
 // skonczonymi liczbami, ale w <amount> to smiec, ktory DPD odczyta po swojemu albo odrzuci.
-// PRZ-145.01 (E5-D2): pół grosza („0.005”, „12.345”) też odpada — `grosze()` zaokrągliłoby to
+// Pół grosza („0.005”, „12.345”) też odpada — `grosze()` zaokrągliłoby to
 // po cichu, a do kuriera poszedłby napis, którego nikt nie wpisał jako kwoty w złotych.
 // Kazda prawdziwa kwota ('212.90', '310,33', '31033', '212') przechodzi bez zmian.
 export const KSZTALT_KWOTY = /^\d+(\.\d{1,2}0*)?$/;
 
 /**
- * PRZ-145.01 (E5-D2): JEDEN odczyt kwoty pobrania — dla pola na ekranie, dla usługi nadania
+ * JEDEN odczyt kwoty pobrania — dla pola na ekranie, dla usługi nadania
  * spoza HTTP i dla hurtu. Zwraca `{ kwota, groszeKwoty }` (kwota znormalizowana: przecinek na
  * kropkę, przycięta) albo `{ blad, rodzaj }`, gdzie `rodzaj` to 'pusta' | 'ksztalt' | 'zero'.
  * Teksty błędów są BEZ końcówki „Panel niczego nie nadał.” — dokleja ją wołający.
@@ -45,7 +45,7 @@ export function odczytajKwotePobrania(surowa) {
     };
   }
   // Przecinek dziesietny to polska klawiatura, nie blad wpisu — dokladnie jak przy wadze
-  // paczki (domain/paczka.js). Do kuriera idzie zawsze wersja z KROPKA.
+  // paczki (domena/paczka.js). Do kuriera idzie zawsze wersja z KROPKA.
   const znormalizowana = przycieta.replace(',', '.');
   const liczba = Number(znormalizowana);
   if (!KSZTALT_KWOTY.test(znormalizowana) || !Number.isFinite(liczba)) {
@@ -75,10 +75,10 @@ export function odczytajKwotePobrania(surowa) {
  *
  * ⚠️ PUSTE POLE TO ODMOWA, NIGDY „bez pobrania". DPD przy braku kwoty po prostu nie
  * wstawia `<cod>`: paczka jedzie jak przedpłacona, kurier nie inkasuje nic i NIGDZIE
- * nie ma błędu. To ten sam tryb cichej awarii, który recenzja złapała 01.08 przy
+ * nie ma błędu. To ten sam tryb cichej awarii, co przy
  * zakładaniu zamówienia — dlatego brak wartości musi być głośny.
  *
- * ⚠️ BEZ GÓRNEGO PROGU (decyzja właściciela 04.08). Literówka „31033" zamiast „310,33"
+ * ⚠️ BEZ GÓRNEGO PROGU. Literówka „31033" zamiast „310,33"
  * PRZEJDZIE do kuriera — i właśnie dlatego kwota faktycznie użyta jest zapisywana do logu
  * zamówienia (services/nadanie.js). To jedyna droga, żeby po miesiącu odpowiedzieć, ile
  * kurier miał zainkasować.
@@ -93,7 +93,7 @@ export function parsujNadpisanieKwotyPobrania(
   // dalej. Kwota podrzucona do zamowienia przedplaconego zamienialaby je w pobraniowe;
   // kwota podrzucona do zwyklej dosylki znaczylaby, ze kurier inkasuje od klienta DRUGI RAZ.
   //
-  // ⚠️ DRUGI WARUNEK PYTA O FAKT, NIE O NUMER (04.09.2026). Domyslnie `kolejnosc === 1`,
+  // ⚠️ DRUGI WARUNEK PYTA O FAKT, NIE O NUMER. Domyslnie `kolejnosc === 1`,
   // czyli dokladnie jak dotad; jawne `pobranieNaTejPaczce` przychodzi z trasy POST wtedy
   // i tylko wtedy, gdy operator ŚWIADOMIE zaznaczyl, ze ta paczka jest zamiennikiem
   // pierwszej (uzasadnienie: komentarz przy <cod> w kurierzy/dpd.js). Gdyby zostal sam
@@ -101,7 +101,7 @@ export function parsujNadpisanieKwotyPobrania(
   // pojechalby z kwota Z ZAMOWIENIA zamiast z tej, ktora operator wpisal.
   if (!pobranie || !pobranieNaTejPaczce) return { kwotaPobrania: undefined };
 
-  // PRZ-145.01 (E5-D2): odczyt robi `odczytajKwotePobrania` — ta sama funkcja co usługa
+  // Odczyt robi `odczytajKwotePobrania` — ta sama funkcja co usługa
   // spoza HTTP i hurt; parser dokleja tylko końcówkę i oddaje dawny kształt wyniku.
   const odczyt = odczytajKwotePobrania(dane?.kwota_pobrania);
   if (odczyt.blad) return { blad: `${odczyt.blad} Panel niczego nie nadał.` };

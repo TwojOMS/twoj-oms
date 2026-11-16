@@ -1,7 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { Migracja } from '../../../core/kontrakty.ts';
 
-// PRZ-160 E3d.02-01 — cennik dostaw dobierany do rozmiaru produktu (plan docs/plany/PRZ-160-e3d-02.md, D1–D4).
+// Cennik dostaw dobierany do rozmiaru produktu.
 // Wyłącznie dokładanie: kolumna `cenniki_json` na `oferty_ustawienia_kont` (lista reguł konta) i tabela
 // `karty_cenniki_kont` (wyjątek cennika na karcie, per konto; znika z kartą). Stara kolumna `cennik_dostaw` zostaje
 // bez zmian — przepisujemy ją do jednej reguły „wszystko” tylko tam, gdzie `cenniki_json` jest jeszcze puste,

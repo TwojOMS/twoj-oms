@@ -1,12 +1,12 @@
 // Przebieg odczytu katalogow uruchamiany PRZYCISKIEM — i stan tego przebiegu.
 //
-// ⚠️⚠️ POWOD ISTNIENIA: pelny odczyt to setki zadan do WooCommerce plus ~46 do Allegro przy
+// ⚠️⚠️ POWOD ISTNIENIA: pelny odczyt to setki zadan do WooCommerce plus kilkadziesiat do Allegro przy
 // limicie 10 s na zadanie. W czasie zycia jednego zadania HTTP to sie NIE MIESCI, a nawet
 // gdyby — przegladarka trzymalaby pusta strone przez kilka minut, operator kliknalby drugi
 // raz i ruszylby drugi przebieg. Dlatego trasa `POST /magazyn/odswiez` wola `start()`, ktory
 // rusza odczyt i WRACA, a ekran pokazuje stan z `stan()`.
 //
-// ⚠️ STAN ZYJE W PAMIECI PROCESU, BEZ TABELY (rozstrzygniecie wlasciciela). To jeden przycisk
+// ⚠️ STAN ZYJE W PAMIECI PROCESU, BEZ TABELY. To jeden przycisk
 // dla jednego operatora: tabela byla by druga prawda o tym samym, migracja do utrzymania
 // i kolejnym miejscem, ktore trzeba by sprzatac po restarcie kontenera. Restart gubi wynik
 // ostatniego przebiegu — i tak ma byc: lustro w bazie zostaje, a stan przebiegu opisuje
@@ -21,7 +21,7 @@ const opisBledu = (e) => (typeof e?.message === 'string' && e.message ? e.messag
 
 const STAN_POCZATKOWY = {
   trwa: false, zaczety_at: null, skonczony_at: null, postep: null, kanaly: [], blad: null,
-  // PRZ-160 P3b.03: klucz kanalu, gdy przebieg czytal TYLKO jeden kanal (ekran importu); `null` = wszystkie.
+  // Klucz kanalu, gdy przebieg czytal TYLKO jeden kanal (ekran importu); `null` = wszystkie.
   zakres: null,
 };
 
@@ -40,7 +40,7 @@ export function createMagazynPrzebieg({ db, sklepy = {}, allegro = {}, odswiez =
   let stan = { ...STAN_POCZATKOWY };
   const gotowy = () => Object.keys(sklepy).length + Object.keys(allegro).length > 0;
 
-  // PRZ-160 P3b.03: `{kanal}` zaweza odczyt do jednego kanalu (ekran importu), `trescKart: false`
+  // `{kanal}` zaweza odczyt do jednego kanalu (ekran importu), `trescKart: false`
   // zostawia tresc Woo w wyniku zamiast w kartach (podglad „Sprawdz"). Bez argumentow — jak dotad:
   // wszystkie kanaly, tresc do kart (`POST /magazyn/odswiez`).
   function start({ kanal, trescKart } = {}) {
@@ -81,7 +81,7 @@ export function createMagazynPrzebieg({ db, sklepy = {}, allegro = {}, odswiez =
       .then((wynik) => { stan.kanaly = wynik?.kanaly ?? []; })
       // ⚠️ TU LADUJA WYLACZNIE AWARIE CALEGO PRZEBIEGU (np. smiec zamiast chwili) — bledy
       // POJEDYNCZYCH kanalow wracaja w `kanaly[].blad`, bo kanal, ktory padl, nie ma prawa
-      // zatrzymac pozostalych trzech. Bez tego `catch` przebieg konczylby sie odrzucona
+      // zatrzymac pozostalych. Bez tego `catch` przebieg konczylby sie odrzucona
       // obietnica bez wlasciciela, czyli w najlepszym razie wpisem w logu, a w najgorszym
       // padnieciem procesu — i ekran nie mialby o czym powiedziec.
       .catch((e) => { stan.blad = opisBledu(e); })

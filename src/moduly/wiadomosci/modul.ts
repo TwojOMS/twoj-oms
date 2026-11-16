@@ -26,7 +26,7 @@ export function createModulWiadomosci({ fabryki = {}, uslugi }: {
       { klucz: 'klienci', etykieta: 'Klienci B2B', role: ['administrator', 'sprzedaz'] },
     ],
     menu: [
-      // PRZ-102.03: grupa „Klienci” w menu bocznym (zgodnie z EKRANY.nawigacja).
+      // Grupa „Klienci” w menu bocznym (zgodnie z EKRANY.nawigacja).
       { dzial: 'sprzedaz', grupa: 'klienci', etykieta: 'Wiadomości', adres: '/wiadomosci', uprawnienie: 'wiadomosci', kolejnosc: 40 },
       { dzial: 'sprzedaz', grupa: 'klienci', etykieta: 'Klienci B2B', adres: '/klienci', uprawnienie: 'klienci', kolejnosc: 50 },
     ],
@@ -41,7 +41,7 @@ export function createModulWiadomosci({ fabryki = {}, uslugi }: {
         tokenyKanalow: ctx.usluga('kanaly', 'tokenyKanalow'),
         wolnoZapisywac: ctx.usluga<{wolnoZapisywac:(k:string)=>boolean}>('kanaly','rejestrKanalow').wolnoZapisywac,
         proforma: ctx.usluga('faktury', 'proforma'), infakt: ctx.usluga('faktury', 'infakt'),
-        // PRZ-121.A04b: wybór modułu faktur — zdanie „faktury wyłączone” w odmowie maila z fakturą (bez usługi — `null`).
+        // Wybór modułu faktur — zdanie „faktury wyłączone” w odmowie maila z fakturą (bez usługi — `null`).
         wyborProgramu: (() => { try { return ctx.usluga('faktury', 'wyborProgramu'); } catch { return null; } })(),
         teraz: ctx.teraz, fabryki,
       });
@@ -50,19 +50,19 @@ export function createModulWiadomosci({ fabryki = {}, uslugi }: {
       const zegary: Zegar[] = [];
       if (u.pollerWiadomosci) zegary.push(zegarPolleraWiadomosci({ pollerWiadomosci: u.pollerWiadomosci, log }));
       if (u.czuwaczFormulki) zegary.push(zegarCzuwaczaFormulki({ czuwaczFormulki: u.czuwaczFormulki, log }));
-      // PRZ-102.10: podpis maili (marka, stopka) z Ustawień → Poczta — usługa dla tamtego ekranu i źródło oprawy tras
+      // Podpis maili (marka, stopka) z Ustawień → Poczta — usługa dla tamtego ekranu i źródło oprawy tras
       // poniżej, liczonej przy każdym żądaniu (zmiana bez restartu; pole z pliku wygrywa).
       const podpisMaili = utworzPodpisMaili({ db: ctx.db, oprawaPoczty: ctx.konfiguracja.oprawaPoczty, teraz: ctx.teraz });
       return { uslugi: { ...u, podpisMaili }, zegary, trasy: app => {
         const wszyscyKlienci = ctx.usluga<Record<string, any>>('wiadomosci', 'klienciWiadomosci');
         const klienci = mapaNaZadanie(() => Object.keys(wszyscyKlienci).filter(kanalZWiadomosciami), sklep => wszyscyKlienci[sklep]);
-        // PRZ-101.03: szablony wiadomości — ekran w Ustawieniach i „Wstaw szablon" w wątku Allegro. Działają także
+        // Szablony wiadomości — ekran w Ustawieniach i „Wstaw szablon" w wątku Allegro. Działają także
         // bez skonfigurowanej poczty (szablon da się przygotować przed podłączeniem SMTP).
         const oprawa = () => podpisMaili.oprawa();
         registerWiadomosciRoutes(app, { db: ctx.db, klienci, podpis: () => oprawa().podpis });
         registerSzablonyWiadomosciRoutes(app, { db: ctx.db, oprawa, config: u.config, teraz: ctx.teraz });
         const gus = Object.hasOwn(u, 'gus') ? u.gus : ctx.usluga('zamowienia', 'gus');
-        // PRZ-122.B07h: firma zwolniona z VAT — ta sama reguła co karta zamówienia (`sprzedawcaZwolniony`), czytana
+        // Firma zwolniona z VAT — ta sama reguła co karta zamówienia (`sprzedawcaZwolniony`), czytana
         // przy każdym żądaniu; przy inFakcie (i bez modułu faktur) `false`.
         const program = zProgramu({ infakt: (() => { try { return ctx.usluga('faktury', 'infakt'); } catch { return null; } })() });
         const zwolnionaFirma = () => sprzedawcaZwolniony(ctx.db, program?.opis);

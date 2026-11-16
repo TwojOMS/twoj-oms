@@ -1,6 +1,6 @@
 import type { Migracja } from '../../../core/kontrakty.ts';
 
-// PRZ-153.E5.1 — pola karty produktu dla API `/api/v1/produkty` (plan docs/plany/PRZ-153-api-v1.md):
+// Pola karty produktu dla API `/api/v1/produkty`:
 // cena katalogowa w groszach, stawka VAT jako napis, EAN i znacznik wycofania (stare karty = 0, czyli czynne).
 // Tabela `api_idempotencja` trzyma wynik zapisu dla nagłówka `Idempotency-Key`; klucz główny
 // (klucz_id, klucz_zadania) — ochrona przed podwójnym wykonaniem jest w kluczu tabeli, nie w odczycie.

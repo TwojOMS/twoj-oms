@@ -17,7 +17,7 @@ import { sciezkaWidoku } from '../web/widoki.js';
 
 export const METODY_BEZPIECZNE = ['GET', 'HEAD', 'OPTIONS'];
 
-// PRZ-152.G13c1: odmowa z haka rdzenia (CSRF tutaj, podgląd demo w podglad-demo.js). Nawigacja przeglądarki
+// Odmowa z haka rdzenia (CSRF tutaj, podgląd demo w podglad-demo.js). Nawigacja przeglądarki
 // (formularz, link: Accept z text/html i bez nagłówka HX-Request) dostaje stronę w barwach OMS z paskiem uwagi
 // i drogą powrotu; skrypt (fetch: Accept */* albo application/json), htmx i program — dotychczasowy text/plain.
 // Status i tekst bez zmian. Dokument samodzielny (odmowa-rdzenia.ejs), bo hak onRequest działa przed preHandlerem,
@@ -87,7 +87,7 @@ export function sprawdzZrodlo({ method, host, origin, referer }) {
 }
 
 /**
- * PRZ-153.E1.3: zadanie programu z kluczem API. Przegladarka sama nie dolozy naglowka
+ * Zadanie programu z kluczem API. Przegladarka sama nie dolozy naglowka
  * `Authorization: Bearer` do zadania z obcej strony, wiec CSRF go nie dotyczy — ale tylko
  * wtedy, gdy nie niesie tez ciasteczka sesji (wtedy to moze byc przegladarka zalogowanego
  * czlowieka i obowiazuje zwykle sprawdzanie zrodla). Liczy sie sama obecnosc nazwy

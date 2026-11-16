@@ -1,21 +1,21 @@
-// Sekret podpisujacy ciasteczka sesji. Tabele `sekret_sesji` zaklada schema.sql KAZDEJ
-// z baz osobno (src/db/ i src/oms/db/) — panele maja rozdzielne bazy i rozdzielne
-// sekrety, wiec „Wyloguj wszystkie urzadzenia" w jednym nie rusza drugiego.
+// Sekret podpisujący ciasteczka sesji. Tabelę `sekret_sesji` zakłada migracja bazowa
+// (src/moduly/rdzen/migracje/0001-baseline.sql); sekret należy do jednej bazy, więc
+// „Wyloguj wszystkie osoby” unieważnia ciasteczka tylko tej instalacji.
 //
-// ⚠️ TA WARTOSC JEST POSWIADCZENIEM (niezmiennik 4.10). Nie wypisujemy jej do logu, nie
-// wkladamy do komunikatu bledu i nie oddajemy na ekran. Kto ja ma, ten wystawi sobie wazne
-// ciasteczko na dowolne konto — bez znajomosci hasla.
+// ⚠️ TA WARTOŚĆ JEST POŚWIADCZENIEM. Nie wypisujemy jej do logu, nie wkładamy do
+// komunikatu błędu i nie oddajemy na ekran. Kto ją ma, ten wystawi sobie ważne
+// ciasteczko na dowolne konto — bez znajomości hasła.
 
 import { nowySekret } from './sesja.js';
 
 /**
  * Sekret do podpisywania i sprawdzania ciasteczek. Zaklada go przy pierwszym wywolaniu.
  *
- * ⚠️ ZAKLADANIE MUSI BYC ATOMOWE. Poller chodzi co dwie minuty rownolegle z zadaniami
- * z przegladarki, wiec dwa watki potrafia trafic tu w tej samej chwili na swiezej bazie.
- * `INSERT OR IGNORE` + ponowny SELECT sprawiaja, ze drugi z nich odczyta sekret zapisany
- * przez pierwszego, zamiast nadpisac go swoim — nadpisanie wylogowaloby operatora
- * w losowym momencie startu i wygladalo na usterke ciasteczek.
+ * ⚠️ ZAKŁADANIE MUSI BYĆ ATOMOWE. Poller chodzi cyklicznie, równolegle z żądaniami
+ * z przeglądarki, więc dwa wątki potrafią trafić tu w tej samej chwili na świeżej bazie.
+ * `INSERT OR IGNORE` + ponowny SELECT sprawiają, że drugi z nich odczyta sekret zapisany
+ * przez pierwszego, zamiast nadpisać go swoim — nadpisanie wylogowałoby operatora
+ * w losowym momencie startu i wyglądało na usterkę ciasteczek.
  */
 export function wczytajSekret(db) {
   const istniejacy = db.prepare('SELECT sekret FROM sekret_sesji WHERE id = 1').get();
@@ -30,12 +30,11 @@ export function wczytajSekret(db) {
 /**
  * Sam ODCZYT sekretu — bez zakladania go, gdy go nie ma. Zwraca `null` zamiast pisac.
  *
- * ⚠️ TEJ funkcji uzywa straznik przy KAZDYM zadaniu, i to jest cala roznica. Zakladanie
- * sekretu to sprawa STARTU uslugi, nie obslugi kliknięcia: `wczytajSekret` w haku na
- * zadaniu probowalby zapisu przy kazdym wejsciu na strone, wiec baza, do ktorej chwilowo
- * nie da sie pisac (pelny dysk), przestawalaby oddawac COKOLWIEK — zamiast dalej pokazywac
- * to, co juz ma. Zlapala to suita: szesc testow „baza bez zapisow" oddawalo 500 tam, gdzie
- * panel ma sie degradowac do odczytu.
+ * ⚠️ TEJ funkcji używa strażnik przy KAŻDYM żądaniu, i to jest cała różnica. Zakładanie
+ * sekretu to sprawa STARTU usługi, nie obsługi kliknięcia: `wczytajSekret` w haku na
+ * żądaniu próbowałby zapisu przy każdym wejściu na stronę, więc baza, do której chwilowo
+ * nie da się pisać (pełny dysk), przestawałaby oddawać COKOLWIEK — zamiast dalej pokazywać
+ * to, co już ma. Panel ma się wtedy degradować do odczytu, a nie oddawać 500.
  */
 export function odczytajSekret(db) {
   return db.prepare('SELECT sekret FROM sekret_sesji WHERE id = 1').get()?.sekret ?? null;
@@ -43,7 +42,7 @@ export function odczytajSekret(db) {
 
 /**
  * Podmienia sekret — czyli uniewaznia WSZYSTKIE wydane ciasteczka naraz.
- * To jest cala implementacja „Wyloguj wszystkie urzadzenia": nie ma listy sesji do
+ * To jest cala implementacja „Wyloguj wszystkie osoby": nie ma listy sesji do
  * przejrzenia, bo nie ma tabeli sesji. Zwraca nowy sekret, zeby wolajacy mogl od razu
  * wystawic swieze ciasteczko urzadzeniu, ktore wlasnie klika przycisk.
  */
@@ -58,7 +57,7 @@ export function podmienSekret(db) {
 
 /**
  * Kiedy ostatnio podmieniono sekret — jedyna rzecz z tej tabeli, ktora WOLNO pokazac
- * czlowiekowi. Bez tego przycisk „Wyloguj wszystkie urzadzenia" nie mialby zadnego
+ * czlowiekowi. Bez tego przycisk „Wyloguj wszystkie osoby" nie mialby zadnego
  * potwierdzenia, ze cokolwiek zrobil.
  */
 export function sekretZmienionyAt(db) {

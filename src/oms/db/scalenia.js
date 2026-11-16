@@ -1,4 +1,4 @@
-// Scalanie zamówień — zapis i odczyt grupy (PRZ-101.04). Reguły: domena/scalanie.js.
+// Scalanie zamówień — zapis i odczyt grupy. Reguły: domena/scalanie.js.
 import { pobierzZamowienie, dopiszLog } from './zamowienia.js';
 import { bladOperatora } from '../../domena/bledy.js';
 import { maTabeleStatusow } from './statusy.js';
@@ -58,7 +58,7 @@ export function scalZamowienia(db, { glowneId, dolaczoneIds, wysylka, kto }) {
     if (zmienione !== ids.length || glowne !== 1) {
       throw bladOperatora('Któreś z zamówień zostało w międzyczasie scalone — odśwież listę i spróbuj ponownie.');
     }
-    // Status własny (PRZ-101.02) DOŁĄCZONEGO kasujemy: dołączone nie ma wiersza na liście, jego stan
+    // Status własny DOŁĄCZONEGO kasujemy: dołączone nie ma wiersza na liście, jego stan
     // niesie główne, a ręczna zmiana statusu dołączonego jest odmawiana (status-reczny.js) — przypisanie
     // zostałoby martwe, a po „Rozdziel” wracałoby z nieaktualnym etapem. Status własny głównego zostaje.
     if (maTabeleStatusow(db)) {
@@ -86,7 +86,7 @@ export function rozdzielZamowienia(db, glowneId) {
   try {
     db.prepare('UPDATE zamowienia SET scalone_do = NULL, zmienione_at = ? WHERE scalone_do = ?').run(teraz(), glowneId);
     db.prepare('UPDATE zamowienia SET scalenie_json = NULL, zmienione_at = ? WHERE id = ?').run(teraz(), glowneId);
-    // Recenzja, W4: ślad „dołączone …” to nieodesłany status DOŁĄCZONYCH (services/sync-sklep.js) —
+    // Ślad „dołączone …” to nieodesłany status DOŁĄCZONYCH (services/sync-sklep.js) —
     // po rozdzieleniu nie należy do głównego i trzymałby je na „Do zrobienia” bez wyjścia (ponowienie
     // odsyła już tylko główne). Własny błąd głównego zostaje.
     if (String(z.sync_woo_blad ?? '').startsWith(PREFIKS_BLEDU_DOLACZONYCH)) {
@@ -101,7 +101,7 @@ export function rozdzielZamowienia(db, glowneId) {
 }
 
 /**
- * „Odłącz anulowane” (ponowna recenzja, N1) — wyjście dla głównego, którego dołączone klient anulował
+ * „Odłącz anulowane” — wyjście dla głównego, którego dołączone klient anulował
  * w sklepie PO scaleniu. „Rozdziel” odmawia przy fakturze i przesyłce, a bez tej akcji główne wisi na
  * „Do zrobienia” na zawsze, a reszty towaru nie da się nadać (gotowość nadania odmawia).
  *

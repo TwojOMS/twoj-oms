@@ -8,13 +8,13 @@ import { ZRODLO_NUMERU } from '../../../domena/przesylka-stan.js';
 // ⚠️ KURIER TO 'allegro', NIGDY 'dpd'. Przesylka wraca z `carrierId: "ALLEGRO"` i numerem
 // „AD…", bo paczka nadana w panelu Allegro jedzie na ICH umowie. Zapasowe 'dpd'
 // (kurierWpisuRecznego) zniosloby ten numer na tracktrace.dpd.com.pl i kazaloby pytac DPD
-// o cudza przesylke — dokladnie ta usterka wyszla 04.08.2026 przy paczkomatach, DWA RAZY.
+// o cudzą przesyłkę.
 //
 // ⚠️ KURIER WYNIKA Z KANALU, A NIE Z METODY WYSYLKI — i dlatego NIE wolamy tu
 // `kurierWpisuRecznego(metodaWysylki(z))`. Tamta funkcja czyta metode, a metoda bywa
-// 'nieznana' (Allegro dolozylo usluge, ktorej slownik domain/allegro-dostawa.js jeszcze nie
+// 'nieznana' (Allegro dolozylo usluge, ktorej slownik domena/allegro-dostawa.js jeszcze nie
 // zna) i jest EDYTOWALNA z karty; kolumna `sklep` jest trwala. Kluczowanie po metodzie
-// wpisaloby wtedy zapasowe 'dpd' pod numer „AD…". `czyKanalAllegro` (domain/wysylka.js) jest
+// wpisaloby wtedy zapasowe 'dpd' pod numer „AD…". `czyKanalAllegro` (domena/wysylka.js) jest
 // tym samym predykatem, ktory pilnuje odmowy zmiany metody — jedno zrodlo prawdy o kanale.
 //
 // ⚠️ ZAPIS IDZIE ISTNIEJACA DROGA (`zarejestrujPrzesylkeReczna`), a nie wlasnym INSERT-em.
@@ -23,21 +23,20 @@ import { ZRODLO_NUMERU } from '../../../domena/przesylka-stan.js';
 // oraz znacznik `nadana_recznie`. Ten ostatni jest tu KONIECZNY, a nie ozdobny: bez niego
 // kazde zamowienie z Allegro wisialoby na liscie roboczej ze sprawa „brak etykiety" — na
 // zawsze i bez wyjscia, bo panel o te paczke z nikim nie rozmawial i zadnego pliku nie
-// dostanie (domain/przesylka-stan.js: sprawyPrzesylki).
+// dostanie (domena/przesylka-stan.js: sprawyPrzesylki).
 //
 // ⚠️ `wyslane_at` NIE JEST TU USTAWIANE — i to jest decyzja, nie przeoczenie.
-// Niezmiennik 4.1 (docs/oms/PRZEWODNIK.md) mowi, ze rejestracja przesylki nadanej POZA
-// panelem `wyslane_at` ustawia — ale uzasadnia to zdaniem „tam czlowiek stwierdza fakt
-// o paczce, ktora JUZ JEDZIE". Tutaj czlowieka nie ma, a wyzwalaczem jest istnienie
-// ETYKIETY kupionej w panelu Allegro. Etykieta powstaje PRZY PAKOWANIU, paczka wyjezdza
-// z kurierem — czesto nastepnego dnia. To jest dokladnie ten fakt, ktory 31.07.2026
-// przestal byc zrodlem statusu na wyrazna prosbe wlasciciela („po utworzeniu etykiety nie
-// zmieniaj statusu na wyslane"), bo zamowienia znikaly z listy roboczej, lezac jeszcze na
-// stole. Automat ustawiajacy tu date wroci z ta sama usterka, tyle ze bez czlowieka
-// w petli i bez szansy, zeby ktos ja zauwazyl. Zamowienie schodzi z listy dopiero wtedy,
+// Ręczna rejestracja przesyłki nadanej POZA panelem `wyslane_at` ustawia (reguła: status
+// wynika z faktów), bo tam człowiek stwierdza fakt o paczce, która JUŻ JEDZIE. Tutaj
+// człowieka nie ma, a wyzwalaczem jest istnienie
+// ETYKIETY kupionej w panelu Allegro. Etykieta powstaje PRZY PAKOWANIU, paczka wyjeżdża
+// z kurierem — często następnego dnia. Dlatego utworzenie etykiety NIE JEST źródłem
+// statusu: zamówienia znikałyby z listy roboczej, leżąc jeszcze na
+// stole. Automat ustawiający tu datę wprowadziłby tę usterkę bez człowieka
+// w pętli i bez szansy, żeby ktoś ją zauważył. Zamowienie schodzi z listy dopiero wtedy,
 // gdy czlowiek powie, ze paczka pojechala — belka statusu na karcie dziala tu jak wszedzie.
 // Akcja w logu — JEDNA stala dla uslugi i dla trasy, bo trasa DLAWI powtorzony wpis bledu
-// porownaniem z OSTATNIM wpisem TEJ akcji (patrz GET /zamowienia/:id). Dwie kopie napisu
+// porownaniem z OSTATNIM wpisem TEJ akcji (patrz moduly/zamowienia/karta.js). Dwie kopie napisu
 // rozjechalyby ten dlawik PO CICHU: log dalej by rosl, a testy dalej swiecilyby na zielono.
 export const AKCJA_LOGU = 'allegro.przesylka';
 
@@ -60,7 +59,7 @@ export function createPrzesylkiAllegro({ db, klienci = {} }) {
     if (!z || !czyKanalAllegro(z)) return { dopisane: 0 };
     const klient = klienci[z.sklep];
     // Kanal skonfigurowany do odczytu zamowien, ale bez klienta tutaj, to tryb POPRAWNY
-    // (ta sama zasada, co przy braku sekcji INPOST_* w bootstrap.js): panel po prostu
+    // (ta sama zasada, co przy braku sekcji INPOST_* w moduly/wysylka/kurierzy.ts): panel po prostu
     // nie pyta i nie pokazuje numeru, zamiast wywalac sie na `undefined.pobierzPrzesylki`.
     if (!klient) return { dopisane: 0 };
 
@@ -83,10 +82,11 @@ export function createPrzesylkiAllegro({ db, klienci = {} }) {
       //
       // ⚠️ TO NIE ZALATWIA DOSYLKI ZA PACZKE ZAGUBIONA — i nie ma prawa udawac, ze zalatwia.
       // Tamten drugi numer powstaje w Allegro DNI po tym, jak czlowiek oznaczyl zamowienie
-      // jako wyslane, a wolajacy (karta) pyta WYLACZNIE dopoki `wyslane_at` jest puste.
+      // jako wysłane, a wołający (karta) po oznaczeniu wysyłki pyta WYŁĄCZNIE wtedy, gdy
+      // zamówienie nie ma jeszcze żadnej paczki (domena/allegro-numery.js).
       // Mechanizm jest wiec gotowy, ale wyzwalacz do niego nie dosiega: dosylki nadanej po
       // oznaczeniu wysylki panel NIE DOCIAGNIE — znane ograniczenie, opisane przy warunku
-      // w GET /zamowienia/:id i w PRZEWODNIK.md 4.1.
+      // w moduly/zamowienia/karta.js (reguła: status wynika z faktów).
       const juzJest = db.prepare('SELECT 1 FROM przesylki WHERE zamowienie_id = ? AND numer_listu = ?')
         .get(zamowienieId, numer);
       if (juzJest) continue;
@@ -94,16 +94,15 @@ export function createPrzesylkiAllegro({ db, klienci = {} }) {
       // `kolejnosc` liczona TUTAJ i przekazana jawnie — ta sama zasada, co przy nadaniu
       // i przy rejestracji recznej: funkcja zapisu nigdy nie wylicza numeru sama, a indeks
       // unikalny rozstrzyga wyscig.
-      // ⚠️ `zrodloNumeru: 'allegro'` JEST TU CALA OCHRONA TEGO NUMERU (poprawka I-1 z recenzji
-      // calej galezi). To ONO — a nie `kurier` i nie `nadana_recznie` — mowi bazie, ze numeru
+      // ⚠️ `zrodloNumeru: 'allegro'` JEST TU CAŁA OCHRONA TEGO NUMERU.
+      // To ONO — a nie `kurier` i nie `nadana_recznie` — mowi bazie, ze numeru
       // NIKT nie przepisywal z reki, wiec literowki w nim byc nie moze i kasowac go nie wolno
       // (db/przesylki.js: skasujPrzesylkeReczna). `kurier` tego nie rozstrzyga, bo wiersz
       // wpisany Z REKI przy zamowieniu z Allegro tez ma kuriera 'allegro'.
-      // ⚠️ `carrierId` Z TEJ SAMEJ ODPOWIEDZI — do 25.08.2026 byl tu WYRZUCANY. Bez niego
-      // panel nie mial kogo zapytac o statusy tych paczek, wiec `status_kuriera` zostawal
-      // NULL na zawsze, a regula „bez ruchu" liczyla wiek od nadania i alarmowala bez konca.
-      // Szesc paczek wisialo tak w zakladce jako „bez ruchu", bedac w rzeczywistosci
-      // DORECZONYMI (sonda 25.08). Identyfikator MUSI isc stad, a nie ze stalej: zly
+      // ⚠️ `carrierId` Z TEJ SAMEJ ODPOWIEDZI. Bez niego
+      // panel nie miałby kogo zapytać o statusy tych paczek, więc `status_kuriera` zostałby
+      // NULL na zawsze, a reguła „bez ruchu" liczyłaby wiek od nadania i alarmowała bez końca
+      // przy paczkach w rzeczywistości DORĘCZONYCH. Identyfikator MUSI isc stad, a nie ze stalej: zly
       // przewoznik oddaje HTTP 200 z `trackingDetails: null`, nie do odroznienia od paczki
       // swiezo nadanej.
       zarejestrujPrzesylkeReczna(db, zamowienieId, {

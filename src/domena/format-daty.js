@@ -1,5 +1,4 @@
-// Jeden format daty dla całego modułu OMS (Zadanie „strona główna", punkt C). Bez tego
-// panel miesza dwie skale czasu, gołym okiem nierozróżnialne:
+// Jeden format daty dla całego modułu OMS. Bez tego panel miesza dwie skale czasu, gołym okiem nierozróżnialne:
 //
 //  - NASZE znaczniki (poller, wpłaty ręczne, przesyłki, rezerwacja faktury, kolejka druku —
 //    wszystkie przez `teraz()` = `new Date().toISOString()` w warstwie `db/`, kontener
@@ -8,14 +7,11 @@
 //    bez oznaczenia strefy, więc mają być TYLKO przeformatowane, bez żadnej arytmetyki.
 //
 // Doklejenie obu do jednego formatera bez rozróżnienia pokazywałoby je na dwóch skalach
-// w jednej tabeli — różnica to dwie godziny latem. Dokładnie ten błąd już się zdarzył przy
-// znaczniku próby statusu DPD (naprawiony jawnym dopiskiem "UTC" w treści) — ten moduł
-// zastępuje tamtą łatkę przeliczeniem, więc dopisek "UTC" znika (patrz zamowienie.ejs).
+// w jednej tabeli — różnica to dwie godziny latem. Dokładnie ten błąd zdarzył się przy znaczniku próby
+// statusu DPD; ten moduł rozwiązuje go przeliczeniem, bez dopisku „UTC" w treści.
 //
-// Wzorowane na `dayWarsaw` z src/domain/dates.js (panel zamówień indywidualnych): ta sama
-// technika — Intl.DateTimeFormat z timeZone: 'Europe/Warsaw' — rozszerzona o godzinę/minutę/
-// sekundę, bo `dayWarsaw` liczy wyłącznie dniami. Wprost jej użyć się nie dało: tamta funkcja
-// (i cały `dates.js`) zawsze przepuszcza wartość przez `new Date()`, czyli zakłada, że WEJŚCIE
+// Technika: Intl.DateTimeFormat z timeZone: 'Europe/Warsaw', z godziną, minutą i sekundą, nie tylko dniem.
+// Wartość bez oznaczenia strefy nie może przejść przez `new Date()`, bo ten zakłada, że WEJŚCIE
 // już ma jednoznaczną chwilę w czasie — dokładnie to, czego brakuje datom ze sklepu.
 
 // "Z" na końcu albo przesunięcie +/-GG:MM (z dwukropkiem albo bez) — jedyny sygnał, że wartość
@@ -32,8 +28,8 @@ const WZORZEC_LOKALNY = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2
 
 // ⚠️ FORMATER STOI NA POZIOMIE MODUŁU, NIE W FUNKCJI — i to jest zmiana o wydajności, nie
 // o stylu. `Intl.DateTimeFormat` jest BEZSTANOWY dla stałej lokalizacji i opcji (datę bierze
-// argumentem `formatToParts`), a jego budowa kosztuje: zmierzone na NAS-ie 13.09.2026, gdy
-// tworzył się przy każdym wywołaniu, zakładka STATYSTYKI liczyła 802 ms dla 194 zamówień,
+// argumentem `formatToParts`), a jego budowa kosztuje: zmierzone, gdy
+// tworzył się przy każdym wywołaniu, zakładka STATYSTYKI przy około dwustu zamówieniach liczyła blisko sekundę,
 // bo `dzienWarszawa`/`fmtDataCzasKrotko` woła się po kilka razy na zamówienie. Ten sam koszt
 // płaciła lista zamówień pod `/` przy każdym wierszu.
 //
@@ -110,13 +106,13 @@ export const fmtDataCzas = (wartosc) => sformatuj(wartosc, true);
 
 /**
  * `RRRR-MM-DD GG:MM` (bez sekund) — WYŁĄCZNIE kolumna „Zamówienie" w tabeli zamówień na
- * stronie głównej (brief zadania, punkt C). Ta sama reguła przeliczenia co `fmtDataCzas`.
+ * stronie głównej. Ta sama reguła przeliczenia co `fmtDataCzas`.
  */
 export const fmtDataCzasKrotko = (wartosc) => sformatuj(wartosc, false);
 
 /**
  * Sam dzień kalendarzowy `RRRR-MM-DD` w czasie warszawskim — do porównywania z zakresem
- * dat z filtrów nad tabelą (domain/filtry-listy.js).
+ * dat z filtrów nad tabelą (domena/filtry-listy.js).
  *
  * ⚠️ Liczony TĄ SAMĄ funkcją, co data drukowana w wierszu, i to jest cały powód, dla którego
  * mieszka tutaj, a nie w module filtrów. Filtr „lipiec" ma brać dokładnie te zamówienia,
@@ -146,7 +142,7 @@ function dzienWczesniej(dzien) {
 }
 
 /**
- * PRZ-136.06 (U9): czas „kiedy” na liście połączeń — `dziś 22:22`, `wczoraj 08:10`, `3 listopada 14:05`
+ * Czas „kiedy” na liście połączeń — `dziś 22:22`, `wczoraj 08:10`, `3 listopada 14:05`
  * (z rokiem przed godziną, gdy inny niż bieżący: `3 listopada 2025 14:05`). Granica dnia w Europe/Warsaw: ta sama `sformatuj`, co reszta panelu,
  * dla wartości i dla „teraz”. Pusta / nieparsowalna wartość → pusty string (widok wtedy nie pisze linii).
  */

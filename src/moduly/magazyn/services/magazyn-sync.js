@@ -1,18 +1,17 @@
-// Przebieg odczytu katalogow do lustra magazynu (`produkty_sklepowe`) — spinacz czterech
-// kanalow: dwa sklepy WooCommerce i dwa konta Allegro.
+// Przebieg odczytu katalogow do lustra magazynu (`produkty_sklepowe`) — spinacz kanalow:
+// sklepow WooCommerce i kont Allegro.
 //
 // ⚠️⚠️ NAJWAZNIEJSZY NIEZMIENNIK TEGO PLIKU: KANAL, KTORY PADL, NIE DOCHODZI DO
 // `oznaczZnikniete`. Ta funkcja stempluje `zniknal_at` wszystkiemu, czego biezacy przebieg
 // nie zobaczyl — wiec wywolana po nieudanym odczycie oznaczylaby CALY katalog kanalu jako
 // wycofany ze sprzedazy. Sklep, ktory na chwile odmowil, wygladalby na sklep, ktory stracil
-// tysiac produktow. Awaria jednego kanalu nie ma tez prawa zatrzymac pozostalych trzech
-// (ta sama zasada, co w zbiorczym przebiegu pollera, bootstrap.js).
+// tysiac produktow. Awaria jednego kanalu nie ma tez prawa zatrzymac pozostalych.
 //
 // ⚠️ KLIENTOW ALLEGRO TEN MODUL NIE TWORZY I TWORZYC NIE MOZE. Dostaje MAPE kanal → klient,
-// zbudowana raz w `bootstrap.js` (`klienciKanalow`). Druga instancja klienta na ten sam kanal
+// zbudowana raz w `moduly/kanaly/services/kompozycja-kanalow.ts` (`klienciKanalow`). Druga instancja klienta na ten sam kanal
 // to druga para tokenow w pamieci procesu i DWA niezalezne odswiezenia tego samego refresh
 // tokenu — a te sa JEDNORAZOWE. Spalenie jednego rozwala pollera zamowien i nadawanie paczek
-// przez „Wysylam z Allegro", oba na produkcji.
+// przez „Wysylam z Allegro".
 //
 // ⚠️ DWIE FAZY NA KANAL, W TEJ KOLEJNOSCI I NIE ODWROTNIE:
 //   (1) ODCZYT I MAPOWANIE — siec, `await`, wolno rzucic;
@@ -54,7 +53,7 @@ const YOAST_KATEGORIA = '_yoast_wpseo_primary_product_cat';
 // wymiar CALEGO produktu (ten, z ktorego powstaje paczka).
 const ATRYBUT_ROZMIARU = 'rozmiar';
 
-// Ten sam warunek, co w domain/miniatury.js i domain/allegro-oferta.js, i z tego samego
+// Ten sam warunek, co w domena/miniatury.js i domena/allegro-oferta.js, i z tego samego
 // powodu: adres laduje wprost w atrybucie `src` naszego HTML-a.
 const ADRES_HTTP = /^https?:\/\//i;
 
@@ -83,7 +82,7 @@ function znacznik(teraz) {
 }
 
 // Kolumna `nazwa` jest NOT NULL, a nazwa to JEDYNA rzecz, po ktorej czlowiek wiaze wiersz
-// z kartą. Bez tego straznika brak nazwy wychodzi dopiero na bazie, w polowie 668 produktow,
+// z kartą. Bez tego straznika brak nazwy wychodzi dopiero na bazie, w polowie kilkuset produktow,
 // i mowi „NOT NULL constraint failed" zamiast wskazac produkt.
 function nazwaProduktu(kanal, produkt) {
   const nazwa = produkt?.name;
@@ -112,7 +111,7 @@ function cenaGr(surowa, opis) {
 const kategorieProduktu = (p) => (Array.isArray(p?.categories) ? p.categories : []);
 
 // Kategorie jako tablica NAZW — z niej korzysta filtr kategorii listy (json_each po tej
-// kolumnie) i tworzenie kart (Zadanie 8).
+// kolumnie) i tworzenie kart.
 const kategorieJson = (p) => JSON.stringify(
   kategorieProduktu(p).map((k) => k?.name).filter((n) => typeof n === 'string' && n.trim()),
 );
@@ -124,7 +123,7 @@ const kategorieJson = (p) => JSON.stringify(
  * zapytaniem do `/products/categories`. Produkt niesie komplet `{ id, name }` w tej samej
  * odpowiedzi, wiec dodatkowy odczyt bylby dwoma zadaniami HTTP i druga lista do rozjechania.
  *
- * ⚠️ SUROWY IDENTYFIKATOR W KOLUMNIE NAZWY JEST GORSZY NIZ BRAK: Zadanie 8 przepisuje te
+ * ⚠️ SUROWY IDENTYFIKATOR W KOLUMNIE NAZWY JEST GORSZY NIZ BRAK: tworzenie karty przepisuje te
  * wartosc do `karty.kategoria_glowna`, a z niej korzysta generator SKU — „64" zamiast
  * „Lampy stołowe" produkowaloby numery katalogowe z niczego. Identyfikator, ktorego nie ma
  * wsrod kategorii produktu, daje wiec `null`, a nie siebie samego.
@@ -158,10 +157,10 @@ const zdjeciaProduktu = (p) => (Array.isArray(p?.images) ? p.images : []).map((z
 /**
  * Rozmiar z atrybutow. Wariant niesie `option` (jedna wartosc), produkt prosty `options` (lista).
  *
- * ⚠️ ATRYBUT WYGRYWA NAD NAZWA I TO JEST REGULA NOSNA, NIE PORZADKOWA. Na sklepie B oba niosa ROZNE,
- * PRAWDZIWE liczby: „Lampa wisząca Kopuła – 30x45cm" ma atrybut „40 x 60 cm", bo 30×45 to sam KLOSZ,
+ * ⚠️ ATRYBUT WYGRYWA NAD NAZWA I TO JEST REGULA NOSNA, NIE PORZADKOWA. W sklepie oba niosa ROZNE,
+ * PRAWDZIWE liczby: „Lampa wisząca Przykładowa – 30x45cm" ma atrybut „40 x 60 cm", bo 30×45 to sam KLOSZ,
  * a 40×60 to caly produkt z oprawa. Magazyn trzyma wymiar z ATRYBUTU — to on decyduje
- * o pakowaniu, paczkomacie i cenie. Odwrocenie kolejnosci zepsuloby kolumne paczkomatu na calym sklepie B.
+ * o pakowaniu, paczkomacie i cenie. Odwrocenie kolejnosci zepsuloby kolumne paczkomatu w calym sklepie.
  *
  * Kilka wartosci w `options` sklejamy przecinkiem zamiast wybierac jedna: `wymiaryZTekstu` odda
  * wtedy `null` (dwa trafienia = niejednoznacznosc), czyli brak — a nie zgadniety rozmiar.
@@ -179,23 +178,23 @@ function rozmiarZAtrybutow(atrybuty) {
 /**
  * MINIATURA GLOWNEGO ZDJECIA — z mapy przyniesionej ze Store API sklepu.
  *
- * ⚠️⚠️ TU KONCZY SIE ZGADYWANIE. Do 2026-08-12 lustro trzymalo wylacznie adresy ORYGINALOW,
- * a widok listy doklejal `-150x150` do nazwy pliku (`domain/miniatury.js: adresMiniatury`).
- * Zmierzone na wszystkich adresach: sklep B 103/103 trafien, sklep A 76/684
- * — 608 razy 404 (89%), bo TEN sklep skaluje miniatury do 247x296. Store API oddaje gotowy
+ * ⚠️⚠️ TU KONCZY SIE ZGADYWANIE. Dawniej lustro trzymalo wylacznie adresy ORYGINALOW,
+ * a widok listy doklejal `-150x150` do nazwy pliku (`domena/miniatury.js: adresMiniatury`).
+ * Zmierzone na wszystkich adresach: w jednym sklepie trafialy wszystkie, w drugim ok. 9 na 10
+ * dawalo 404, bo TEN sklep skaluje miniatury do wlasnego rozmiaru (np. 247x296). Store API oddaje gotowy
  * adres przy kazdym zdjeciu, wiec zgadywac nie ma juz po co ani czego.
  *
  * ⚠️ CZEGO NIE ZNAMY, TEGO NIE WPISUJEMY: `null`, nigdy adres zgadniety ani oryginal.
- * Pusta komorka jest dzis i tak stanem widocznym, a 608 oryginalow po ~250 kB to ponad
- * 150 MB na JEDNEJ stronie listy.
+ * Pusta komorka jest dzis i tak stanem widocznym, a kilkaset oryginalow po ~250 kB to
+ * rzad stu megabajtow na JEDNEJ stronie listy.
  */
 const miniaturaZMapy = (miniatury, produktId) => miniatury.get(String(produktId ?? '')) ?? null;
 
 /**
- * PRZ-090 — wymiary i waga, ktore sklep podaje sam, z JEDNOSTKA sklepu (bez niej liczba nic nie znaczy).
+ * Wymiary i waga, ktore sklep podaje sam, z JEDNOSTKA sklepu (bez niej liczba nic nie znaczy).
  * `wymiary_json` = `{ length, width, height, unit }` albo `null`, gdy sklep nie podal ani jednej liczby
  * albo jednostki nie znamy; `waga_tekst` = „1.25 kg” albo `null`. Odczyt robi domena/rozmiar.js.
- * ⚠️ WARIANT NIE DZIEDZICZY WYMIAROW ANI WAGI PO RODZICU (poprawka po recenzji PRZ-090). Warianty jednego produktu
+ * ⚠️ WARIANT NIE DZIEDZICZY WYMIAROW ANI WAGI PO RODZICU. Warianty jednego produktu
  * roznia sie zwykle wlasnie rozmiarem — wymiar rodzica podstawiony kazdemu z nich dalby kilku kartom ten sam wymiar.
  * Ta sama zasada, co przy rozmiarze wariantu z atrybutu (`wierszWariantu`): brak jest uczciwsza odpowiedzia.
  */
@@ -227,7 +226,7 @@ async function jednostkiKanalu({ kanal, klient, zapisz }) {
   return { wymiary: await odczytaj('woocommerce_dimension_unit'), waga: await odczytaj('woocommerce_weight_unit') };
 }
 
-// E4.05 (D60): lustro ilosci kanalu — tylko informacja, stan karty liczy wylacznie `stanyKart`.
+// Lustro ilosci kanalu — tylko informacja, stan karty liczy wylacznie `stanyKart`.
 const STAN_PROWADZONY_WOO = new Map([[true, 'tak'], [false, 'nie'], ['parent', 'rodzic']]);
 function iloscKanaluWoo(p) {
   return {
@@ -252,7 +251,7 @@ function wierszProduktu(kanal, p, odczytaneAt, miniatury, jednostki) {
     zdjecia_json: zdjeciaJson(zdjeciaProduktu(p)),
     adres: pusteNaNull(p?.permalink),
     // Produkt prosty nie ma wariantow, wiec gdy atrybutu nie ma, jedynym zrodlem rozmiaru
-    // jest nazwa („Chmurka i Księżyc – aplikacja 30x48cm").
+    // jest nazwa („Aplikacja Przykładowa 30x48cm").
     rozmiar_tekst: rozmiarZAtrybutow(p?.attributes) ?? nazwa,
     kategoria_glowna_zrodla: kategoriaGlownaZrodla(p),
     opis_zrodlowy: pusteNaNull(p?.short_description),
@@ -267,14 +266,14 @@ function wierszProduktu(kanal, p, odczytaneAt, miniatury, jednostki) {
 
 /**
  * Wiersz z WARIANTU. SKU i cena zyja na wariancie, nazwa i kategorie na rodzicu — zmierzone:
- * rodzic „Lampa wisząca Kopuła" ma SKU puste i cene jako zakres 49–74,90, a warianty `B-KOP-117` / `B-KOP-118`
+ * rodzic „Lampa wisząca Przykładowa" ma SKU puste i cene jako zakres 49–74,90, a warianty `LAMP-01` / `LAMP-02`
  * i ceny 49 / 74,90. Dlatego jeden wiersz magazynu = jeden wariant, nie jeden produkt.
  *
  * ⚠️⚠️ ROZMIAR WARIANTU BIERZE SIE WYLACZNIE Z JEGO ATRYBUTU I NIGDY Z NAZWY RODZICA.
- * Szesc produktow wariantowych na sklepie A jest zepsutych w sklepie: warianty roznia sie
- * WYLACZNIE cena (79/99/119 zl) i nie niosa zadnego atrybutu rozmiaru. Podstawienie tam nazwy
+ * Zdarzaja sie produkty wariantowe zepsute w sklepie: warianty roznia sie
+ * WYLACZNIE cena (np. 79/99/119 zl) i nie niosa zadnego atrybutu rozmiaru. Podstawienie tam nazwy
  * rodzica daloby TRZEM roznym rozmiarom ten sam wymiar — a z niego powstaje paczka, gabaryt
- * i wymiar w sklepie. Brak jest tu jedyna uczciwa odpowiedzia; Zadanie 8 rozpoznaje
+ * i wymiar w sklepie. Brak jest tu jedyna uczciwa odpowiedzia; import kart rozpoznaje
  * takie warianty wlasnie po pustym `rozmiar_tekst` i nie tworzy z nich kart.
  */
 function wierszWariantu(kanal, rodzic, wariant, odczytaneAt, miniatury, jednostki) {
@@ -304,11 +303,11 @@ function wierszWariantu(kanal, rodzic, wariant, odczytaneAt, miniatury, jednostk
     zdjecia_json: zdjeciaJson([wariant?.image?.src, ...zdjeciaProduktu(rodzic)]),
     adres: pusteNaNull(wariant?.permalink) ?? pusteNaNull(rodzic?.permalink),
     rozmiar_tekst: rozmiarZAtrybutow(wariant?.attributes),
-    // ⚠️ OSIE PODZIALU WARIANTU — to po nich `domain/karta-z-produktu.js` rozstrzyga, czy
-    // wariant bez rozmiaru jest OSOBNĄ KARTĄ („Kinkiet Ramię — Mosiądz"), czy usterka sklepu.
+    // ⚠️ OSIE PODZIALU WARIANTU — to po nich `domena/karta-z-produktu.js` rozstrzyga, czy
+    // wariant bez rozmiaru jest OSOBNĄ KARTĄ („Kinkiet Przykładowy — Mosiądz"), czy usterka sklepu.
     // Zapisujemy je TUTAJ, przy wariancie, i nigdzie indziej: `wierszProduktu` (produkt prosty)
     // zostawia te kolumne pusta, bo produkt bez wariantow nie ma czego dzielic, a dopisanie
-    // mu atrybutow kazaloby dokleic ich wartosci do nazw ~588 prostych produktow sklepu A.
+    // mu atrybutow kazaloby dokleic ich wartosci do nazw setek prostych produktow.
     atrybuty_json: JSON.stringify(atrybutyZWariantu(wariant)),
     kategoria_glowna_zrodla: kategoriaGlownaZrodla(rodzic),
     opis_zrodlowy: pusteNaNull(rodzic?.short_description),
@@ -395,7 +394,7 @@ async function wierszeSklepu({ kanal, klient, odczytaneAt, zglos, zapisz }) {
     // ⚠️ WARIANTY WOLAMY WYLACZNIE DLA `type: 'variable'`. Warianty NIE WYCHODZA z `/products`,
     // wiec lustro zbudowane z samej listy produktow nie zobaczyloby ANI JEDNEGO SKU wariantu,
     // czyli glownego celu magazynu. W druga strone: pytanie o warianty kazdego produktu to
-    // 668 zadan HTTP po nic.
+    // setki zadan HTTP po nic.
     if (p?.type === 'variable') {
       for (const w of await klient.pobierzWarianty(p?.id)) {
         wiersze.push(zTrescia(wierszWariantu(kanal, p, w, odczytaneAt, miniatury, jednostki), p, w));
@@ -412,7 +411,7 @@ async function wierszeSklepu({ kanal, klient, odczytaneAt, zglos, zapisz }) {
 // FAZA 1 dla Allegro.
 //
 // ⚠️ `pobierzOferty()` JEST BEZ ARGUMENTU — klient jest juz per-konto. Kanal dokleja WOLAJACY,
-// z klucza mapy, i sprawdza go biala lista w `domain/allegro-oferta.js`. Rozlozenie tego na
+// z klucza mapy, i sprawdza go biala lista w `domena/allegro-oferta.js`. Rozlozenie tego na
 // `{ kanal, ...ofertaNaProdukt(o) }` RZUCA: `ofertaNaProdukt` wymaga kanalu jako argumentu.
 async function wierszeAllegro({ kanal, klient, odczytaneAt, zglos, kanalyAllegro }) {
   const oferty = await klient.pobierzOferty();
@@ -423,7 +422,7 @@ async function wierszeAllegro({ kanal, klient, odczytaneAt, zglos, kanalyAllegro
     // ma Store API, wiec jest to jedyny kanal, w ktorym adres miniatury nadal WYPROWADZAMY;
     // robi to jednak PODMIANA SEGMENTU SCIEZKI, zmierzona na zywych zdjeciach, a nie
     // doklejanie rozmiaru do nazwy pliku, ktore wlasnie wyrzucamy ze sklepow.
-    // PRZ-160.04b: `updatedAt` z listy (gdy jest) wraca zmieniona oferte do kolejki „Pobierz tresc i zdjecia ofert".
+    // `updatedAt` z listy (gdy jest) wraca zmieniona oferte do kolejki „Pobierz tresc i zdjecia ofert".
     wiersze.push({ ...ofertaNaProdukt(o, kanal, kanalyAllegro), odczytane_at: odczytaneAt,
       tresc_lista_zmieniona_at: typeof o?.updatedAt === 'string' && o.updatedAt ? o.updatedAt : null });
     zrobione += 1;
@@ -437,19 +436,19 @@ async function wierszeAllegro({ kanal, klient, odczytaneAt, zglos, kanalyAllegro
  *
  * ⚠️ `oznaczZnikniete` STOI PO WSZYSTKICH ZAPISACH i to jest tresc, nie kolejnosc dla porzadku.
  * Przeniesione przed nie zmienia stanu koncowego (upsert zeruje `zniknal_at`), ale licznik
- * zaczyna mowic „zniknelo 668 produktow" przy sklepie, w ktorym nie zniknelo nic — a ten
+ * zaczyna mowic „zniknely setki produktow" przy sklepie, w ktorym nie zniknelo nic — a ten
  * licznik jest jedynym sygnalem, po ktorym czlowiek zauwaza, ze sklep sie sypie.
  *
  * ⚠️ Zmierzone (3000 wierszy, baza na dysku): w autocommicie 3,7 s, w transakcji 222 ms —
  * kazdy `run()` to osobna transakcja WAL z wlasnym fsync. To ta sama lekcja, ktora opisuje
- * przeliczenie wsteczne w `db/db.js`.
+ * przeliczenie wsteczne w `oms/db/uzupelnienia-zamowien.js` (`uzupelnijIndywidualne`).
  */
 function zapiszKanal(db, kanal, wiersze, odczytaneAt, trescKart = true, zRejestru = false) {
-  // PRZ-160 P3b.03: `trescKart = false` to odczyt „Sprawdź" z ekranu importu — lustro sie zapisuje
+  // `trescKart = false` to odczyt „Sprawdź" z ekranu importu — lustro sie zapisuje
   // (z niego liczymy podglad), ale tresc Woo NIE trafia do kart: zostaje w pamieci przebiegu,
   // a zapisuje ja dopiero „Importuj" wedlug wybranego typu.
   const tresc = [];
-  // PRZ-160 E3.10 (D19): oferta wystawiona przez OMS jest w rejestrze `oferty_kanalow` pod (kanal, numer oferty).
+  // Oferta wystawiona przez OMS jest w rejestrze `oferty_kanalow` pod (kanal, numer oferty).
   // `kartyLustraZ` daje pierwszenstwo wierszowi lustra, takze BEZ karty — wiec po „Odczytaj katalogi" zamowienie
   // z takiej oferty wypadaloby „bez karty". Wiersz lustra bierze karte z rejestru, ale TYLKO gdy nie ma wlasnej:
   // reczne przypiecie wlasciciela wygrywa (ta sama zasada, co `karta_id` poza KOLUMNY_LUSTRA w db/magazyn.js).
@@ -459,14 +458,14 @@ function zapiszKanal(db, kanal, wiersze, odczytaneAt, trescKart = true, zRejestr
       SELECT o.karta_id FROM oferty_kanalow o WHERE o.kanal = produkty_sklepowe.kanal AND o.id_zewnetrzne = produkty_sklepowe.produkt_id)
     WHERE id = ? AND karta_id IS NULL AND wariant_id = '' AND EXISTS (
       SELECT 1 FROM oferty_kanalow o WHERE o.kanal = produkty_sklepowe.kanal AND o.id_zewnetrzne = produkty_sklepowe.produkt_id)`) : null;
-  // Baza sprzed migracji rdzen/0017 (zasada 1 etapu 4) nie ma kolumn lustra ilosci — wtedy ich nie piszemy.
+  // Baza sprzed migracji rdzen/0017 nie ma kolumn lustra ilosci — wtedy ich nie piszemy.
   const lustroIlosci = db.prepare("SELECT 1 FROM pragma_table_info('produkty_sklepowe') WHERE name = 'ilosc_odczytana_at'").get() !== undefined
     ? db.prepare('UPDATE produkty_sklepowe SET ilosc_kanalu = ?, stan_prowadzony = ?, ilosc_odczytana_at = ? WHERE id = ?') : null;
   db.exec('BEGIN IMMEDIATE');
   try {
     for (const w of wiersze) {
       const id = zapiszProduktSklepowy(db, w);
-      // E4.05 (D60): lustro ilosci kanalu z data odczytu (tylko informacja; stan karty z `stanyKart`).
+      // Lustro ilosci kanalu z data odczytu (tylko informacja; stan karty z `stanyKart`).
       if (lustroIlosci) lustroIlosci.run(w.ilosc_kanalu ?? null, w.stan_prowadzony ?? null, odczytaneAt, id);
       if (kartaZRejestru) kartaZRejestru.run(id);
       if (trescKart) zapiszTrescWoo(db, w, id, odczytaneAt);
@@ -495,8 +494,8 @@ const opisBledu = (e) => (typeof e?.message === 'string' && e.message ? e.messag
 /**
  * HAMULEC: odczyt oddal ZERO pozycji, a lustro trzyma dla tego kanalu zywe wiersze.
  *
- * ⚠️⚠️ ZMIERZONE NA PRAWDZIWEJ BAZIE: 668 produktow w lustrze, klient oddaje `[]`, przebieg
- * konczy sie `{ zapisane: 0, znikniete: 668, blad: null }` — MELDUJE SUKCES, a magazyn pokazuje
+ * ⚠️⚠️ ZMIERZONE NA PRAWDZIWEJ BAZIE: lustro z setkami produktow, klient oddaje `[]`, przebieg
+ * konczy sie `{ zapisane: 0, znikniete: <wszystkie>, blad: null }` — MELDUJE SUKCES, a magazyn pokazuje
  * pusty kanal. Sklep odmawia bowiem KODEM 200 (konflikt wtyczki, tryb konserwacji, nieudany
  * import masowy), wiec klient nie ma czego zglosic: tablica jest tablica, a kontrola
  * kompletnosci przy `totalCount = 0` jest swiadomie pomijana. Cichy pusty odczyt i cichy blad
@@ -511,7 +510,7 @@ const opisBledu = (e) => (typeof e?.message === 'string' && e.message ? e.messag
  * normalne zniknięcie; straznik na „odczyt mniejszy niz lustro" uniemozliwilby wycofanie
  * czegokolwiek ze sprzedazy.
  *
- * ⚠️ PRZYJETY KOSZT, SWIADOMIE (decyzja wlasciciela): przy PRAWDZIWYM wygaszeniu sprzedazy na
+ * ⚠️ PRZYJETY KOSZT, SWIADOMIE: przy PRAWDZIWYM wygaszeniu sprzedazy na
  * kanale magazyn bedzie go pokazywal az do recznej interwencji (wystarczy oznaczyc wiersze
  * kanalu jako zniknięte — patrz `liczZyweProdukty`). Wariant z przyciskiem „tak, naprawde
  * pusty" zostal ODRZUCONY jako niewart osobnego ekranu. To nie jest uciazliwosc do naprawienia:
@@ -531,7 +530,7 @@ function sprawdzPustyOdczyt(db, kanal, ilePozycji) {
 
 /**
  * Jeden kanal: biala lista → odczyt → zapis. Wyjatek NIE WYCHODZI na zewnatrz — wraca jako
- * `blad` w wyniku tego kanalu, zeby pozostale trzy dokonczyly przebieg.
+ * `blad` w wyniku tego kanalu, zeby pozostale dokonczyly przebieg.
  */
 async function przebiegKanalu({ db, kanal, dozwolone, czym, odczytaneAt, zbierz, zapisz, trescKart = true, zRejestru = false }) {
   try {
@@ -550,9 +549,9 @@ async function przebiegKanalu({ db, kanal, dozwolone, czym, odczytaneAt, zbierz,
     const blad = opisBledu(e);
     // ⚠️ SLAD W LOGU JEST TU CZESCIA OCHRONY, nie dodatkiem. Blad wracajacy WYLACZNIE w wyniku
     // jest widoczny tylko wtedy, gdy ktos ten wynik wyswietli — a niewyswietlony blad kanalu
-    // wyglada na ekranie DOKLADNIE tak samo jak sklep, w ktorym nic sie nie zmienilo. To ta sama
-    // usterka, ktora recenzja pollera zlapala przy Allegro: komunikat ladowal w kolumnie,
-    // ktorej nikt nie czytal, a objawial sie „spokojnym dniem".
+    // wyglada na ekranie DOKLADNIE tak samo jak sklep, w ktorym nic sie nie zmienilo. Zdarzylo sie
+    // juz przy pollerze Allegro: komunikat ladowal w kolumnie, ktorej nikt nie czytal,
+    // a objawial sie „spokojnym dniem".
     zapisz(`magazyn: kanał ${kanal} przerwany —`, blad);
     return { kanal, zapisane: 0, znikniete: 0, blad };
   }
@@ -568,13 +567,13 @@ async function przebiegKanalu({ db, kanal, dozwolone, czym, odczytaneAt, zbierz,
  * @param {() => string} [p.teraz] — wstrzykiwany zegar (patrz `znacznik`)
  * @param {(postep: {kanal: string, zrobione: number, zTego: number}) => void} [p.postep]
  * @param {(...czesci: unknown[]) => void} [p.log] — ślad po błędzie kanału; domyślnie `console.error`
- * @param {boolean} [p.trescKart] — `false`: treść Woo nie idzie do kart, wraca w `kanaly[].tresc` (PRZ-160 P3b.03)
+ * @param {boolean} [p.trescKart] — `false`: treść Woo nie idzie do kart, wraca w `kanaly[].tresc`
  * @returns {Promise<{kanaly: Array<{kanal, zapisane, znikniete, blad}>}>}
  *
  * Odczyt calego katalogu to setki zadan HTTP (warianty ida per produkt wariantowy, Allegro
- * dokłada ~23 strony) i NIE ZMIESCI SIE w limicie czasu zadania HTTP. Dlatego ta funkcja nie
- * wie nic o trasie ani o odpowiedzi: zwykla obietnica plus `postep`, ktory mozna podpiac pod
- * pasek postepu, gdy Zadanie 9 uruchomi ja w tle.
+ * dokłada kilkadziesiąt stron) i NIE ZMIESCI SIE w limicie czasu zadania HTTP. Dlatego ta funkcja nie
+ * wie nic o trasie ani o odpowiedzi: zwykla obietnica plus `postep`, ktory pod pasek postepu
+ * podpina `magazyn-przebieg.js`, uruchamiajac ja w tle.
  */
 export async function odswiezMagazyn({ db, sklepy, allegro, teraz, postep, log = console.error, kanalySklepow, kanalyAllegro, trescKart = true } = {}) {
   wymagajListyKanalow(kanalySklepow);
@@ -594,7 +593,7 @@ export async function odswiezMagazyn({ db, sklepy, allegro, teraz, postep, log =
   // Ta sama technika i ten sam powod, co przy `postep`: log rzucajacy W BLOKU OBSLUGI BLEDU
   // wyrzucilby wyjatek z `przebiegKanalu`, czyli usterka LOGOWANIA zabilaby izolacje awarii
   // i zatrzymala pozostale kanaly. `log = console.error` jest konwencja `services/`
-  // (services/wysylka-ksef.js, bootstrap.js): domyslnie do wyjscia kontenera, wstrzykiwalny
+  // (np. `moduly/faktury/services/wysylka-ksef.js`): domyslnie do wyjscia kontenera, wstrzykiwalny
   // wylacznie po to, zeby dalo sie go sprawdzic testem.
   const zapisz = (...czesci) => {
     try { log?.(...czesci); } catch { /* ślad nie jest wynikiem odczytu */ }

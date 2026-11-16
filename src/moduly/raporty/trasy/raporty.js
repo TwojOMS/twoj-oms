@@ -17,14 +17,14 @@ import { PODLOGA_ZWROTOW } from '../../../domena/rachunek-zarzadczy.js';
 import { BOM_EXCELA, csvSprzedazy, nazwaPlikuSprzedazy } from '../../../domena/eksport-csv.js';
 
 // Zakladka RAPORTY — sprzedaz. Trasa jest CIENKA: parsuje zakres, wola domene, renderuje.
-// Wzorzec: routes/koszty.js.
+// Wzorzec: `../../koszty/trasy/koszty.js`.
 //
 // ⚠️ TEN MODUL NICZEGO NIE LICZY. Kazda liczba na ekranie przychodzi z domeny: sprzedaz
 // w okresie sklada `sprzedazWOkresie` (scalenie historii z Apilo z biezaca sprzedaza po
 // granicy per kanal), KPI i rankingi `agreguj`, zmiany `delty`, zakresy `okresy-raportu.js`.
 // Druga sciezka liczaca to samo rozjechalaby sie o grosz przy pierwszej zmianie reguly.
 
-// ⚠️ KOLEJNOSC JEST TRESCIA: skroty ida od NAJKROTSZEGO okresu. „Dzisiaj" (31.08.2026)
+// ⚠️ KOLEJNOSC JEST TRESCIA: skroty ida od NAJKROTSZEGO okresu. „Dzisiaj"
 // stoi pierwszy, bo odpowiada na pytanie zadawane najczesciej — „co dzis sprzedalismy".
 const SKROTY = [
   'dzisiaj', 'ten-miesiac', 'poprzedni-miesiac', 'ten-kwartal', 'poprzedni-kwartal',
@@ -64,7 +64,7 @@ export function zarejestrujTrasyRaportow(app, { db, config }) {
     if (blad) return ekranOdmowyRaportu(reply, blad);
 
     try {
-      // ⚠️ WSZYSTKIE TRZY OKRESY DOSTAJA SWOJE ZWROTY (Zadanie 11) — inaczej porownanie „rok
+      // ⚠️ WSZYSTKIE TRZY OKRESY DOSTAJA SWOJE ZWROTY — inaczej porownanie „rok
       // do roku" zestawialoby sprzedaz PO zwrotach (teraz) z sprzedaza SUROWA (przedRokiem).
       // Zakresy licza sie raz i ida do obu wywolan (sprzedaz + zwroty), zeby nie rozjechac sie
       // przy drugim przeliczeniu tej samej daty.
@@ -84,11 +84,11 @@ export function zarejestrujTrasyRaportow(app, { db, config }) {
       // ⚠️ PODLOGA ZWROTOW: dla zakresu konczacego sie PRZED dniem wdrozenia panel nie ma
       // ZADNEGO zrodla zwrotow (tabela `zwroty` byla wtedy pusta) — zero z `zwrotyWOkresie`
       // znaczy „nie widzielismy", nie „nie bylo". Ekran ma to napisac wprost, a nie pokazac
-      // zmyslone 0,00 zl (ta sama zasada, co przy DROPSHIPPING za 2025).
+      // zmyslone 0,00 zl (ta sama zasada, co przy kanale bez historii).
       const zwrotyPoznane = Boolean(config.podlogaZwrotow && zakres.do >= config.podlogaZwrotow);
       const miesiace = miesiaceOkresu(zakres);
 
-      // ⚠️ PRZEBIEG SPRZEDAZY (17.08.2026): do 62 dni slupki DZIENNE, powyzej TYGODNIOWE —
+      // ⚠️ PRZEBIEG SPRZEDAZY: do 62 dni slupki DZIENNE, powyzej TYGODNIOWE —
       // 90 dziennych kresek na szerokosci karty to szum, nie wykres. Listy dni i tygodni
       // przychodza Z ZAKRESU (dziury maja slupek z zerem), agregacje z domeny.
       const dni = dniOkresu(zakres);
@@ -121,7 +121,7 @@ export function zarejestrujTrasyRaportow(app, { db, config }) {
         zwrotyPoznane,
         podlogaZwrotow: config.podlogaZwrotow,
         delty: delty(teraz.kpi, wczesniej.kpi),
-        // Podpisy delt w kaflach: czlowiek ma widziec, Z CZYM porownuje — „vs 2026-06",
+        // Podpisy delt w kaflach: czlowiek ma widziec, Z CZYM porownuje — „vs 2026-06”,
         // a nie goly procent. Nazwy licza sie z TYCH SAMYCH zakresow, co delty.
         nazwaWczesniej: nazwaOkresu(zakresWczesniej),
         nazwaPrzedRokiem: jestRokWczesniej ? nazwaOkresu(zakresPrzedRokiem) : null,
@@ -141,13 +141,13 @@ export function zarejestrujTrasyRaportow(app, { db, config }) {
           ...zakres, granice: wszystkieGranice(db),
           kanalGddWHistorii: config.regulySprzedazy.klasyfikacja.tagGdd !== null,
         }),
-        // ⚠️ OSOBNY PAS, NIE DOPISEK DO `ostrzezenia` — i to jest decyzja, nie niedbalstwo.
+        // ⚠️ OSOBNY PAS, NIE DOPISEK DO `ostrzezenia`.
         // Pas ostrzezen jest ZWINIETY (`<details>`), bo jego tresc zalezy od danych okresu.
         // Te zdania mowia, czego archiwum NIE WIE o calej epoce, i musza byc widoczne bez
-        // rozwijania: raport za 2016 rok pokazuje 2 395 zamowien, ktore bez tego zdania
+        // rozwijania: raport za dawny rok pokazuje kilka tysiecy zamowien, ktore bez tego zdania
         // czyta sie jako „tyle sprzedalismy" — a to wylacznie sklep, bez Allegro i hurtu.
         zastrzezeniaHistorii: zastrzezenia({ od: zakres.od, sufitApilo: config.kontoHistorii !== null ? sufitZApilo(db, config.kontoHistorii) : null, kontoNieustawione: config.kontoHistorii === null, nazwaSklepu: config.nazwaSklepuHistorii, dataImportu: config.dataImportuHistorii }),
-        // ⚠️ ZAMIANA GROSZY NA ZLOTOWKI IDZIE Z DOMENY (domain/kwoty.js), a nie z wlasnego
+        // ⚠️ ZAMIANA GROSZY NA ZLOTOWKI IDZIE Z DOMENY (domena/kwoty.js), a nie z wlasnego
         // dzielenia w szablonie: to jedyne dzielenie pieniedzy na tym ekranie i ma byc
         // TYM SAMYM dzieleniem, ktore panel robi wszedzie indziej. Widok dokleda juz tylko
         // polski zapis liczby (spacje i przecinek).

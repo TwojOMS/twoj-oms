@@ -1,35 +1,35 @@
-// Czy przy otwarciu karty zapytac inFakt o numer KSeF TEJ jednej faktury.
+// Czy przy otwarciu karty zapytać inFakt o numer KSeF TEJ jednej faktury.
 //
-// ⚠️ ISTNIEJE, BO DWA EKRANY POKAZYWALY CO INNEGO, I TO NIE BYL PRZYPADEK. Zakladka FAKTURY
-// czyta inFakt NA ZYWO przy kazdym wejsciu, wiec numer widac tam ~70 s po wysylce. Karta
-// zamowienia czyta `ksef_numer` z WLASNEJ bazy, a to pole wypelnia wylacznie czuwacz, ktory
-// tyka CO GODZINE (bootstrap.js, ODSTEP_CZUWACZA_MS). Stad zgloszenie wlasciciela 12.08.2026:
-// „dlaczego numer KSeF pojawia sie w panelu faktur szybko, a na karcie duzo pozniej?".
+// ⚠️ ISTNIEJE, BO DWA EKRANY POKAZYWAŁY CO INNEGO, I TO NIE BYŁ PRZYPADEK. Zakładka FAKTURY
+// czyta inFakt NA ŻYWO przy każdym wejściu, więc numer widać tam około minuty po wysyłce. Karta
+// zamówienia czyta `ksef_numer` z WŁASNEJ bazy, a to pole wypełnia wyłącznie czuwacz, który
+// tyka CO GODZINĘ (oms/bootstrap.ts, ODSTEP_CZUWACZA_MS). Objaw: numer KSeF pojawiał się
+// w panelu faktur szybko, a na karcie dużo później.
 //
-// ⚠️⚠️ GORSZY PRZYPADEK NIZ OPOZNIENIE: DLA CZESCI FAKTUR NUMER NIE PRZYSZEDLBY NIGDY.
-// Czuwacz pyta WYLACZNIE o dwie grupy (domain/ksef-oczekiwanie.js): zamowienia z kanalu
-// Allegro i dokumenty, ktorych wysylke do KSeF zlecil sam panel. Faktura sklepowa, ktora
-// trafila do KSeF inna droga — bo wlasciciel kliknal w inFakcie albo poszla ich wieczornym
-// automatem — nie dostawala numeru na karcie NIGDY. To ograniczenie zostaje w czuwaczu
-// (pytanie o wszystkie to setki wywolan miesiecznie bez nowej informacji), a znosi je
-// dopiero ta sciezka: pytamy o dokument, na ktory CZLOWIEK WLASNIE PATRZY.
+// ⚠️⚠️ GORSZY PRZYPADEK NIŻ OPÓŹNIENIE: DLA CZĘŚCI FAKTUR NUMER NIE PRZYSZEDŁBY NIGDY.
+// Czuwacz pyta WYŁĄCZNIE o dwie grupy (domena/ksef-oczekiwanie.js): zamówienia z kanału
+// Allegro i dokumenty, których wysyłkę do KSeF zlecił sam panel. Faktura sklepowa, która
+// trafiła do KSeF inną drogą — bo ktoś kliknął wysyłkę w inFakcie albo poszła automatem
+// inFaktu — nie dostawała numeru na karcie NIGDY. To ograniczenie zostaje w czuwaczu
+// (pytanie o wszystkie to setki wywołań miesięcznie bez nowej informacji), a znosi je
+// dopiero ta ścieżka: pytamy o dokument, na który CZŁOWIEK WŁAŚNIE PATRZY.
 //
-// ⚠️ TO JEST TEN SAM WZORZEC, CO NUMERY LISTOW Z ALLEGRO NA KARCIE (routes/zamowienia.js):
-// koszt ograniczony UWAGA CZLOWIEKA, zero ruchu w tle. Roznica jest w dlawiku — tam znacznik
-// proby idzie do logu, bo kolumny nie ma; tutaj kolumna JEST i nazywa sie
-// `ksef_sprawdzona_at`. Czuwacz zapisuje ja przy kazdym pytaniu, udanym czy nie, wiec
-// dostajemy dlawik za darmo, bez nowej kolumny i bez wpisu do logu przy kazdej odslonie.
+// ⚠️ TO JEST TEN SAM WZORZEC, CO NUMERY LISTÓW Z ALLEGRO NA KARCIE (moduly/zamowienia/karta.js):
+// koszt ograniczony UWAGĄ CZŁOWIEKA, zero ruchu w tle. Różnica jest w dławiku — tam znacznik
+// próby idzie do logu, bo kolumny nie ma; tutaj kolumna JEST i nazywa się
+// `ksef_sprawdzona_at`. Czuwacz zapisuje ją przy każdym pytaniu, udanym czy nie, więc
+// dostajemy dławik za darmo, bez nowej kolumny i bez wpisu do logu przy każdej odsłonie.
 
 /**
- * Ile czekamy miedzy pytaniami o TEN SAM dokument.
+ * Ile czekamy między pytaniami o TEN SAM dokument.
  *
- * ⚠️ DWIE MINUTY, A NIE GODZINA — i to jest cala roznica wobec czuwacza. inFakt nadaje numer
- * ~70 s po przyjeciu zlecenia (pomiar 06.08.2026), wiec prog krotszy niz to okno kazalby
- * pytac w kolko o dokument, ktory jeszcze numeru nie ma. Prog dluzszy znaczylby, ze czlowiek
- * odswieza karte i dalej widzi „brak", choc numer jest juz od minuty.
+ * ⚠️ DWIE MINUTY, A NIE GODZINA — i to jest cała różnica wobec czuwacza. inFakt nadaje numer
+ * około minuty po przyjęciu zlecenia, więc próg krótszy niż to okno kazałby
+ * pytać w kółko o dokument, który jeszcze numeru nie ma. Próg dłuższy znaczyłby, że człowiek
+ * odświeża kartę i dalej widzi „brak”, choć numer jest już od minuty.
  *
- * ⚠️ Dlawi TEMPO, nie CZAS ZYCIA: karty faktur bez numeru mozna otwierac latami, ale
- * dwadziescia razy F5 w minute to JEDNO zapytanie do inFaktu.
+ * ⚠️ Dławi TEMPO, nie CZAS ŻYCIA: karty faktur bez numeru można otwierać latami, ale
+ * dwadzieścia razy F5 w minutę to JEDNO zapytanie do inFaktu.
  */
 import { idDokumentu } from './dokument-programu.js';
 

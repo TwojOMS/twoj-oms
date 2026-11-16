@@ -1,7 +1,6 @@
 import { bladOperatora } from './bledy.js';
 
-// KOMENTARZ WEWNĘTRZNY przy zamówieniu (21.08.2026, prośba właściciela: „opcja komentarz
-// wewnętrzny w OMS — klient go nie widzi, tylko do wewnętrznego wglądu").
+// KOMENTARZ WEWNĘTRZNY przy zamówieniu — klient go nie widzi, tylko do wewnętrznego wglądu.
 //
 // ⚠️ TO JEST DRUGA STRONA „UWAG KLIENTA", A NIE ICH ODMIANA. `zamowienia.uwagi` to
 // `customer_note` z Woo — zapis tego, co napisał KLIENT, tylko do odczytu i przepisywany
@@ -9,9 +8,9 @@ import { bladOperatora } from './bledy.js';
 // sklep o nim nie wie i wiedzieć nie ma. Stąd osobna kolumna, a nie doklejanie do tamtej —
 // dopisek w kolumnie sklepowej zniknąłby przy najbliższym przebiegu pollera, po cichu.
 //
-// ⚠️ NIE OPUSZCZA PANELU i to jest cała jego treść. Nie jedzie na fakturę (domain/
+// ⚠️ NIE OPUSZCZA PANELU i to jest cała jego treść. Nie jedzie na fakturę (domena/
 // pozycje-faktury.js), nie jedzie na specyfikację do paczki, którą czyta klient
-// (domain/specyfikacja.js), nie jedzie do sklepu ani do Allegro. Każde z tych miejsc składa
+// (domena/specyfikacja.js), nie jedzie do sklepu ani do Allegro. Każde z tych miejsc składa
 // swoją treść z nazwanych pól, więc nowa kolumna nie ma jak do nich wpaść sama — i są na to
 // testy, bo „nie ma jak" bywa prawdą tylko do najbliższej zmiany.
 

@@ -260,7 +260,7 @@
         {
           "id": "AST-111",
           "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
-          "line": 61,
+          "line": 60,
           "expression": "process.env.OMS_DB_PATH",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -301,7 +301,7 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/main.ts:13",
-        "src/moduly/kanaly/scripts/import-sklep.mjs:61",
+        "src/moduly/kanaly/scripts/import-sklep.mjs:60",
         "src/oms/bootstrap.ts:13",
         "scripts/oms-import-istniejacy-podjazd-dpd.mjs:14",
         "scripts/oms-import-istniejacy-podjazd-dpd.mjs:29",
@@ -676,7 +676,7 @@
       "wymagalnosc": "opcjonalna przy starcie; pełna definicja wymagana do aktywacji klienta",
       "domyslna": "[]",
       "wymagalnoscPoLudzku": "opcjonalna; bez wpisanych kanałów OMS niczego nie pobiera",
-      "skutekBraku": "Pusta lista definicji i brak pollera. W produkcji /health jest czerwony, jeżeli w DB są zamówienia nieobsługiwanego kanału z ostatnich 30 dni; proba pomija ten alarm. Kod wskazuje nazwę kanału i OMS_KANALY bez wartości. Pusty tekst nie uruchamia wartości domyślnej: JSON.parse('') odmawia startu jako niepoprawny JSON. PRZ-053: lista i powroty korzystają z jawnych definicji, kanał bez zamówień pozostaje widoczny. Bez definicji brak nazw i kanałów firmy.",
+      "skutekBraku": "Pusta lista definicji i brak pobierania zamówień w tle. W produkcji /health jest czerwony, jeżeli w DB są zamówienia nieobsługiwanego kanału z ostatnich 30 dni; proba pomija ten alarm. Kod wskazuje nazwę kanału i OMS_KANALY bez wartości. Pusty tekst nie uruchamia wartości domyślnej: JSON.parse('') odmawia startu jako niepoprawny JSON. PRZ-053: lista i powroty korzystają z jawnych definicji, kanał bez zamówień pozostaje widoczny. Bez definicji brak nazw i kanałów firmy.",
       "skutekBrakuPoLudzku": "Bez niej OMS nie ma kanałów i niczego nie pobiera. Pusta wartość to błąd — wpisz [] albo listę. Gdy w bazie są zamówienia kanału spoza listy z ostatnich 30 dni, /health świeci na czerwono.",
       "walidacja": "JSON tablica obiektów; klucz/prefiks/typ wymagają string, bez konwersji tablic do tekstu; typ woo/allegro; klucz /^[a-z][a-z0-9_-]*$/; prefiks /^[A-Z][A-Z0-9_]*$/; klucze i prefiksy unikalne. Błąd podaje nazwę zmiennej, numer znaku (zły JSON) albo numer pozycji listy od 1 i pole do poprawy; wartości z wejścia nie przepisuje. Polityka D09 zatwierdzona przez właściciela 02.10.2026; niezależne PRZYJĘTE pozostaje osobną bramką. PRZ-053: klucze reczne/indywidualne/__proto__/constructor/prototype zastrzeżone; opcjonalna etykieta musi być niepustym string. Opcjonalny raport /^[A-Z][A-Z0-9_]*$/ ma być unikalny i spoza wbudowanych RECZNE/B2B/DROPSHIPPING/GDD/INDYWIDUALNE oraz kategorii endpointu SKLEP/SKLEP_INDYWIDUALNE/ALLEGRO.",
       "decyzja": "D01, D09",
@@ -706,7 +706,7 @@
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": 120000,
-      "skutekBraku": "Poller zamówień ma odstęp 120000 ms, jeśli istnieje choć jeden aktywny klient.",
+      "skutekBraku": "Pobieranie zamówień w tle ma odstęp 120000 ms, jeśli istnieje choć jeden aktywny klient.",
       "skutekBrakuPoLudzku": "OMS pobiera nowe zamówienia co 2 minuty, jeśli jest choć jeden aktywny kanał.",
       "walidacja": "Całkowity safeInteger od 30000 do 2147483647 ms włącznie; brak zachowuje dotychczasowy default. D07 zatwierdzone 02.10.2026. W2: surowy tekst musi być równy trim; otaczające białe znaki odmawiają. Reprezentacje Number, np. 6e4 i 0xea60, pozostają poprawne przy spełnieniu safeInteger/granic.",
       "decyzja": "D07",
@@ -798,7 +798,7 @@
         {
           "id": "AST-109",
           "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
-          "line": 55,
+          "line": 54,
           "expression": "process.env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -806,7 +806,7 @@
         {
           "id": "AST-110",
           "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
-          "line": 55,
+          "line": 54,
           "expression": "process.env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -818,7 +818,7 @@
         "src/moduly/kanaly/kompletnosc.ts:7",
         "src/moduly/kanaly/konfiguracja.ts:125",
         "src/moduly/kanaly/konfiguracja.ts:155",
-        "src/moduly/kanaly/scripts/import-sklep.mjs:55"
+        "src/moduly/kanaly/scripts/import-sklep.mjs:54"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
       "wlaczoneWMainNaPinie": true,
@@ -894,7 +894,7 @@
         {
           "id": "AST-109",
           "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
-          "line": 55,
+          "line": 54,
           "expression": "process.env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -902,7 +902,7 @@
         {
           "id": "AST-110",
           "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
-          "line": 55,
+          "line": 54,
           "expression": "process.env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -914,7 +914,7 @@
         "src/moduly/kanaly/kompletnosc.ts:7",
         "src/moduly/kanaly/konfiguracja.ts:125",
         "src/moduly/kanaly/konfiguracja.ts:155",
-        "src/moduly/kanaly/scripts/import-sklep.mjs:55"
+        "src/moduly/kanaly/scripts/import-sklep.mjs:54"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
       "wlaczoneWMainNaPinie": true,
@@ -973,7 +973,7 @@
         {
           "id": "AST-109",
           "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
-          "line": 55,
+          "line": 54,
           "expression": "process.env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -981,7 +981,7 @@
         {
           "id": "AST-110",
           "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
-          "line": 55,
+          "line": 54,
           "expression": "process.env[n]",
           "kind": "dynamiczny",
           "via": "zamknięta mapa helpera"
@@ -992,7 +992,7 @@
         "src/moduly/kanaly/kompletnosc.ts:7",
         "src/moduly/kanaly/konfiguracja.ts:125",
         "src/moduly/kanaly/konfiguracja.ts:138",
-        "src/moduly/kanaly/scripts/import-sklep.mjs:55"
+        "src/moduly/kanaly/scripts/import-sklep.mjs:54"
       ],
       "aktywacja": "definicja kanału i włączenie modułu",
       "wlaczoneWMainNaPinie": true,
@@ -1796,7 +1796,7 @@
       "wlasciciel": "faktury / klient Fakturowni",
       "sekcja": "Faktury i koszty",
       "zakres": "produkt",
-      "wymagalnosc": "opcjonalna; razem z drugą zmienną Fakturowni; działa tylko przy wyborze modułu faktur „fakturownia”",
+      "wymagalnosc": "opcjonalna; razem z drugą zmienną Fakturowni; działa tylko przy wyborze programu do faktur „fakturownia”",
       "domyslna": null,
       "decyzja": "PRZ-119",
       "odpowiednikWPanelu": "Ustawienia → Integracje → Fakturownia (/ustawienia/integracje/fakturownia; wiersz „fakturownia” w konfiguracja_integracji: domena jawnie, token jako sekret)",
@@ -1826,8 +1826,8 @@
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
       "opis": "Token API konta Fakturowni (Ustawienia konta → Integracja → Kod autoryzacyjny API) — nim OMS wystawia faktury w Fakturowni.",
-      "wymagalnoscPoLudzku": "opcjonalna — tylko gdy modułem faktur jest Fakturownia",
-      "skutekBraku": "PRZ-119.05: Fakturownia działa tylko, gdy moduł faktur to „fakturownia” (OMS_PROGRAM_FAKTUROWY albo Ustawienia → Faktury i podatki → Program do faktur); sama obecność tokenu niczego nie wybiera — bez wyboru zostaje inFakt (gdy gotowy) albo „brak”. Bez pary w pliku konfiguracja pochodzi z ekranu Ustawienia → Integracje → Fakturownia (/ustawienia/integracje/fakturownia; wiersz „fakturownia” w konfiguracja_integracji: domena jawnie, token jako sekret); gdy para stoi w pliku, wygrywa nad ekranem. Wybrana Fakturownia bez domeny i tokenu: faktury wyłączone, Zdrowie podaje zdanie z adresem ekranu; po wpisaniu na ekranie faktury ruszają po ponownym uruchomieniu OMS-u. W trybie próby zmienne blokują start (klucze integracji), a ekran nie łączy się z Fakturownią (odmowa 400, chyba że piaskownica ma atrapę). Dokument wysłany do KSeF przez samą Fakturownię (bez zlecenia z panelu) = trwały alarm.",
+      "wymagalnoscPoLudzku": "opcjonalna — tylko gdy programem do faktur jest Fakturownia",
+      "skutekBraku": "Fakturownia działa tylko, gdy program do faktur to „fakturownia” (OMS_PROGRAM_FAKTUROWY albo Ustawienia → Faktury i podatki → Program do faktur); sama obecność tokenu niczego nie wybiera — bez wyboru zostaje inFakt (gdy gotowy) albo „brak”. Bez pary w pliku konfiguracja pochodzi z ekranu Ustawienia → Integracje → Fakturownia (/ustawienia/integracje/fakturownia; wiersz „fakturownia” w konfiguracja_integracji: domena jawnie, token jako sekret); gdy para stoi w pliku, wygrywa nad ekranem. Wybrana Fakturownia bez domeny i tokenu: faktury wyłączone, Zdrowie podaje zdanie z adresem ekranu; po wpisaniu na ekranie faktury ruszają po ponownym uruchomieniu OMS-u. W trybie próby zmienne blokują start (klucze integracji), a ekran nie łączy się z Fakturownią (odmowa 400, chyba że piaskownica ma atrapę). Dokument wysłany do KSeF przez samą Fakturownię (bez zlecenia z panelu) = trwały alarm.",
       "skutekBrakuPoLudzku": "Bez niej OMS bierze token zapisany w Ustawienia → Integracje → Fakturownia; para token i domena z pliku wygrywa.",
       "walidacja": "Spacje na brzegach usuwane; pusta wartość = brak. Obie zmienne razem albo żadna: jedna bez drugiej blokuje start zdaniem z nazwą brakującej zmiennej (bez wartości tokenu).",
       "sekret": true
@@ -1837,7 +1837,7 @@
       "wlasciciel": "faktury / klient Fakturowni",
       "sekcja": "Faktury i koszty",
       "zakres": "produkt",
-      "wymagalnosc": "opcjonalna; razem z drugą zmienną Fakturowni; działa tylko przy wyborze modułu faktur „fakturownia”",
+      "wymagalnosc": "opcjonalna; razem z drugą zmienną Fakturowni; działa tylko przy wyborze programu do faktur „fakturownia”",
       "domyslna": null,
       "decyzja": "PRZ-119",
       "odpowiednikWPanelu": "Ustawienia → Integracje → Fakturownia (/ustawienia/integracje/fakturownia; wiersz „fakturownia” w konfiguracja_integracji: domena jawnie, token jako sekret)",
@@ -1867,8 +1867,8 @@
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
       "opis": "Domena konta Fakturowni, czyli część adresu przed .fakturownia.pl (np. pracownia-polcien), wpisana bez https://.",
-      "wymagalnoscPoLudzku": "opcjonalna — tylko gdy modułem faktur jest Fakturownia",
-      "skutekBraku": "PRZ-119.05: Fakturownia działa tylko, gdy moduł faktur to „fakturownia” (OMS_PROGRAM_FAKTUROWY albo Ustawienia → Faktury i podatki → Program do faktur); sama obecność tokenu niczego nie wybiera — bez wyboru zostaje inFakt (gdy gotowy) albo „brak”. Bez pary w pliku konfiguracja pochodzi z ekranu Ustawienia → Integracje → Fakturownia (/ustawienia/integracje/fakturownia; wiersz „fakturownia” w konfiguracja_integracji: domena jawnie, token jako sekret); gdy para stoi w pliku, wygrywa nad ekranem. Wybrana Fakturownia bez domeny i tokenu: faktury wyłączone, Zdrowie podaje zdanie z adresem ekranu; po wpisaniu na ekranie faktury ruszają po ponownym uruchomieniu OMS-u. W trybie próby zmienne blokują start (klucze integracji), a ekran nie łączy się z Fakturownią (odmowa 400, chyba że piaskownica ma atrapę). Dokument wysłany do KSeF przez samą Fakturownię (bez zlecenia z panelu) = trwały alarm.",
+      "wymagalnoscPoLudzku": "opcjonalna — tylko gdy programem do faktur jest Fakturownia",
+      "skutekBraku": "Fakturownia działa tylko, gdy program do faktur to „fakturownia” (OMS_PROGRAM_FAKTUROWY albo Ustawienia → Faktury i podatki → Program do faktur); sama obecność tokenu niczego nie wybiera — bez wyboru zostaje inFakt (gdy gotowy) albo „brak”. Bez pary w pliku konfiguracja pochodzi z ekranu Ustawienia → Integracje → Fakturownia (/ustawienia/integracje/fakturownia; wiersz „fakturownia” w konfiguracja_integracji: domena jawnie, token jako sekret); gdy para stoi w pliku, wygrywa nad ekranem. Wybrana Fakturownia bez domeny i tokenu: faktury wyłączone, Zdrowie podaje zdanie z adresem ekranu; po wpisaniu na ekranie faktury ruszają po ponownym uruchomieniu OMS-u. W trybie próby zmienne blokują start (klucze integracji), a ekran nie łączy się z Fakturownią (odmowa 400, chyba że piaskownica ma atrapę). Dokument wysłany do KSeF przez samą Fakturownię (bez zlecenia z panelu) = trwały alarm.",
       "skutekBrakuPoLudzku": "Bez niej OMS bierze domenę zapisaną w Ustawienia → Integracje → Fakturownia; para token i domena z pliku wygrywa.",
       "walidacja": "Spacje na brzegach usuwane; pusta wartość = brak. Obie zmienne razem albo żadna: jedna bez drugiej blokuje start zdaniem z nazwą brakującej zmiennej (bez wartości tokenu). Klient Fakturowni przyjmuje tylko samą domenę konta (bez https:// i .fakturownia.pl).",
       "sekret": false
@@ -1975,7 +1975,7 @@
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": null,
-      "skutekBraku": "Dla inFaktu nie powstaje czuwacz archiwum sprzedaży; Zestawienie faktur nie ma tego lokalnego katalogu i korzysta z pozostałych źródeł usługi. PRZ-093.10: tylko w pliku (katalog na serwerze, nie pole ekranu); działa też z kluczem wpisanym w Ustawienia → Integracje → inFakt.",
+      "skutekBraku": "Dla inFaktu nie powstaje sprawdzanie archiwum sprzedaży w tle; Zestawienie faktur nie ma tego lokalnego katalogu i korzysta z pozostałych źródeł usługi. PRZ-093.10: tylko w pliku (katalog na serwerze, nie pole ekranu); działa też z kluczem wpisanym w Ustawienia → Integracje → inFakt.",
       "skutekBrakuPoLudzku": "Bez niej OMS nie robi nocnego archiwum sprzedaży z inFaktu, a zestawienie faktur korzysta z pozostałych źródeł. Ustawiasz ją tylko w pliku; działa też z kluczem inFakt wpisanym w panelu.",
       "walidacja": "trim; pusty tekst daje null; odczyt zarówno w fakturach, jak kosztach.",
       "odczyty": [
@@ -2058,14 +2058,14 @@
       "nazwa": "OMS_PROGRAM_FAKTUROWY",
       "wlasciciel": "faktury",
       "sekcja": "Faktury i koszty",
-      "opis": "Moduł faktur OMS-u: brak (faktury wyłączone), infakt albo fakturownia; TwojeFaktury będą dostępne wkrótce.",
+      "opis": "Program do faktur OMS-u: brak (faktury wyłączone), infakt albo fakturownia; TwojeFaktury będą dostępne wkrótce.",
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna — można w panelu (Ustawienia → Faktury i podatki → Program do faktur); wpisana w pliku musi być poprawna",
-      "wymagalnoscPoLudzku": "opcjonalna — moduł faktur możesz wybrać w panelu (Ustawienia → Faktury i podatki → Program do faktur, tylko administrator); wpisany w pliku wygrywa nad panelem",
+      "wymagalnoscPoLudzku": "opcjonalna — program do faktur możesz wybrać w panelu (Ustawienia → Faktury i podatki → Program do faktur, tylko administrator); wpisany w pliku wygrywa nad panelem",
       "domyslna": null,
       "domyslnaPoLudzku": "brak wyboru: inFakt, jeśli jest podłączony; bez niego faktury są wyłączone",
-      "skutekBraku": "PRZ-121.01: bez wartości w pliku moduł faktur pochodzi z Ustawień (wiersz „program_fakturowy” w konfiguracja_integracji, ustawienia {\"program\": \"brak\"|\"infakt\"|\"fakturownia\"}, bez sekretów), a bez zapisu — inFakt, gdy gotowy (INFAKT_API_KEY, klucz z Ustawień przy starcie, atrapa albo szew trybu próby), inaczej „brak” domyślny: moduł składa się jak przed zmianą, komunikaty bez zmian. Jawne „brak” (plik albo Ustawienia): nie powstaje klient inFaktu ani program fakturowy z żadnego źródła; wystawianie, lista FAKTURY, KSeF sprzedaży, czuwacze, automat KSeF, VIES i zestawienie faktur = null, klucz inFaktu zostaje w bazie i nie wychodzi z panelu; proformy i KSeF kosztów działają; /health bez zmian (zdanie o wyłączonych fakturach to uwaga modułu, nie alarm). Zmiana zapisu działa po ponownym uruchomieniu; automat KSeF staje od razu po zapisaniu „brak”. Zapis, którego wersja nie zna (np. „twojefaktury” bez zgody), = „brak” + uwaga. PRZ-119.05: „fakturownia” to wyłącznie jawny wybór (plik albo Ustawienia) — nigdy domyślny, także gdy FAKTUROWNIA_API_TOKEN i FAKTUROWNIA_DOMENA stoją w pliku. Przy Fakturowni nie powstaje nic z inFaktu (klient, ekran inFaktu sprawdza = 400, archiwum sprzedaży = null); domena i token z pliku albo z Ustawienia → Integracje → Fakturownia; bez nich faktury wyłączone z uwagą w Zdrowiu.",
-      "skutekBrakuPoLudzku": "Bez niej moduł faktur wybierasz w panelu. Gdy nic nie wybrano, OMS wystawia faktury przez inFakt, jeśli jest podłączony, a bez niego faktur nie wystawia — tak jak dotąd.",
+      "skutekBraku": "Bez wartości w pliku program do faktur pochodzi z Ustawień (wiersz „program_fakturowy” w konfiguracja_integracji, ustawienia {\"program\": \"brak\"|\"infakt\"|\"fakturownia\"}, bez sekretów), a bez zapisu — inFakt, gdy gotowy (INFAKT_API_KEY, klucz z Ustawień przy starcie, atrapa albo szew trybu próby), inaczej „brak” domyślny: moduł składa się jak przed zmianą, komunikaty bez zmian. Jawne „brak” (plik albo Ustawienia): nie powstaje klient inFaktu ani program fakturowy z żadnego źródła; wystawianie, lista FAKTURY, KSeF sprzedaży, zadania w tle, automat KSeF, VIES i zestawienie faktur = null, klucz inFaktu zostaje w bazie i nie wychodzi z panelu; proformy i KSeF kosztów działają; /health bez zmian (zdanie o wyłączonych fakturach to uwaga modułu, nie alarm). Zmiana zapisu działa po ponownym uruchomieniu; automat KSeF staje od razu po zapisaniu „brak”. Zapis, którego wersja nie zna (np. „twojefaktury” bez zgody), = „brak” + uwaga. Wartość „fakturownia” to wyłącznie jawny wybór (plik albo Ustawienia) — nigdy domyślny, także gdy FAKTUROWNIA_API_TOKEN i FAKTUROWNIA_DOMENA stoją w pliku. Przy Fakturowni nie powstaje nic z inFaktu (klient, ekran inFaktu sprawdza = 400, archiwum sprzedaży = null); domena i token z pliku albo z Ustawienia → Integracje → Fakturownia; bez nich faktury wyłączone z uwagą w Zdrowiu.",
+      "skutekBrakuPoLudzku": "Bez niej program do faktur wybierasz w panelu. Gdy nic nie wybrano, OMS wystawia faktury przez inFakt, jeśli jest podłączony, a bez niego faktur nie wystawia — tak jak dotąd.",
       "walidacja": "Dozwolone brak albo infakt. Pusta wartość pozostawia wybór w panelu; inne programy są niedostępne. Plik ma pierwszeństwo przed panelem.",
       "sekret": false,
       "odpowiednikWPanelu": "Ustawienia → Faktury i podatki → Program do faktur (/ustawienia/integracje/program-fakturowy; ekran PRZ-121.02)",
@@ -2098,7 +2098,7 @@
       "domyslna": null,
       "domyslnaPoLudzku": "brak przycisku — ekran podaje polecenie ręcznego ponownego uruchomienia OMS-u",
       "skutekBraku": "PRZ-121.06: bez wartości (albo z inną niż tak/atrapa) ekran Ustawienia → Faktury i podatki → Program do faktur przy zdaniu „zadziała po ponownym uruchomieniu” pokazuje „Uruchom ponownie OMS (np. docker compose restart oms).”, a POST /ustawienia/integracje/program-fakturowy/restart odpowiada 404 i nic nie robi. tak: przycisk dla administratora; POST (tylko admin, ochrona Origin jak przy każdym POST) odpowiada stroną z odświeżeniem po 10 s, zapisuje w logu procesu login zlecającego i dopiero po wysłaniu odpowiedzi wysyła SIGTERM do siebie (main.ts zamyka łagodnie, nadzorca podnosi proces; w piaskownicy z node --watch — do procesu rodzica). atrapa: przycisk nieaktywny, POST 404. Nie ustawiać tak bez nadzorcy procesu — panel by nie wstał.",
-      "skutekBrakuPoLudzku": "Bez niej po zmianie modułu faktur ekran podpowiada, jak samemu uruchomić ponownie OMS (program, nie maszynę).",
+      "skutekBrakuPoLudzku": "Bez niej po zmianie programu do faktur ekran podpowiada, jak samemu uruchomić ponownie OMS (program, nie maszynę).",
       "walidacja": "Wielkość liter i spacje bez znaczenia. tak albo atrapa; inna wartość = jak brak zmiennej (bez przycisku), nie blokuje startu.",
       "sekret": false,
       "decyzja": "PRZ-121",
@@ -2192,7 +2192,7 @@
       "wymagalnosc": "wymagana po rozpoczęciu niepustej sekcji KSeF",
       "domyslna": null,
       "wymagalnoscPoLudzku": "opcjonalna; wymagana, jeśli wpisujesz którekolwiek ustawienie KSeF",
-      "skutekBraku": "Bez całej sekcji klient KSeF/koszty z pliku nie powstaje. Niepuste KSEF_NIP/API/ARCHIWUM bez tokenu odmawia konfiguracji. PRZ-102.22: odpowiednik w panelu — Ustawienia → Integracje → KSeF (/ustawienia/integracje/ksef; wiersz „ksef” w konfiguracja_integracji, token jako sekret, NIP opcjonalny = NIP sprzedawcy). Klient KSeF kosztów rozstrzyga przy każdym przebiegu czuwacza, PDF-ie kosztu i zestawieniu faktur kosztowych: plik → panel → brak; nowy token z panelu działa od następnego przebiegu bez restartu, zmiana tokenu kasuje sesję KSeF (tokeny_ksef), ten sam token ją zostawia. Gdy KSEF_TOKEN stoi w pliku, ekran jest tylko do odczytu (zapis = 409). Bez tokenu w pliku i w panelu czuwacz kosztów stoi (zegar tyka, przebieg pominięty), /health: czuwaczKosztow.wlaczony=false. Moduł „Koszty” wyłączony w Ustawienia → System → Włączone funkcje: czuwacz nic nie pobiera także z tokenem (/health: stan „koszty wyłączone”).",
+      "skutekBraku": "Bez całej sekcji klient KSeF/koszty z pliku nie powstaje. Niepuste KSEF_NIP/API/ARCHIWUM bez tokenu odmawia konfiguracji. PRZ-102.22: odpowiednik w panelu — Ustawienia → Integracje → KSeF (/ustawienia/integracje/ksef; wiersz „ksef” w konfiguracja_integracji, token jako sekret, NIP opcjonalny = NIP sprzedawcy). Klient KSeF kosztów rozstrzyga przy każdym przebiegu sprawdzania kosztów w tle, PDF-ie kosztu i zestawieniu faktur kosztowych: plik → panel → brak; nowy token z panelu działa od następnego przebiegu bez restartu, zmiana tokenu kasuje sesję KSeF (tokeny_ksef), ten sam token ją zostawia. Gdy KSEF_TOKEN stoi w pliku, ekran jest tylko do odczytu (zapis = 409). Bez tokenu w pliku i w panelu sprawdzanie kosztów w tle stoi (zegar tyka, przebieg pominięty), /health: czuwaczKosztow.wlaczony=false. Moduł „Koszty” wyłączony w Ustawienia → System → Włączone funkcje: sprawdzanie kosztów w tle nic nie pobiera także z tokenem (/health: stan „koszty wyłączone”).",
       "walidacja": "trim; proba odrzuca niepusty token.",
       "sekret": true,
       "odczyty": [
@@ -2360,7 +2360,7 @@
       "zakres": "produkt",
       "wymagalnosc": "opcjonalna",
       "domyslna": null,
-      "skutekBraku": "Czuwacz może działać bez lokalnego katalogu archiwum; brak zapisów archiwum do tego katalogu. Niepusty katalog bez tokenu odmawia konfiguracji. PRZ-102.22: katalog dotyczy też tokenu z panelu; ustawia się go wyłącznie w pliku.",
+      "skutekBraku": "Sprawdzanie kosztów w tle może działać bez lokalnego katalogu archiwum; brak zapisów archiwum do tego katalogu. Niepusty katalog bez tokenu odmawia konfiguracji. PRZ-102.22: katalog dotyczy też tokenu z panelu; ustawia się go wyłącznie w pliku.",
       "walidacja": "trim; pusty tekst daje null.",
       "odczyty": [
         {
@@ -3623,7 +3623,7 @@
       "wymagalnosc": "wymagana, jeżeli którakolwiek z pięciu zmiennych sekcji SMTP jest zdefiniowana",
       "domyslna": null,
       "wymagalnoscPoLudzku": "wymagana, jeśli wpisujesz którekolwiek ustawienie poczty SMTP",
-      "skutekBraku": "Bez całej sekcji poczta wyłączona; po rozpoczęciu sekcji brak adresu serwera odmawia konfiguracji. Klienci i pollery wiadomości Allegro pozostają niezależne od SMTP. PRZ-094.04: odpowiednik w panelu — Ustawienia → Integracje → Poczta wychodząca (/ustawienia/integracje/poczta; wiersz „poczta” w konfiguracja_integracji: serwer, port, login, nadawca jawnie, hasło jako sekret). Gdy sekcja SMTP_* stoi w pliku, cała poczta idzie z pliku, a ekran tylko o tym informuje (zapis = 409). Poczta z ekranu działa od następnego maila bez restartu; tylko wiadomości do klientów z karty zamówienia przy pierwszym ustawieniu włączają się po restarcie.",
+      "skutekBraku": "Bez całej sekcji poczta wyłączona; po rozpoczęciu sekcji brak adresu serwera odmawia konfiguracji. Klienci i pobieranie wiadomości Allegro w tle pozostają niezależne od SMTP. PRZ-094.04: odpowiednik w panelu — Ustawienia → Integracje → Poczta wychodząca (/ustawienia/integracje/poczta; wiersz „poczta” w konfiguracja_integracji: serwer, port, login, nadawca jawnie, hasło jako sekret). Gdy sekcja SMTP_* stoi w pliku, cała poczta idzie z pliku, a ekran tylko o tym informuje (zapis = 409). Poczta z ekranu działa od następnego maila bez restartu; tylko wiadomości do klientów z karty zamówienia przy pierwszym ustawieniu włączają się po restarcie.",
       "skutekBrakuPoLudzku": "Bez całej sekcji SMTP poczta jest wyłączona (wiadomości z Allegro działają osobno). Przy zaczętej sekcji brak serwera zatrzymuje start. Sekcja SMTP z pliku wygrywa i blokuje ekran w panelu (Ustawienia → Integracje → Poczta wychodząca).",
       "walidacja": "Do wymagalności trim; SMTP_HOST przekazywany po trim, user i pass przekazywane surowe.",
       "sekret": false,
@@ -3672,7 +3672,7 @@
       "wymagalnosc": "wymagana, jeżeli którakolwiek z pięciu zmiennych sekcji SMTP jest zdefiniowana",
       "domyslna": null,
       "wymagalnoscPoLudzku": "wymagana, jeśli wpisujesz którekolwiek ustawienie poczty SMTP",
-      "skutekBraku": "Bez całej sekcji poczta wyłączona; po rozpoczęciu sekcji brak loginu odmawia konfiguracji. Klienci i pollery wiadomości Allegro pozostają niezależne od SMTP. PRZ-094.04: odpowiednik w panelu — Ustawienia → Integracje → Poczta wychodząca (/ustawienia/integracje/poczta; wiersz „poczta” w konfiguracja_integracji: serwer, port, login, nadawca jawnie, hasło jako sekret). Gdy sekcja SMTP_* stoi w pliku, cała poczta idzie z pliku, a ekran tylko o tym informuje (zapis = 409). Poczta z ekranu działa od następnego maila bez restartu; tylko wiadomości do klientów z karty zamówienia przy pierwszym ustawieniu włączają się po restarcie.",
+      "skutekBraku": "Bez całej sekcji poczta wyłączona; po rozpoczęciu sekcji brak loginu odmawia konfiguracji. Klienci i pobieranie wiadomości Allegro w tle pozostają niezależne od SMTP. PRZ-094.04: odpowiednik w panelu — Ustawienia → Integracje → Poczta wychodząca (/ustawienia/integracje/poczta; wiersz „poczta” w konfiguracja_integracji: serwer, port, login, nadawca jawnie, hasło jako sekret). Gdy sekcja SMTP_* stoi w pliku, cała poczta idzie z pliku, a ekran tylko o tym informuje (zapis = 409). Poczta z ekranu działa od następnego maila bez restartu; tylko wiadomości do klientów z karty zamówienia przy pierwszym ustawieniu włączają się po restarcie.",
       "skutekBrakuPoLudzku": "Bez całej sekcji SMTP poczta jest wyłączona. Przy zaczętej sekcji brak loginu zatrzymuje start. Sekcja SMTP z pliku wygrywa i blokuje ekran w panelu (Ustawienia → Integracje → Poczta wychodząca).",
       "walidacja": "Do wymagalności trim; SMTP_HOST przekazywany po trim, user i pass przekazywane surowe.",
       "sekret": true,
@@ -3747,7 +3747,7 @@
       "wymagalnosc": "wymagana, jeżeli którakolwiek z pięciu zmiennych sekcji SMTP jest zdefiniowana",
       "domyslna": null,
       "wymagalnoscPoLudzku": "wymagana, jeśli wpisujesz którekolwiek ustawienie poczty SMTP",
-      "skutekBraku": "Bez całej sekcji poczta wyłączona; po rozpoczęciu sekcji brak hasła odmawia konfiguracji. Klienci i pollery wiadomości Allegro pozostają niezależne od SMTP. PRZ-094.04: odpowiednik w panelu — Ustawienia → Integracje → Poczta wychodząca (/ustawienia/integracje/poczta; wiersz „poczta” w konfiguracja_integracji: serwer, port, login, nadawca jawnie, hasło jako sekret). Gdy sekcja SMTP_* stoi w pliku, cała poczta idzie z pliku, a ekran tylko o tym informuje (zapis = 409). Poczta z ekranu działa od następnego maila bez restartu; tylko wiadomości do klientów z karty zamówienia przy pierwszym ustawieniu włączają się po restarcie.",
+      "skutekBraku": "Bez całej sekcji poczta wyłączona; po rozpoczęciu sekcji brak hasła odmawia konfiguracji. Klienci i pobieranie wiadomości Allegro w tle pozostają niezależne od SMTP. PRZ-094.04: odpowiednik w panelu — Ustawienia → Integracje → Poczta wychodząca (/ustawienia/integracje/poczta; wiersz „poczta” w konfiguracja_integracji: serwer, port, login, nadawca jawnie, hasło jako sekret). Gdy sekcja SMTP_* stoi w pliku, cała poczta idzie z pliku, a ekran tylko o tym informuje (zapis = 409). Poczta z ekranu działa od następnego maila bez restartu; tylko wiadomości do klientów z karty zamówienia przy pierwszym ustawieniu włączają się po restarcie.",
       "skutekBrakuPoLudzku": "Bez całej sekcji SMTP poczta jest wyłączona. Przy zaczętej sekcji brak hasła zatrzymuje start. Sekcja SMTP z pliku wygrywa i blokuje ekran w panelu (Ustawienia → Integracje → Poczta wychodząca).",
       "walidacja": "Do wymagalności trim; SMTP_HOST przekazywany po trim, user i pass przekazywane surowe.",
       "sekret": true,
@@ -5723,7 +5723,7 @@
     },
     {
       "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
-      "line": 55,
+      "line": 54,
       "expression": "process.env[n]",
       "names": [
         "<P>_URL",
@@ -5734,7 +5734,7 @@
     },
     {
       "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
-      "line": 55,
+      "line": 54,
       "expression": "process.env[n]",
       "names": [
         "<P>_URL",
@@ -7332,7 +7332,7 @@
     },
     {
       "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
-      "line": 55,
+      "line": 54,
       "expression": "process.env[n]",
       "key": null,
       "id": "AST-109",
@@ -7347,7 +7347,7 @@
     },
     {
       "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
-      "line": 55,
+      "line": 54,
       "expression": "process.env[n]",
       "key": null,
       "id": "AST-110",
@@ -7362,7 +7362,7 @@
     },
     {
       "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
-      "line": 61,
+      "line": 60,
       "expression": "process.env.OMS_DB_PATH",
       "key": "OMS_DB_PATH",
       "id": "AST-111",
@@ -7514,7 +7514,7 @@
     },
     {
       "path": "src/oms/db/klienci.js",
-      "line": 155,
+      "line": 154,
       "expression": "env",
       "kind": "env_alias",
       "alias": "env"
@@ -7684,7 +7684,7 @@
     },
     {
       "path": "src/oms/db/klienci.js",
-      "line": 159,
+      "line": 158,
       "expression": "env",
       "callee": "parsujKlientowZbiorczych",
       "call": "parsujKlientowZbiorczych(env)"
@@ -8069,21 +8069,21 @@
     },
     {
       "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
-      "line": 50,
+      "line": 49,
       "expression": "process.env",
       "callee": "definicjeKanalow",
       "call": "definicjeKanalow(process.env)"
     },
     {
       "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
-      "line": 51,
+      "line": 50,
       "expression": "process.env",
       "callee": "sprawdzTrybProby",
       "call": "sprawdzTrybProby(process.env, definicje.flatMap(d => kluczeKanalu(d.typ, d.prefiks).kluczeIntegracji))"
     },
     {
       "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
-      "line": 60,
+      "line": 59,
       "expression": "process.env",
       "callee": "konfiguracjaHistorii",
       "call": "konfiguracjaHistorii(process.env, sklep, prefiks)"
@@ -8157,6 +8157,13 @@
       "expression": "env",
       "callee": "adresPublicznyZdjec",
       "call": "adresPublicznyZdjec(env)"
+    },
+    {
+      "path": "src/moduly/ustawienia/modul.ts",
+      "line": 54,
+      "expression": "env",
+      "callee": "adresFirmyZEnv",
+      "call": "adresFirmyZEnv(env)"
     }
   ],
   "prefiksy": {
@@ -8486,17 +8493,17 @@
     },
     {
       "path": "src/core/sprzedawca.ts",
-      "sha256": "b005871137423d28551031fa4644173c892ea9e60d88e1cf6939174934d8c947",
+      "sha256": "7ff600a728cde498368797d955e1724a1a08d9e77342a8eec5fb1342866ccf6a",
       "normalizacja": "LF"
     },
     {
       "path": "src/core/web/modul.ts",
-      "sha256": "858c0f50628ebed37ae657f844488ba0d6594bc2fb2efd81fa427a21ab62f9f1",
+      "sha256": "a34704af418846568006197ddb9a7ff97d5c7581d9c40e23d142101b95b67b29",
       "normalizacja": "LF"
     },
     {
       "path": "src/domena/klient-zbiorczy.js",
-      "sha256": "f48c28c4ec5f4935306a414d15e1ea02c40701c948108bde1b9ae415f93fb638",
+      "sha256": "b87c3bcb31f8f7491ecf41b26f3595219bda7cfa38f9eb44ba28b2b04823d711",
       "normalizacja": "LF"
     },
     {
@@ -8511,42 +8518,42 @@
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "sha256": "8237d55eb93ee6dfb6d6bf255643e03ab377a09bde940a0898f0db86a9e4e883",
+      "sha256": "9e9357abd637f267134b45c1e6dadb6d7586beb259e12b3ade43fb47c6ee6a68",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/zamowienia/konfiguracja.ts",
-      "sha256": "00dd4bb7afda0c3ba2abc3c8d9016455f64bb5973d398a0da6f4db93152963f8",
+      "sha256": "97be61bd00a1560381b220d6047345ceef071718085ce95155e858513cdf0c79",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/wysylka/kurierzy.ts",
-      "sha256": "1dbcaa4e804b9bae4623026d9512ace04db4fc46751fec4200ee3477c455bd7a",
+      "sha256": "37b65a1567cc3788935a6bd7c43f718d8bf5ed39b9af0c4dd5419d3251d34f4d",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "0f20d6d5c655c5817c2f6997a6fa4f73634c72e6f8d4b05bc2e7d1f52060be36",
+      "sha256": "c7ca22f92811b96c1282028b5770890a19fad57ccae6dde3a1bb80cf72a17dc4",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/wysylka/modul.ts",
-      "sha256": "fe19ff9fa2e1a314cae7f8dd08f5de8191a5bafe32baf201f918bdb8afec5bfa",
+      "sha256": "352d6cc874bfdb3e0e12d53b5934cbb676165094e58a1a789b41abb4f29a7b40",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/koszty/modul.ts",
-      "sha256": "73476d8d772d2acaac8f8c84d979b0a33232e9ccf1d703de2106fca3c8de7978",
+      "sha256": "f209cd0ef2dac7ced4a6ec631d68e680752e77ee7d1866d36d7e8133b2e3f60d",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/zdrowie/modul.ts",
-      "sha256": "29e378706358e165b21f8138eb1fbe69527138d0daf17a3483e3674ad3152d1b",
+      "sha256": "33250524a553f8355eaa264efe9fc063b5936e68a15073422047c38b947b85ae",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/raporty/konfiguracja.ts",
-      "sha256": "9191cbea97ce2276b1211535c104193c2c650060504b469be457e007771ca2e6",
+      "sha256": "cc479f561ac84f811eb655cfe660e3ec53232e0478d489e9507b483f75380e18",
       "normalizacja": "LF"
     },
     {
@@ -8561,7 +8568,7 @@
     },
     {
       "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
-      "sha256": "88d9ea4bcaf0918177adf98d2f1406570f9a19cebf435620164f888aa24cc04d",
+      "sha256": "8f95d5680551d5cdf0c5bdb7836cff6530e0f7e6b47873ea4754fe3bfd423040",
       "normalizacja": "LF"
     },
     {
@@ -8576,7 +8583,7 @@
     },
     {
       "path": "src/moduly/kanaly/klasyfikacja.ts",
-      "sha256": "9bf89d8b2f79bc158a4123557b63aa82c5d0dc002ed83d1c6a7ff6a3dc685a00",
+      "sha256": "425c3b1eb439a1be1637d2580f0540726dc7ca6c57a0bfe2b3989c32cdddebd2",
       "normalizacja": "LF"
     },
     {
@@ -8586,44 +8593,44 @@
     },
     {
       "path": "src/moduly/ustawienia/modul.ts",
-      "sha256": "19a105ae7cbf93f1b20530768a34c59dc05ed75e331ddf83be424272325ec7c1",
+      "sha256": "a0c1048d36e231961b69a29106afdbc44cc872141cdf7789c57264b5fae0881a",
       "normalizacja": "LF"
     },
     {
       "path": "src/core/demo.ts",
-      "sha256": "d58634768905bc8537b8f30073ea5c50dc9a38f84a530b9f7ba026bd15cec551",
+      "sha256": "3597b57d9049a05afd45c7e31457059cc87a82c0743664c41310c8b7a96ac553",
       "normalizacja": "LF"
     },
     {
       "path": "src/core/adres-firmy.ts",
-      "sha256": "f22ea12f9c2201ceecf0803bb5081157554eea9532285419db976a144c09b307",
+      "sha256": "582149dd1913f9af4dab4a7808f7ed644da1ffd7d5ffe3e0939d64512ab4d88e",
       "normalizacja": "LF"
     }
   ],
   "dodatkoweDowody": [
     {
       "path": "src/core/aplikacja.ts",
-      "sha256": "506ebf0b68628387995a9ff643b9efcf524fdb2475919583e8ee009ca4334664",
+      "sha256": "6bef60cd7adba99812ffc0376b1e3eda58c1260de4d1cdc00101c00bbabcf022",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "sha256": "8237d55eb93ee6dfb6d6bf255643e03ab377a09bde940a0898f0db86a9e4e883",
+      "sha256": "9e9357abd637f267134b45c1e6dadb6d7586beb259e12b3ade43fb47c6ee6a68",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/kanaly/modul.ts",
-      "sha256": "b7e4aed69c5bc872b3cf827cd9da550c21448a7e33392a577082902cd51ac15a",
+      "sha256": "fa3c0cdae9a5fc05de6d9156d475f6825b69e42a94f61dcc1bb8475a998fc08a",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "0f20d6d5c655c5817c2f6997a6fa4f73634c72e6f8d4b05bc2e7d1f52060be36",
+      "sha256": "c7ca22f92811b96c1282028b5770890a19fad57ccae6dde3a1bb80cf72a17dc4",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/koszty/modul.ts",
-      "sha256": "73476d8d772d2acaac8f8c84d979b0a33232e9ccf1d703de2106fca3c8de7978",
+      "sha256": "f209cd0ef2dac7ced4a6ec631d68e680752e77ee7d1866d36d7e8133b2e3f60d",
       "normalizacja": "LF"
     },
     {
@@ -8638,7 +8645,7 @@
     },
     {
       "path": "src/moduly/zdrowie/modul.ts",
-      "sha256": "29e378706358e165b21f8138eb1fbe69527138d0daf17a3483e3674ad3152d1b",
+      "sha256": "33250524a553f8355eaa264efe9fc063b5936e68a15073422047c38b947b85ae",
       "normalizacja": "LF"
     },
     {
@@ -8648,32 +8655,32 @@
     },
     {
       "path": "src/moduly/lista.ts",
-      "sha256": "958e4329e1a882a685219afb662f641dafd594661cac86125f4fa88532b4a14f",
+      "sha256": "e7bc2795e745a943b2bf834fa4ed9df61c32fb6ccb78b35f163df63e773dd459",
       "normalizacja": "LF"
     },
     {
       "path": "src/domena/lacznosc.js",
-      "sha256": "dea42f1cd2884cc9584a495f50024e5de5edde43ee747d12959752ae20870405",
+      "sha256": "5ee42bd20b5a64788a2fe126f938ae751107e453455495291a1140a871fc29f0",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/ustawienia/cele-diagnostyki.ts",
-      "sha256": "1dff0b9983eb199af4a8cf66d1b692976246efaea4d21a83b4a1358dece45160",
+      "sha256": "21e84ccffbd1c22a85d17244e54bef2786605e49e5c512dfffb8d32b6b1edf81",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/ustawienia/modul.ts",
-      "sha256": "19a105ae7cbf93f1b20530768a34c59dc05ed75e331ddf83be424272325ec7c1",
+      "sha256": "a0c1048d36e231961b69a29106afdbc44cc872141cdf7789c57264b5fae0881a",
       "normalizacja": "LF"
     },
     {
       "path": "src/oms/ksef/client.js",
-      "sha256": "8c7882c947f6b28ef94a90d9bf844fa0c48e75dfa554da3a80858d8f764bf503",
+      "sha256": "f260d603890687c53b8fee58fb2d35c3834fa75bda7a6216e36d5624e5e258da",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/kanaly/klasyfikacja.ts",
-      "sha256": "9bf89d8b2f79bc158a4123557b63aa82c5d0dc002ed83d1c6a7ff6a3dc685a00",
+      "sha256": "425c3b1eb439a1be1637d2580f0540726dc7ca6c57a0bfe2b3989c32cdddebd2",
       "normalizacja": "LF"
     }
   ],
@@ -8762,7 +8769,7 @@
       },
       {
         "path": "src/moduly/kanaly/konfiguracja.ts",
-        "sha256": "8237d55eb93ee6dfb6d6bf255643e03ab377a09bde940a0898f0db86a9e4e883",
+        "sha256": "9e9357abd637f267134b45c1e6dadb6d7586beb259e12b3ade43fb47c6ee6a68",
         "odczyty": [
           {
             "expression": "env[nazwa]",
@@ -8858,7 +8865,7 @@
       },
       {
         "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
-        "sha256": "88d9ea4bcaf0918177adf98d2f1406570f9a19cebf435620164f888aa24cc04d",
+        "sha256": "8f95d5680551d5cdf0c5bdb7836cff6530e0f7e6b47873ea4754fe3bfd423040",
         "odczyty": [
           {
             "expression": "process.env[n]",
@@ -8880,7 +8887,7 @@
       },
       {
         "path": "src/moduly/raporty/konfiguracja.ts",
-        "sha256": "9191cbea97ce2276b1211535c104193c2c650060504b469be457e007771ca2e6",
+        "sha256": "cc479f561ac84f811eb655cfe660e3ec53232e0478d489e9507b483f75380e18",
         "odczyty": [
           {
             "expression": "env[klucz]",
@@ -8924,7 +8931,7 @@
       },
       {
         "path": "src/moduly/wysylka/kurierzy.ts",
-        "sha256": "1dbcaa4e804b9bae4623026d9512ace04db4fc46751fec4200ee3477c455bd7a",
+        "sha256": "37b65a1567cc3788935a6bd7c43f718d8bf5ed39b9af0c4dd5419d3251d34f4d",
         "odczyty": [
           {
             "expression": "env[klucz]",
@@ -8954,7 +8961,7 @@
       },
       {
         "path": "src/moduly/wysylka/modul.ts",
-        "sha256": "fe19ff9fa2e1a314cae7f8dd08f5de8191a5bafe32baf201f918bdb8afec5bfa",
+        "sha256": "352d6cc874bfdb3e0e12d53b5934cbb676165094e58a1a789b41abb4f29a7b40",
         "odczyty": [
           {
             "expression": "env[klucz]",
@@ -9008,7 +9015,7 @@
       },
       {
         "path": "src/moduly/kanaly/klasyfikacja.ts",
-        "sha256": "9bf89d8b2f79bc158a4123557b63aa82c5d0dc002ed83d1c6a7ff6a3dc685a00",
+        "sha256": "425c3b1eb439a1be1637d2580f0540726dc7ca6c57a0bfe2b3989c32cdddebd2",
         "odczyty": [
           {
             "expression": "env[`${d.prefiks}_HISTORIA_KONTO_APILO`]",
@@ -9023,12 +9030,12 @@
     "przekazania": [
       {
         "path": "src/core/aplikacja.ts",
-        "sha256": "506ebf0b68628387995a9ff643b9efcf524fdb2475919583e8ee009ca4334664",
+        "sha256": "6bef60cd7adba99812ffc0376b1e3eda58c1260de4d1cdc00101c00bbabcf022",
         "expression": "sprawdzTrybProby(env, [...new Set(kolejnosc.flatMap((m) => m.kluczeIntegracji ?? []))])"
       },
       {
         "path": "src/core/aplikacja.ts",
-        "sha256": "506ebf0b68628387995a9ff643b9efcf524fdb2475919583e8ee009ca4334664",
+        "sha256": "6bef60cd7adba99812ffc0376b1e3eda58c1260de4d1cdc00101c00bbabcf022",
         "expression": "m.konfiguracja(env)"
       },
       {
@@ -9043,22 +9050,22 @@
       },
       {
         "path": "src/moduly/kanaly/konfiguracja.ts",
-        "sha256": "8237d55eb93ee6dfb6d6bf255643e03ab377a09bde940a0898f0db86a9e4e883",
+        "sha256": "9e9357abd637f267134b45c1e6dadb6d7586beb259e12b3ade43fb47c6ee6a68",
         "expression": "konfiguracjaHistorii(env, klucz, p)"
       },
       {
         "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
-        "sha256": "88d9ea4bcaf0918177adf98d2f1406570f9a19cebf435620164f888aa24cc04d",
+        "sha256": "8f95d5680551d5cdf0c5bdb7836cff6530e0f7e6b47873ea4754fe3bfd423040",
         "expression": "definicjeKanalow(process.env)"
       },
       {
         "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
-        "sha256": "88d9ea4bcaf0918177adf98d2f1406570f9a19cebf435620164f888aa24cc04d",
+        "sha256": "8f95d5680551d5cdf0c5bdb7836cff6530e0f7e6b47873ea4754fe3bfd423040",
         "expression": "sprawdzTrybProby(process.env, definicje.flatMap(d => kluczeKanalu(d.typ, d.prefiks).kluczeIntegracji))"
       },
       {
         "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
-        "sha256": "88d9ea4bcaf0918177adf98d2f1406570f9a19cebf435620164f888aa24cc04d",
+        "sha256": "8f95d5680551d5cdf0c5bdb7836cff6530e0f7e6b47873ea4754fe3bfd423040",
         "expression": "konfiguracjaHistorii(process.env, sklep, prefiks)"
       },
       {
@@ -9270,7 +9277,7 @@
     },
     {
       "path": "src/core/aplikacja.ts",
-      "sha256": "506ebf0b68628387995a9ff643b9efcf524fdb2475919583e8ee009ca4334664",
+      "sha256": "6bef60cd7adba99812ffc0376b1e3eda58c1260de4d1cdc00101c00bbabcf022",
       "normalizacja": "LF"
     },
     {
@@ -9305,7 +9312,7 @@
     },
     {
       "path": "src/core/bezpieczenstwo/sekret-sesji.js",
-      "sha256": "a390f0c6b1a04a1e8536b340b77ffbe8574ba2175108014afb43c73a769443e9",
+      "sha256": "8d5c83b67850ad9c7a4dd31a7dc010bea8876f0645b08e0b0cf200ec6db06b71",
       "normalizacja": "LF"
     },
     {
@@ -9340,7 +9347,7 @@
     },
     {
       "path": "src/core/poczta/mail-html.js",
-      "sha256": "5a7db1eefcc33d5a7d5e8ad5fe9f26b2f3ab3c535b844b0142897042ea611da3",
+      "sha256": "830b9d7d17cb4ac1c4915e3abd4baafb4975c4f3973201d4d1cf3f6c90646bc6",
       "normalizacja": "LF"
     },
     {
@@ -9360,7 +9367,7 @@
     },
     {
       "path": "src/core/puls.js",
-      "sha256": "97ae7493aae4460b2771b8468c7631f989f1614d83a8d742c20b1346c37b77e0",
+      "sha256": "f44fe661d0af927229f5734e05ff883661f0309de0ceb24d7bbc7c9780b183c5",
       "normalizacja": "LF"
     },
     {
@@ -9425,7 +9432,7 @@
     },
     {
       "path": "src/domena/adres-formularza.js",
-      "sha256": "27d533b24b0bae7ad758c10155815201cad436230b10b098b5c0ffa3d50deab6",
+      "sha256": "18521f4652c25ac1985ca312862a034c6072de22fe5c03863c9812b78086dc48",
       "normalizacja": "LF"
     },
     {
@@ -9435,7 +9442,7 @@
     },
     {
       "path": "src/domena/adres-odbiorcy.js",
-      "sha256": "315a1348b366ab843c4f76a42d193bc56d3e4b8764ccc1848b0d488cad627c8f",
+      "sha256": "b4723b854200724c2b4e650e9cd4e88b284da8e87d235757fe554a705ddea925",
       "normalizacja": "LF"
     },
     {
@@ -9445,17 +9452,17 @@
     },
     {
       "path": "src/domena/adresat-klienta.js",
-      "sha256": "b61b55fc43c56fc5643cde760e073199f2b5a7d5dcafe65c287e0d7580251a2d",
+      "sha256": "b48687bddeee03b0382fd550fd3050dae690de54fd3bf511d1da6f533ca67f56",
       "normalizacja": "LF"
     },
     {
       "path": "src/domena/agregacja-sprzedazy.js",
-      "sha256": "8c26c19ef33b9b234be34625d149fcaca9675d5d8d1311e077d64cfa79c71ace",
+      "sha256": "a87c62de66729c2285c44237fd4fc13204c27570e9c3b50b21601952cc7b19a6",
       "normalizacja": "LF"
     },
     {
       "path": "src/domena/allegro-dostawa.js",
-      "sha256": "b201e20a999ad9bc05d8e3b6a1a05b0365956c4edb05f7155a547d6e3fd9270c",
+      "sha256": "fefc491dc51d831a94d9fee8cfa3fb43c9b2f0b78c10cfc5674c460384cbc1e2",
       "normalizacja": "LF"
     },
     {
@@ -9470,7 +9477,7 @@
     },
     {
       "path": "src/domena/allegro-numery.js",
-      "sha256": "f13cc88d6344afd6b9a27315055d53b45347634c415be344c0e271cf4fa5b4a1",
+      "sha256": "a787dc08d2017f3640cc396e28c57ca3761fcbe132284bed6d08d1a52d93113f",
       "normalizacja": "LF"
     },
     {
@@ -9490,12 +9497,12 @@
     },
     {
       "path": "src/domena/archiwum-sprzedazy.js",
-      "sha256": "7dde16ed70a55084a9268c6e9269469d24bb3ae0a81a7d59596b2748d78023de",
+      "sha256": "a4421112ae08e2889982d5f1f701cce0425b3b24c69645092dc53e8436bc7e8a",
       "normalizacja": "LF"
     },
     {
       "path": "src/domena/atrybucja.js",
-      "sha256": "f6a120cfe24e493851fb772a1a940b209ffa1aba382e458096ab4eb6db6205d1",
+      "sha256": "b19dbf92afb6b6f7c53408b65e48828055e76d9417b6a8f60c10ed544d8c9f99",
       "normalizacja": "LF"
     },
     {
@@ -9505,7 +9512,7 @@
     },
     {
       "path": "src/domena/bezpiecznik-weryfikacji.js",
-      "sha256": "ad9fd8fd90aaac8bd484752f2e083e897a8529197eba5ed829875e1582d53cb4",
+      "sha256": "d28ac28db229d086874132960489f6be421e346954ee57ed08899506deaf5a3a",
       "normalizacja": "LF"
     },
     {
@@ -9520,7 +9527,7 @@
     },
     {
       "path": "src/domena/blok-platnosci.js",
-      "sha256": "30a954979fd81d527cc14ee66a3c9102fbae99e0703abfebd74f1a6f2f1c156d",
+      "sha256": "48e8a7180550cabe3647bd8593d6234228a1e169c10c80c78ef9976c92eb5dd3",
       "normalizacja": "LF"
     },
     {
@@ -9580,7 +9587,7 @@
     },
     {
       "path": "src/domena/faktura-stan.js",
-      "sha256": "c206c74cdd634289be4f942984076e1d7de40783de21639f5ce7eefe3a6df7ba",
+      "sha256": "9f6c0b0405256d6cb99e249eff90182bad35ea279f783063e39be69d87e13819",
       "normalizacja": "LF"
     },
     {
@@ -9610,12 +9617,12 @@
     },
     {
       "path": "src/domena/hasla.js",
-      "sha256": "61f54f3437b74effdaa4679565d0aaa27c3f93539f5428a1251026d9157d1919",
+      "sha256": "9387d0ee46624ac83c29c26c761c45a4845c44e2a5107f3dc0e95d980c89b5e2",
       "normalizacja": "LF"
     },
     {
       "path": "src/domena/historia-klienta.js",
-      "sha256": "c0d49198ca55118f4c612e3a156dd5506dd0e7043438dc9237a941054b2971b0",
+      "sha256": "677bd92a65ba892716dd47e086a0473174bd25cdc20266164e09118f14da57dd",
       "normalizacja": "LF"
     },
     {
@@ -9630,7 +9637,7 @@
     },
     {
       "path": "src/domena/kalendarz.js",
-      "sha256": "1ad44601cfcf19c7aea956358f2ab5b7f7ca5cb989bc65f96eadf4f2e8a63545",
+      "sha256": "277d6726336edb961365b92d5495814e7c1239b10e998cb6f833fb3f5207b956",
       "normalizacja": "LF"
     },
     {
@@ -9665,17 +9672,17 @@
     },
     {
       "path": "src/domena/kolejka-druku-stan.js",
-      "sha256": "6ea919587315bb5afd8e0f2027dca34d2bf28d4a0148ced29e2c6c360840ee11",
+      "sha256": "b1027af3e45c4afb6594825942c9162a69b9a294064c7aec796dedb44adcbd50",
       "normalizacja": "LF"
     },
     {
       "path": "src/domena/komentarz-wewnetrzny.js",
-      "sha256": "60cbf44c20f6a611df096434f365acb2c4cdf5406d06d0ccb9a356258b998140",
+      "sha256": "0b7500cfa4b89e00778524c491c88538eedd3381ddedf05e4e090c103511f2f7",
       "normalizacja": "LF"
     },
     {
       "path": "src/domena/kontekst-zadania.js",
-      "sha256": "bd83b0ee1b8b6646ad16ad0304c282b9c016c48ed2f102e4e0adf775eed30f38",
+      "sha256": "3c0144ceab7c51f1cce2111f93292d743bcef3740cf69ec1340b51304f08ed99",
       "normalizacja": "LF"
     },
     {
@@ -9685,22 +9692,22 @@
     },
     {
       "path": "src/domena/koszt-dostawy.js",
-      "sha256": "f342e12d89a5828f5933487aceec9aa4f7b5b7a0ea4a53ac92d0cf42442e04ab",
+      "sha256": "a1cf89602fb988e86dc70704eea3670fcd0da31a8d247d98c518b551ab755c82",
       "normalizacja": "LF"
     },
     {
       "path": "src/domena/koszt-metadane.js",
-      "sha256": "2ea78c8bcbef1d99e37b68d93a38d81e84567203771819f908957874200cc4df",
+      "sha256": "6aaf0f17f4dbcb5dc4cdc328b701fc58f4fcc7f2a57d5883c31328bb22696b60",
       "normalizacja": "LF"
     },
     {
       "path": "src/domena/koszt-reczny.js",
-      "sha256": "962965a3d89b0a2125ca367298f6cd0f05f5a5afe77dd7c56022dd2907f5201b",
+      "sha256": "749a00a0a2b110ebb662aec6c150facafb6883bce79f3167af491617e5d9170e",
       "normalizacja": "LF"
     },
     {
       "path": "src/domena/koszt-xml.js",
-      "sha256": "23981b39dc9e1719faab27424f824773df899e32a3b73732e4a3f8217ce9858f",
+      "sha256": "162519de895bac752f3e70abdd53638e1ebf1c0235fd91cbd4af596256acc57c",
       "normalizacja": "LF"
     },
     {
@@ -9715,7 +9722,7 @@
     },
     {
       "path": "src/domena/kupony.js",
-      "sha256": "66ce1ede1a7a69f4263e06a14eefe236b4fac2f3518f153404d360b47a33d289",
+      "sha256": "36725e81c07ac255396b9b54889bdd77d559eb0c0751321f912f8c874f9a05b1",
       "normalizacja": "LF"
     },
     {
@@ -9725,12 +9732,12 @@
     },
     {
       "path": "src/domena/kwota-slownie.js",
-      "sha256": "79301cd8c55574e1e9df1b8ee4408d1d17256a6ffbf2b49406ba01f77fb1e9df",
+      "sha256": "a3e98d9784a75f9f76f3249078a5cfd423d7705fced0e8f626ba10070508a81c",
       "normalizacja": "LF"
     },
     {
       "path": "src/domena/kwota.js",
-      "sha256": "aef75526fff590152cdba93b0ad39ebe1f640dc49eacd7d1da50759d185c3dd3",
+      "sha256": "608ddc9579d79e8941334422d3cb08708c21171938c144ea05b6fa27b074239c",
       "normalizacja": "LF"
     },
     {
@@ -9765,7 +9772,7 @@
     },
     {
       "path": "src/domena/lista-kosztow.js",
-      "sha256": "716ce7d5c8a7bc4d6e56ef323c3573780c8a69c86c840c1d2c193a2e71fa3614",
+      "sha256": "0ea3cab60243db7f981a6e704579d41463e1ce41d6e2c6d8c896fbb7741c6a6b",
       "normalizacja": "LF"
     },
     {
@@ -9835,7 +9842,7 @@
     },
     {
       "path": "src/domena/motyw.js",
-      "sha256": "c7334a7360d577b21a4945d4c6e66956953cc71bb6bc1ee83d73d88f41bff0a4",
+      "sha256": "bfda37e2bd90720fdd7e8470e52dd400a89f4c945b1ac35a594537325bb61e3c",
       "normalizacja": "LF"
     },
     {
@@ -9865,12 +9872,12 @@
     },
     {
       "path": "src/domena/okna-pobrania.js",
-      "sha256": "b0a2ea27558f39e2b6e1b82c12ec7afe8b3532e0df61c313e9e06147ef0f72da",
+      "sha256": "eb74ae6ece2ce5abe26a2aa3d4890da9aa801e4acbaca2500dd1e3116a7927d4",
       "normalizacja": "LF"
     },
     {
       "path": "src/domena/okno-formulki.js",
-      "sha256": "403df3a4654606f0098097326926a0f283d0185bfb849f63553d5016c5e4ab66",
+      "sha256": "a93bb3314e3a44750c24d4d990f8ec651ab96262b8e4548c76c82f918749ffa8",
       "normalizacja": "LF"
     },
     {
@@ -9880,7 +9887,7 @@
     },
     {
       "path": "src/domena/okresy-raportu.js",
-      "sha256": "c1299d4adc1d0487d42567c02939212a94033bf5f82951945355b4719ddfdbad",
+      "sha256": "21f85f5e7d38133b802ba39afbda5ffaf948765f8fcd16c77af0ad6315f056c2",
       "normalizacja": "LF"
     },
     {
@@ -9960,7 +9967,7 @@
     },
     {
       "path": "src/domena/pora-pobrania.js",
-      "sha256": "aba6f68380dbd9cd2e468f00d8f35707abb9d16f45d7ecdf8b6eb32999710676",
+      "sha256": "67430d8175dcd8e482a56e785956779c11a014227c9cb85e37781437ddef5471",
       "normalizacja": "LF"
     },
     {
@@ -9980,7 +9987,7 @@
     },
     {
       "path": "src/domena/pozycje-niesprzedazowe.js",
-      "sha256": "8592c54cc8c6c1842fa67859122c580330a1c72573cea22e2ba124f1b29139b9",
+      "sha256": "688e3a8f4a18451947cd7f22f9dafaec912aa359490c8b4558957ac020db6d83",
       "normalizacja": "LF"
     },
     {
@@ -10040,7 +10047,7 @@
     },
     {
       "path": "src/domena/saldo-okresu.js",
-      "sha256": "062e853e34547103995df1ba324cd597c1d8c2b87cb068981af1b690c5519bad",
+      "sha256": "7e26bca607b69aebab27a3bc7968ea582425bcda226824fff4b6091db7fa33a0",
       "normalizacja": "LF"
     },
     {
@@ -10165,7 +10172,7 @@
     },
     {
       "path": "src/domena/ustawienia-formulki.js",
-      "sha256": "5b99afb8c4ade32bd12122768a9484bc7bb8ba56cf26e0371c1909bc3a33f7b7",
+      "sha256": "104b1ec784ec1be9450f6e6887d60746800b820d99fd17d6e4a9df194047b5c3",
       "normalizacja": "LF"
     },
     {
@@ -10200,7 +10207,7 @@
     },
     {
       "path": "src/domena/wskazniki-zarzadcze.js",
-      "sha256": "3fe5ae4f0d31e284ff358316fb53c9b5076ab75cf9c8881660875691be7dcfd1",
+      "sha256": "9325f66b814cc8c4607817c9fb7fde7cafd2536cf326cb01caf09ae75371ee0c",
       "normalizacja": "LF"
     },
     {
@@ -10225,7 +10232,7 @@
     },
     {
       "path": "src/domena/z-panelu/nazwa-osoby.js",
-      "sha256": "209e6578c5173cd13fd7c4fb214a8dc87aba268cb107770b8dd1e0b7da66400c",
+      "sha256": "2f77f54770b81e321c24a54bae6f89255bcc6f7df37607d060bc0f6e04e2e26c",
       "normalizacja": "LF"
     },
     {
@@ -10265,7 +10272,7 @@
     },
     {
       "path": "src/domena/zwrot-widok.js",
-      "sha256": "c637580e05c66cec590efe8774f031956ecced4f4cabb131bcbebe1e88088d37",
+      "sha256": "741545f90208bb05aaf138e9d190eccbdf4b11c2a2de4b102ec516c0a98a7c39",
       "normalizacja": "LF"
     },
     {
@@ -10315,7 +10322,7 @@
     },
     {
       "path": "src/moduly/faktury/czesci-biura.js",
-      "sha256": "a093c0f6d88891795d9e0281a80d08a472f675102bdf06455240a4cdb43ba60a",
+      "sha256": "14a89a20ff172e65d1684c2252588842d550c23b8a4b799f32aa25cd0b450f2b",
       "normalizacja": "LF"
     },
     {
@@ -10330,12 +10337,12 @@
     },
     {
       "path": "src/moduly/faktury/db/kolejka-druku-faktur.js",
-      "sha256": "56dc5d7b4dfee655c0a0024d20b907c3aa281990782beb9719c520d0e10c1e7d",
+      "sha256": "7d8f7eb39df2fdcb2829c1ac539b38fb4d08973a8c5a459a1d909f8777e1a661",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/faktury/db/proformy.js",
-      "sha256": "76de38e142017dd543c34a1ee4b8ba9fce56a21a5db9316803c6e6eae61e350b",
+      "sha256": "cc643e65fa33d9c13285691b3dc260e339ea0541d08951d2918c46cc419e06f8",
       "normalizacja": "LF"
     },
     {
@@ -10360,7 +10367,7 @@
     },
     {
       "path": "src/moduly/faktury/pdf/oswiadczenie-wywozu-pdf.js",
-      "sha256": "c1fb642ce6679edec815ae4ec3121c791955d5e9777a067b945287c4648213f0",
+      "sha256": "50ef50fe16c73cb05135cecb61fd63826b6d37ccd992579a82b447eb44e7ffcd",
       "normalizacja": "LF"
     },
     {
@@ -10415,7 +10422,7 @@
     },
     {
       "path": "src/moduly/faktury/services/okres.js",
-      "sha256": "b933b91fe7104c9fc2f28bd254645ccd6d6a373963ffb45aca170ef40413836b",
+      "sha256": "1c3ba238588044e9c04eec86978d20a712b977cea7901147220172d027e4265c",
       "normalizacja": "LF"
     },
     {
@@ -10485,12 +10492,12 @@
     },
     {
       "path": "src/moduly/kanaly/modul.ts",
-      "sha256": "b7e4aed69c5bc872b3cf827cd9da550c21448a7e33392a577082902cd51ac15a",
+      "sha256": "fa3c0cdae9a5fc05de6d9156d475f6825b69e42a94f61dcc1bb8475a998fc08a",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
-      "sha256": "88d9ea4bcaf0918177adf98d2f1406570f9a19cebf435620164f888aa24cc04d",
+      "sha256": "8f95d5680551d5cdf0c5bdb7836cff6530e0f7e6b47873ea4754fe3bfd423040",
       "normalizacja": "LF"
     },
     {
@@ -10505,7 +10512,7 @@
     },
     {
       "path": "src/moduly/kanaly/services/zdjecia-allegro.js",
-      "sha256": "e36eb72941d47df8f23d6275dd0b0113bd5d945bc16816f67a17b37eca782dfc",
+      "sha256": "d98fee288bb58984bdd4d91149ba9d30c42fe2a0e9724fb6ea7e67f5facf0ad3",
       "normalizacja": "LF"
     },
     {
@@ -10515,7 +10522,7 @@
     },
     {
       "path": "src/moduly/koszty/pdf/koszt-pdf.js",
-      "sha256": "b75f0bce6fb83cc699bd2085458740333ca60ff01ab9bd39af90eef7069c9fd6",
+      "sha256": "d19c388f7abc676a99a77ed0b5aa424c4df8416aa2470911a23ff8fd8137a7d9",
       "normalizacja": "LF"
     },
     {
@@ -10525,12 +10532,12 @@
     },
     {
       "path": "src/moduly/koszty/services/archiwum-kosztow.js",
-      "sha256": "32d1dd774820ff849177857fe5714a4e9b7a960629723bfcc5673b13f73afcbd",
+      "sha256": "9bc8b5716e447de5c84169a52b3d49ef5067eff945f4db60a39419afe70411dd",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/koszty/services/czuwacz-kosztow.js",
-      "sha256": "b9525927dcb6c7585a4b49382e42edf8530696e30426cda4e80c1b48f152aeac",
+      "sha256": "fa3a29a5c3f97508a72eb8e87e3b1f44059d79edeb2d71207a7f96758385bd2a",
       "normalizacja": "LF"
     },
     {
@@ -10760,12 +10767,12 @@
     },
     {
       "path": "src/moduly/wysylka/db/kolejka-druku.js",
-      "sha256": "9dfd68a82ff8ba9d241397f2d5246215e475fbd06a7a39e99a1a661942cd057d",
+      "sha256": "6ec74d73e08e0ac7535c71663f5ff621ca2c5637126d10d1227370e696352212",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/wysylka/db/ostatnia-paczka.js",
-      "sha256": "5a276eafe9551b7ec8712aefcc296f6e8aed8965930e4d5fcce1859de913174b",
+      "sha256": "e7fd49644068680fb212933cde24b6c12f9f14a4f64eca2ea0e431860de5bf8d",
       "normalizacja": "LF"
     },
     {
@@ -10825,7 +10832,7 @@
     },
     {
       "path": "src/moduly/wysylka/services/przesylki-allegro.js",
-      "sha256": "8c8d6ae1b7e8a73a2a9bb04d405de72b28ede6113a4dc5bb8c740ebfe2ad9b5c",
+      "sha256": "60e676ffd082a6b046272de0ffd90b1662a949635cdfdf99da05eb11f26d9736",
       "normalizacja": "LF"
     },
     {
@@ -11000,7 +11007,7 @@
     },
     {
       "path": "src/oms/allegro/tokeny.js",
-      "sha256": "ad476dba000b326c8fcf5b08b0f8da5a301c31ef3e41e53a78fd116a352ddd76",
+      "sha256": "b4b661bb39e0e2da320e9de3e3ca922d9f9d394e699142e4330cbbf5e4b04f66",
       "normalizacja": "LF"
     },
     {
@@ -11015,7 +11022,7 @@
     },
     {
       "path": "src/oms/db/dane-miesieczne.js",
-      "sha256": "1d777f67f908d20fdebf0cc244cc3336f2465fda452f7e84a61b608a73753df8",
+      "sha256": "341b6bba30321230f9da18f48fa40f126be6a20fc5d11956298a19d5a0d0c856",
       "normalizacja": "LF"
     },
     {
@@ -11025,7 +11032,7 @@
     },
     {
       "path": "src/oms/db/filtry.js",
-      "sha256": "1ec6ffe50409b275e81144e386b63a7f4d19f3480abb735bcfa72bb154a094a8",
+      "sha256": "2d55696c6e95d3a0047635482e2c63adb5d6da3abf502321499700970dd831b9",
       "normalizacja": "LF"
     },
     {
@@ -11040,7 +11047,7 @@
     },
     {
       "path": "src/oms/db/kategorie-kosztow.js",
-      "sha256": "1ca9e4234fcbce7096d3a4677aaf66b351a8636bfbabed156bd815c0d228c338",
+      "sha256": "61ab034be006133b657762017761a2b1f59805da942c1f585e6a946681f299d1",
       "normalizacja": "LF"
     },
     {
@@ -11050,7 +11057,7 @@
     },
     {
       "path": "src/oms/db/koszty.js",
-      "sha256": "48efeadc2a76250bfd7fe22f44d7ce278a0162ebcd766c7ab9a41fe2b81953c8",
+      "sha256": "294a06d573a9a1c6a18d6ae0bbeafe96ee48f099cbb9134286c533e2013aa2c0",
       "normalizacja": "LF"
     },
     {
@@ -11085,7 +11092,7 @@
     },
     {
       "path": "src/oms/db/stan-weryfikacji.js",
-      "sha256": "5c9d575255a594407e163b5a274167fec1a85f8e64c66902ec5b35dba47af713",
+      "sha256": "c7d653705bea3b5ab4f9150bb2223464341f86b837683397c6c142a5d3d98553",
       "normalizacja": "LF"
     },
     {
@@ -11095,7 +11102,7 @@
     },
     {
       "path": "src/oms/db/ustawienia.js",
-      "sha256": "08cb751c4dd4e60f2794c437d21182c2a55370673cf4907fa17df6d5dd80003c",
+      "sha256": "04f66fedde79c780950ba15d80abdada8dcce723f805885656a1d20ac06e3417",
       "normalizacja": "LF"
     },
     {
@@ -11110,7 +11117,7 @@
     },
     {
       "path": "src/oms/db/wiadomosci.js",
-      "sha256": "07df5e4b0c67ab5da6b9ede0903a96addc17e28553f7de2870c90c415f68b474",
+      "sha256": "9a67a7bef7e1e8aa92efe9071a29f68085c866cb243e7c5e35b2ea33a16490b3",
       "normalizacja": "LF"
     },
     {
@@ -11125,7 +11132,7 @@
     },
     {
       "path": "src/oms/db/zdjecia-ofert.js",
-      "sha256": "9c8925fc443298c03d848b7f4d2d81f15cda34432d5a31858152b20d5f919e41",
+      "sha256": "f04f6d9fa0237be6c0ed87a8e0bf672ecdf6e30e415cab0eb1f9e99fa9acdda7",
       "normalizacja": "LF"
     },
     {
@@ -11135,7 +11142,7 @@
     },
     {
       "path": "src/oms/ga4/client.js",
-      "sha256": "7dd66e757f138a1f94149af3ecf47e739848f06481a67c60cdfa9602bb15bd3a",
+      "sha256": "23795d9d5d9bba784ce257b1683a6d8b88096837f14d577ca09a08516c8ab9bb",
       "normalizacja": "LF"
     },
     {
@@ -11155,7 +11162,7 @@
     },
     {
       "path": "src/oms/ksef/limit.js",
-      "sha256": "14f96d33a4cbde962ae112505eff61e68c893295516d7be1189d3e1a610480d5",
+      "sha256": "b725b96e1f8c0ce8307ed77b13d11a470969f94623d661f324fd4826bdeebc7f",
       "normalizacja": "LF"
     },
     {
@@ -11195,7 +11202,7 @@
     },
     {
       "path": "src/oms/meta/client.js",
-      "sha256": "042709cc9fce07817c7b7c87c78d5c6d88c16b9afbc6b3d7f835497f0d2b3379",
+      "sha256": "8eb1a468a101b87ca0ceb00d4e4a86869742d779471278fb52a0d08d245f29d0",
       "normalizacja": "LF"
     },
     {
@@ -11225,7 +11232,7 @@
     },
     {
       "path": "src/public/komponer.js",
-      "sha256": "2536c2a8e62628700a3fd6687410faf6e6d1c9c699e77a0aefa6d42c281a7e1a",
+      "sha256": "ae826c8a3e33edd9160e9ad484d686145457d204d6d28b7d2f255e295da054ff",
       "normalizacja": "LF"
     },
     {
@@ -11276,7 +11283,7 @@
         "nazwa": "OMS_DB_PATH",
         "sciezkaOdczytu": [
           "src/main.ts:11",
-          "src/moduly/kanaly/scripts/import-sklep.mjs:61",
+          "src/moduly/kanaly/scripts/import-sklep.mjs:60",
           "src/oms/bootstrap.ts:13",
           "scripts/oms-import-istniejacy-podjazd-dpd.mjs:14",
           "scripts/oms-import-istniejacy-podjazd-dpd.mjs:29"
@@ -11360,7 +11367,7 @@
           "src/moduly/kanaly/kompletnosc.ts:7",
           "src/moduly/kanaly/konfiguracja.ts:65",
           "src/moduly/kanaly/konfiguracja.ts:87",
-          "src/moduly/kanaly/scripts/import-sklep.mjs:55"
+          "src/moduly/kanaly/scripts/import-sklep.mjs:54"
         ]
       },
       {
@@ -11370,7 +11377,7 @@
           "src/moduly/kanaly/kompletnosc.ts:7",
           "src/moduly/kanaly/konfiguracja.ts:65",
           "src/moduly/kanaly/konfiguracja.ts:87",
-          "src/moduly/kanaly/scripts/import-sklep.mjs:55"
+          "src/moduly/kanaly/scripts/import-sklep.mjs:54"
         ]
       },
       {
@@ -11379,7 +11386,7 @@
           "src/moduly/kanaly/kompletnosc.ts:7",
           "src/moduly/kanaly/konfiguracja.ts:65",
           "src/moduly/kanaly/konfiguracja.ts:70",
-          "src/moduly/kanaly/scripts/import-sklep.mjs:55"
+          "src/moduly/kanaly/scripts/import-sklep.mjs:54"
         ]
       },
       {

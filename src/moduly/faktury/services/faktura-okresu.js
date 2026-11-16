@@ -12,10 +12,10 @@ import {
 } from '../../../oms/db/okresy.js';
 import { stanFakturyOkresu } from '../../../domena/okres-rozliczeniowy.js';
 import { datyFaktury } from '../../../domena/termin-platnosci.js';
-// WDT (spec 2026-08-26): stawke i pola payloadu rozstrzyga domena po NIP-ie KLIENTA
+// WDT: stawke i pola payloadu rozstrzyga domena po NIP-ie KLIENTA
 // OKRESU (nabywcy dokumentu); VIES i serie numeracji trzyma WSPOLNA galaz obu drog
 // wystawiania (services/wdt-faktury.js) — zeby okres i karta nie mialy dwoch kopii.
-// PRZ-122.B07d: WDT = numer UE klienta okresu I sprzedawca niezwolniony (`czyWdt` + `sprzedawcaZwolniony`).
+// WDT = numer UE klienta okresu I sprzedawca niezwolniony (`czyWdt` + `sprzedawcaZwolniony`).
 import {
   czyNipUe, czyWdt, polaWdtInfakt, nipSprzedawcyDoWdt, LOG_NIE_WDT_ZWOLNIONA,
 } from '../../../domena/wdt.js';
@@ -23,7 +23,7 @@ import { sprzedawcaZwolniony } from '../db/zwolnienie-vat.js';
 import {
   sprawdzWdtWVies, przygotujSerieWdt, seriaWdtPoAwarii, seriaWdtPoSukcesie, sprawdzNumeracjeWlasna, nazwaProgramu,
 } from './wdt-faktury.js';
-// PRZ-118.06: program fakturowy (kontrakt) zamiast klienta inFaktu — `{ program }` albo stary `{ infakt }`.
+// Program fakturowy (kontrakt) zamiast klienta inFaktu — `{ program }` albo stary `{ infakt }`.
 import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 import { gdzieDokument } from '../../../domena/nazwa-programu.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
@@ -36,12 +36,12 @@ import { dzienWarszawa } from '../../../domena/format-daty.js';
  * oplata za obsluge i kuriera trafia na fakture BEZ ani jednej linii kodu o niej tutaj —
  * dokladnie tak samo, jak w services/faktura.js dla pojedynczego zamowienia.
  */
-// PRZ-122.B07c: `zw: true` (program wbudowany) przepuszcza „zw” — domyślną i pozycji ręcznej; bez flagi jak dotąd.
+// `zw: true` (program wbudowany) przepuszcza „zw” — domyślną i pozycji ręcznej; bez flagi jak dotąd.
 export function pozycjeOkresu(zamowienia, { stawkaDomyslna, wdt = false, zw = false } = {}) {
   // WDT przychodzi OD WOLAJACEGO i jest JEDNO na caly dokument, bo dokument ma jednego nabywce — klienta
   // okresu. Liczenie go per zamowienie (z NIP-u zamowienia) mogloby rozjechac jedna zbiorcza fakture na dwie
   // stawki, gdyby ktores zamowienie mialo uszkodzony numer.
-  // PRZ-105: poza WDT stawka jest PER POZYCJA (domain/vat.js: stawkaPozycji), dostawa — domyslna z Ustawien.
+  // Poza WDT stawka jest PER POZYCJA (domena/vat.js: stawkaPozycji), dostawa — domyslna z Ustawien.
   // Brak domyslnej = wyjatek, nie ciche 23 (ta sama zasada co pozycjeDokumentu).
   if (!czyStawkaVat(stawkaDomyslna, { zw })) {
     throw new Error(`pozycjeOkresu: brak albo zła stawka domyślna („${stawkaDomyslna}”).`);
@@ -64,7 +64,7 @@ export function pozycjeOkresu(zamowienia, { stawkaDomyslna, wdt = false, zw = fa
     // Koszt dostawy jest czescia `kwota_brutto`, ale nie ma go w pozycjach — bez tej
     // linii faktura bylaby zanizona o wysylke przy kazdym platnym transporcie zamowienia
     // w tym okresie.
-    // ⚠️ EFEKTYWNA kwota i ilosc (od 07.08.2026), TA SAMA funkcja co przy fakturze
+    // ⚠️ EFEKTYWNA kwota i ilosc, TA SAMA funkcja co przy fakturze
     // pojedynczej — inaczej faktura zbiorcza rozjezdzalaby sie z karta o kazda reczna
     // poprawke dostawy, a bariera nizej odmawialaby calego okresu przez jedno zamowienie.
     const dostawa = wysylkaBruttoGrosze(z);
@@ -88,21 +88,20 @@ export function sumaOczekiwanaOkresuGrosze(zamowienia) {
  * ⚠️ ZAMOWIENIA ANULOWANE WYPADAJA Z FAKTURY, a nie blokuja jej wystawienia. Faktura
  * pojedyncza (services/faktura.js) w tej sytuacji ODMAWIA — i slusznie, bo tam anulowane
  * zamowienie JEST calym dokumentem. Tutaj byloby inaczej: jedno anulowane zamowienie
- * zablokowaloby fakture za caly miesiac, a klient i tak musi ja dostac — wiec wlasciciel
+ * zablokowaloby fakture za caly miesiac, a klient i tak musi ja dostac — wiec sprzedawca
  * wystawilby ja recznie w inFakcie, czyli POZA kazda bariera tego panelu. Anulowane
  * zamowienie nie jest sprzedaza, wiec na fakturze nie ma go po co szukac.
  *
  * `z.anulowane` z warstwy odczytu jest EFEKTYWNE (suma logiczna kolumny sklepowej
- * i `anulowane_recznie`, patrz domain/status-reczny.js) — czytanie samej kolumny
+ * i `anulowane_recznie`, patrz domena/status-reczny.js) — czytanie samej kolumny
  * sklepowej wystawialoby fakture za zamowienie anulowane w panelu.
  *
- * ⚠️ TO JEST FUNKCJA EKSPORTOWANA, A NIE `filter` W DWOCH MIEJSCACH — i to jest sedno
- * poprawki po recenzji Zadania 9. Ekran okresu (web/routes/okresy.js) liczyl sume z WSZYSTKICH
- * zamowien, a `wystaw` nizej — bez anulowanych. Skutek zmierzony na okresie 100,00 aktywne
- * + 40,00 anulowane: karta obiecywala „Razem do zafakturowania 140.00 zł", do inFaktu szlo
- * 100,00, zaplata co do grosza wygladala na NIEDOPLATE 40 zl, a nadplata 40 zl nie pojawiala
- * sie NIGDZIE. Ostatni ekran przed dokumentem, ktory po wieczornej wysylce do KSeF poprawia
- * sie juz tylko korekta, ma pokazywac dokladnie ta liczbe, ktora pojdzie na fakture — wiec
+ * ⚠️ TO JEST FUNKCJA EKSPORTOWANA, A NIE `filter` W DWÓCH MIEJSCACH. Gdyby ekran okresu
+ * (trasy/okresy.js) liczył sumę ze WSZYSTKICH zamówień, a `wystaw` niżej — bez anulowanych,
+ * to przy okresie 100,00 aktywne + 40,00 anulowane karta obiecywałaby „Razem do zafakturowania
+ * 140.00 zł”, do inFaktu szłoby 100,00, zapłata co do grosza wyglądałaby na NIEDOPŁATĘ 40 zł,
+ * a nadpłata 40 zł nie pojawiłaby się NIGDZIE. Ostatni ekran przed dokumentem, który po wysyłce
+ * do KSeF poprawia się już tylko korektą, ma pokazywac dokladnie ta liczbe, ktora pojdzie na fakture — wiec
  * warunek moze byc TYLKO jeden i musi mieszkac tam, gdzie faktura naprawde powstaje.
  */
 export function podzialZamowienOkresu(wszystkie) {
@@ -114,17 +113,17 @@ export function podzialZamowienOkresu(wszystkie) {
 
 /**
  * BARIERA ARYTMETYCZNA DLA OKRESU — ta sama zasada co przy pojedynczym zamowieniu
- * (services/faktura.js, sprawdzSume), tylko powtorzona dla kazdego zamowienia okresu.
+ * (domena/pozycje-faktury.js, sprawdzSumeDokumentu), tylko powtórzona dla kazdego zamowienia okresu.
  *
  * ⚠️ Przy fakturze na kilkadziesiat zamowien i kilkaset pozycji bariera jest WAZNIEJSZA
- * niz kiedykolwiek: bledu w takiej sumie nikt nie wylapie okiem, a dokument, ktory pojdzie
- * wieczorem do KSeF, poprawia sie juz tylko korekta.
+ * niż kiedykolwiek: błędu w takiej sumie nikt nie wyłapie okiem, a dokument, który pójdzie
+ * do KSeF, poprawia się już tylko korektą.
  */
 export function sprawdzSumeOkresu(services, zamowienia) {
   // Ta sama dziura, co przy pojedynczym zamowieniu: okres bez ani jednej pozycji
   // przechodzilby bariere bezblednie (suma pustej listy = 0 = suma zamowien = 0), a do
   // inFaktu poszlaby faktura z pustym `services`. Dokument bez pozycji trzeba by recznie
-  // znalezc i skasowac w inFakcie, zanim wieczorem pojedzie do KSeF.
+  // znaleźć i skasować w inFakcie, zanim pojedzie do KSeF.
   if (services.length === 0) {
     throw bladOperatora(
       'Okres nie ma żadnej pozycji do zafakturowania — faktury bez pozycji panel nie wystawi.',
@@ -179,8 +178,9 @@ export function sprawdzSumeOkresu(services, zamowienia) {
  *
  * Podzial faz jest DOKLADNIE taki, jak przy fakturze pojedynczej (services/faktura.js),
  * bo powod jest ten sam: dokumentu w inFakcie sie nie edytuje, tylko kasuje i wystawia od
- * nowa — a po wieczornej zbiorczej wysylce do KSeF (robi ja wlasciciel recznie, panel NIGDY)
- * zostaje juz tylko korekta.
+ * nowa — a po wysyłce do KSeF (osobny krok: ręcznie z ekranu Faktur albo automatem KSeF —
+ * o ustalonej godzinie, przy TwojeFaktury także „po wystawieniu”; samo wystawienie nie
+ * wysyła) zostaje już tylko korekta.
  */
 export function createFakturaOkresu({
   db, program: programFakturowy = null, infakt = null, vies = null, nipSprzedawcy, teraz = () => new Date().toISOString(),
@@ -188,14 +188,14 @@ export function createFakturaOkresu({
   const program = zProgramu({ program: programFakturowy, infakt });
   // Odmiana nazwy programu do komunikatow (inFakt / inFaktu / inFakcie / inFaktem).
   const nazwa = nazwaProgramu(program);
-  // PRZ-122.B07c: flaga `zw` z opisu programu (TwojeFaktury); inny program — jak dotąd.
+  // Flaga `zw` z opisu programu (TwojeFaktury); inny program — jak dotąd.
   const opcjeZw = opcjeZwProgramu(program?.opis);
 
   // Awaria JEDNOZNACZNA = inFakt odpowiedzial i odrzucil (4xx): dokumentu na pewno nie ma.
   // Wszystko inne — 5xx, zerwane polaczenie (to w ogole NIE NIESIE statusu, patrz
   // infakt/client.js), blad techniczny w trakcie wywolania — jest NIEJEDNOZNACZNE.
   // Domyslna odpowiedz na niewiedze musi byc ostrozna. Ta sama regula co w faktura.js.
-  // PRZ-119.03: odmowa „duplikat” (program ma JUŻ dokument dla tego zamówienia, np. 422 na `oid` w Fakturowni)
+  // Odmowa „duplikat” (program ma JUŻ dokument dla tego zamówienia, np. 422 na `oid` w Fakturowni)
   // to 4xx, ale dokument ISTNIEJE — rezerwacja zostaje, sprawa do wyjaśnienia.
   const jednoznacznaOdmowa = (e) => Number.isInteger(e?.status) && e.status >= 400 && e.status < 500 && !e?.duplikat;
 
@@ -209,11 +209,10 @@ export function createFakturaOkresu({
           + `— panel najpewniej został zrestartowany w trakcie wywołania ${nazwa.dopelniacz}.`
         : 'Poprzednia próba wystawienia faktury za ten okres zerwała się w miejscu, w którym dokument mógł już powstać'
           + `${okres.blad_opis ? ` (${okres.blad_opis})` : ''}.`;
-      // ⚠️ KOMUNIKAT NIE OBIECUJE PONOWIENIA. Wczesniej mowil „skasuj ja tam, zanim cokolwiek
-      // ponowisz" — a ponowic sie nie dalo: ze stanow 'do_wyjasnienia' i 'zawieszona' nie ma
-      // wyjscia przez zadne klikniecie. Wyjscie w bazie JEST (`odblokujFaktureOkresu`
-      // w db/okresy.js), ale trasy i przycisku jeszcze nie ma — powstana w Zadaniu 9. Do tego
-      // czasu komunikat ma mowic prawde: blokada zostaje, dopoki ktos jej swiadomie nie zdejmie.
+      // ⚠️ KOMUNIKAT NIE OBIECUJE PONOWIENIA: ze stanów 'do_wyjasnienia' i 'zawieszona' panel
+      // sam nie wychodzi. Jedyne wyjście to świadome „odblokuj” na ekranie okresu
+      // (POST /okresy/:id/faktura/odblokuj → `odblokujFaktureOkresu` w oms/db/okresy.js).
+      // Komunikat ma mówić prawdę: blokada zostaje, dopóki ktoś jej świadomie nie zdejmie.
       return `${powod} Sprawdź RĘCZNIE ${gdzieDokument(program)}, czy faktura za ten okres istnieje. `
         + 'Jeśli JEST i jeszcze nie poszła do KSeF — '
         + 'skasuj ją tam. Panel sam z tego stanu NIE WYJDZIE i wystawienia nie ponowi: okres '
@@ -227,7 +226,7 @@ export function createFakturaOkresu({
 
   /**
    * @param {number} okresId
-   * @param {{nip: string, nazwa?: string}} klient dane nabywcy z konfiguracji (Zadanie 1)
+   * @param {{nip: string, nazwa?: string}} klient dane nabywcy z konfiguracji
    * @param {{dataWystawienia?: string, termin?: string|number}|null} termin OPCJONALNY wybor
    *   operatora z formularza. Brak = ZADNYCH dat w payloadzie, czyli termin z ustawien konta
    *   inFakt — dokladnie tak samo, jak przy fakturze pojedynczej (services/faktura.js).
@@ -255,13 +254,12 @@ export function createFakturaOkresu({
     // miejscach, stoi nad nia.
     const { zamowienia, anulowane } = podzialZamowienOkresu(wszystkie);
 
-    // ⚠️ DRUGA STRONA BARIERY „TO SAMO ZAMOWIENIE DWIEMA DROGAMI" (recenzja koncowa galezi).
+    // ⚠️ DRUGA STRONA BARIERY „TO SAMO ZAMÓWIENIE DWIEMA DROGAMI”.
     // Pierwsza siedzi w services/faktura.js i nie wpuszcza zamowienia z okresu na fakture
     // pojedyncza. Ta pilnuje kierunku odwrotnego: okresu, w ktorym ktores zamowienie ma JUZ
     // wlasny wiersz w `faktury`. Kazda z osobna zostawia dziure — pierwsza nie widzi
-    // zamowien zafakturowanych ZANIM trafily do okresu (ani wierszy z czasow sprzed tej
-    // poprawki), druga nie broni sie przed dopisaniem faktury pojedynczej po zamknieciu
-    // miesiaca. Dlatego sa obie.
+    // zamowien zafakturowanych ZANIM trafily do okresu, druga nie broni sie przed dopisaniem
+    // faktury pojedynczej po zamknieciu miesiaca. Dlatego sa obie.
     //
     // ⚠️ WIERSZ W `faktury` W KAZDYM STANIE, nie tylko „wystawiona": rezerwacja `w_toku`
     // i `do_wyjasnienia` tez znacza „dokument moze istniec w inFakcie". Domyslna odpowiedz
@@ -271,7 +269,7 @@ export function createFakturaOkresu({
     // `wszystkie`. Anulowane wypadaja z dokumentu (patrz `podzialZamowienOkresu` wyzej),
     // wiec ich wlasna faktura NICZEGO nie dubluje, a blokada na nich zamknelaby caly miesiac
     // na amen: odpiac zamowienia od okresu panel nie umie, wiec z takiej odmowy nie byloby
-    // ZADNEGO wyjscia poza SQL-em na produkcji.
+    // ŻADNEGO wyjścia poza ręcznym SQL-em w bazie.
     //
     // Numer zamowienia W KOMUNIKACIE, wzorem `sprawdzSumeOkresu` — bez niego operator dostaje
     // „ktoreś zamowienie ma fakture" na miesiacu o kilkudziesieciu pozycjach.
@@ -289,14 +287,14 @@ export function createFakturaOkresu({
     // Stawka dokumentu z NIP-u KLIENTA OKRESU — nabywcy faktury zbiorczej. Nabywca z UE
     // dostaje 0% (WDT) na kazdej pozycji; kwoty zamowien sa wtedy kwotami netto, wiec
     // bariera arytmetyczna nizej dziala bez zmian (netto = brutto przy 0%).
-    // PRZ-122.B07d: sprzedawca zwolniony z VAT (program wbudowany) nie robi WDT — faktura „zw”, bez VIES i serii.
+    // Sprzedawca zwolniony z VAT (program wbudowany) nie robi WDT — faktura „zw”, bez VIES i serii.
     const zwolniona = sprzedawcaZwolniony(db, program?.opis);
     const wdt = czyWdt(klient?.nip, { zwolniona });
     const nieWdtZwolniona = zwolniona && czyNipUe(klient?.nip);
-    // PRZ-108.10: NIP sprzedawcy do adnotacji WDT — przy każdym wystawieniu i PRZED rezerwacją oraz zamknięciem okresu
+    // NIP sprzedawcy do adnotacji WDT — przy każdym wystawieniu i PRZED rezerwacją oraz zamknięciem okresu
     // (WDT bez NIP-u odmawia tutaj; funkcja = NIP z Ustawień → Firma bez restartu).
     const nipWlasny = wdt ? nipSprzedawcyDoWdt(klient?.nip, nipSprzedawcy) : null;
-    // PRZ-118.06: WDT wymaga numeracji wlasnej programu — odmowa lokalna, przed VIES, rezerwacja i zamknieciem okresu.
+    // WDT wymaga numeracji wlasnej programu — odmowa lokalna, przed VIES, rezerwacja i zamknieciem okresu.
     if (wdt && !program.opis.wdtWSeriiFaktur) sprawdzNumeracjeWlasna(program);
     const services = pozycjeOkresu(zamowienia, { stawkaDomyslna: czytajStawkeDomyslna(db, opcjeZw), wdt, ...opcjeZw });
     // ⚠️ Bariera PRZED rezerwacja i przed jakimkolwiek ruchem w inFakcie: nieudana
@@ -318,7 +316,7 @@ export function createFakturaOkresu({
     // „zaplacone": obejmuje caly miesiac dostaw, ktore bywaja oplacone w roznym stopniu, wiec
     // jedna kwota „zaplacono" nie mialaby tu sensu. Brak argumentu znaczy, ze gdyby ten wariant
     // kiedykolwiek trafil tu z formularza, domena ODMOWI — zamiast wystawic dokument mowiacy
-    // klientowi, ze za miesiac juz zaplacil. Ekran okresu tej opcji nie pokazuje (views/okres.ejs).
+    // klientowi, że za miesiąc już zapłacił. Ekran okresu tej opcji nie pokazuje (widoki/okres.ejs).
     const daty = termin ? datyFaktury(termin, null, undefined, { nazwa }) : {};
 
     // Nabywca MUSI zostac rozstrzygniety PRZED rezerwacja: brak client_id to faktura
@@ -361,11 +359,11 @@ export function createFakturaOkresu({
     //
     // `zamowieniaOkresu` wyzej czyta baze PRZED `await program.przygotujNabywce`, a okres
     // zostaje OTWARTY przez cale to okno — wiec `przypiszDoOkresu` (services/okres.js)
-    // przyjmuje w nim nowe zamowienie bez mrugniecia. Zmierzone przed ta poprawka: drugi
-    // operator zapisuje zamowienie za 40 zl w trakcie wywolania inFaktu, faktura idzie na
-    // 100,00 zl, a ekran okresu mowi potem „Razem 140.00 zł" i „NIEDOPŁATA: brakuje 140.00 zł".
-    // WYJSCIA Z TEGO NIE MA ZADNEGO: okresu z faktura nie da sie otworzyc (routes/okresy.js),
-    // a zamowienia nie da sie odpiac inaczej niz SQL-em na produkcji.
+    // przyjmuje w nim nowe zamówienie bez mrugnięcia. Bez tego odczytu: drugi operator
+    // zapisuje zamówienie za 40 zł w trakcie wywołania inFaktu, faktura idzie na 100,00 zł,
+    // a ekran okresu pokazuje potem 140 zł i niedopłatę.
+    // WYJŚCIA Z TEGO NIE MA ŻADNEGO: okresu z fakturą nie da się otworzyć (trasy/okresy.js),
+    // a zamówienia nie da się odpiąć inaczej niż ręcznym SQL-em w bazie.
     //
     // Rezerwacja i zamkniecie okresu domykaja okno na przyszlosc, ale nie cofaja tego, co
     // wpadlo w nie wczesniej — dlatego zbior trzeba POROWNAC. Miedzy `rozpocznijFaktureOkresu`
@@ -414,11 +412,11 @@ export function createFakturaOkresu({
         client_id: nabywca.client_id,
         services,
         ...daty,
-        // Pola WYLACZNIE dokumentu WDT (domain/wdt.js) — dla klienta krajowego oba
+        // Pola WYLACZNIE dokumentu WDT (domena/wdt.js) — dla klienta krajowego oba
         // rozsypania sa puste i payload zostaje bajt w bajt taki, jaki byl.
         ...(wdt ? polaWdtInfakt(klient.nip, { nipSprzedawcy: nipWlasny }) : {}),
         ...(seriaWdt ? { number: seriaWdt.numer } : {}),
-      // PRZ-119.03: identyfikator dokumentu okresu dla programu (Fakturownia: `oid` + `oid_unique`) — klient i miesiąc,
+      // Identyfikator dokumentu okresu dla programu (Fakturownia: `oid` + `oid_unique`) — klient i miesiąc,
       // nie id wiersza: po resecie bazy ten sam okres nie dostaje cudzego oid (fałszywy duplikat).
       }, { oid: `okres-${okres.klient_klucz}-${okres.rok}-${String(okres.miesiac).padStart(2, '0')}` });
     } catch (e) {
@@ -438,8 +436,8 @@ export function createFakturaOkresu({
     // numeru faktury, i to PO CICHU: okres bylby zafakturowany dokumentem, ktorego numeru
     // panel nie zna, a czlowiek zobaczylby to dopiero szukajac faktury w inFakcie.
     //
-    // `ksef_data` jest puste, dopoki dokument nie pojdzie do KSeF — a panel go tam nigdy sam
-    // nie wysyla, wiec NULL jest tu stanem normalnym, nie bledem.
+    // `ksef_data` jest puste, dopóki dokument nie pójdzie do KSeF — a wystawienie go tam nie
+    // wysyła (to osobny krok), więc NULL jest tu stanem normalnym, nie błędem.
     const uuid = odp?.uuid ?? null;
     const numer = odp?.numer ?? odp?.number ?? null;
     const ksefStatus = odp?.ksefStatus ?? odp?.ksef_data ?? null;
@@ -449,9 +447,8 @@ export function createFakturaOkresu({
     // sparsowac jako JSON — puste albo HTML-owe cialo z proxy — a `wystaw` degraduje to do
     // `{uuid: null, ...}`. Zadanie do inFaktu wtedy DOSZLO i dokument MOGL powstac; panel
     // nie zna ani jego uuid-a, ani numeru. Zapisanie tego jako „zafakturowany z pustymi
-    // polami" bylo dokladnie tym, co kasowalo blokade drugiego wystawienia — i nawet po
-    // naprawie `stanFakturyOkresu` bylby to okres udajacy rozliczony dokumentem, o ktorym
-    // panel nie wie NIC. Niewiedza ma isc do czlowieka, tak samo jak zerwane polaczenie.
+    // polami” zdjęłoby blokadę drugiego wystawienia i zostawiło okres udający rozliczony
+    // dokumentem, o którym panel nie wie NIC. Niewiedza ma isc do czlowieka, tak samo jak zerwane polaczenie.
     if (!uuid && !numer) {
       const opis = `${nazwa.mianownik} odpowiedział bez numeru i bez identyfikatora dokumentu `
         + '(puste albo nieczytelne ciało odpowiedzi) — faktura mogła powstać.';

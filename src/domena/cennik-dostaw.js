@@ -1,4 +1,4 @@
-// PRZ-160 E3d.02 — cennik dostaw dobierany do rozmiaru produktu (plan docs/plany/PRZ-160-e3d-02.md, D1, D4, D5).
+// Cennik dostaw dobierany do rozmiaru produktu.
 // Reguły konta: [{ doMm: [a,b,c], doG: w, cennik }, …, { cennik }] — sprawdzane od góry, pierwsza pasująca wygrywa,
 // ostatni wpis bez limitów to „dla większych”. Jeden wpis bez limitów to reguła „wszystko” (jak dawne pole tekstowe).
 // Kod nie zna żadnych gabarytów przewoźników — limity wpisuje sprzedawca.
@@ -18,7 +18,7 @@ const przecinek = (s) => String(s).replace('.', ',');
 const regulyCale = (lista) => lista.every((r, i) => napis(r?.cennik) && (i === lista.length - 1
   || (Array.isArray(r.doMm) && r.doMm.length === 3 && r.doMm.every(dodatnia) && dodatnia(r.doG))));
 
-/** Reguły konta (D4): lista `cenniki`, a gdy jej brak — dawne pole tekstowe jako jedna reguła „wszystko”. */
+/** Reguły konta: lista `cenniki`, a gdy jej brak — dawne pole tekstowe jako jedna reguła „wszystko”. */
 export function regulyKonta(ustawienia) {
   if (Array.isArray(ustawienia?.cenniki)) return regulyCale(ustawienia.cenniki) ? ustawienia.cenniki : [];
   const stary = napis(ustawienia?.cennikDostaw);
@@ -50,7 +50,7 @@ function cennikZRegul(karta, reguly) {
 }
 
 /**
- * Dobór cennika dla karty (D5). Kolejność: wyjątek na karcie → pusta lista → jedna reguła „wszystko” →
+ * Dobór cennika dla karty. Kolejność: wyjątek na karcie → pusta lista → jedna reguła „wszystko” →
  * brak wymiarów/wagi → pierwsza pasująca reguła → „dla większych”.
  * Zwraca `{ cennik, powod: { rodzaj, numer?, tekst } }` albo `{ odmowa: { kod, tekst } }`.
  */

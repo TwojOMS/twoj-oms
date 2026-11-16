@@ -13,7 +13,7 @@ export const PROBLEMY_ILOSCI = Object.freeze(Object.fromEntries([
   ['ilosc-niezmienialna', true, 'Kanał nie pozwala zmienić ilości.'],
   ['zamrozona-ilosc', true, 'Ilość oferty jest zamrożona.'],
   ['brak-karty', true, 'Oferta nie ma powiązanej karty.'],
-  // Szef 14.11: kod nadaje pętla (E4.08); ekran „Problemy ofert” (E4.13) daje tylko ręczne „Wznów”.
+  // Kod nadaje pętla ofert; ekran „Problemy ofert” daje tylko ręczne „Wznów”.
   ['czeste-wznawianie', true, 'Oferta wznawiana przez OMS ponad 3 razy na dobę — wznów ręcznie.'],
   ['brak-stanu', false, 'Stan karty nie jest znany.'],
   ['stany-niezatwierdzone', false, 'Bieżące włączenie stanów czeka na zatwierdzenie.'],
@@ -23,12 +23,12 @@ export const PROBLEMY_ILOSCI = Object.freeze(Object.fromEntries([
 ].map(([kod, wstrzymuje, tekst]) => [kod, Object.freeze({ kod, wstrzymuje, od: null, cel: null, odczyt: null, tekst })])));
 
 const problem = (kod, dane) => ({ ...PROBLEMY_ILOSCI[kod], ...dane });
-// Data bez strefy (zapis SQLite) jest UTC, jak dataUtc w produkty-odczyt.js.
+// Data bez strefy (zapis SQLite) jest UTC, jak `dataUtc` w `moduly/api/trasy/produkty-odczyt.js`.
 const BEZ_STREFY = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/;
 const czas = wartosc => wartosc == null ? NaN
   : new Date(typeof wartosc === 'string' && BEZ_STREFY.test(wartosc) ? `${wartosc.replace(' ', 'T')}Z` : wartosc).getTime();
 
-/** D47. Migawka ma kształt z §5.0; brak znanego stanu nigdy nie oznacza zera. */
+/** Brak znanego stanu nigdy nie oznacza zera. */
 export function iloscDlaKanalu({ migawka, kartaId, tryb, iloscZOms, bufor = 0, stalaIlosc }) {
   const brak = powod => ({ ilosc: null, zrodlo: null, powod });
   if (tryb !== 'zarzadzana' && !(tryb === 'obserwowana' && iloscZOms)) return brak(null);
@@ -45,21 +45,22 @@ export function iloscDlaKanalu({ migawka, kartaId, tryb, iloscZOms, bufor = 0, s
   return { ilosc: Math.max(0, stan - bufor), zrodlo: 'stan', powod: null };
 }
 
-/** D53. Wyjaśnienie to suma wartości bezwzględnych pozycji i ruchów po wysyłce (E4.03). */
+/** Wyjaśnienie to suma wartości bezwzględnych pozycji i ruchów po wysyłce. */
 export function skokIlosci({ stan, stanKartyWyslany, wyjasnioneKarty = 0, prog = 5, od = null, cel = null, odczyt = null }) {
   if (stanKartyWyslany == null) return null;
   const skok = Math.abs(stan - stanKartyWyslany) - wyjasnioneKarty;
   return skok > prog ? problem('skok', { od, cel, odczyt }) : null;
 }
 
-// D64 (2) i (3), również dla karencji D54. Kursor nie jest dowodem pracy pollera.
+// Puls pollera: przebieg bez błędu (albo z pominięciem) po upływie `pollerMs` od odczytu, a migawka policzona po nim —
+// dotyczy podwyżki i karencji rozjazdu. Kursor nie jest dowodem pracy pollera.
 function poPulsie({ poller, od, policzonoAt, pollerMs }) {
   return !!poller && (poller.ostatniBlad == null || poller.ostatniBladRodzaj === 'pominiecie')
     && czas(poller.ostatniPrzebiegAt) >= czas(od) + pollerMs
     && czas(policzonoAt) > czas(poller.ostatniPrzebiegAt);
 }
 
-/** D64. poprzedniOdczyt: {ilosc, odczytanoAt} sprzed przebiegu; czas migawki i puls z §5.0.
+/** Podwyżka wymaga stabilnego odczytu i pulsu pollera. poprzedniOdczyt: {ilosc, odczytanoAt} sprzed przebiegu.
  * pollerMs przekazuje wywołujący z konfiguracji, bez odczytu środowiska w domenie. */
 export function wolnoPodniesc({ cel, odczyt, poprzedniOdczyt, poller, policzonoAt, pollerMs }) {
   if (!Number.isFinite(odczyt)) return { wolno: false, powod: 'karencja' };
@@ -70,10 +71,10 @@ export function wolnoPodniesc({ cel, odczyt, poprzedniOdczyt, poller, policzonoA
   return { wolno, powod: wolno ? null : 'karencja' };
 }
 
-/** D54. Wyjaśnienia liczy E4.03 według reguły kanału (Woo po zmienione_at).
+/** Wyjaśnienia liczy wywołujący według reguły kanału (Woo po zmienione_at).
  * alarmOd to zachowana chwila pierwszego odczytu poza dolnym zakresem, wToku: {cel,at}
  * albo komenda Allegro {wartosc}. baza jest propozycją aktualizacji W/T, bez efektów ubocznych.
- * wolnoWyslac dotyczy wyłącznie rozjazdu; skok, D64 i inne bramki sprawdza wywołujący. */
+ * wolnoWyslac dotyczy wyłącznie rozjazdu; skok, karencję podwyżki i inne bramki sprawdza wywołujący. */
 export function ocenRozjazdu({ wyslanaIlosc, odczyt, cel, wyjasnienie = {}, wToku,
   odczytanoAt, alarmOd, poller, policzonoAt, pollerMs }) {
   if (!Number.isFinite(odczyt)) {
@@ -94,14 +95,14 @@ export function ocenRozjazdu({ wyslanaIlosc, odczyt, cel, wyjasnienie = {}, wTok
     problem: problem(kod, { od, cel, odczyt, zakres }), baza: null };
 }
 
-/** D52. Wejście zawiera wszystkie oferty konta objęte ilością z OMS, także bez celu/odczytu. */
+/** Wejście zawiera wszystkie oferty konta objęte ilością z OMS, także bez celu/odczytu. */
 export function zeroMasowe(oferty) {
   const zerowane = oferty.filter(o => o.cel === 0 && o.odczyt > 0).length;
   return zerowane >= 3 && zerowane * 2 >= oferty.length;
 }
 
 /**
- * E4.30p (B1 recenzji). Potwierdzenie zer jest ważne tylko w przełączeniu stanów, w którym je kliknięto
+ * Potwierdzenie zer jest ważne tylko w przełączeniu stanów, w którym je kliknięto
  * (`zeraPotwierdzone.przelaczenieId` = `migawka.przelaczenieId`). Wyłączenie i ponowne włączenie stanów
  * (nowe przełączenie) albo flaga bez `przelaczenieId` = potwierdzenie nieważne.
  */
@@ -111,26 +112,26 @@ export function potwierdzenieZerWazne(oferta, migawka) {
 }
 
 /**
- * E4.30. „Wyślij zera” (`wyslanePola.zeraPotwierdzone`) jest jednorazowe na ofertę: taka oferta nie wchodzi
+ * „Wyślij zera” (`wyslanePola.zeraPotwierdzone`) jest jednorazowe na ofertę: taka oferta nie wchodzi
  * do wejścia `zeroMasowe` i nie dostaje `zero-masowe`; jej cel 0 przechodzi przez pozostałe bezpieczniki.
- * E4.30p: tylko ważne potwierdzenie (to samo przełączenie stanów) wyłącza ofertę z zera masowego.
+ * Tylko ważne potwierdzenie (to samo przełączenie stanów) wyłącza ofertę z zera masowego.
  */
 export function liczySieDoZeraMasowego(oferta, migawka) {
   return !potwierdzenieZerWazne(oferta, migawka);
 }
 
-/** E4.30. Potwierdzenie zer jest zużyte, gdy kanał ma już 0 albo cel wzrósł ponad 0 (po zapisie 0 — przy sukcesie). */
+/** Potwierdzenie zer jest zużyte, gdy kanał ma już 0 albo cel wzrósł ponad 0 (po zapisie 0 — przy sukcesie). */
 export function potwierdzenieZerZuzyte({ cel, odczyt }) {
   return odczyt === 0 || cel > 0;
 }
 
-/** E4.30. `wyslanePola` bez potwierdzenia zer. */
+/** `wyslanePola` bez potwierdzenia zer. */
 export function bezPotwierdzeniaZer(wyslanePola) {
   const { zeraPotwierdzone: _, ...reszta } = wyslanePola ?? {};
   return reszta;
 }
 
-/** D57. Wejście: {konto, cel, odczyt}; grupowanie ma zachować kierunek zmiany. */
+/** Wejście: {konto, cel, odczyt}; grupowanie ma zachować kierunek zmiany. */
 export function kluczKomendyIlosci({ cel, odczyt }) {
   return `ilosc:${cel}:${cel <= odczyt ? 'obnizka' : 'podwyzka'}`;
 }
@@ -140,7 +141,7 @@ export function kolejnoscWysylek(wysylki) {
     || Number(a.cel > a.odczyt) - Number(b.cel > b.odczyt));
 }
 
-/** D56. Każdy element kanaly dotyczy jednej karty i jednego konta: {kanal: 'woo'|'erli'|'allegro',
+/** Każdy element kanaly dotyczy jednej karty i jednego konta: {kanal: 'woo'|'erli'|'allegro',
  * odczyt, odczytanoAt, manage_stock?, zamowienia?: [{ilosc,zlozonoAt,status,anulowane}]}.
  * Zamówienia muszą być już ograniczone do tej karty i konta. Świeżość odczytu sprawdza trasa podglądu. */
 export function propozycjaOtwarcia({ kanaly, granica }) {
@@ -165,7 +166,7 @@ function kanonicznie(w) {
 }
 const zbior = w => [...w].map(kanonicznie).sort();
 
-/** D51. oferty: wiersze rejestru, maxRuchId: MAX(ruchy_magazynowe.id), bufory: wiersze kont.
+/** oferty: wiersze rejestru, maxRuchId: MAX(ruchy_magazynowe.id), bufory: wiersze kont.
  * Stany, zużycie, zamówienia i czas obliczenia migawki celowo nie uczestniczą w skrócie. */
 export function skrotZatwierdzenia({ oferty, migawka, maxRuchId, bufory }) {
   const objete = oferty.filter(o => o.tryb === 'zarzadzana' || (o.tryb === 'obserwowana' && o.ilosc_z_oms))

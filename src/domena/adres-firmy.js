@@ -1,4 +1,4 @@
-// PRZ-093.08 — adres firmy wpisany w Ustawieniach → Firma (dla instalacji bez DPD_NADAWCA_* w pliku).
+// Adres firmy wpisany w Ustawieniach → Firma (dla instalacji bez DPD_NADAWCA_* w pliku).
 // Kolejność źródeł i odczyt z pliku: src/core/adres-firmy.ts. Zapis i odczyt z bazy: src/oms/db/adres-firmy.js.
 // Adres firmy NIE jest sekretem — stoi na każdej proformie i etykiecie — więc trzymamy go w jawnych ustawieniach.
 

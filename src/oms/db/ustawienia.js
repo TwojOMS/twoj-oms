@@ -6,7 +6,7 @@
 // i podstawił czwarty z kodu.
 //
 // Znaczenia kluczy TU NIE MA — ten moduł nie wie, co to „paczka.waga". Rozstrzyga o tym
-// domain/ustawienia-panelu.js, żeby reguła i fallbacki dały się przetestować bez bazy.
+// domena/ustawienia-panelu.js, żeby reguła i fallbacki dały się przetestować bez bazy.
 
 /** Wszystkie ustawienia jako zwykły obiekt. Pusta baza oddaje `{}`, nigdy `null`. */
 export function wczytajUstawienia(db) {

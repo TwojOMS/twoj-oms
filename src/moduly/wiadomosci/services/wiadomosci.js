@@ -17,10 +17,10 @@ import { tekstZeStopka } from '../oprawa.js';
 import { oprawaTeraz } from '../podpis-maili.js';
 import { zdaniaPlatnosciTeraz } from '../zdania-platnosci.js';
 import { oznaczBladPoczty, opisBleduPocztyDoLogu } from '../poczta-ustawien.ts';
-// WDT (spec 2026-08-26): mail „Faktura" dla zamowienia z nabywca unijnym dostaje DRUGI
+// WDT: mail „Faktura" dla zamowienia z nabywca unijnym dostaje DRUGI
 // zalacznik — „Potwierdzenie wywozu towarow" (art. 42 ust. 4), skladane na swiezo z tych
-// samych danych, co przycisk na karcie (routes/zamowienia.js). Regula rozpoznania jest
-// TA SAMA, ktora wybiera stawke faktury (domain/wdt.js).
+// samych danych, co przycisk na karcie (src/moduly/faktury/trasy/dokumenty.js). Regula rozpoznania jest
+// TA SAMA, ktora wybiera stawke faktury (domena/wdt.js).
 import { czyWdt } from '../../../domena/wdt.js';
 import { sprzedawcaZwolniony } from '../../faktury/db/zwolnienie-vat.js';
 import { daneFaktury } from '../../../domena/dane-faktury.js';
@@ -30,10 +30,10 @@ import { modelOswiadczenia } from '../../../domena/oswiadczenie-wywozu.js';
 import { zbudujOswiadczenieWywozuPdf } from '../../faktury/pdf/oswiadczenie-wywozu-pdf.js';
 import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
-// WYSYŁKA WIADOMOŚCI DO KLIENTA Z KARTY ZAMÓWIENIA (22.08.2026).
+// WYSYŁKA WIADOMOŚCI DO KLIENTA Z KARTY ZAMÓWIENIA.
 //
 // ⚠️ USŁUGA NIE DECYDUJE, CZY WYSŁAĆ — decyduje człowiek, klikając na ekranie PODGLĄDU.
-// Czy wolno, rozstrzyga domena (`domain/wiadomosci.js`) i to ona odmawia z powodem.
+// Czy wolno, rozstrzyga domena (`domena/wiadomosci.js`) i to ona odmawia z powodem.
 //
 // ⚠️⚠️ MAILA NIE DA SIĘ COFNĄĆ. Stąd kształt: trasa GET pokazuje podgląd, POST wysyła,
 // a ślad zostaje w DWÓCH miejscach — w rejestrze (`wiadomosci`) i w logu karty.
@@ -43,26 +43,26 @@ import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 // miałby dwie drogi wysyłki, dwa miejsca zapisu `potwierdzenie_wyslane_at` i dwa zestawy
 // pułapek do utrzymania.
 
-// PRZ-118.08: PDF faktury pobiera PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`).
+// PDF faktury pobiera PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`).
 export function createWiadomosci({
   db, mailer, potwierdzenie = null, proforma = null, program: programPodany = null, infakt = null, config = {},
   podpisPanelu = null, teraz = () => new Date().toISOString(),
-  // PRZ-121.A04b: wybór modułu faktur (usługa `faktury.wyborProgramu`; `null` = bez modułu faktur) — WYŁĄCZNIE do
+  // Wybór modułu faktur (usługa `faktury.wyborProgramu`; `null` = bez modułu faktur) — WYŁĄCZNIE do
   // zdania „faktury wyłączone” przy jawnym „Brak”; w innym razie odmowa bez programu zostaje znak w znak.
   wyborProgramu = null,
 }) {
   const program = zProgramu({ program: programPodany, infakt });
   // Rachunek i odbiorca przelewu pochodzą z jawnej konfiguracji faktur/nadawcy.
   // config.sprzedawca to tożsamość prawna rdzenia; podpis i oprawa poczty są osobną marką.
-  // PRZ-102.10: oprawa liczona przy każdym złożeniu maila (plik + podpis z Ustawień → Poczta), nie raz przy starcie.
+  // Oprawa liczona przy każdym złożeniu maila (plik + podpis z Ustawień → Poczta), nie raz przy starcie.
   const oprawaMailaTeraz = oprawaTeraz(config.oprawaPoczty, podpisPanelu);
-  // Nazwa do logu karty: temat wbudowany ze słownika domeny, szablon własny (PRZ-101.03) — jego nazwa z Ustawień.
+  // Nazwa do logu karty: temat wbudowany ze słownika domeny, szablon własny — jego nazwa z Ustawień.
   const nazwaTematu = (temat_id) => NAZWA_TEMATU[temat_id]
     ?? wczytajSzablonyWiadomosci(db).wlasne.find((s) => s.id === temat_id)?.nazwa ?? temat_id;
-  // PRZ-102.20: rachunek z bieżącej konfiguracji (plik → Ustawienia → Firma → brak), czytany przy KAŻDYM złożeniu maila
+  // Rachunek z bieżącej konfiguracji (plik → Ustawienia → Firma → brak), czytany przy KAŻDYM złożeniu maila
   // — zapis w panelu działa od następnego maila, bez restartu. Skład bez `config.rachunekFirmy` czyta config.proforma.
   const rachunekTeraz = () => (config.rachunekFirmy ? config.rachunekFirmy().rachunek : config.proforma?.rachunek) ?? null;
-  // PRZ-093.08: nazwa odbiorcy z TEGO SAMEGO źródła adresu firmy co proforma (plik DPD_NADAWCA_* wygrywa, potem
+  // Nazwa odbiorcy z TEGO SAMEGO źródła adresu firmy co proforma (plik DPD_NADAWCA_* wygrywa, potem
   // Ustawienia → Firma), czytana przy każdym mailu — liczona raz przy starcie i tylko z pliku dawała pusty
   // „Odbiorca: ” firmie z adresem wpisanym w panelu. Skład bez `config.adresFirmy` czyta config.nadawca jak dotąd.
 
@@ -95,11 +95,11 @@ export function createWiadomosci({
    */
   async function zloz(id, temat_id, { podglad = false } = {}) {
     const k = kontekst(id);
-    // PRZ-101.03: szablony z Ustawień czytane przy KAŻDYM złożeniu — zmiana działa od następnego maila,
+    // Szablony z Ustawień czytane przy KAŻDYM złożeniu — zmiana działa od następnego maila,
     // podgląd i wysyłka widzą ten sam zapis (oba wołają tę funkcję).
     const szablony = wczytajSzablonyWiadomosci(db);
     const oprawa = oprawaMailaTeraz();
-    // PRZ-102.17/19: zdania o płatności, etykiety i stałe teksty (z „Pozdrawiamy,") z Ustawień → Szablony wiadomości,
+    // Zdania o płatności, etykiety i stałe teksty (z „Pozdrawiamy,") z Ustawień → Szablony wiadomości,
     // czytane przy KAŻDYM złożeniu (podgląd na karcie i wysyłka) — zapis działa od następnego maila, bez restartu.
     const zdania = zdaniaPlatnosciTeraz(db);
 
@@ -120,24 +120,24 @@ export function createWiadomosci({
         html: mail.html, zalaczniki: [] };
     }
 
-    // PRZ-102.21: bez starej drogi — zapisany szablon albo domyślny. Bez załącznika, bez danych do przelewu.
+    // Bez starej drogi — zapisany szablon albo domyślny. Bez załącznika, bez danych do przelewu.
     if (temat_id === 'wyslane') {
       const mail = mailWyslane(k.z, szablony.wbudowane.wyslane ?? DOMYSLNE.wyslane, { oprawa, zdania });
       return { do: mail.do, temat: mail.temat, tekst: tekstZeStopka(mail.tekst, oprawa.footer), html: mail.html, zalaczniki: [] };
     }
 
-    // Dokument, którego numer trafia w TYTUŁ PRZELEWU. Reguła (zatwierdzona makieta i oba
-    // komentarze przy `modelWiadomosci` w wiadomosc-platnicza.js): proforma → faktura → numer
+    // Dokument, którego numer trafia w TYTUŁ PRZELEWU. Reguła (patrz też komentarze
+    // przy `modelWiadomosci` w wiadomosc-platnicza.js): proforma → faktura → numer
     // zamówienia. Przy proformie i fakturze dokument jest oczywisty; przy przypomnieniu klient
     // ma przed sobą TEN dokument, na który ma przelać — najpierw proforma, a BEZ NIEJ faktura
     // (typowa ścieżka B2B: faktura z terminem 14 dni, proformy nigdy nie było). Dopiero bez
     // obu zostaje numer zamówienia — to już liczy `modelWiadomosci`
     // (`tytul = dokument?.numer ?? z?.numer ?? ''`).
     //
-    // ⚠️⚠️ ZNALEZISKO RECENZJI CAŁOŚCI GAŁĘZI (22.08.2026, styk usługi i domeny): usługa dotąd
+    // ⚠️⚠️ FAKTURA TEŻ BYWA DOKUMENTEM PRZYPOMNIENIA (styk usługi i domeny): usługa wcześniej
     // realizowała WYŁĄCZNIE „proforma → numer zamówienia" — faktura tu nigdy nie trafiała,
-    // mimo że komentarz o `zdanieDokumentu` kilkadziesiąt linii niżej w wiadomosc-platnicza.js
-    // już zakładał, że `dokument` przy przypomnieniu bywa numerem FAKTURY. Skutek na produkcji:
+    // mimo że komentarz o `zdanieDokumentu` w wiadomosc-platnicza.js
+    // już zakładał, że `dokument` przy przypomnieniu bywa numerem FAKTURY. Skutek:
     // faktura prosiła o przelew z tytułem FV/…, przypomnienie trzy dni później — z tytułem
     // NUMERU ZAMÓWIENIA, więc księgowość nie dopasowywała wpłaty do żadnego dokumentu.
     const dokument = temat_id === 'faktura' ? k.faktura
@@ -151,11 +151,11 @@ export function createWiadomosci({
     const zalaczniki = [];
     let zalacznikProformy = null;
     if (temat_id === 'proforma') {
-      // ⚠️ STRAŻNIK WSTRZYKNIĘTEJ USŁUGI (recenzja całości gałęzi, 22.08.2026). `proforma`
+      // ⚠️ STRAŻNIK WSTRZYKNIĘTEJ USŁUGI. `proforma`
       // ma domyślnie `null` i panel bez skonfigurowanego katalogu proform składa się bez niej.
       // Bez tego wiersza operator dostawał `TypeError` opakowany w „Wiadomość NIE została
       // wysłana: Cannot read properties of null" — komunikat, z którego nie wynika ani co
-      // jest zepsute, ani gdzie to naprawić (niezmiennik 4.9: odmowa ma mieć POWÓD).
+      // jest zepsute, ani gdzie to naprawić (reguła: odmowa ma powód).
       if (!proforma) {
         throw bladOperatora('Panel nie ma usługi proform — PDF-u do załącznika nie ma skąd wziąć.');
       }
@@ -166,17 +166,17 @@ export function createWiadomosci({
       // fakturą w bazie pokazuje temat „Faktura" jako dostępny (bariera domeny pyta
       // o `infakt_uuid` i numer, czyli o WIERSZ, a nie o klienta inFaktu) — i dopiero tu
       // wychodziło, że pobrać PDF-u nie ma czym.
-      // Bez programu nie ma czyjej nazwy podać — zdanie zostaje o inFakcie (jedyny program w PRZ-118; tekst: zmiana 09).
-      // PRZ-121.A04b: przy JAWNYM „Brak” (plik albo Ustawienia) zdanie „faktury wyłączone”; bez wyboru — stary tekst.
+      // Bez programu nie ma czyjej nazwy podać — domyślne zdanie mówi o inFakcie.
+      // Przy JAWNYM „Brak” (plik albo Ustawienia) zdanie „faktury wyłączone”; bez wyboru — zdanie domyślne o inFakcie.
       if (!program) {
         throw bladOperatora(zdanieBrakuProgramu(wyborProgramu, 'PDF-u faktury nie ma skąd pobrać.')
           ?? 'Panel nie ma połączenia z inFaktem — PDF-u faktury nie ma skąd pobrać.');
       }
       // ⚠️ NA ŚWIEŻO Z INFAKTU, nie z kopii: dopiero tam dokument ma numer KSeF w pierwszej
       // linii. Ta sama droga, co przy wysyłce faktury na konto kupującego w Allegro.
-      // PRZ-121.A04b: faktura INNEGO programu = 409 `bezProgramu` przed żądaniem — nic nie idzie ani do programu,
+      // Faktura INNEGO programu = 409 `bezProgramu` przed żądaniem — nic nie idzie ani do programu,
       // ani do klienta (błąd złożenia: ślad „nieudane złożenie” na karcie).
-      // PRZ-122.B10b: `pobierzPdf` to wydanie nabywcy — przy TwojeFaktury ZAMYKA fakturę. Podgląd maila (karta,
+      // `pobierzPdf` to wydanie nabywcy — przy TwojeFaktury ZAMYKA fakturę. Podgląd maila (karta,
       // sprawdzanie reguły automatyzacji) niczego nie wydaje: bierze podgląd programu, gdy program go ma.
       const idPdf = idDokumentuDla(k.faktura, program);
       // Faktura VAT (B2B i B2C — B2C-QR) bez numeru KSeF: podgląd odmawia (409) zdaniem z adaptera — tym samym co odmowa
@@ -192,10 +192,10 @@ export function createWiadomosci({
       // odmowa z powodem (np. brak adresu sprzedawcy w konfiguracji) idzie tą samą drogą,
       // co każda nieudana kompozycja — do operatora i do logu (`nieudane-zlozenie`).
       // Zdanie w treści maila zapala FAKT z koperty (`zalacznikWywozu` niżej), nie temat.
-      // PRZ-122.B07h: firma zwolniona z VAT (TwojeFaktury + zapisane zwolnienie) nie robi WDT — bez wywozu.
+      // Firma zwolniona z VAT (TwojeFaktury + zapisane zwolnienie) nie robi WDT — bez wywozu.
       if (czyWdt(daneFaktury(k.z).nip, { zwolniona: sprzedawcaZwolniony(db, program.opis) })) {
         const oswiadczenie = zbudujOswiadczenieWywozuPdf(modelOswiadczenia(k.z, {
-          // PRZ-108.10: NIP z pliku albo Ustawień → Firma; bez NIP-u odmowa (mail z fakturą WDT nie idzie bez wywozu).
+          // NIP z pliku albo Ustawień → Firma; bez NIP-u odmowa (mail z fakturą WDT nie idzie bez wywozu).
           sprzedawca: { ...adresSprzedawcy(config), nip: nipSprzedawcy(config) },
           dzis: k.dzis,
         }));
@@ -223,7 +223,7 @@ export function createWiadomosci({
       // linijkę wyżej, i ten sam powód: przypomnienie bez proformy nie ma żadnego załącznika.
       zalaczonyDokument: zalaczniki.length > 0,
       rachunek: rachunekTeraz(), odbiorca: odbiorcaPrzelewu(config), dzis: k.dzis, podpis: oprawa.podpis,
-      // Zdania, etykiety i stałe teksty z początku `zloz` (PRZ-102.17/19) — czytane przy KAŻDYM złożeniu.
+      // Zdania, etykiety i stałe teksty z początku `zloz` — czytane przy KAŻDYM złożeniu.
       zdania,
     });
 
@@ -249,14 +249,14 @@ export function createWiadomosci({
     };
   }
 
-  // PRZ-108.08 (automatyzacje, C1): `tryb: 'automat'` — ten sam mail, ta sama zgoda domeny i ten sam skład, inny ślad:
+  // `tryb: 'automat'` — ten sam mail, ta sama zgoda domeny i ten sam skład, inny ślad:
   // rejestr dostaje `kto` = `ktoKlikal` („automat: <nazwa reguły>”), dziennik karty „Automatycznie (reguła „…”)”, a błąd
   // złożenia (nic nie poszło) niesie `przedWysylka`, żeby silnik nie uznał go za „niepewne”. Domyślny tryb (ręczny)
-  // zostaje znak w znak — pilnują tego testy wiadomości i tests/moduly/automatyzacje/c1-mail-kupujacy.test.js (test 8).
+  // zostaje znak w znak — pilnują tego testy wiadomości i tests/moduly/automatyzacje/c1-mail-kupujacy.test.js.
   async function wyslij(id, temat_id, { ktoKlikal = 'operator', tryb = 'reczny', regula = null } = {}) {
     const automat = tryb === 'automat';
-    // ⚠️⚠️ ŚLAD TAKŻE WTEDY, GDY NIE BYŁO CZEGO WYSŁAĆ (recenzja całości gałęzi, 22.08.2026 —
-    // najpoważniejsza z odłożonych). Do tej pory `try/catch` obejmował WYŁĄCZNIE `sendMail`,
+    // ⚠️⚠️ ŚLAD TAKŻE WTEDY, GDY NIE BYŁO CZEGO WYSŁAĆ.
+    // Wcześniej `try/catch` obejmował WYŁĄCZNIE `sendMail`,
     // a złożenie treści stało poza nim: padnięty inFakt, zniknięty plik proformy i odmowa
     // domeny oddawały operatorowi 400 i ZERO śladu na karcie. „Kliknąłem, coś mrugnęło, karta
     // pusta" jest dokładnie tym stanem, którego reszta tego modułu unika.
@@ -271,11 +271,11 @@ export function createWiadomosci({
     });
 
     // ⚠️ POTWIERDZENIE: CZYSTA DELEGACJA do starej usługi — ona wysyła, stempluje
-    // `potwierdzenie_wyslane_at` I dopisuje wpis do rejestru (patrz Krok 4).
+    // `potwierdzenie_wyslane_at` I dopisuje wpis do rejestru.
     //
     // ⚠️⚠️ NIE WOLNO TU DOPISAĆ WŁASNEGO `zapiszWiadomosc`. Rejestr wypełnia TA JEDNA
     // usługa, która faktycznie wysyła — zapis w obu miejscach dałby DWA wpisy na jednego
-    // maila, czyli kartę twierdzącą, że klient dostał potwierdzenie dwa razy. (Do 22.08.2026
+    // maila, czyli kartę twierdzącą, że klient dostał potwierdzenie dwa razy. (Wcześniej
     // powodem były DWIE drogi wyjścia — osobna trasa `/potwierdzenie` i sekcja Wiadomości.
     // Tamta trasa zniknęła, ale zasada zostaje: zapisuje ten, kto wysyła.)
     if (temat_id === 'potwierdzenie') {
@@ -297,7 +297,7 @@ export function createWiadomosci({
       w = await zloz(id, temat_id);
     } catch (blad) {
       // ⚠️⚠️ NAZWA ZMIENNEJ INNA NIŻ W `catch` NIŻEJ I TO NIE JEST PRZYPADEK. Mutacja
-      // „połkniący throw" (scripts/mutacje-wiadomosci.mjs) szuka w tym pliku JEDNEJ linii
+      // „połkniący throw" szuka w tym pliku JEDNEJ linii
       // z rzuceniem wyjątku o nazwie „e" i podmienia PIERWSZE jej wystąpienie. Drugie takie
       // samo zdanie tutaj przestawiłoby mutację na niewłaściwą linię, a mutacja mierząca nie
       // to, co opisuje, jest gorsza niż jej brak — skrypt wykrywa BRAK wzorca, ale nie
@@ -305,7 +305,7 @@ export function createWiadomosci({
       //
       // ⚠️ Z TEGO SAMEGO POWODU ten komentarz nie cytuje tamtej linii dosłownie: cytat
       // (z wcięciem i średnikiem) sam stałby się pierwszym wystąpieniem wzorca i mutacja
-      // zakomentowałaby KOMENTARZ. Sprawdzone — dokładnie tak przeżyła raz, 22.08.2026.
+      // zakomentowałaby KOMENTARZ. Sprawdzone — dokładnie tak przeżyła raz.
       odnotujNieudaneZlozenie(blad);
       if (automat && blad && typeof blad === 'object') blad.przedWysylka = true;
       throw blad;
@@ -324,7 +324,7 @@ export function createWiadomosci({
         akcja: 'wiadomosc.blad',
         wynik: `BŁĄD wysyłki „${nazwaTematu(temat_id)}" do ${w.do} (${ktoKlikal}): ${opisBleduPocztyDoLogu(e)}`,
       });
-      // PRZ-109.03: znacznik dla ekranu (zdanie z kodu nodemailera); ten sam obiekt i kod dla ponowień.
+      // Znacznik dla ekranu (zdanie z kodu nodemailera); ten sam obiekt i kod dla ponowień.
       throw oznaczBladPoczty(e);
     }
 
@@ -342,15 +342,15 @@ export function createWiadomosci({
     return { do: w.do, temat: w.temat, kiedy };
   }
 
-  // ⚠️ `ostatnia` ZDJĘTE Z TEJ LISTY (22.08.2026, sprzątanie po recenzji całości gałęzi).
+  // ⚠️ `ostatnia` ZDJĘTE Z TEJ LISTY.
   // Jedyny czytelnik — sekcja „Wiadomości" na karcie — pytał o to CZTERY RAZY na render
   // (raz na temat), a odpowiedź stoi w liście wysłanych, którą trasa i tak pobiera. Liczy ją
-  // teraz `ostatnieWgTematow` (domain/wiadomosci.js), jednym przebiegiem i jedną regułą.
+  // teraz `ostatnieWgTematow` (domena/wiadomosci.js), jednym przebiegiem i jedną regułą.
   /** Szablony własne do menu na karcie — czytane przy każdym renderze (zmiana bez restartu). */
   const tematyWlasne = () => wczytajSzablonyWiadomosci(db).wlasne.map(({ id, nazwa }) => ({ id, nazwa }));
 
   /**
-   * PRZ-122.MAIL-OKNO: czy faktura zamówienia może iść do nabywcy w chwili `chwila` (pyta reguła automatyzacji przed
+   * Czy faktura zamówienia może iść do nabywcy w chwili `chwila` (pyta reguła automatyzacji przed
    * wysyłką — `pobierzPdf` w programie wbudowanym zamyka dokument). `{ gotowa: true }` bez programu, bez faktury,
    * dla dokumentu innego programu (wysyłka odmówi jak dotąd) i dla programu bez `gotowyDoWydania` — wtedy bez zmian.
    * Dwa pytania: okno poprawek (`gotowyDoWydania`) ORAZ numer KSeF (`zdanieCzekaniaNaKsef`) — VAT bez numeru jest dla

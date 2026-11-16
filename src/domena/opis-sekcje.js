@@ -229,7 +229,7 @@ export function sekcjeAllegroDoSekcji(description) {
     const elementy = [];
     for (const item of sekcja.items ?? []) {
       if (item?.type === 'IMAGE') {
-        // `url` przychodzi w JSON-ie, nie w HTML-u — „&amp;” zostaje bez zmian (PRZ-160.04a). Adres, który
+        // `url` przychodzi w JSON-ie, nie w HTML-u — „&amp;” zostaje bez zmian. Adres, który
         // byłby niebezpieczny po zdekodowaniu encji (`&#106;avascript:`), i tak odrzucamy.
         const adres = adresZdjecia(item.url) === null ? null : adresZdjecia(item.url, false);
         if (adres !== null) elementy.push({ typ: 'zdjecie', adres });

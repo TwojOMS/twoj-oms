@@ -1,4 +1,4 @@
-// PRZ-126.C05a: zgłoszenia komputerów z drukarką faktur — bez migracji, w tabeli `ustawienia` (jak ksef-konsumenckie.js).
+// Zgłoszenia komputerów z drukarką faktur — bez migracji, w tabeli `ustawienia` (jak ksef-konsumenckie.js).
 // Wartość: JSON { "<stanowisko>": "<ISO>" }, najwyżej 20 wpisów; reguły w src/domena/druk-faktur.js.
 import { czyZapisac, dopisz } from '../../../domena/druk-faktur.js';
 

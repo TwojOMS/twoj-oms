@@ -1,4 +1,4 @@
-// Śledzenie zmian dla indeksu listy zamówień (PRZ-051).
+// Śledzenie zmian dla indeksu listy zamówień.
 //
 // Wyzwalacze TEMP — żyją w połączeniu, nie w pliku bazy, więc nie są migracją i nie wchodzą
 // w kontrolę schematu (baseline, strażnik migracji). Każdy zapis tym połączeniem w tabelach,
@@ -28,7 +28,7 @@ const WYZWALACZE = [
   ...OPERACJE.map((op) => wyzwalacz('lista_zamowienia', op, 'zamowienia', 'VALUES (OLD.id)', 'VALUES (NEW.id)')),
   ...TABELE_DZIECI.filter(t => t !== 'zamowienia_status_wlasny').flatMap((t) => OPERACJE.map((op) => wyzwalacz(`lista_${t}`, op, t,
     'VALUES (OLD.zamowienie_id)', 'VALUES (NEW.zamowienie_id)'))),
-  // ⚠️ `wysylki_ksef` CELOWO BEZ WYZWALACZA (recenzja PRZ-051): odczyt faktury dokleja z niej
+  // ⚠️ `wysylki_ksef` CELOWO BEZ WYZWALACZA: odczyt faktury dokleja z niej
   // `ksef_zlecona_at`, ale nie czyta tego żadna reguła indeksu (status, lista robocza, termin,
   // filtry, fraza) — wiersz listy i tak liczy się na żywo. Wyzwalacz kosztowałby skan całych
   // `faktury` po `infakt_uuid` przy każdym zapisie rezerwacji. Reguła, która zacznie czytać
@@ -39,7 +39,7 @@ const WYZWALACZE = [
 export function sledzZmianyListy(db) {
   if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'lista_brudne'").get()) return false;
   for (const sql of WYZWALACZE) db.exec(sql);
-  // Wąski skład modułów może mieć indeks z PRZ-051, ale nie nowszą migrację etapów.
+  // Wąski skład modułów może mieć tabele indeksu listy, ale nie nowszą migrację statusów własnych.
   if (db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='zamowienia_status_wlasny'").get()) {
     for (const op of OPERACJE) db.exec(wyzwalacz('lista_zamowienia_status_wlasny', op, 'zamowienia_status_wlasny',
       'VALUES (OLD.zamowienie_id)', 'VALUES (NEW.zamowienie_id)'));

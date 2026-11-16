@@ -37,7 +37,7 @@ export function zbudujUslugiKanalow(ctx:KontekstModulu<ReturnType<typeof konfigu
  const repozytoriumKanalow=createRepozytoriumKanalow({db,definicjeEnv:definicje,konfiguracjaEnv:{...envKanaly,...config.erli},teraz:ctx.teraz});
  // Atrapa autoryzacji jest wstrzykiwana wyłącznie w OMS_TRYB=proba.
  const opcje=o.autoryzacjaAtrapy;
- // PRZ-148.07: tryb próby (moduł ustawia strazAllegro) — wszystkie drogi do Allegro idą przez odmowę hosta.
+ // Tryb próby (moduł ustawia strazAllegro) — wszystkie drogi do Allegro idą przez odmowę hosta.
  const fetchAllegro=o.strazAllegro?strzezAllegroProby({profil:o.strazAllegro,fetchImpl:o.fetchImpl}):o.fetchImpl;
  const httpAutoryzacji=opcje?.http??utworzHttp({fetchImpl:fetchAllegro,ponowien:0});
  const userAgent=()=>{
@@ -77,7 +77,7 @@ export function zbudujUslugiKanalow(ctx:KontekstModulu<ReturnType<typeof konfigu
  // Nowe kanały mają gwarantowany prefiks allegro_; rozpoznaje go też SQL domeny.
  // Dodatkowy zbiór służy wyłącznie niezmiennym kluczom legacy z env.
  ustawKanalyAllegro(definicje.filter(d=>d.typ==='allegro').map(d=>d.klucz));
- // PRZ-157.00 (D9): moduł zamówienia z typu połączenia (env albo kanaly_sprzedazy.typ), czytanego na żywo — panel nie musi odświeżać.
+ // Moduł zamówienia z typu połączenia (env albo kanaly_sprzedazy.typ), czytanego na żywo — panel nie musi odświeżać.
  ustawRejestrKanalow(repozytoriumKanalow.typKanalu);
  const kluczeDostepu=()=>repozytoriumKanalow.lista().filter(k=>skonfigurowany(k)&&(k.autoryzacja==='polaczone'||(k.zrodlo==='env'&&k.autoryzacja==='brak'))&&!repozytoriumKanalow.konfliktKlucza(k.klucz)).map(k=>k.klucz);
  config.kanaly=mapaNaZadanie(kluczeDostepu,ustawienia);
@@ -97,9 +97,9 @@ export function zbudujUslugiKanalow(ctx:KontekstModulu<ReturnType<typeof konfigu
   stan:():any=>{const stany=zbiorczy.stany();return stany.find(s=>bladPolleraNaEkran(s))??stany.find(s=>s?.ostatni_blad)??stany[0]??null;}};
  const zdjecia=createZdjeciaAllegro({db,klienci:mapaNaZadanie(kluczeDostepu,k=>klienciKanalow[k])});
  const poller=zPobieraniemZdjec(zbiorczy,zdjecia);
- // PRZ-160 E3.02 (D42, decyzja właściciela pkt 1): trzy ścieżki zgody na oferty.
+ // Trzy ścieżki zgody na oferty.
  // env = konto z pliku (Device Flow ponownie, bez rozłączania); panel = aplikacja Device z instalacji
- // (E3d.01: też Device Flow ponownie, bez rozłączania; nowa para tylko dla tego samego konta Allegro);
+ // (też Device Flow ponownie, bez rozłączania; nowa para tylko dla tego samego konta Allegro);
  // dcr = oferty niedostępne.
  const sciezkaOfert=(k:PolaczenieKanalu):'env'|'panel'|'dcr'=>k.zrodlo==='env'?'env'
   :k.aplikacja==='device'||(k.aplikacja==null&&k.autoryzacja!=='polaczone'&&aplikacjaAllegro.aplikacjaDevice(k.srodowisko))?'panel':'dcr';
@@ -130,10 +130,10 @@ export function zbudujUslugiKanalow(ctx:KontekstModulu<ReturnType<typeof konfigu
  };
  const zarzadzanieAllegro=createZarzadzanieAllegro({db,repozytorium:repozytoriumKanalow,autoryzacja:autoryzacjaAllegro,rejestr:rejestrKanalow,teraz:ctx.teraz,poAktywacji:k=>poAktywacji(repozytoriumKanalow.pobierz(k.klucz)!)});
  const przegladZapisowAllegro=createPrzegladZapisowAllegro({db,repozytorium:repozytoriumKanalow,rejestr:rejestrKanalow,teraz:ctx.teraz});
- // PRZ-160 E3.02 (D42): zgoda na oferty na żądanie. Ani sprawdzenie aplikacji, ani „chcę” nie
+ // Zgoda na oferty na żądanie. Ani sprawdzenie aplikacji, ani „chcę” nie
  // ruszają konta (wersja, generacja, tokeny) — zapisują wyłącznie swój znacznik.
  const NIEDOSTEPNE='Oferty niedostępne w tej instalacji. Konto połączone przez logowanie w przeglądarce nie może poprosić o zgodę na oferty.';
- // PRZ-160 E3d.01: połączone konto z panelu wiąże się ponownie tylko po „Chcę wystawiać oferty”,
+ // Połączone konto z panelu wiąże się ponownie tylko po „Chcę wystawiać oferty”,
  // gdy token nie ma zakresów ofert, a aplikacja Device je ma. Inne powody (wygasła zgoda) dalej
  // prowadzą przez rozłączenie i nowe połączenie.
  function ponownaZgodaPanelu(klucz:string){
@@ -146,7 +146,7 @@ export function zbudujUslugiKanalow(ctx:KontekstModulu<ReturnType<typeof konfigu
   stan(klucz:string){
    const k=repozytoriumKanalow.pobierz(klucz);if(!k)return null;
    const sciezka=sciezkaOfert(k),a=aplikacjaOfert(k);
-   // E3.25: ekran i Magazyn czytają ten sam token, także gdy klient konta jest atrapą.
+   // Ekran i Magazyn czytają ten sam token, także gdy klient konta jest atrapą.
    const token=wczytajTokeny(db,klucz)?.access_token;
    const zgoda=maZgodeNaOferty(token)?true:brakZgodyNaOferty(token)?false:null;
    const wolnoWiazac=sciezka==='env'?stanyKanalow().find((s:any)=>s.kanal===klucz)?.wolnoWiazac===true:ponownaZgodaPanelu(klucz);

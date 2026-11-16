@@ -6,32 +6,60 @@ import {
   rowneStaloCzasowo, polaczenieBezpieczne,
 } from '../../../core/bezpieczenstwo/logowanie-wspolne.js';
 import { wczytajSekret } from '../../../core/bezpieczenstwo/sekret-sesji.js';
-// ⚠️ `bezpiecznyPowrot` mieszka w domain/motyw.js, bo tam powstal — ale jest OGOLNA bramka
-// na przekierowanie, nie czescia przelacznika motywu. Kopiowanie go tutaj dalo by dwie
-// implementacje tej samej reguly bezpieczenstwa, ktore rozjada sie przy pierwszej poprawce.
+// ⚠️ `bezpiecznyPowrot` mieszka w core/bezpieczenstwo/powrot.js — to OGÓLNA bramka na
+// przekierowanie, nie część przełącznika motywu (domena/motyw.js tylko go przekazuje dalej).
+// Kopiowanie go tutaj dałoby dwie implementacje tej samej reguły bezpieczeństwa, które
+// rozjadą się przy pierwszej poprawce.
 import { bezpiecznyPowrot } from '../../../core/bezpieczenstwo/powrot.js';
 import { kontoPoLoginie, dopiszLogowanie, czyIstniejeCzynnyAdmin } from '../../../core/bezpieczenstwo/konta.js';
 import { zahaszuj, zgodneHaslo } from '../../../domena/hasla.js';
+import { MODULY_FAKTUR } from '../../../domena/wybor-programu.js';
 
-export function registerLogowanieRoutes(app, { db, config }) {
-  const nazwaCiasteczka = nazwaCiasteczkaOms(config.proba); // PRZ-080
-  const hamulec = hamulecLogowaniaDla(db);
-  // ⚠️⚠️ W2 (recenzja 2026-09-12): ZAPIS-ATRAPA, POLICZONY RAZ przy rejestracji tras, nie
-  // przy kazdym zadaniu — patrz uzycie nizej. Zmierzone PRZED ta poprawka na prawdziwym
-  // serwerze (mediana z czterech prob): konto istniejace i czynne ze zlym haslem — 47,6 ms;
-  // konto nieistniejace — 6,8 ms; konto wylaczone — 6,1 ms. Powod: `zTabeli.czynne &&
-  // zgodneHaslo(...)` skracalo reszte przez `&&`, wiec scrypt (N=16384, jedyny drogi krok
-  // w calej trasie) odpalal sie WYLACZNIE dla konta istniejacego i czynnego — a to pozwala
-  // wyliczyc loginy pracownikow i to, ktore konta sa wylaczone, z samego czasu odpowiedzi.
-  const ATRAPA_HASLA = zahaszuj('atrapa-czasu-logowania-nigdy-nie-jest-prawdziwym-haslem');
+// Programy do faktur z rejestru wyboru programu (dostępne bez zgody, bez „Brak”): „A albo B”, „A, B albo C”.
+// Z rejestru, a nie wpisane w widok — nowy program pojawi się na ekranie logowania sam. Program dostępny
+// dopiero po zgodzie instalacji nie trafia na ekran, który widzi każdy.
+const programyFaktur = () => {
+  const nazwy = MODULY_FAKTUR.filter((m) => m.dostepny === true && m.id !== 'brak').map((m) => m.etykieta);
+  return nazwy.length > 1 ? `${nazwy.slice(0, -1).join(', ')} albo ${nazwy.at(-1)}` : (nazwy[0] ?? '');
+};
 
-  app.get('/login', async (req, reply) => reply.view('login.ejs', {
+// W demo nazwa nadawcy ma dopisek „(demo)” dla dokumentów. Na ekranie logowania zdanie i tak mówi,
+// że firma jest zmyślona, więc dopisek byłby powtórzeniem.
+const bezDopiskuDemo = (nazwa) => nazwa.replace(/\s*\(demo\)$/i, '');
+
+// `firma` — nazwa z adresu firmy (plik albo Ustawienia), czytana przy każdym wejściu na ekran.
+export function registerLogowanieRoutes(app, { db, config, firma = /** @type {() => (string | null)} */ (() => null) }) {
+  const nazwaCiasteczka = nazwaCiasteczkaOms(config.proba);
+  const nazwaFirmy = () => {
+    const n = String(firma() ?? '').trim();
+    return (config.demo ? bezDopiskuDemo(n) : n) || null;
+  };
+  // Formularz konta w demo: wejście `/login?konto`, powrót po błędzie tego formularza i po ustawieniu hasła.
+  const formularzKonta = (req) => Boolean(config.demo)
+    && (req.query?.konto !== undefined || req.body?.formularz === 'konto' || req.query?.haslo === 'ustawione');
+  const ekran = (req, reply, dane) => reply.view('login.ejs', {
     title: 'Logowanie',
     bezPaska: true,
-    powrot: bezpiecznyPowrot(req.query?.powrot),
+    ekranLogowania: true,
+    firma: nazwaFirmy(),
+    programyFaktur: programyFaktur(),
+    formularzKonta: formularzKonta(req),
+    komunikat: null,
     blad: null,
     zostaloS: 0,
-    // PRZ-069: po ustawieniu hasła z jednorazowego linku (trasy/haslo-link.js) — bez automatycznego logowania.
+    ...dane,
+  });
+  const hamulec = hamulecLogowaniaDla(db);
+  // ⚠️⚠️ ZAPIS-ATRAPA, POLICZONY RAZ przy rejestracji tras, nie przy każdym żądaniu — patrz
+  // użycie niżej. Scrypt (N=16384) to jedyny drogi krok w całej trasie: gdy liczy się
+  // WYŁĄCZNIE dla konta istniejącego i czynnego, odpowiedź trwa kilkadziesiąt ms zamiast
+  // kilku, a z samego czasu odpowiedzi da się wyliczyć loginy pracowników i to, które konta
+  // są wyłączone.
+  const ATRAPA_HASLA = zahaszuj('atrapa-czasu-logowania-nigdy-nie-jest-prawdziwym-haslem');
+
+  app.get('/login', async (req, reply) => ekran(req, reply, {
+    powrot: bezpiecznyPowrot(req.query?.powrot),
+    // Po ustawieniu hasła z jednorazowego linku (trasy/haslo-link.js) — bez automatycznego logowania.
     komunikat: req.query?.haslo === 'ustawione' ? 'Hasło ustawione — zaloguj się nowym hasłem.' : null,
   }));
 
@@ -40,24 +68,20 @@ export function registerLogowanieRoutes(app, { db, config }) {
     const login = String(req.body?.uzytkownik ?? '');
 
     const odmowLimit = (stan, zapisz = true) => {
-      // ⚠️ W3 (recenzja 2026-09-12): ten wpis BRAKOWAL. Osiem zlych prob pod rzad dawalo
-      // PIEC wpisow w dzienniku — ta galaz wracala PRZED `dopiszLogowanie` nizej, wiec
-      // wypadaly z logu dokladnie najglosniejsze proby, czyli te, o ktore dziennik pyta
-      // sie najczesciej. Bez sprawdzania hasla (i tak nie liczymy tu scryptu — kara juz
-      // trwa) — wlasny wynik `zablokowane`, zeby nie mylic go ze zwyklym zlym haslem.
+      // ⚠️ Ta gałąź wraca PRZED `dopiszLogowanie` niżej, więc bez tego wpisu z dziennika
+      // wypadałyby dokładnie najgłośniejsze próby, czyli te, o które dziennik pyta się
+      // najczęściej. Bez sprawdzania hasła (i tak nie liczymy tu scryptu — kara już trwa) —
+      // własny wynik `zablokowane`, żeby nie mylić go ze zwykłym złym hasłem.
       //
-      // ⚠️⚠️ N1 (druga fala 2026-09-12): W3 pisalo TEN wpis na KAZDE zadanie w trakcie kary,
-      // nie tylko na pierwsze — hamulec sam NIE PISZE, wiec nic go nie spowalnialo, i 60 s
-      // kary zamienialo sie w 60 s pisania bez ograniczenia. `zapiszBlokadeRaz` pilnuje, zeby
-      // jedna kara dala co najwyzej jeden taki wiersz (patrz hamulec.js).
+      // ⚠️⚠️ Wpis NIE na każde żądanie w trakcie kary: hamulec sam NIE PISZE, więc nic by go
+      // nie spowalniało, a kara zamieniłaby się w pisanie bez ograniczenia. `zapiszBlokadeRaz`
+      // pilnuje, żeby jedna kara dała co najwyżej jeden taki wiersz (patrz hamulec.js).
       if (zapisz && hamulec.zapiszBlokadeRaz(req.ip, login)) {
         dopiszLogowanie(db, {
           login: String(req.body?.uzytkownik ?? ''), usluga: 'oms', ip: req.ip, wynik: 'zablokowane',
         });
       }
-      return reply.status(429).header('Retry-After', Math.ceil(stan.zostaloMs / 1000)).view('login.ejs', {
-        title: 'Logowanie',
-        bezPaska: true,
+      return ekran(req, reply.status(429).header('Retry-After', Math.ceil(stan.zostaloMs / 1000)), {
         powrot,
         blad: 'zablokowane',
         zostaloS: Math.ceil(stan.zostaloMs / 1000),
@@ -78,41 +102,32 @@ export function registerLogowanieRoutes(app, { db, config }) {
     const zgodnyUzytkownik = rowneStaloCzasowo(req.body?.uzytkownik, config.auth.user);
     const zgodneHasloEnv = rowneStaloCzasowo(req.body?.haslo, config.auth.pass);
 
-    // ⚠️⚠️ W2 (recenzja 2026-09-12): scrypt liczy sie ZAWSZE, takze gdy `zTabeli` nie
-    // istnieje albo jest wylaczone — przeciwko `ATRAPA_HASLA` (zbudowanej RAZ wyzej, przy
-    // rejestracji tras). Wczesniej `zTabeli.czynne && zgodneHaslo(...)` skracalo sie przez
-    // `&&` PRZED wywolaniem scryptu dla konta nieistniejacego albo wylaczonego (47,6 ms /
-    // 6,8 ms / 6,1 ms, patrz `ATRAPA_HASLA` wyzej). PO TEJ POPRAWCE zmierzone (mediana
-    // z 8 prob na osobnych serwerach, zeby hamulec nie wciol scryptu po piatej probie):
-    // istniejace+czynne ze zlym haslem 97,3 ms; nieistniejace 93,4 ms; wylaczone 98,6 ms —
-    // trzy przypadki w granicach szumu pomiaru, nierozroznialne. Wynik porownania
-    // z ATRAPA_HASLA jest ODRZUCANY (patrz `hasloPasuje` i komentarz N4 nizej) — chodzi
-    // WYLACZNIE o to, zeby czas byl ten sam, nie o to, zeby atrapa kogokolwiek wpuscila.
+    // ⚠️⚠️ Scrypt liczy się ZAWSZE, także gdy `zTabeli` nie istnieje albo jest wyłączone —
+    // przeciwko `ATRAPA_HASLA` (zbudowanej RAZ wyżej, przy rejestracji tras). Skrót
+    // `zTabeli.czynne && zgodneHaslo(...)` pomijałby scrypt dla konta nieistniejącego albo
+    // wyłączonego. Z zawsze liczonym scryptem konto istniejące ze złym hasłem, nieistniejące
+    // i wyłączone odpowiadają w podobnym czasie (rzędu 100 ms), w granicach szumu pomiaru.
+    // Wynik porównania z ATRAPA_HASLA jest ODRZUCANY (patrz `hasloPasuje` niżej) — chodzi
+    // WYŁĄCZNIE o to, żeby czas był ten sam, nie o to, żeby atrapa kogokolwiek wpuściła.
     const zgodnoscZHaszem = zgodneHaslo(req.body?.haslo ?? '', wierszHasla?.hash_hasla ?? ATRAPA_HASLA);
-    // ⚠️⚠️ N4 (druga fala 2026-09-12): `zgodnoscZHaszem` powyzej LICZY SIE ZAWSZE (scrypt,
-    // dla kanalu czasowego — patrz ATRAPA_HASLA wyzej), takze gdy porownanie poszlo przeciw
-    // ATRAPA_HASLA, bo `wierszHasla` bylo puste. Komentarz w tym miejscu twierdzil kiedys,
-    // ze taki wynik jest „ZAWSZE odrzucany" dzieki `zTabeli &&` w `wpuszczony` nizej — ale to
-    // bylo prawdziwe TYLKO dla konta NIEISTNIEJACEGO. Dla konta, ktore W TABELI JEST, a
-    // `wierszHasla` wyszloby puste (dzis nieosiagalne: `hash_hasla TEXT NOT NULL`), `zTabeli`
-    // samo w sobie jest prawdziwe niezaleznie od `wierszHasla` — wiec bezpieczenstwo bylo
-    // PRZYPADKOWE (trzyma je wylacznie schemat bazy), nie ZAMIERZONE (trzyma je kod). Jawna
-    // bramka na `wierszHasla !== null` odcina to od schematu: nawet gdyby ta kolumna kiedys
-    // stala sie nullable, atrapa hasla (jawny string w zrodle) nie moglaby sama stac sie
-    // prawdziwym haslem do cudzego konta.
+    // ⚠️⚠️ `zgodnoscZHaszem` powyżej LICZY SIĘ ZAWSZE (scrypt, dla kanału czasowego — patrz
+    // ATRAPA_HASLA wyżej), także gdy porównanie poszło przeciw ATRAPA_HASLA, bo `wierszHasla`
+    // było puste. Samo `zTabeli` w `wpuszczony` niżej odrzuca taki wynik TYLKO dla konta
+    // NIEISTNIEJĄCEGO. Dla konta, które W TABELI JEST, a `wierszHasla` wyszłoby puste (dziś
+    // nieosiągalne: `hash_hasla TEXT NOT NULL`), bezpieczeństwo trzymałby wyłącznie schemat
+    // bazy. Jawna bramka na `wierszHasla !== null` odcina to od schematu: nawet gdyby ta
+    // kolumna kiedyś stała się nullable, atrapa hasła (jawny string w źródle) nie mogłaby
+    // sama stać się prawdziwym hasłem do cudzego konta.
     const hasloPasuje = wierszHasla !== null && zgodnoscZHaszem;
 
-    // ⚠️⚠️ DECYZJA WLASCICIELA (druga fala 2026-09-12, punkt 5): dopoki w tabeli jest CZYNNY
-    // admin, `/login` ma odrzucac haslo z `.env` DOKLADNIE jak kazde zle haslo — inaczej
-    // takie poswiadczenie maszynowe (Basic Auth panelu :3000, integracja „Dodaj do OMS")
-    // dawaloby sie zamienic formularzem na ciasteczko przegladarkowe, ktore otwiera 9 tras
-    // `/api/*` z zapisami. Do tego udane logowanie serwisowe wola `hamulec.wyczysc(req.ip)`
-    // nizej — bez tej bramki kazdy, kto zna haslo z `.env`, moglby nim kasowac sobie licznik
-    // prob i bez konca zgadywac hasla kont z tabeli, nigdy nie zapalajac kary.
+    // ⚠️⚠️ Dopóki w tabeli jest CZYNNY admin, `/login` odrzuca hasło z `.env` DOKŁADNIE jak
+    // każde złe hasło — inaczej to poświadczenie maszynowe (Basic Auth programu zewnętrznego)
+    // dałoby się zamienić formularzem na ciasteczko przeglądarkowe, które otwiera trasy
+    // `/api/*` z zapisami.
     //
-    // Przy PUSTEJ tabeli (`czynnyAdminIstnieje === false`) `.env` MA dalej wpuszczac — to
-    // jedyna droga pierwszego uruchomienia, takze u kogos, kto kupil ten kod (pilnuje tego
-    // tests/oms/logowanie.test.js).
+    // Gdy nie ma czynnego admina (`czynnyAdminIstnieje === false`), `.env` MA dalej wpuszczać —
+    // to jedyna droga pierwszego uruchomienia, także w nowej instalacji (pilnuje tego
+    // tests/moduly/ustawienia/logowanie.test.js).
     const czynnyAdminIstnieje = czyIstniejeCzynnyAdmin(db);
     const wpuszczonySerwisowo = zgodnyUzytkownik && zgodneHasloEnv && !czynnyAdminIstnieje;
 
@@ -128,17 +143,15 @@ export function registerLogowanieRoutes(app, { db, config }) {
         // Czlowiekowi nie mowimy, ktore pole bylo zle; administratorowi czytajacemu
         // dziennik mowimy wszystko — to sa dwa rozne czytelniki.
         //
-        // ⚠️ D5 (recenzja 2026-09-12): PRZED W2 haslo dla konta wylaczonego nie bylo w ogole
-        // sprawdzane (`&&` skracal sie na `zTabeli.czynne`), a dziennik i tak pisal
-        // „konto-wylaczone" — czyli twierdzil, ze cos ustalil, czego nie sprawdzil. Teraz
-        // `hasloPasuje` jest policzone ZAWSZE (W2 wyzej), wiec dziennik mowi to, co
-        // NAPRAWDE wiadomo: haslo bylo zgodne (a blokuje wylacznie `czynne`) → konto
-        // wylaczone; haslo bylo zle → zle haslo, niezaleznie od tego, czy konto jest czynne.
+        // ⚠️ `hasloPasuje` jest policzone ZAWSZE (scrypt wyżej), więc dziennik mówi to, co
+        // NAPRAWDĘ wiadomo: hasło było zgodne (a blokuje wyłącznie `czynne`) → konto
+        // wyłączone; hasło było złe → złe hasło, niezależnie od tego, czy konto jest czynne.
+        // Dziennik nie twierdzi, że ustalił coś, czego nie sprawdził.
         //
-        // ⚠️⚠️ Punkt 5 (druga fala 2026-09-12): TRZECI wynik, osobny od „zle haslo" — haslo
-        // z `.env` bylo w rzeczywistosci POPRAWNE, ale odrzucone bo w tabeli jest juz czynny
-        // admin. Administrator czytajacy dziennik ma widziec, ze ktos ZNA haslo serwisowe
-        // i probuje go uzyc, a nie ze ktos zgadywal na slepo — to dwie rozne sprawy.
+        // ⚠️⚠️ TRZECI wynik, osobny od „złe hasło” — hasło z `.env` było w rzeczywistości
+        // POPRAWNE, ale odrzucone, bo w tabeli jest już czynny admin. Administrator czytający
+        // dziennik ma widzieć, że ktoś ZNA hasło serwisowe i próbuje go użyć, a nie że ktoś
+        // zgadywał na ślepo — to dwie różne sprawy.
         wynik: (() => {
           if (zTabeli) return hasloPasuje ? 'konto-wylaczone' : 'zle-haslo';
           if (zgodnyUzytkownik && zgodneHasloEnv && czynnyAdminIstnieje) return 'serwisowe-odrzucone';
@@ -157,9 +170,7 @@ export function registerLogowanieRoutes(app, { db, config }) {
         await hamulec.opoznij(req.ip, login, Date.now(), hamulec.wiarygodnyAdres(req));
         return odmowLimit(limit, false);
       }
-      return reply.status(401).view('login.ejs', {
-        title: 'Logowanie',
-        bezPaska: true,
+      return ekran(req, reply.status(401), {
         powrot,
         // ⚠️ Komunikat NIE MOWI, ktore pole bylo zle. „Zly login" i „zle haslo" to dwa
         // rozne komunikaty, z ktorych zgadujacy odczytuje, ze nazwa konta jest trafiona.
@@ -188,8 +199,8 @@ export function registerLogowanieRoutes(app, { db, config }) {
 
   app.post('/login', async (req, reply) => {
     const zwolnij = await hamulec.zajmij(req, String(req.body?.uzytkownik ?? ''));
-    if (!zwolnij) return reply.status(429).header('Retry-After', 2).view('login.ejs', {
-      title: 'Logowanie', bezPaska: true, powrot: bezpiecznyPowrot(req.body?.powrot), blad: 'zablokowane', zostaloS: 2,
+    if (!zwolnij) return ekran(req, reply.status(429).header('Retry-After', 2), {
+      powrot: bezpiecznyPowrot(req.body?.powrot), blad: 'zablokowane', zostaloS: 2,
     });
     try { return await loguj(req, reply); }
     finally { zwolnij(); }

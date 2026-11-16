@@ -22,7 +22,7 @@ import { zrodloNipuIBdoFirmy } from '../../oms/db/nip-bdo-firmy.js';
 import { wczytajKonfiguracjeIntegracji } from '../../oms/db/konfiguracja-integracji.js';
 import { uslugaGus, odmowaGusWProbie } from './gus-ustawien.ts';
 import { registerUstawieniaGusRoutes } from './ustawienia-gus.js';
-// PRZ-083: `fabryki.createGusClient` — atrapa GUS piaskownicy i demo (deploy/proba/atrapy/gus.mjs), jak fabryki inFaktu
+// `fabryki.createGusClient` — atrapa GUS piaskownicy i demo (deploy/proba/atrapy/gus.mjs), jak fabryki inFaktu
 // i VIES w module faktur. Poza OMS_TRYB=proba odmowa już przy konfiguracji.
 export function createModulZamowienia({ zWiadomosciami = false, fabryki = {} as { createGusClient?: (opcje?: { klucz: string; url: string }) => any } } = {}): ModulOms<ReturnType<typeof konfiguracjaZamowien>> { return {
   nazwa:'zamowienia',wersja:'1.0.0',wymaga:['rdzen','web','kanaly','faktury',...(zWiadomosciami?['wiadomosci']:[])],migracje:[migracjaIndeksuListy,migracjaStatusowWlasnych,migracjaScalen],
@@ -43,7 +43,7 @@ export function createModulZamowienia({ zWiadomosciami = false, fabryki = {} as 
     sprawdzZapisZwrotny(MODULY_KANALOW.woo, zwrotneSklepu({ ustawStatus: async () => undefined }));
     sprawdzZapisZwrotny(MODULY_KANALOW.allegro, zwrotneAllegro({ ustawStatusRealizacji: async () => undefined }));
     const syncSklep=createSyncSklep({db:ctx.db,klienci,klienciKanalow,czynny:()=>Object.keys(klienci).length>0||Object.keys(klienciKanalow).length>0});
-    // PRZ-102.11: usługa GUS z bieżącej konfiguracji (plik → atrapa piaskownicy → Ustawienia → brak), pytana przy
+    // Usługa GUS z bieżącej konfiguracji (plik → atrapa piaskownicy → Ustawienia → brak), pytana przy
     // każdym żądaniu — klucz zapisany w Ustawienia → Integracje → GUS działa bez restartu (gus-ustawien.ts).
     const gus=uslugaGus({
       zPliku:!fabryki.createGusClient&&ctx.konfiguracja.gus?createGusClient(ctx.konfiguracja.gus):null,
@@ -52,22 +52,22 @@ export function createModulZamowienia({ zWiadomosciami = false, fabryki = {} as 
       fabryka:fabryki.createGusClient??(ctx.konfiguracja.proba?odmowaGusWProbie:(o:{klucz:string;url:string})=>createGusClient(o)),
       adres:ctx.konfiguracja.gusAdres,
     });
-    // PRZ-093.08: sprzedawca specyfikacji — plik albo Ustawienia → Firma (czytane przy każdym dokumencie).
+    // Sprzedawca specyfikacji — plik albo Ustawienia → Firma (czytane przy każdym dokumencie).
     const adresFirmy=zrodloAdresuFirmy({db:ctx.db,zPliku:ctx.konfiguracja.nadawca});
-    // PRZ-108.10: NIP i BDO specyfikacji — plik albo Ustawienia → Firma (każde pole osobno, czytane przy każdym dokumencie).
+    // NIP i BDO specyfikacji — plik albo Ustawienia → Firma (każde pole osobno, czytane przy każdym dokumencie).
     const nipBdoFirmy=zrodloNipuIBdoFirmy({db:ctx.db,zPliku:ctx.konfiguracja.proforma});
     const opcje = {db:ctx.db,config:{...ctx.usluga<object>('kanaly','config'),...ctx.konfiguracja,adresFirmy:adresFirmy.adres,nipBdoFirmy:nipBdoFirmy.biezacy},
       poller:ctx.usluga('kanaly','poller'),stanyKanalow:ctx.usluga('kanaly','stanyKanalow'),
       // Pełny skład pobiera pocztę z jedynego modułu wiadomości podczas rejestracji tras.
       wiadomosci:null,gus,syncSklep,zdrowie:null,
     };
-    // PRZ-117: status po chwilowej awarii kanału/sklepu wraca sam (zegary.ts).
+    // Status po chwilowej awarii kanału/sklepu wraca sam (zegary.ts).
     const zegary=syncSklep?[zegarPonawianiaStatusow({sync:syncSklep,teraz:ctx.teraz,log:ctx.log})]:[];
     return {zegary,uslugi:{config:opcje.config,zapytania,miniaturyEkranu,opcjeTras:opcje,syncSklep,gus,konfiguracjaGus:gus,
       wczytajListe:(...a:Parameters<ReturnType<typeof createKontekstZamowien>['wczytajListe']>)=>{if(!kontekst)throw new Error('Trasy zamówień nie zostały jeszcze złożone');return kontekst.wczytajListe(...a);},
-      // PRZ-122.B07c: flaga „zw” programu fakturowego z kontekstu karty — API panelu liczy tak samo jak karta.
+      // Flaga „zw” programu fakturowego z kontekstu karty — API panelu liczy tak samo jak karta.
       opcjeZw:()=>{if(!kontekst)throw new Error('Trasy zamówień nie zostały jeszcze złożone');return kontekst.opcjeZw;},
-      // PRZ-126.C02: odmowa wystawienia faktury (moduł faktur) wraca jako karta z błędem przy polu.
+      // Odmowa wystawienia faktury (moduł faktur) wraca jako karta z błędem przy polu.
       renderujKarte:(...a:Parameters<ReturnType<typeof createKontekstZamowien>['renderujKarte']>)=>{if(!kontekst)throw new Error('Trasy zamówień nie zostały jeszcze złożone');return kontekst.renderujKarte(...a);}},
       trasy:app=>{
         kontekst=createKontekstZamowien({...ctx.usluga<object>('zamowienia','opcjeTras'),
@@ -80,7 +80,7 @@ export function createModulZamowienia({ zWiadomosciami = false, fabryki = {} as 
             }
             return odczyt();
           },
-          // PRZ-122.B16a: stan kopii bazy do tabelki ostrzeżeń; bez modułu zdrowie — brak wiersza, nie błąd.
+          // Stan kopii bazy do tabelki ostrzeżeń; bez modułu zdrowie — brak wiersza, nie błąd.
           kopie:()=>{
             let odczyt:()=>unknown;
             try{odczyt=ctx.usluga<()=>unknown>('zdrowie','kopie');}
@@ -92,19 +92,19 @@ export function createModulZamowienia({ zWiadomosciami = false, fabryki = {} as 
           },
           ...(zWiadomosciami?{wiadomosci:ctx.usluga('wiadomosci','wiadomosci')}:{}),
           nadanie:ctx.usluga('wysylka','nadanie'),kurierzy:ctx.usluga('wysylka','kurierzy'),przesylkiAllegro:ctx.usluga('wysylka','przesylkiAllegro'),
-          // PRZ-102.11: GUS jak inne usługi — z rejestru (nadpisanie `zamowienia.gus` w testach), nie z kopii opcji.
+          // GUS jak inne usługi — z rejestru (nadpisanie `zamowienia.gus` w testach), nie z kopii opcji.
           gus:ctx.usluga('zamowienia','gus'),
           faktura:ctx.usluga('faktury','faktura'),proforma:ctx.usluga('faktury','proforma'),
           fakturaAllegro:ctx.usluga('faktury','fakturaAllegro'),fakturaHurtem:ctx.usluga('faktury','fakturaHurtem'),doczytanieKsef:ctx.usluga('faktury','doczytanieKsef'),
-          // PRZ-102.23: przycisk „Wyślij do KSeF” na karcie — tylko gdy jest usługa, do której prowadzi podgląd.
+          // Przycisk „Wyślij do KSeF” na karcie — tylko gdy jest usługa, do której prowadzi podgląd.
           wysylkaKsef:ctx.usluga('faktury','wysylkaKsef'),
-          // PRZ-118.09: nazwa, ekran i reguła VAT programu fakturowego na karcie (klucz `infakt`, jak w 08).
+          // Nazwa, ekran i reguła VAT programu fakturowego na karcie (klucz `infakt`, jak w 08).
           infakt:ctx.usluga('faktury','infakt'),
-          // PRZ-121.03b: wybór modułu faktur — zdanie „faktury wyłączone” zamiast „nie jest skonfigurowany”; bez modułu faktur `null`.
+          // Wybór modułu faktur — zdanie „faktury wyłączone” zamiast „nie jest skonfigurowany”; bez modułu faktur `null`.
           wyborProgramu:(()=>{try{return ctx.usluga('faktury','wyborProgramu');}catch{return null;}})(),
-          // PRZ-126.C05a: stan komputerów z drukarką faktur; bez usługi albo przy błędzie `null` = „Drukuj” jak dziś.
+          // Stan komputerów z drukarką faktur; bez usługi albo przy błędzie `null` = „Drukuj” jak dziś.
           stanDrukuFaktur:()=>{try{return ctx.usluga<()=>unknown>('faktury','stanDrukuFaktur')()??null;}catch{return null;}},
-          // PRZ-122.ZGODA-TFb: niepewne wysyłki KSeF programu wbudowanego (usługa modułu faktur); bez niej — bez ostrzeżenia.
+          // Niepewne wysyłki KSeF programu wbudowanego (usługa modułu faktur); bez niej — bez ostrzeżenia.
           niepewneKsef:(teraz:Date)=>{
             let odczyt:(t:Date)=>unknown[];
             try{odczyt=ctx.usluga<(t:Date)=>unknown[]>('faktury','niepewneKsefPonadDobe');}
@@ -116,7 +116,7 @@ export function createModulZamowienia({ zWiadomosciami = false, fabryki = {} as 
           },
         });
         registerListaRoutes(app,kontekst);registerKartaRoutes(app,kontekst);registerReczneRoutes(app,kontekst);registerScalanieRoutes(app,kontekst);
-        // PRZ-102.11: Ustawienia → Integracje → GUS (wzór: ekrany kurierów i inFaktu). Usługa nie z nadpisań `gus`
+        // Ustawienia → Integracje → GUS (wzór: ekrany kurierów i inFaktu). Usługa nie z nadpisań `gus`
         // (testy podmieniają tam samego klienta), tylko ta złożona wyżej.
         registerUstawieniaGusRoutes(app,{db:ctx.db,konfiguracjaGus:ctx.usluga('zamowienia','konfiguracjaGus')});
       },

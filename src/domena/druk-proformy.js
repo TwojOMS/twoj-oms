@@ -1,7 +1,6 @@
-// PRZ-152.G10a — druk proformy na komputerze z drukarką (ta sama droga co faktura: czuwacz-faktur.ps1).
+// Druk proformy na komputerze z drukarką (ta sama droga co faktura: czuwacz-faktur.ps1).
 //
-// Decyzja właściciela 05.11.2026: „proforma nie musi być rozliczona ani aktualna. usuń te opcje. po prostu jest
-// proforma.” — drukujemy KAŻDĄ proformę, która nie jest unieważniona. Unieważnionej odmawiamy: wydruk
+// Drukujemy KAŻDĄ proformę, która nie jest unieważniona — nie musi być rozliczona ani aktualna. Unieważnionej odmawiamy: wydruk
 // trafia do klienta, a nieważna proforma na papierze to przelew według złej kwoty.
 
 /** `{ wolno, powod }` — powód to zdanie dla operatora (odpowiedź 400 trasy `POST /proformy/:id/drukuj`). */

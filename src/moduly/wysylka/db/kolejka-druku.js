@@ -63,7 +63,7 @@ export function oznaczWydrukowano(db, id) {
   db.prepare("UPDATE kolejka_druku SET status = 'wydrukowano', wydrukowane_at = ? WHERE id = ?").run(teraz(), id);
 }
 
-// Serce odporności czuwacza (patrz domain/kolejka-druku-stan.js). Awaria NIE zdejmuje
+// Serce odporności czuwacza (patrz domena/kolejka-druku-stan.js). Awaria NIE zdejmuje
 // pozycji z kolejki (status zostaje 'oczekuje') — zdejmuje ją WYŁĄCZNIE porzucPozycje,
 // czyli decyzja operatora, nie automat. Odsunięcie kolejnej próby (nastepna_proba_at)
 // jest OBOWIĄZKOWE: bez niego pozycja wracałaby do pozycjeDoWziecia natychmiast, a czuwacz

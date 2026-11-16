@@ -1,13 +1,13 @@
 // Odczyt miniatur z LUSTRA sklepów (`produkty_sklepowe.miniatura`) dla pozycji, które są
-// właśnie na ekranie. Jedna funkcja, JEDNO zapytanie — cała wartość tej poprawki pochodzi
+// właśnie na ekranie. Jedna funkcja, JEDNO zapytanie — cała odpowiedź pochodzi
 // z bazy i NIE MA TU ANI JEDNEGO nowego żądania do sklepu.
 //
 // Dlaczego to w ogóle działa: kolumnę `miniatura` wypełnia odczyt katalogów ze Store API
-// (services/magazyn-sync.js), a po odczycie z 2026-08-12 ma ją 1456 z 1459 wierszy lustra.
+// (moduly/magazyn/services/magazyn-sync.js), a po pierwszym odczycie ma ją niemal każdy wiersz lustra.
 // Pozycja zamówienia zna kanał (`zamowienia.sklep`) i numer produktu (`pozycje.produkt_id`),
 // więc para `(kanal, produkt_id)` wskazuje wiersz lustra wprost.
 //
-// Regułę „co zrobić z wynikiem" trzyma domena (domain/miniatura-pozycji.js) — ten plik
+// Regułę „co zrobić z wynikiem" trzyma domena (domena/miniatura-pozycji.js) — ten plik
 // odpowiada WYŁĄCZNIE na pytanie „co wie lustro".
 import { kluczLustra } from '../../domena/miniatura-pozycji.js';
 
@@ -16,10 +16,10 @@ import { kluczLustra } from '../../domena/miniatura-pozycji.js';
  *
  * ⚠️⚠️ JEDNO ZAPYTANIE NA EKRAN, NIE JEDNO NA WIERSZ. Lista zamówień renderuje kilkadziesiąt
  * zamówień po kilka pozycji: odczyt „per pozycja" znaczyłby setki `prepare` na KAŻDE otwarcie
- * strony głównej. To jest ta sama usterka, którą złapał już `idx_pozycje_zamowienie_id`
- * (pierwszy start po wdrożeniu: 33,5 s zamiast 2,3 s) — i tak samo jak tam, na bazie testowej
+ * strony głównej. To jest ta sama usterka, którą złapał już indeks `pozycje_zamowienie`
+ * (bez niego pierwszy start trwał kilkanaście razy dłużej) — i tak samo jak tam, na bazie testowej
  * jest niewidoczna. Pilnuje jej test liczący WYKONANIA, nie milisekundy
- * (tests/oms/miniatury-lustro.test.js).
+ * (tests/moduly/zamowienia/miniatury-lustro.test.js).
  *
  * ⚠️ WARUNEK JEST `kanal IN (…) AND produkt_id IN (…)`, czyli PROSTOKĄT SZERSZY niż zbiór par —
  * i dlatego wiersze są jeszcze odsiewane po stronie JS. Dwa powody, żeby tak, a nie listą
@@ -28,7 +28,7 @@ import { kluczLustra } from '../../domena/miniatura-pozycji.js';
  * Cena: para, o którą nikt nie pytał, nie ma prawa wejść do mapy — bo trafiłaby w cudzy wiersz.
  *
  * ⚠️⚠️ CZŁON `kanal IN (…)` JEST ZAWĘŻENIEM KOSZTU, A NIE STRAŻNIKIEM POPRAWNOŚCI — i wie o tym
- * weryfikacja mutacyjna: jego usunięcie NIE WYWALA żadnego testu (sprawdzone 2026-08-12), bo
+ * weryfikacja mutacyjna: jego usunięcie NIE WYWALA żadnego testu, bo
  * poprawności pilnuje odsiew `szukane.has(klucz)` niżej, budowany z kanału TEGO WIERSZA. To NIE
  * JEST martwy kod do „posprzątania": bez niego zapytanie ciągnęłoby numer produktu ze WSZYSTKICH
  * kanałów naraz i przestałoby korzystać z indeksu po kanale. Prawdziwy strażnik pary ma własny
@@ -47,7 +47,7 @@ import { kluczLustra } from '../../domena/miniatura-pozycji.js';
  *
  * ⚠️ Czego lustro nie wie, tego W MAPIE NIE MA — nigdy pustego napisu ani `null` jako wartości.
  * Wpis „wiem, że nie wiem" przeciąłby gałąź zapasową w domenie, czyli zgasiłby zdjęcia, które
- * dziś działają (PRO, Allegro, archiwum sprzed pierwszego odczytu katalogu).
+ * dziś działają (sklep bez odczytu katalogu, Allegro, archiwum sprzed pierwszego odczytu katalogu).
  */
 export function miniaturyLustra(db, pary) {
   const mapa = new Map();
@@ -94,7 +94,7 @@ export function miniaturyLustra(db, pary) {
 }
 
 /**
- * PRZ-159: mapa SKU → miniatura z lustra magazynu (wszystkie kanały), dla pozycji bez żadnego zdjęcia — dziś ERLI, które
+ * Mapa SKU → miniatura z lustra magazynu (wszystkie kanały), dla pozycji bez żadnego zdjęcia — dziś ERLI, które
  * nie przysyła zdjęcia w zamówieniu. JEDNO zapytanie na ekran, jak `miniaturyLustra`.
  *
  * ⚠️ Ten sam SKU bywa w kilku kanałach (sklep, Allegro) i w produkcie wycofanym — wygrywa produkt obecny, potem najstarszy
@@ -120,7 +120,7 @@ export function miniaturySku(db, skus) {
 }
 
 /**
- * PRZ-159: SKU pozycji, które mogą potrzebować miniatury po SKU — bez zdjęcia i bez produktu sklepu (te mają własną
+ * SKU pozycji, które mogą potrzebować miniatury po SKU — bez zdjęcia i bez produktu sklepu (te mają własną
  * drogę). `pomin(sku)` odsiewa SKU techniczne (zaślepka panelu indywidualnego nie jest produktem).
  */
 export function skuPozycji(zamowienia, pomin = () => false) {

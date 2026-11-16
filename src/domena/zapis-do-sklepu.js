@@ -108,7 +108,7 @@ function wymiaryTeSame(wSklepie, nasze) {
   const dl = liczbaWymiaru(wSklepie?.length);
   const sz = liczbaWymiaru(wSklepie?.width);
   if (dl === null || sz === null) return false;
-  // PRZ-090: glebokosc porownujemy tylko wtedy, gdy ja wysylamy — karta bez glebokosci nie dotyka `height`.
+  // Glebokosc porownujemy tylko wtedy, gdy ja wysylamy — karta bez glebokosci nie dotyka `height`.
   if (Object.hasOwn(nasze, 'height') && liczbaWymiaru(wSklepie?.height) !== Number(nasze.height)) return false;
   return dl === Number(nasze.length) && sz === Number(nasze.width);
 }
@@ -125,7 +125,7 @@ export function czyWolnoNadpisac(naszSku, wSklepie) {
   const nasz = napis(naszSku);
   const ich = napis(wSklepie);
   // Bez naszego numeru nie ma czym nadpisac — to droga typowa dla kart przed przejeciem
-  // numeru ze sklepu (`domain/przejecie-sku.js`).
+  // numeru ze sklepu (`domena/przejecie-sku.js`).
   if (!nasz || !ich || tenSamNumer(nasz, ich)) return { wolno: true, powod: null };
   return {
     wolno: false,
@@ -176,7 +176,7 @@ function opisZmiany({ pola, skuWSklepie, naszSku, wymiaryWSklepie, jednostka }) 
  *   `wysokosc_mm`)
  * @param {Array} produkty wiersze lustra `produkty_sklepowe` tej karty. Kazdy MOZE niesc
  *   `wymiary: { length, width, height }` — stan ZYWY, odczytany tuz przed zapisem. Kolumna lustra
- *   `wymiary_json` (PRZ-090) sluzy zakladaniu kart i NIE jest tu czytana: przy podgladzie tego pola
+ *   `wymiary_json` sluzy zakladaniu kart i NIE jest tu czytana: przy podgladzie tego pola
  *   po prostu nie ma i wymiary licza sie jako zmiana.
  * @param {Record<string, string>} jednostki kanal → jednostka wymiarow sklepu
  * @returns {{ zmiany: Array, wstrzymane: Array<{karta_id, kanal, produkt_id, wariant_id, nazwa, powod}> }}
@@ -195,7 +195,7 @@ export function ocenZapis(karta, produkty, jednostki, kanalySklepow) {
   // wymiarem — kolumna jest w milimetrach i produkt o boku 0 nie istnieje.
   const szer = Number(karta?.szerokosc_mm) > 0 ? Number(karta.szerokosc_mm) : null;
   const wys = Number(karta?.wysokosc_mm) > 0 ? Number(karta.wysokosc_mm) : null;
-  // PRZ-090: glebokosc (Woo `height`) jest opcjonalna i jedzie tylko razem z para wyzej.
+  // Glebokosc (Woo `height`) jest opcjonalna i jedzie tylko razem z para wyzej.
   const gl = Number(karta?.glebokosc_mm) > 0 ? Number(karta.glebokosc_mm) : null;
 
   for (const p of produkty ?? []) {

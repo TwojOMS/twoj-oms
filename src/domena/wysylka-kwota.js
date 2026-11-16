@@ -1,20 +1,17 @@
 import { odczytajNadpisania, obiektAlboPusty } from './dane-reczne.js';
 import { parsujCeneBrutto, parsujIlosc, znormalizujKwotowe } from './pozycje-reczne.js';
 
-// ⚠️ PO CO TO ISTNIEJE (07.08.2026, prośba właściciela: „Nie mogę edytować ceny wysyłki do
-// utworzonego zamówienia. Wysyłka powinna być edytowalna tak samo jak produkty. Ilość oraz
-// cena").
+// ⚠️ PO CO TO ISTNIEJE: wysyłka w utworzonym zamówieniu jest edytowalna tak samo jak
+// produkty — ilość oraz cena.
 //
-// Do tego dnia wiersz „Wysyłka" na karcie był TYLKO DO ODCZYTU i było to zapisane wprost
-// jako decyzja („nikt o to nie prosił, a każde dodatkowe pole dotykające kwoty to kolejne
-// miejsce, w którym można się pomylić o pieniądze"). Prośba zdejmuje pierwszą połowę tego
-// zdania; druga została i to ona wyznaczyła kształt tego modułu.
+// Każde pole dotykające kwoty to kolejne miejsce, w którym można się pomylić o pieniądze —
+// i to wyznaczyło kształt tego modułu.
 //
 // ⚠️ POPRAWKA NIE MOŻE MIESZKAĆ W `zamowienia.koszt_dostawy_brutto`. To jest kolumna SKLEPU
-// i poller przepisuje ją przy każdej synchronizacji (UPDATE w db/zamowienia.js) — czyli co
-// dwie minuty. Wpisana tam działałaby w testach i znikała na produkcji, zanim ktokolwiek
-// zdążyłby wystawić fakturę. Dokładnie ta sama pułapka, co przy pozycjach i przy danych
-// klienta (przewodnik OMS, 4.7).
+// i poller przepisuje ją przy każdej synchronizacji (UPDATE w src/oms/db/zamowienia.js) —
+// domyślnie co dwie minuty. Wpisana tam działałaby w testach i znikała na produkcji, zanim
+// ktokolwiek zdążyłby wystawić fakturę. Dokładnie ta sama pułapka, co przy pozycjach i przy danych
+// klienta (reguła: dane ręczne obok danych sklepu).
 //
 // ⚠️ DLACZEGO `pozycje_reczne_json`, A NIE NOWA KOLUMNA. Wysyłka jest na karcie WIERSZEM
 // TABELI POZYCJI i edytuje się ją tym samym formularzem, tym samym przyciskiem „Zapisz
@@ -22,18 +19,18 @@ import { parsujCeneBrutto, parsujIlosc, znormalizujKwotowe } from './pozycje-rec
 // samej operacji — czyli stan, w którym pozycje zapisały się, a wysyłka nie.
 //
 // Klucz `wysylka` NIE MOŻE zderzyć się z kluczem pozycji: `kluczPozycji` produkuje wyłącznie
-// `s<id>`, `r<id>` i `p<index>` (domain/pozycje-reczne.js), a `nalozNadpisaniaPozycji`
+// `s<id>`, `r<id>` i `p<index>` (domena/pozycje-reczne.js), a `nalozNadpisaniaPozycji`
 // chodzi po LIŚCIE POZYCJI, więc klucz, do którego nie ma wiersza, jest tam bezczynny.
 export const KLUCZ_WYSYLKI = 'wysylka';
 
 // ⚠️ NAZWY WYSYŁKI NIE MA NA LIŚCIE PÓL i to jest decyzja, nie przeoczenie. Na fakturze ta
-// linia nazywa się „Dostawa" (domain/pozycje-faktury.js), na karcie „Wysyłka" — nazwa jest
+// linia nazywa się „Dostawa" (domena/pozycje-faktury.js), na karcie „Wysyłka" — nazwa jest
 // tu ETYKIETĄ USŁUGI, a nie uzgodnieniem z klientem. Edytowalna rozjechałaby oba te miejsca
-// i dała trzecią nazwę tego samego wiersza. Właściciel poprosił dokładnie o dwa pola:
-// „Ilość oraz cena".
+// i dała trzecią nazwę tego samego wiersza. Edytowalne są dokładnie dwa pola: ilość oraz
+// cena.
 export const POLA_WYSYLKI = ['ilosc', 'cena_brutto'];
 
-// Wartości SKLEPOWE czytamy idempotentnie — dokładnie tak, jak `zeSklepu` w domain/wysylka.js
+// Wartości SKLEPOWE czytamy idempotentnie — dokładnie tak, jak `zeSklepu` w domena/wysylka.js
 // i z tego samego powodu: te funkcje wołane są ZARÓWNO na surowym wierszu z bazy, JAK
 // I na wierszu przepuszczonym przez `zLinii`, gdzie `koszt_dostawy_brutto` jest już
 // wartością EFEKTYWNĄ, a sklepowa leży obok w `koszt_dostawy_brutto_sklep`.
@@ -86,9 +83,9 @@ export function wysylkaEfektywna(zamowienie) {
   );
 
   // ⚠️ NETTO ZE SKLEPU ZNIKA RAZEM ZE ZMIANĄ KWOTY i to jest świadome — dokładnie jak przy
-  // przecenionej pozycji (`nalozNadpisaniaPozycji`). `koszt_dostawy_netto` jest wartością
-  // ŹRÓDŁOWĄ z Woo (przewodnik 4.5), więc po zmianie ceny albo liczby paczek po prostu do
-  // tej linii nie pasuje. Kolumnę netto liczy wtedy widok, ze stawki VAT (domain/vat.js) —
+  // przecenionej pozycji (`nalozNadpisaniaPozycji`). `koszt_dostawy_netto` przychodzi
+  // z kanału (z Woo wprost, z Allegro wyliczone ze stawki przy imporcie), więc po zmianie ceny albo liczby paczek po
+  // prostu do tej linii nie pasuje. Kolumnę netto liczy wtedy widok, ze stawki VAT (domena/vat.js) —
   // jawnie i wyłącznie do pokazania. Do inFaktu i tak jedzie brutto.
   if (efektywna.polaZmienione.length) efektywna.cena_netto = null;
   return efektywna;
@@ -96,21 +93,18 @@ export function wysylkaEfektywna(zamowienie) {
 
 /**
  * Wiersz wysyłki z formularza „Edytuj pozycje" — DOKŁADNIE te same walidatory, co przy
- * pozycjach (`parsujIlosc`, `parsujCeneBrutto` w domain/pozycje-reczne.js).
+ * pozycjach (`parsujIlosc`, `parsujCeneBrutto` w domena/pozycje-reczne.js).
  *
  * ⚠️ Cena zero rozstrzyga się WOBEC SKLEPU — dlatego ta funkcja wymaga wiersza sklepowego
  * (`wysylkaZeSklepu`). Wpisanie zera tam, gdzie sklep policzył dostawę, znaczy „zabierz
  * klientowi koszt, który sklep policzył" — obniżenie kwoty oczekiwanej od klienta, czyli
- * decyzja o pieniądzach, i dalej jest ODMOWĄ. Zero tam, gdzie sklep TEŻ ma zero, jest
+ * decyzja o pieniądzach, więc jest ODMOWĄ. Zero tam, gdzie sklep TEŻ ma zero, jest
  * przepisaniem wartości, którą formularz sam wyświetlił, i przechodzi.
  *
- * ⚠️⚠️ POPRZEDNIA WERSJA TEGO KOMENTARZA TWIERDZIŁA, ŻE PRZYPADEK DARMOWEJ DOSTAWY JEST JUŻ
- * OBSŁUŻONY — „nadpisanie zerowe wychodzi z `rozniceWysylki` jako brak zmiany". To była
- * nieprawda i kosztowała usterkę na produkcji (zam. 1192, 20.08.2026): `rozniceWysylki`
- * liczy się DOPIERO PO tym parserze, więc gałąź, na którą się powoływał, była nieosiągalna.
- * Parser rzucał wyjątkiem wcześniej i wywracał CAŁY zapis pozycji — w zamówieniu z darmową
- * dostawą nie dało się poprawić żadnego produktu. Zdanie w komentarzu nie jest testem;
- * pilnuje tego teraz tests/oms/wysylka-kwota.test.js.
+ * ⚠️⚠️ DARMOWEJ DOSTAWY NIE OBSŁUŻY `rozniceWysylki` — liczy się DOPIERO PO tym parserze.
+ * Gdyby parser rzucał wyjątkiem przy zerze, wywracałby CAŁY zapis pozycji — w zamówieniu
+ * z darmową dostawą nie dałoby się poprawić żadnego produktu. Pilnuje tego
+ * tests/domena/plan-zapisu-pozycji.test.js.
  */
 export function parsujEdycjeWysylki(body, wysylkaSklepu) {
   return {

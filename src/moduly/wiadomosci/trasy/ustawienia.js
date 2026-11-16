@@ -1,5 +1,5 @@
 import { tytulEkranuDlaAdresu } from '../../../domena/ekrany.js';
-// Fragment frozen ustawienia.js — właściciel wiadomości, rejestracja w module ustawień.
+// Fragment ekranu Ustawień należący do modułu wiadomości, rejestrowany w module ustawień.
 import { wczytajUstawienia, zapiszUstawienia } from '../../../oms/db/ustawienia.js';
 import { ustawieniaFormulki, sprawdzFormularz } from '../../../domena/ustawienia-formulki.js';
 import { nawigacjaUstawien } from '../../ustawienia/nawigacja.js';

@@ -1,9 +1,9 @@
-// Czyste reguly zakladki /kampania (WRZESIEN30, 2026-08-25): wybor kampanii, kafle,
+// Czyste reguły zakładki /kampania: wybór kampanii, kafle,
 // slupki dzienne i agregat wszystkich kuponow. Wejsciem sa zamowienia PO zLinii
 // (anulowane juz efektywne, oplacone_at juz z listy wplat) — zadna regula statusu ani
 // platnosci nie ma tu drugiej kopii: status daje wyliczStatus, kwote zamowienia
-// podsumowaniePozycji (ta sama miara, co lista i bariera faktury — lekcja z audytu:
-// raport liczacy inna miara niz faktura rozjechal sie o kilkaset zl).
+// podsumowaniePozycji (ta sama miara, co lista i bariera faktury — raport liczący inną
+// miarą niż faktura rozjechałby się z nią o kwoty widoczne gołym okiem).
 //
 // ⚠️ Dzien zamowienia to dzienWarszawa(utworzone_at) — ta sama funkcja, co filtr listy.
 // Porownania okna ida po napisach RRRR-MM-DD (kolejnosc leksykalna = kalendarzowa).
@@ -155,7 +155,7 @@ export function stanKampanii({ kampania, zamowienia, dzis }) {
       kwotaZl: zl(kwotaGr(p.z)),
       rabatZl: zl(rabatGr(p.kupony, kodMalymi)),
       oplacone: Boolean(p.z.oplacone_at),
-      // Skad przyszlo TO zamowienie (Etap 3) — gotowy opis, nie surowe pola.
+      // Skad przyszlo TO zamowienie — gotowy opis, nie surowe pola.
       zrodlo: opisAtrybucji(atrybucjaZWiersza(p.z.atrybucja_json)),
     })),
     // Rozbicie uzyc kodu wg zrodla ruchu — jedyne miejsce, ktore laczy pieniadze
@@ -186,7 +186,7 @@ function zrodlaUzyc(aktywne, kodMalymi) {
     .map(({ kwotaGr: k, rabatGr: r, ...reszta }) => ({ ...reszta, kwotaZl: zl(k), rabatZl: zl(r) }));
 }
 
-// ——— ZRODLA ZEWNETRZNE: META I GA4 (Etapy 1-2, 2026-08-25) ——————————————————————————
+// ——— ZRODLA ZEWNETRZNE: META I GA4 ——————————————————————————
 //
 // ⚠️ WEJSCIEM SA WIERSZE LUSTRA (kolumny bazy), nie odpowiedzi API — ta domena nie wie,
 // ze Meta i GA4 w ogole istnieja poza tabelami. Pobieraniem zajmuje sie czuwacz.
@@ -206,10 +206,10 @@ const iloraz = (licznik, mianownik, miejsca = 2) =>
  * Iloraz PIENIEZNY: licznik jest w GROSZACH, wiec wynik tez — i dopiero `zl` robi z niego
  * napis w zlotowkach.
  *
- * ⚠️ ZLAPANE WLASNYM TESTEM PRZED WDROZENIEM: pierwsza wersja dzielila grosze przez liczbe
- * i oddawala wynik przez `toFixed(2)`, czyli CPC „83.33" tam, gdzie prawda to 0,83 zł —
- * a punktem odniesienia na ekranie jest 0,125 zl. Panel pokazywalby koszt kliknięcia
- * SZESCSETKROTNIE zawyzony i nikt by nie zauwazyl, ze to grosze udajace zlotowki.
+ * ⚠️ Dzielenie groszy przez liczbę i oddanie wyniku przez `toFixed(2)` dałoby CPC „83.33"
+ * tam, gdzie prawda to 0,83 zł — a punktem odniesienia na ekranie jest 0,125 zł. Panel
+ * pokazywałby koszt kliknięcia sześćsetkrotnie zawyżony i nikt by nie zauważył, że to
+ * grosze udające złotówki.
  */
 const ilorazKwoty = (licznikGr, mianownik) =>
   (mianownik > 0 ? zl(Math.round(licznikGr / mianownik)) : null);
@@ -311,7 +311,7 @@ export function dolaczZrodla(stan, { meta = [], ga4 = [], stany = {} }) {
   };
 }
 
-// ——— ZAMOWIENIA Z REKLAM (utm) — drugi licznik kampanii (2026-08-27) ————————————————
+// ——— ZAMOWIENIA Z REKLAM (utm) — drugi licznik kampanii ————————————————
 //
 // Kod mierzy CALA promocje (rozdaje go tez baner na stronie, wiec trafia i do ruchu
 // z Google), a znacznik utm_campaign w atrybucji mierzy WYLACZNIE klikniecia w reklame.
@@ -417,13 +417,13 @@ export function dolaczZamowieniaZReklam(stan, { kampania, zamowieniaUtm = [] }) 
   };
 }
 
-// ——— ALERTY KONTROLNE (2026-08-27) ——————————————————————————————————————————————————
+// ——— ALERTY KONTROLNE ——————————————————————————————————————————————————
 //
 // Warunki liczone przy renderze, z danych, ktore ekran i tak ma — zadnych zapytan na
 // zewnatrz. Kazdy alert jest OSTROZNY (bramka na rozbieg, na male probki): falszywy
 // alarm uczy ignorowania paska, a wtedy pasek nie chroni niczego.
 
-// Punkt odniesienia CPC z kampanii ruchowej VII–VIII.2026 — TA SAMA liczba, ktora stoi
+// Punkt odniesienia CPC z wcześniejszej kampanii ruchowej — TA SAMA liczba, ktora stoi
 // w dopisku kafla „Koszt klikniecia" w widoku. Alert bije od dwukrotnosci.
 const ODNIESIENIE_CPC_GR = 12.5;
 // Ponizej tylu klikniec dzienny CPC to szum jednej drogiej aukcji, nie sygnal.
@@ -465,8 +465,8 @@ export function alertyKampanii({ stan, meta = [], dzis }) {
   // Wczorajszy CPC ponad dwukrotnosc odniesienia — ta sama miara (wszystkie klikniecia),
   // co kafel i punkt odniesienia; mala probka nie bije (szum, nie trend). Bramka rozbiegu
   // ta sama, co przy cichym stopie: pierwszy dzien z wydatkiem bywa dniem CZESCIOWYM
-  // (start wieczorem), a CPC z trzech godzin rozbiegu to nie tempo — zmierzone na
-  // danych produkcyjnych: kilka zl na kilkadziesiat klikniec dalo falszywy alarm pierwszego ranka.
+  // (start wieczorem), a CPC z trzech godzin rozbiegu to nie tempo — kilka złotych
+  // na kilkadziesiąt kliknięć dałoby fałszywy alarm pierwszego ranka.
   const klikWczoraj = Number(wierszWczoraj?.klikniecia) || 0;
   if (klikWczoraj >= MIN_KLIKNIEC_DLA_ALERTU && wydawalaWczesniej
     && wydatekWczorajGr / klikWczoraj > 2 * ODNIESIENIE_CPC_GR) {
@@ -477,7 +477,7 @@ export function alertyKampanii({ stan, meta = [], dzis }) {
 }
 
 /**
- * Etapy kampanii dla wykresu pieniedzy (2026-08-28): parsuje `kampanie.fale_json`,
+ * Etapy kampanii dla wykresu pieniędzy: parsuje `kampanie.fale_json`,
  * odrzuca wpisy bez daty w oknie albo bez napisu i porzadkuje po dacie. Uszkodzony
  * JSON = brak etapow (wykres wraca do wyliczanej prowadnicy „start reklam"), nigdy
  * wyjatek — ta sama zasada, co przy kazdej kolumnie *_json.
@@ -496,8 +496,8 @@ export function faleKampanii(kampania) {
 
 /**
  * Wszystkie kupony w historii bazy, per kod: uzycia (bez anulowanych), rabaty i obrot
- * z zamowien nieanulowanych, ostatnie uzycie. Sekcja „pozostale kupony" pod kampania —
- * to z niej widac free50 na PRO i kazdy przyszly kod bez wlasnego wiersza kampanii.
+ * z zamówień nieanulowanych, ostatnie użycie. Sekcja „pozostałe kupony" pod kampanią —
+ * to z niej widać każdy kod bez własnego wiersza kampanii.
  */
 export function agregatKuponow(zamowienia) {
   const mapa = new Map();

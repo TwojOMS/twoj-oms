@@ -1,14 +1,14 @@
 // Atrybuty wariacyjne wariantu — jedno miejsce prawdy o tym, CO sklep zapisal jako os
 // podzialu produktu wariantowego i jak my to trzymamy w lustrze.
 //
-// ⚠️⚠️ TRZY STANY, NIE DWA, i to jest cala tresc tego pliku. Kolumny `atrybuty_json` NIE BYLO
-// do 2026-08-11 — dochodzi migracja, a 1459 istniejacych wierszy dostanie w niej NULL az do
-// najblizszego odczytu katalogow. Stad:
+// ⚠️⚠️ TRZY STANY, NIE DWA, i to jest cala tresc tego pliku. Kolumny `atrybuty_json` wcześniej
+// NIE BYŁO — dochodzi migracja, a istniejące wiersze dostają w niej NULL aż do najbliższego
+// odczytu katalogów. Stąd:
 //   `null`  — NIE WIEMY (lustro nie zna jeszcze atrybutow tego wariantu);
 //   `[]`    — WIEMY, ze sklep nie dal ZADNEGO atrybutu;
 //   `[...]` — WIEMY, jakie osie podzialu wskazal sklep.
 // Sklejenie pierwszych dwoch stanow konczy sie albo zalozeniem 20 nierozroznialnych kart
-// ze starych danych, albo odeslaniem wlasciciela do naprawy sklepu, w ktorym nie ma czego
+// ze starych danych, albo odesłaniem sprzedawcy do naprawy sklepu, w ktorym nie ma czego
 // naprawiac. Oba bledy sa ciche.
 
 const napis = (x) => (typeof x === 'string' ? x.trim() : '');
@@ -24,7 +24,7 @@ const napis = (x) => (typeof x === 'string' ? x.trim() : '');
  * sie hurtem i numeruja nieodwracalnie, wiec cicho przeczytany smiec kosztuje caly rejestr.
  *
  * ⚠️ ZAWSZE TABLICA, TAKZE PUSTA. `[]` znaczy „odczyt byl i sklep nie dal atrybutu" — to jest
- * WIEDZA, po ktorej panel mowi wlascicielowi „popraw sklep". `null` znaczyloby „nie czytalismy".
+ * WIEDZA, po ktorej panel mowi sprzedawcy „popraw sklep". `null` znaczyloby „nie czytalismy".
  *
  * ⚠️ Wartosc pusta wypada. Woo zapisuje tak wariant „dowolny <atrybut>" (option: ''), czyli
  * wariant, ktory tej osi WLASNIE NIE ustala — do nazwy karty nie ma z niego czego wziac.
@@ -42,7 +42,7 @@ export function atrybutyZWariantu(wariant) {
  * ⚠️ POPSUTY JSON TEZ ODDAJE `null`, a nie pusta liste — i to jest ROZNICA wobec
  * `kategorie_json` w `karta-z-produktu.js`, gdzie smiec daje `[]`. Tam pusta lista znaczy
  * „bez kategorii" i jest nieszkodliwa; TUTAJ pusta lista jest twierdzeniem („sklep nie dal
- * atrybutu"), po ktorym panel kaze wlascicielowi poprawic sklep. Z popsutego napisu takiego
+ * atrybutu"), po ktorym panel kaze sprzedawcy poprawic sklep. Z popsutego napisu takiego
  * twierdzenia postawic nie wolno.
  */
 export function atrybutyWariantu(produkt) {
@@ -63,11 +63,11 @@ export function atrybutyWariantu(produkt) {
 /**
  * Atrybuty, ktore NIE ROBIA z wariantu osobnej karty — i dwa rozne powody, dla ktorych nie.
  *
- * `cena`: „ta sama karta po 79/99/119 zl" nie jest trzema kartami. Spec §0d: panel nie ma jak
- *   zgadnac, ktora cena to ktory rozmiar, i zgadywac nie bedzie.
+ * `cena`: „ta sama karta po 79/99/119 zl" nie jest trzema kartami. Panel nie ma jak
+ *   zgadnąć, która cena to który rozmiar, i zgadywać nie będzie.
  * `rozmiar`: rozmiar ma WLASNE kolumny (`szerokosc_mm`/`wysokosc_mm`), wlasny filtr braków
- *   i wlasna kolumne na liscie — jest juz rozroznieniem. Wpuszczony tutaj dopisalby ~229
- *   poprawnie opisanym wariantom sklepu B rozmiar do NAZWY („Lampa stołowa Grzybek — 30 x 45 cm"),
+ *   i wlasna kolumne na liscie — jest juz rozroznieniem. Wpuszczony tutaj dopisalby
+ *   poprawnie opisanym wariantom rozmiar do NAZWY („Lampa stołowa Grzybek — 30 x 45 cm"),
  *   czyli zepsulby glowna sciezke modulu przy naprawianiu skrajnego przypadku.
  *
  * ⚠️ Porownanie po znormalizowanej nazwie, DOKLADNE (nie „zawiera") — ta sama zasada, co przy
@@ -89,7 +89,7 @@ export function osiePodzialu(atrybuty) {
  * zamowienie wzialby z polki losowy z trzech.
  *
  * ⚠️ WARTOSCI PRZEPISUJEMY DOSLOWNIE. „Mosiądz" i „NAPRZEMIENNIE" przyszly ze sklepu i tak
- * je zna wlasciciel; normalizowanie wielkosci liter albo zdejmowanie ogonkow robiloby z nazwy
+ * je zna sprzedawca; normalizowanie wielkosci liter albo zdejmowanie ogonkow robiloby z nazwy
  * karty napis, ktorego nie ma po drugiej stronie — a to po niej czlowiek szuka produktu w sklepie.
  *
  * ⚠️ WSZYSTKIE osie, nie „pierwsza z brzegu". `Klosz szklany do lamp wiszących` dzieli sie po

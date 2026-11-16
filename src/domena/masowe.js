@@ -18,7 +18,7 @@ import { STAWKA_VAT } from './vat.js';
 // Akcje masowe ze strony głównej: zmiana statusu i nadanie przesyłek domyślnymi parametrami.
 //
 // ⚠️ CAŁA WARTOŚĆ TEGO MODUŁU JEST W TYM, CZEGO NIE PRZEPUSZCZA. Nadanie paczki jest
-// nieodwracalne (DPD odmawia powtórzenia referencji — przewodnik OMS, 4.3), a robione hurtem
+// nieodwracalne (DPD odmawia powtórzenia referencji, a na jedno zamówienie i numer paczki może istnieć tylko jedna żywa przesyłka), a robione hurtem
 // jest nieodwracalne razy N. Reguły pomijania siedzą TUTAJ, w warstwie czystej, i to jest
 // istotne z dwóch powodów:
 //
@@ -70,16 +70,15 @@ export function podzielDoStatusu(zamowienia, docelowy) {
   return { doZmiany, pominiete };
 }
 
-// PRZ-070 (właściciel 14.10.2026): hurt nadaje KAŻDĄ metodę, którą umie karta — i pyta o nią TYMI
-// SAMYMI funkcjami (`metodaNadania`, `powodBrakuGotowosciNadania`). Do tego dnia stała tu biała
-// lista `['dpd']`, a kanał Allegro odpadał zdaniem „paczki tego kanału nadajesz w Allegro",
-// które przestało być prawdą 11.08 (DPD przez „Wysyłam z Allegro") i 18.09 (osiem usług).
-// Druga, własna lista warunków rozjechała się z kartą właśnie tak — dlatego jej tu już nie ma.
+// Hurt nadaje KAŻDĄ metodę, którą umie karta — i pyta o nią TYMI SAMYMI funkcjami
+// (`metodaNadania`, `powodBrakuGotowosciNadania`). Własna biała lista metod w hurcie
+// rozjechałaby się z kartą (przestałaby być prawdą, gdy karta dostaje nową metodę albo usługę
+// przewoźnika) — dlatego jej tu nie ma.
 //
-// Pobranie wchodzi do hurtu z kwotą Z ZAMÓWIENIA (decyzja właściciela 14.10). Kwota jest widoczna
+// Pobranie wchodzi do hurtu z kwotą Z ZAMÓWIENIA. Kwota jest widoczna
 // w uwagach ekranu podglądu, a usługa nadania zapisuje ją do logu przed wywołaniem kuriera.
 //
-// PRZ-135.04a: rodzaj formularza (i lista WzA) czytany z rejestru kurierów — `metoda.formularz`
+// Rodzaj formularza (i lista WzA) czytany z rejestru kurierów — `metoda.formularz`
 // metody kuriera ('dpd' = paczka z wymiarami, 'paczkomat', 'wza'); metoda bez kuriera → null.
 
 /** Kształt wiersza na ekranie podglądu: od kuriera zależy, o jaki rozmiar pytamy. */
@@ -91,7 +90,7 @@ export function rodzajFormularzaNadania(metodaUzyta) {
  * Podział zaznaczonych na te, które pójdą do kuriera, pominięte z powodem i uwagi —
  * czyli rzeczy, które nadania NIE blokują, ale mają być widoczne przed kliknięciem.
  * Przepuszczone niosą `metodaUzyta` i `rodzajFormularza` — trasa nie liczy ich drugi raz.
- * PRZ-135.T2: `umowyPobrania` = `umowyPobraniaFirmy(db)`; pominięte daje `[]` (jak dotąd).
+ * `umowyPobrania` = `umowyPobraniaFirmy(db)`; pominięte daje `[]` (jak dotąd).
  */
 export function podzielDoNadania(zamowienia, {
   umowyPobrania = /** @type {readonly string[]} */ ([]),
@@ -138,7 +137,7 @@ function decyzjaNadania(z, umowyPobrania = /** @type {readonly string[]} */ ([])
   if (anulowaneEfektywnie(z)) return { powod: 'zamówienie jest anulowane' };
   const metoda = String(metodaWysylki(z) ?? 'nieznana');
   const allegrowaMetoda = metoda.startsWith('allegro_');
-  // ⚠️⚠️ TO SĄ PIENIĄDZE (poprawka z 04.08.2026 zostaje w mocy). Metoda jest EDYTOWALNA
+  // ⚠️⚠️ TO SĄ PIENIĄDZE. Metoda jest EDYTOWALNA
   // z karty, kanał (`sklep`) — nie: ustawia go poller i żaden formularz panelu go nie rusza.
   // Zamówienie z Allegro przestawione na metodę sklepową poszłoby naszą umową, czyli DRUGĄ,
   // płatną paczką do klienta z opłaconą dostawą u Allegro. Nie do cofnięcia.
@@ -165,7 +164,7 @@ function decyzjaNadania(z, umowyPobrania = /** @type {readonly string[]} */ ([])
   if (metoda === 'odbior_osobisty') return { powod: 'odbiór osobisty — nie ma czego nadawać' };
   // Droga domyślna karty dla paczki nr 1, bez wskazania kuriera. Furtka „naszą umową" przy
   // zamówieniu z Allegro (dosyłka, zamiennik) zostaje decyzją jednostkową z ekranu karty.
-  // PRZ-157.12r: droga kanału (dziś ERLI: `metodaNadaniaErli` z bazy, wstrzyknięta przez trasę) PRZED
+  // Droga kanału (dziś ERLI: `metodaNadaniaErli` z bazy, wstrzyknięta przez trasę) PRZED
   // zwykłą metodą — TEN SAM porządek co w pojedynczym nadaniu (services/nadanie.js). null = nie kanał
   // z własną drogą albo ręcznie zmieniona metoda; wtedy zwykła metoda OMS.
   const opcjeMetody = { kolejnosc: 1, umowyPobrania };
@@ -178,31 +177,30 @@ function decyzjaNadania(z, umowyPobrania = /** @type {readonly string[]} */ ([])
   // ⚠️ TO SĄ PIENIĄDZE. Pytamy o POBRANIE w wartości EFEKTYWNEJ (po ręcznych korektach),
   // dokładnie tej, którą operator widzi w kolumnie „Dostawa".
   if (czyPobranie(z)) {
-    // PRZ-137.01 (D2): przełącznik umowy na pobranie obowiązuje tylko pobranie OMS-owe
+    // Przełącznik umowy na pobranie obowiązuje tylko pobranie OMS-owe
     // (ręczne, zmienione na karcie) u kuriera 'adapter'. Pobranie sprzedane przez sklep jedzie
-    // z kwotą niezależnie od przełącznika (decyzja właściciela 03.11). Nazwa kuriera z rejestru.
+    // z kwotą niezależnie od przełącznika. Nazwa kuriera z rejestru.
     if (wymagaUmowyPobrania(z, metodaUzyta, MODULY_KURIEROW, umowyPobrania)) {
       return { powod: powodUmowyPobrania(metodaUzyta) };
     }
-    // DPD (a od PRZ-135.T2 także paczkomat na umowie firmy) bez kwoty nie wstawia <cod>/`cod`:
+    // DPD (a także paczkomat na umowie firmy) bez kwoty nie wstawia <cod>/`cod`:
     // paczka jedzie jak przedpłacona i NIGDZIE nie ma błędu. Dlatego sprawdzamy KAŻDY rodzaj
     // poza WzA — przy WzA kwotę bierze adapter z podpowiedzi Allegro, więc pusta kolumna nie szkodzi.
     if (rodzaj !== 'wza' && kwotaPobrania(z) == null) {
       return { powod: 'pobranie bez kwoty — uzupełnij kwotę pobrania na karcie zamówienia' };
     }
-    // Recenzja D8 (P3-1): kwotę sprawdza TA SAMA funkcja, co pole na ekranie nadania karty —
+    // Kwotę sprawdza TA SAMA funkcja, co pole na ekranie nadania karty —
     // zero, pusty napis albo zły zapis („104.", „1e2") dałyby paczkę bez <cod>/`cod`.
     const surowaK = kwotaPobrania(z);
     const odczytK = odczytajKwotePobrania(surowaK);
     const przedplaty = przedplatyPrzedPobraniem(z);
     if (rodzaj !== 'wza' && odczytK.blad) {
-      // PRZ-145.01: tekst bez zmian — przypina go dosłownie `pobranie-umowa-firmy-t2.test.ts`
-      // (plan E5-D5 chciał dopisku „— brak kwoty pobrania” przy zerze; brief kazał zostawić ten test).
+      // Tekst przypina dosłownie `pobranie-umowa-firmy-t2.test.ts`.
       return { powod: `kwota pobrania jest niepoprawna — popraw ją na karcie zamówienia („${surowaK}”)` };
     }
     if (przedplaty > 0) {
       // Hurt NIGDY nie nadaje zamówienia z przedpłatą — tylko mówi, co zrobić na karcie.
-      // PRZ-145.01 (E5-D1/E5-D5): porównanie z NIEDOPŁATĄ (kwota zamówienia minus wpłaty),
+      // Porównanie z NIEDOPŁATĄ (kwota zamówienia minus wpłaty),
       // nie z wpisaną kwotą pobrania.
       if (brakKwoty(surowaK)) {
         return { powod: 'częściowo opłacone, brak kwoty pobrania — nadaj z karty' };
@@ -217,7 +215,7 @@ function decyzjaNadania(z, umowyPobrania = /** @type {readonly string[]} */ ([])
       }
       if (nd.niedoplataGr === 0) return { powod: 'opłacone — wyłącz pobranie' };
       const kGr = odczytK.blad ? 0 : odczytK.groszeKwoty;
-      // Dziura (e): kwota POniżej niedopłaty — mówimy wprost, o ile. Powyżej niedopłaty karta
+      // Kwota POniżej niedopłaty — mówimy wprost, o ile. Powyżej niedopłaty karta
       // i tak odmówi („pobierz najwyżej …”), więc powód zostaje dawny.
       if (kGr >= nd.niedoplataGr) return { powod: 'częściowo opłacone — nadaj z karty' };
       return { powod: `kwota pobrania ${zl(kGr)} zł różni się od niedopłaty ${zl(nd.niedoplataGr)} zł — nadaj z karty` };
@@ -228,8 +226,8 @@ function decyzjaNadania(z, umowyPobrania = /** @type {readonly string[]} */ ([])
 
 // Ile faktur wolno wystawic jednym klikneciem operatora.
 //
-// UWAGA: TO NIE JEST ZABEZPIECZENIE — zabezpieczeniem jest BUDZET CZASU, ktory powstanie
-// w services/faktura-hurtem.js (Zadanie 3). Sufit tutaj jest wylacznie uprzejmoscia
+// UWAGA: TO NIE JEST ZABEZPIECZENIE — zabezpieczeniem jest BUDZET CZASU, ktory ma
+// moduly/faktury/services/faktura-hurtem.js. Sufit tutaj jest wylacznie uprzejmoscia
 // interfejsu: zaznaczenie dwustu zamowien ma odbic sie od czytelnego komunikatu, zanim
 // ktokolwiek zdazy kliknac, a nie zamienic sie w dwanascie rund wywolan do inFaktu. Kto
 // oprze na tej stalej prawdziwa ochrone przed zbyt dlugim zadaniem, oprze ja na zlej rzeczy.
@@ -246,8 +244,7 @@ export function powodZaDuzejPartii(ile) {
   // ⚠️ `ile` to liczba PO odsianiu pominietych (doWystawienia.length), NIE liczba
   // zaznaczonych na liscie — operator mogl zaznaczyc wiecej, a czesc odpasc z innego powodu
   // (brak wplaty, juz wystawiona faktura). Zdanie mowi wiec o tym, co KWALIFIKUJE SIE do
-  // wystawienia, a nie o samym zaznaczeniu — inaczej klamie liczba (do 12.08.2026 stalo tu
-  // „Zaznaczono N zamowien" z ta sama liczba, co bylo nieprawda przy jakimkolwiek pominieciu).
+  // wystawienia, a nie o samym zaznaczeniu — inaczej klamie liczba.
   return `Do wystawienia kwalifikuje się ${ile} zamówień, a panel wystawia najwyżej `
     + `${SUFIT_FAKTUR_HURTEM} faktur naraz. Nie wystawiono niczego — zaznacz mniej i powtórz.`;
 }
@@ -259,8 +256,8 @@ export function powodZaDuzejPartii(ile) {
 // lokalnie, nie zostawia sladu nigdzie, a pomylka kosztuje klikniecie „wstecz". Wspolna
 // stala kazalaby pakowaczowi dzielic dzien wysylkowy na porcje po 25 kartek bez powodu.
 //
-// ⚠️ DO 12.08.2026 SUFITU NIE BYLO WCALE, z uzasadnieniem „generowanie jest lokalne, wiec nic
-// nie grozi". To bylo BLEDNE, i to z powodow niewidocznych z poziomu samej trasy:
+// ⚠️ SUFIT JEST POTRZEBNY, choc generowanie jest lokalne i latwo uznac, ze „nic nie grozi".
+// Tak sadzic jest BLEDEM, z powodow niewidocznych z poziomu samej trasy:
 //  - `listaZamowien` nie ma `LIMIT` ani stronicowania, a zakladka „Wszystkie" renderuje
 //    KOMPLET bazy;
 //  - „zaznacz wszystkie" to zwykly odnosnik `?zaznacz=1`, ktory zaznacza kazdy wyrenderowany
@@ -270,11 +267,11 @@ export function powodZaDuzejPartii(ile) {
 // odpowiadac KOMUKOLWIEK na czas rysowania tylu stron, ile zamowien jest w bazie. To ta sama
 // klasa awarii — zablokowana petla zdarzen — ktorej modul unika przy nadaniu i przy fakturach.
 //
-// ⚠️ SKAD 100. Pomiar rysowania (laptop, 12.08.2026, zamowienia po 3 pozycje): 100 zamowien
-// = 176 ms, 500 = 597 ms, 1000 = 1120 ms. Sto kartek to okolo pol ryzy papieru i wiecej, niz
-// sklep A pakuje w ktorykolwiek dzien — sufit nie wchodzi wiec w droge prawdziwej pracy,
-// a odcina rzad wielkosci, na ktorym zaczyna sie problem (kontener na NAS-ie jest wolniejszy
-// od laptopa, wiec zapas liczy sie w rzedach wielkosci, nie w procentach). Gdyby dzien
+// ⚠️ SKAD 100. Pomiar rysowania (laptop, zamowienia po 3 pozycje): 100 zamowien
+// = 176 ms, 500 = 597 ms, 1000 = 1120 ms. Sto kartek to okolo pol ryzy papieru: rzad wielkosci
+// dziennej wysylki malego sklepu — sufit nie wchodzi wiec w droge prawdziwej pracy,
+// a odcina rzad wielkosci, na ktorym zaczyna sie problem (kontener na docelowym serwerze bywa
+// wolniejszy od laptopa, wiec zapas liczy sie w rzedach wielkosci, nie w procentach). Gdyby dzien
 // wysylkowy kiedys naprawde przekroczyl sto paczek, ta liczba ma urosnac razem z nim — ale
 // wtedy SWIADOMIE, a nie przez zapomniany sufit.
 export const SUFIT_SPECYFIKACJI_DRUKU = 100;
@@ -289,7 +286,7 @@ export const SUFIT_SPECYFIKACJI_DRUKU = 100;
  * zamowienia), wiec zdanie mowi o zaznaczeniu. Przy fakturach jest odwrotnie i to nie jest
  * niekonsekwencja, tylko roznica miedzy dwiema drogami — patrz `powodZaDuzejPartii` wyzej.
  */
-// `co` (PRZ-084): ten sam sufit trzyma liste produktow i zestawienie z menu „Wydruki" —
+// `co`: ten sam sufit trzyma liste produktow i zestawienie z menu „Wydruki" —
 // rysowane tak samo synchronicznie — wiec zdanie ma nazwac wydruk, ktory kliknieto.
 export function powodZaDuzegoDruku(ile, co = 'specyfikacji') {
   if (Number(ile) <= SUFIT_SPECYFIKACJI_DRUKU) return null;
@@ -300,7 +297,7 @@ export function powodZaDuzegoDruku(ile, co = 'specyfikacji') {
 // Stan faktury, ktory blokuje wystawienie hurtem, przelozony na zdanie dla operatora.
 // `null` = 'brak' rezerwacji, wolno wystawiac. Sformulowania po 'wystawiona'/'w_toku'/
 // 'zawieszona'/'do_wyjasnienia' powtarzaja ton uzywany juz na karcie zamowienia
-// (domain/sprawy-karty.js, web/views/zamowienie.ejs) — operator ma czytac to samo zdanie,
+// (domena/sprawy-karty.js i widok karty zamówienia) — operator ma czytac to samo zdanie,
 // niezaleznie od tego, ktorym ekranem trafil na ten sam stan.
 function powodStanuFaktury(z, teraz) {
   const stan = stanFaktury(z?.faktura, teraz);
@@ -319,7 +316,7 @@ function powodStanuFaktury(z, teraz) {
   return `Faktura zamówienia ${z?.numer} jest do wyjaśnienia w inFakcie — sprawdź kartę zamówienia.`;
 }
 
-// BARIERA ARYTMETYCZNA W PODGLADZIE — szosta bariera, dolozona 12.08.2026 (recenzja).
+// BARIERA ARYTMETYCZNA W PODGLADZIE.
 //
 // ⚠️ PO CO, SKORO `wystaw()` I TAK ODMOWI. Bo bez niej zamowienie z rozjechana suma stalo na
 // ekranie podgladu w sekcji „Pójdzie do inFaktu", operator je zatwierdzal, a ono ladowalo
@@ -327,7 +324,7 @@ function powodStanuFaktury(z, teraz) {
 // ale PODGLAD OBIECYWAL COS, CZEGO TRASA NA PEWNO NIE ZROBI. To dokladnie ten rozjazd miedzy
 // ekranem a wykonaniem, ktory ta galaz miala zlikwidowac (patrz naglowek modulu, punkt 1).
 //
-// ⚠️ NIC TU NIE LICZYMY OD NOWA. `podsumowaniePozycji` (domain/tabela-pozycji.js) jest juz
+// ⚠️ NIC TU NIE LICZYMY OD NOWA. `podsumowaniePozycji` (domena/tabela-pozycji.js) jest juz
 // liczone przy KAZDYM renderze listy dla wiersza „Razem", jest z definicji NIERZUCAJACE
 // i porownuje te same dwie liczby, co `sprawdzSumeDokumentu` w services/faktura.js —
 // `sumaPozycjiZWysylkaGrosze` wobec `kwotaOczekiwanaGrosze`, w groszach, na calkowitych.
@@ -348,7 +345,7 @@ function powodRozjazduDokumentu(z) {
       + `${p.oczekiwanaZl} zł — popraw pozycje na karcie, bo wystawienie faktury i tak odmówi.`;
   }
   try {
-    // Liczy tylko linie — stawka bez znaczenia, wbudowana wystarcza (PRZ-105).
+    // Liczy tylko linie — stawka bez znaczenia, wbudowana wystarcza.
     if (pozycjeDokumentu(z, { stawkaDomyslna: STAWKA_VAT }).length === 0) {
       return `Zamówienie ${z?.numer} nie ma żadnej pozycji do zafakturowania — faktury bez pozycji panel nie wystawi.`;
     }
@@ -367,15 +364,15 @@ export const ETYKIETA_WARIANTU = { zaplacone: 'zapłacona', przy_odbiorze: 'za p
 /**
  * Wariant faktury hurtem: `{ termin, dataSprzedazy }` albo `{ powod }`.
  *
- * PRZ-070 (właściciel 14.10.2026): pobranie wchodzi do hurtu. Wariant liczy TA SAMA reguła, co
+ * Pobranie wchodzi do hurtu. Wariant liczy TA SAMA reguła, co
  * formularz karty (`terminFaktury` + `proponowanaDataSprzedazy`, moduly/zamowienia/kontekst.js):
  * przedpłata bez inkasa kuriera pokrywa należność → „zapłacone", inaczej → „przy odbiorze"
- * (sposób zapłaty „za pobraniem" dokłada services/faktura.js przez domain/sposob-platnosci.js).
- * Takie faktury nie trafiają na pas długów (`czekaNaPrzelew` odsiewa pobranie od 10.08),
- * więc powód, dla którego hurt był „tylko opłacone" (decyzja 11.08), ich nie dotyczy.
+ * (sposób zapłaty „za pobraniem" dokłada services/faktura.js przez domena/sposob-platnosci.js).
+ * Takie faktury nie trafiają na pas długów (`czekaNaPrzelew` odsiewa pobranie),
+ * więc powód, dla którego faktury hurtem ograniczano do opłaconych, ich nie dotyczy.
  *
  * ⚠️ PRZY POBRANIU NIE PYTAMY `powodOdmowyZaplaconej`: sklep zapisuje „wpłatę" z metodą
- * „Za pobraniem" w chwili oznaczenia zamówienia (pomiar 31.08.2026, zamówienie 1259), więc
+ * „Za pobraniem" w chwili oznaczenia zamówienia, więc
  * suma wpłat twierdzi, że zapłacono, zanim kurier zobaczył klienta. Faktura „zapłacona"
  * na takiej podstawie byłaby nieprawdą na dokumencie, którego się nie poprawia, tylko koryguje.
  * Zamówienia BEZ pobrania — bez zmian: wyłącznie opłacone, wariant „zapłacone".
@@ -399,8 +396,7 @@ export function wariantFakturyHurtem(z, dzis) {
 /**
  * Podzial zaznaczonych na te, ktorym wolno wystawic fakture hurtem, i pominiete z powodem.
  *
- * ⚠️ HURT DOTYCZY ZAMOWIEN OPLACONYCH ALBO ZA POBRANIEM (decyzja wlasciciela 11.08.2026,
- * rozszerzona o pobranie 14.10.2026 — PRZ-070). Oplacone ida wariantem „zaplacone", pobranie
+ * ⚠️ HURT DOTYCZY ZAMOWIEN OPLACONYCH ALBO ZA POBRANIEM. Oplacone ida wariantem „zaplacone", pobranie
  * wariantem z `wariantFakturyHurtem`. Zadna z tych faktur nie moze wyladowac na pasie dlugow
  * w zakladce FAKTURY: oplacone nie sa dlugiem, a pobranie pas odsiewa sam.
  *
@@ -409,7 +405,7 @@ export function wariantFakturyHurtem(z, dzis) {
  * innym powodem, niz podalaby karta przy tym samym zamowieniu:
  *  1. `powodOdmowyFaktury` — okres rozliczeniowy, anulowanie, brak zgody klienta;
  *  2. stan istniejacej rezerwacji faktury (`stanFaktury`) — czy nie ma juz dokumentu;
- *  2a. adres nabywcy (`powodBrakuAdresu`, PRZ-126.PT5) — PO stanie faktury, zeby zamowienie
+ *  2a. adres nabywcy (`powodBrakuAdresu`) — PO stanie faktury, zeby zamowienie
  *     z dokumentem uslyszalo o dokumencie, a nie o adresie;
  *  3. bariera arytmetyczna — czy pozycje sumuja sie do kwoty zamowienia (patrz
  *     `powodRozjazduDokumentu` wyzej; w `wystaw()` to `sprawdzSumeDokumentu`);
@@ -417,7 +413,7 @@ export function wariantFakturyHurtem(z, dzis) {
  *     `powodOdmowyZaplaconej` (czy wplaty pokrywaja naleznosc).
  *
  * ⚠️ Powody pochodza z TYCH SAMYCH funkcji, ktore rzadza wystawieniem pojedynczym — patrz
- * docblock w domain/faktura-odmowa.js. Ta funkcja nie przepisuje reguly, tylko ja odpytuje.
+ * docblock w domena/faktura-odmowa.js. Ta funkcja nie przepisuje reguly, tylko ja odpytuje.
  */
 export function podzielDoFaktury(zamowienia, teraz = Date.now(), opcje = {}) {
   const doWystawienia = [];

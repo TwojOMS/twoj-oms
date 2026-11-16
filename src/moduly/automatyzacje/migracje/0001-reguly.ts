@@ -1,6 +1,6 @@
 import type { Migracja } from '../../../core/kontrakty.ts';
 
-// PRZ-108.07 (zmiana B planu automatyzacji, właściciel 21.10): reguły „zdarzenie → warunki → akcja”, historia włączeń
+// Reguły „zdarzenie → warunki → akcja”, historia włączeń
 // i dziennik wykonań. Migracja ADDYTYWNA — trzy nowe tabele, żadna istniejąca nie zmienia się ani o kolumnę.
 //  • UNIQUE (regula_id, przedmiot) jest bezpiecznikiem „najwyżej jeden mail z jednej reguły na zamówienie”: dwa
 //    zegary, restart w trakcie ani podwójne wykrycie nie dadzą drugiego wiersza (strażnik dopuszcza UNIQUE i FK na

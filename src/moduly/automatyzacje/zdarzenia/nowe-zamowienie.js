@@ -1,4 +1,4 @@
-// PRZ-110.02 (D1): „Nowe zamówienie”. Fakt powstaje w `zapiszZamowienie` (poller Woo i Allegro)
+// Zdarzenie „Nowe zamówienie”. Fakt powstaje w `zapiszZamowienie` (poller Woo i Allegro)
 // albo `utworzZamowienieReczne`. Granica to ID z migawki włączenia, nigdy data ze sklepu.
 // Czas zdarzenia = MAX(utworzone_at, od), jak w „Paczka nadana”: spóźniony import ma nowe ID,
 // ale starą datę zakupu. Dostaje początek okna wykrycia (kursor − 5 min), aby nie zginąć za kursorem.
@@ -10,7 +10,7 @@
 // Dołączone pomija wspólny silnik (także w symulacji), ze śladem w dzienniku.
 const CHWILA = "strftime('%Y-%m-%dT%H:%M:%fZ', z.utworzone_at)";
 const znaki = (n) => Array.from({ length: n }, () => '?').join(',');
-// PRZ-110.02 (odbiór): koszt przebiegu ma zależeć od ostatnich dni, nie wieku reguły. Importy
+// Koszt przebiegu ma zależeć od ostatnich dni, nie wieku reguły. Importy
 // starsze niż okno nie są wykrywane; w oknie próg 48 h pomija je z powodem w chwili wykonania.
 export const OKNO_ZAMOWIEN_DNI = 14;
 

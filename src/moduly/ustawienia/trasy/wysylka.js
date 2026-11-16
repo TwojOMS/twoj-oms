@@ -22,7 +22,7 @@ export function registerUstawieniaWysylkiRoutes(app,{db}) {
   } = {}) {
     const zapis = wczytajUstawienia(db);
     const szablonyPaczek = odczytajSzablony(zapis);
-    // PRZ-152.G11a: edycja w wierszu i nowy wiersz bez JS (?edytuj=<id>, ?dodaj=1); po odmowie
+    // Edycja w wierszu i nowy wiersz bez JS (?edytuj=<id>, ?dodaj=1); po odmowie
     // zapisu wiersz zostaje otwarty z wpisanymi wartościami.
     const edytujSzablon = wpisanySzablon
       ? (wpisanySzablon.id || null)
@@ -89,7 +89,7 @@ export function registerUstawieniaWysylkiRoutes(app,{db}) {
     return reply.redirect('/ustawienia/zamowienia-i-wysylka?zapisano=szablon');
   });
 
-  // PRZ-152.G11a: wartość startowa gabarytu i wagi dla paczkomatu InPost i automatów Allegro.
+  // Wartość startowa gabarytu i wagi dla paczkomatu InPost i automatów Allegro.
   app.post('/ustawienia/paczka/automat', async (req, reply) => {
     const dane = req.body ?? {};
     const wynik = zmienAutomat(odczytajAutomaty(wczytajUstawienia(db)), dane);

@@ -7,9 +7,8 @@ import { dzienWarszawa } from './format-daty.js';
 // i wychodzi z niego wiersz, ktory ich NIE MA. Mail i nazwisko sa potrzebne wylacznie
 // do DECYZJI (zamowienie testowe? klient WDT?), ktora zapada w `decyzja()` nizej, w pamieci.
 // Do bazy nie leci nic: `klientEmail` i `klientNazwa` sa twardo `null`.
-// Cena tej decyzji jest jawna i opisana w planie
-// (plan importu historii sklepu z 27.08.2026): wskaznik
-// „nowi kontra powracajacy" nie policzy sie przed granica ery Apilo.
+// Cena tej decyzji jest jawna: wskaźnik
+// „nowi kontra powracający" nie policzy się przed granicą ery Apilo.
 
 /** Konto Apilo, ktore w `kanaly-raportowe.js` odpowiada danemu sklepowi. */
 
@@ -54,8 +53,8 @@ export function wierszHistorii(sklep, z, { konta }) {
     ...(z.line_items ?? []).map((p) => ({
       nazwa: p.name,
       sku: p.sku || null,
-      // Ten sam ksztalt, co `originalCode` z Apilo ('<produkt>|<wariant>') — dzieki temu
-      // regula rozpoznajaca zaslepke panelu ofert ('28040|…') dziala bez wyjatku dla Woo.
+      // Ten sam kształt, co `originalCode` z Apilo ('<produkt>|<wariant>') — dzięki temu
+      // reguła rozpoznająca zaślepkę panelu ofert po identyfikatorze produktu działa bez wyjątku dla Woo.
       originalCode: `${p.product_id}|${p.variation_id ?? 0}`,
       ilosc: Number(p.quantity ?? 0),
       bruttoLinii: bruttoLiniiZl(p),
@@ -86,11 +85,11 @@ export function wierszHistorii(sklep, z, { konta }) {
     statusZrodla: z.status,
     paymentStatus: z.date_paid_gmt ? 2 : null,
     tagi: [],
-    // ⚠️⚠️ TU KONCZY SIE DROGA DANYCH OSOBOWYCH. Nie zmieniac bez decyzji z planu.
+    // ⚠️⚠️ TU KONCZY SIE DROGA DANYCH OSOBOWYCH. Nie zmieniać bez wyraźnej decyzji o ochronie danych osobowych.
     klientEmail: null,
     klientNazwa: null,
     // ⚠️ 0 znaczy „nie wiemy", a nie „paragon". Woo nie zapisuje zadania faktury w sposob,
-    // ktoremu mozna zaufac wstecz — raport MUSI o tym powiedziec (domain/zastrzezenia-historii.js).
+    // ktoremu mozna zaufac wstecz — raport MUSI o tym powiedziec (`zastrzezenia-historii.js`).
     faktura: 0,
     pozycje,
   };

@@ -9,7 +9,7 @@
 // Reguła wyprowadzania rozmiaru jest zgadywaniem po nazwie pliku (patrz niżej), więc
 // prędzej czy później będzie wymagała poprawki. Trzymanie w bazie wartości surowej
 // znaczy, że taka poprawka jest zmianą w widoku, a nie migracją danych — poller nie
-// wróciłby po nie po raz drugi (przewodnik OMS, 4.7).
+// wróciłby po nie po raz drugi (reguła: dane ręczne obok danych sklepu).
 
 /**
  * Adres zdjęcia z pozycji zamówienia WooCommerce. Woo podaje je jako
@@ -30,8 +30,8 @@ export function zdjecieLinii(linia) {
  * Adres zdjęcia głównego OFERTY ALLEGRO — z odpowiedzi `GET /sale/product-offers/{offerId}`.
  *
  * ⚠️ FORMULARZ ZAKUPOWY ZDJĘCIA NIE NIESIE. `lineItems[].offer` to `{ id, name, external,
- * productSet, hsNumber }` i nic więcej (zmierzone na żywym koncie 05.08.2026), więc adres
- * trzeba dopytać osobno — stąd pamięć podręczna `zdjecia_ofert` (db/zdjecia-ofert.js).
+ * productSet, hsNumber }` i nic więcej (zmierzone na żywym koncie), więc adres
+ * trzeba dopytać osobno — stąd pamięć podręczna `zdjecia_ofert` (oms/db/zdjecia-ofert.js).
  *
  * ⚠️ NIE `GET /sale/offers/{offerId}` — Allegro WYCOFAŁO ten zasób i oddaje 403
  * („This resource is no longer supported").
@@ -58,7 +58,7 @@ export function zdjecieOferty(oferta) {
  * Pozycja ze sklepu niesie adres we WŁASNEJ kolumnie `pozycje.zdjecie_url` (zapisuje ją
  * poller razem z zamówieniem). Pozycja z Allegro nie ma go skąd wziąć przy zapisie, więc
  * adres dokłada dopiero odczyt — z pamięci podręcznej kluczowanej ofertą (kolumna
- * `zdjecie_oferty` w złączeniu, db/zamowienia.js).
+ * `zdjecie_oferty` w złączeniu, oms/db/zamowienia.js).
  *
  * ⚠️ KOLUMNA POZYCJI WYGRYWA. Gdyby kiedyś pozycja miała OBA źródła, prawdą jest to, co
  * przyszło Z ZAMÓWIENIEM — pamięć ofert mówi o ofercie DZIŚ, a zamówienie o tym, co klient
@@ -75,7 +75,7 @@ export function zdjeciePozycji(pozycja) {
 const ROZMIAR = '150x150';
 
 // Rozszerzenie na końcu ŚCIEŻKI (przed ewentualnym `?` albo `#`). Zmierzone na prawdziwych
-// zdjęciach ze sklepu B: oryginał ~87 KB, wariant 150×150 ~4 KB — dwadzieścia razy
+// zdjęciach ze sklepu: oryginał ~87 KB, wariant 150×150 ~4 KB — dwadzieścia razy
 // mniej na każdy wiersz tabeli.
 const ROZSZERZENIE = /(\.[a-z0-9]+)(?=(?:[?#]|$))/i;
 
@@ -90,7 +90,7 @@ const ROZSZERZENIE = /(\.[a-z0-9]+)(?=(?:[?#]|$))/i;
 // na sztywno. Warunek celowo NIE JEST „adres zawiera /original/": to musi być host Allegro,
 // bo inaczej ta reguła sięgałaby po adresy ze sklepu.
 //
-// Rozmiary ZMIERZONE na żywym zdjęciu (05.08.2026), wszystkie HTTP 200 i `image/jpeg`:
+// Rozmiary ZMIERZONE na żywym zdjęciu, wszystkie HTTP 200 i `image/jpeg`:
 // `original` = `s720` → 66 KB, `s360` = `s256` → 18 KB, **`s150` → 7,9 KB**, `s128` → 4,4 KB.
 // Bierzemy `s150`, bo panel renderuje kwadrat 38 px z zapasem do 150 px — to samo kryterium,
 // co przy WooCommerce, i wariant bez skalowania W GÓRĘ.
@@ -105,14 +105,14 @@ const ORYGINAL_ALLEGRO = /^(https?:\/\/(?:[a-z0-9-]+\.)*allegroimg\.com\/)origin
  * więc taki plik nie istnieje i przeglądarka pokaże pustą ramkę. Świadomie na to idziemy,
  * bo alternatywą jest osobne zapytanie do sklepu na każdą pozycję. Skutek jest znośny,
  * bo `alt` niesie nazwę produktu, a nazwa i tak stoi obok miniatury — brak zdjęcia nie
- * zabiera z ekranu ŻADNEJ informacji. Zdjęcia produktowe w tym sklepie mają po kilkaset
- * pikseli (sprawdzone na żywym API 01.08.2026).
+ * zabiera z ekranu ŻADNEJ informacji. Zdjęcia produktowe w sklepie mają zwykle po kilkaset
+ * pikseli (sprawdzone na żywym API).
  *
  * ⚠️ JEDNA FUNKCJA NA OBA KANAŁY, i to jest decyzja. Widoki (lista, karta, ekran nadania)
  * NIE WIEDZĄ, z którego kanału jest wiersz — i wiedzieć nie mają. Rozstrzyga sam adres:
  * host `allegroimg.com` idzie regułą segmentu ścieżki, wszystko inne regułą WordPressa.
  * Osobna funkcja dla Allegro znaczyłaby `if` po kanale w trzech widokach naraz, a to
- * dokładnie ta kopia reguły, której zakazuje niezmiennik 4.13c.
+ * dokładnie ta kopia reguły, której ten moduł ma zapobiec.
  *
  * ⚠️ NIGDY NIE RZUCA. Adres o nieoczekiwanym kształcie (bez `/original/`, bez rozszerzenia,
  * z dziwną poddomeną) wraca BEZ ZMIAN — pokazujemy wtedy oryginał, czyli zdjęcie o rozmiar
@@ -133,14 +133,12 @@ export function adresMiniatury(src) {
 // MINIATURA WPROST ZE SKLEPU (Store API) — koniec zgadywania w magazynie
 //
 // ⚠️⚠️ REGUŁA `adresMiniatury` (wyżej) OKAZAŁA SIĘ NIEPRAWDZIWA i to jest zmierzone, a nie
-// przypuszczone. Sprawdzone 2026-08-12 na WSZYSTKICH adresach obu sklepów:
+// przypuszczone. Sprawdzone na WSZYSTKICH adresach dwóch prawdziwych sklepów: w jednym
+// zgadywanie trafiało w każdy adres, w drugim dawało 404 na blisko 9 adresach na 10.
 //
-//   sklep B — 103 zdjęcia, 103 miniatury,   0 błędów (0%)
-//   sklep A — 684 zdjęcia,  76 miniatur,  608 błędów 404 (89%)
-//
-// Powód: sklep A ma WŁASNY rozmiar miniatury `247x296`, a nie WordPressowy `150x150`.
-// W sklepie B zgadywanie trafiało przypadkiem — tamten sklep akurat używa 150×150. Oryginały są
-// zdrowe (wszystkie 684 odpowiadają 200), więc jedyną przyczyną pustych ramek na liście
+// Powód: sklep może mieć WŁASNY rozmiar miniatury (np. `247x296`), a nie WordPressowy `150x150`.
+// Tam, gdzie zgadywanie trafia, trafia przypadkiem — sklep akurat używa 150×150. Oryginały są
+// zdrowe (wszystkie odpowiadają 200), więc jedyną przyczyną pustych ramek na liście
 // magazynu było doklejanie rozmiaru do nazwy pliku.
 //
 // Komentarz na górze tego pliku sam to przewidział („reguła wyprowadzania rozmiaru jest
@@ -149,14 +147,14 @@ export function adresMiniatury(src) {
 // odtwarzaniem danych, po które poller nie wróci.
 //
 // ⚠️ `adresMiniatury` ZOSTAJE i nie wolno jej usunąć: żyje z niej lista zamówień, ekran
-// nadania i karta zamówienia (`web/routes/zamowienia.js`, `views/lista.ejs`, `views/nadaj.ejs`,
-// `views/zamowienie.ejs`) oraz galeria na karcie produktu. Ta zmiana zdejmuje zgadywanie
-// WYŁĄCZNIE z listy magazynu, bo tylko tam mamy dokąd zapisać wartość prawdziwą.
+// nadania i karta zamówienia (przez `domena/miniatura-pozycji.js`, wołaną
+// z `moduly/zamowienia/wspolne.js`) oraz galeria na karcie produktu (`moduly/magazyn/karta.js`).
+// Lista magazynu bierze miniaturę wprost z lustra, bo tylko tam mamy dokąd zapisać wartość
+// prawdziwą.
 //
-// ⚠️⚠️ DOPISANE 2026-08-12 (zgłoszenie „zdjęcia produktów nie ładują się na ekranach
-// zamówień"): pozostałe cztery ekrany też już NIE zgadują pierwszym wyborem — biorą adres
+// ⚠️⚠️ Pozostałe cztery ekrany też NIE zgadują pierwszym wyborem — biorą adres
 // z tego samego lustra, po parze `(zamowienia.sklep, pozycje.produkt_id)`. Regułę „lustro
-// wygrywa, zgadywanie zostaje" trzyma `domain/miniatura-pozycji.js`, JEDNA dla wszystkich
+// wygrywa, zgadywanie zostaje" trzyma `domena/miniatura-pozycji.js`, JEDNA dla wszystkich
 // czterech.
 //
 // ⚠️⚠️ ALE `adresMiniatury` NIE JEST PRZEZ TO MARTWA — jest GAŁĘZIĄ ZAPASOWĄ I MUSI NIĄ
@@ -165,7 +163,7 @@ export function adresMiniatury(src) {
 // archiwalne sprzed pierwszego odczytu katalogu, pozycje dopisane ręcznie z własnym
 // adresem zdjęcia oraz drugie i dalsze zdjęcia w galerii karty. Usunięcie jej albo
 // przecięcie tej gałęzi ZGASIŁOBY zdjęcia, które dziś działają — dokładnie tak, jak
-// stało się dzień wcześniej w magazynie, gdzie ekran przestawiono na czytanie wyłącznie
+// stało się już raz w magazynie, gdzie ekran przestawiono na czytanie wyłącznie
 // nowej (pustej wtedy) kolumny.
 
 /**
@@ -173,18 +171,18 @@ export function adresMiniatury(src) {
  * `id produktu (napisem)` → `adres miniatury`.
  *
  * ⚠️ TO JEST JEDYNE ŹRÓDŁO PRAWDY O MINIATURZE. Store API przy każdym zdjęciu oddaje gotowe
- * `thumbnail` w rozmiarze, który TEN sklep naprawdę wygenerował — zmierzone: sklep A daje
- * `…-247x296.jpg`, sklep B `…-300x300.png`. Żadna reguła po nazwie pliku nie umiałaby
+ * `thumbnail` w rozmiarze, który TEN sklep naprawdę wygenerował — zmierzone: jeden sklep daje
+ * `…-247x296.jpg`, drugi `…-300x300.png`. Żadna reguła po nazwie pliku nie umiałaby
  * odgadnąć obu naraz, a druga próba zgadywania skończyłaby się tak samo jak pierwsza.
  *
  * ⚠️ STORE API UKRYWA SZKICE — i to nam NIE PRZESZKADZA, a nie jest usterką do naprawienia.
  * Publiczny katalog pokazuje wyłącznie produkty opublikowane, a magazyn i tak czyta sklepy
- * z `status=publish` (patrz `woo/client.js`). Zbiory się więc pokrywają; brak szkiców w tej
+ * z `status=publish` (patrz `oms/woo/client.js`). Zbiory się więc pokrywają; brak szkiców w tej
  * mapie jest oczekiwany i nikt nie powinien go zgłaszać jako braku miniatur.
  *
  * ⚠️ ZDJĘCIA SIEDZĄ NA PRODUKCIE, NIE NA WARIANCIE. Store API oddaje warianty jako samo
  * `variations: [{ id, attributes }]` — bez zdjęć. Dlatego kluczem jest identyfikator
- * PRODUKTU, a wariant w lustrze bierze miniaturę RODZICA (`services/magazyn-sync.js`).
+ * PRODUKTU, a wariant w lustrze bierze miniaturę RODZICA (`moduly/magazyn/services/magazyn-sync.js`).
  * To jest poprawne, a nie zastępcze: wariant zwykle nie ma własnego zdjęcia, a gdy ma,
  * galeria wariantu i tak zaczyna się od zdjęcia rodzica.
  *
@@ -195,7 +193,7 @@ export function adresMiniatury(src) {
  *
  * ⚠️ CZEGO NIE ZNAMY, TEGO NIE WPISUJEMY. Produkt bez `thumbnail` po prostu nie ma wpisu —
  * nigdy oryginału ani adresu zgadniętego „na wszelki wypadek". Pusta komórka jest dziś i tak
- * stanem widocznym, a 608 oryginałów po ~250 kB to ponad 150 MB na jednej stronie listy.
+ * stanem widocznym, a kilkaset oryginałów po ~250 kB to dziesiątki MB na jednej stronie listy.
  *
  * ⚠️ NIGDY NIE RZUCA. Store API to cudze API czytane bez uwierzytelniania — odpowiedź
  * o nieznanym kształcie daje PUSTĄ mapę (czyli „miniatur nie znamy"), a nie wyjątek, który

@@ -2,10 +2,10 @@ import type { DatabaseSync } from 'node:sqlite';
 
 const PRZED_PIERWSZYM = 'zmień klucz w OMS_KANALY przed pierwszym zamówieniem';
 /**
- * PRZ-062: sklep z kluczem zaczynającym się od „allegro” przechodzi walidację OMS_KANALY i po cichu zmienia
+ * Sklep z kluczem zaczynającym się od „allegro” przechodzi walidację OMS_KANALY i po cichu zmienia
  * terminy (a z „allegro_” — wysyłkę, faktury i statystyki, bo prefiks w `czyKanalAllegro` wygrywa z typem).
  * Klucz po pierwszym zamówieniu zmienić trudno (kolumna `sklep`).
- * PRZ-101.08: alarm „Allegro bez allegro_” zniknął — kanał `typ: 'allegro'` panel rozpoznaje po konfiguracji.
+ * Alarm „Allegro bez allegro_” zniknął — kanał `typ: 'allegro'` panel rozpoznaje po konfiguracji.
  */
 export function alarmyNazwKanalow(definicje: readonly { klucz: string; typ: string }[]): string[] {
   return definicje.flatMap(({ klucz, typ }) => {

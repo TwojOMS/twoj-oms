@@ -9,15 +9,15 @@ import { kuponyZeSurowych } from '../../domena/kupony.js';
 import { atrybucjaZeSurowych } from '../../domena/atrybucja.js';
 
 // ---------------------------------------------------------------------------------
-// PRZ-094.25 — PRZEJSCIE PO ZAMOWIENIU RAZ, NIE PRZY KAZDYM STARCIE.
+// PRZEJSCIE PO ZAMOWIENIU RAZ, NIE PRZY KAZDYM STARCIE.
 //
 // Uzupelnienia dopisuja do kolumn to, co da sie wyczytac z `surowe_json` (uwagi, paczkomat,
 // koszt dostawy, kwoty i identyfikatory pozycji...). Kazde z nich wybiera wiersze z kolumna
 // NULL — a NULL zostaje na zawsze, gdy zrodlo tej informacji nie ma (zamowienie bez uwag klienta,
 // bez paczkomatu, Woo bez oferty Allegro, Allegro bez `line_items`...). Wiec te wiersze byly
-// czytane i parsowane przy KAZDYM starcie procesu, przed `app.listen`. Pomiar PRZ-094.08:
-// 100 tys. zamowien = 5,7 s / ~210 MB (surowe_json 13 B) albo 30 s / ~1,2 GB (4 KB), przy
-// limicie kontenera 512 MB.
+// czytane i parsowane przy KAZDYM starcie procesu, przed `app.listen`. Przy około stu tysiącach
+// zamówień to od kilku do kilkudziesięciu sekund i od setek MB do ponad gigabajta pamięci,
+// więcej niż limit kontenera.
 //
 // Zamiast znacznika w kazdym zamowieniu (kolumna = migracja bazy, a pusty napis zamiast NULL
 // zmieniylby wszystkich czytelnikow tych kolumn) zapamietujemy GRANICE: najwyzsze `zamowienia.id`,
@@ -60,8 +60,8 @@ function wTransakcji(db, praca) {
 /**
  * Czyta `surowe_json` PORCJAMI po `id` (500 wierszy), wiec pamiec nie zalezy od liczby zamowien.
  * `sql` to SELECT z WHERE (bez ORDER/LIMIT); dokladamy zakres id, porzadek i limit. Kazda porcja
- * zapisuje sie w jednej transakcji — jeden fsync na porcje zamiast na kazdy `run()` (zmierzone przy
- * recenzji: 6 000 zamowien w autocommicie 140 s, w jednej transakcji 6,2 s).
+ * zapisuje sie w jednej transakcji — jeden fsync na porcje zamiast na kazdy `run()` (przy kilku
+ * tysiącach zamówień: minuty w autocommicie, kilka sekund w jednej transakcji).
  */
 function wPorcjach(db, { sql, id = 'id' }, zakres, naPorcji) {
   const zapytanie = db.prepare(`${sql} AND ${id} > ? AND ${id} <= ? ORDER BY ${id} LIMIT ${PORCJA}`);
@@ -95,9 +95,9 @@ export function uzupelnijIndywidualne(db, zakres = BEZ_GRANIC) {
   const zapisz = db.prepare('UPDATE zamowienia SET indywidualne = ? WHERE id = ?');
   // ⚠️ ZAPISY W TRANSAKCJI (porcja = jedna), i to nie jest mikrooptymalizacja. To przeliczenie
   // pisze do KAZDEGO zamowienia (zero jest wynikiem tak samo dobrym jak jedynka), a w autocommicie
-  // kazdy `run()` to osobna transakcja WAL z wlasnym fsync. Zmierzone przy recenzji na ksztalcie
-  // produkcyjnym: 1 000 zamowien — 4,6 s | 3 000 — 31,7 s | 6 000 — 140 s, a ta sama petla
-  // w jednej transakcji: 6 000 w 6,2 s. To czas STARTU: panel jest wtedy nieosiagalny.
+  // kazdy `run()` to osobna transakcja WAL z wlasnym fsync. Zmierzone na kształcie
+  // produkcyjnym: przy tysiącach zamówień czas rośnie szybciej niż ich liczba, do minut, a ta sama
+  // pętla w jednej transakcji kończy się w kilka sekund. To czas STARTU: panel jest wtedy nieosiagalny.
   wPorcjach(db, {
     sql: 'SELECT id, surowe_json FROM zamowienia WHERE indywidualne IS NULL AND surowe_json IS NOT NULL',
   }, zakres, (wiersze) => {
@@ -321,7 +321,7 @@ export function uzupelnijZrodloPozycji(db, zakres = BEZ_GRANIC) {
     },
   });
 }
-/** Frozen neutralna naprawa pieniędzy: stara metoda nie może zgubić pobrania COD. */
+/** Naprawa starych zapisów z pobraniem w nazwie metody: pobranie przechodzi do flagi i nie może zginąć. */
 export function rozdzielPobranie(db) {
   db.prepare(
     "UPDATE zamowienia SET metoda_wysylki = 'dpd', pobranie = 1 WHERE metoda_wysylki = 'dpd_pobranie'",

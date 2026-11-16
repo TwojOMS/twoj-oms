@@ -1,7 +1,7 @@
 import type { Migracja } from '../../../core/kontrakty.ts';
 import { dekodujEncje } from '../../../domena/slowniki-kart.js';
 
-// PRZ-160.P3b.01 — słowniki kart: kategorie i marki. Wyłącznie dokładanie: kolumna `marka` (NULL),
+// Słowniki kart: kategorie i marki. Wyłącznie dokładanie: kolumna `marka` (NULL),
 // trzy nowe tabele. Kategorie główne z encjami HTML (`Papier &amp;amp; Tektura` z WooCommerce) są
 // dekodowane aż do stałej wartości, a słownik kategorii dostaje DISTINCT niepustych nazw z kart.
 // Słownik marek startuje pusty. Powtórne wykonanie niczego nie zmienia (dekodowanie jest stałe,

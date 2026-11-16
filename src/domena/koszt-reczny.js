@@ -2,27 +2,24 @@ import { randomUUID } from 'node:crypto';
 import { bladOperatora } from './bledy.js';
 import { grosze, zl } from './kwoty.js';
 
-// ⚠️⚠️ DRUGIE (i ostatnie) MIEJSCE STYKU ZE SWIATEM: „to, co wpisal czlowiek" → ksztalt wiersza
-// tabeli `koszty`. Pierwszym jest `naWiersz` (domain/koszt-metadane.js, ksztalt odpowiedzi
-// KSeF). Oba wychodza TYM SAMYM ksztaltem i oba oddaja kwoty jako NAPISY z dwoma miejscami
-// po przecinku — bo kolumny sa TEXT-em, a arytmetyka pieniedzy idzie przez `grosze()`
-// (niezmiennik 4.5). Trzeciego mapowania nie ma i miec nie ma.
+// ⚠️⚠️ DRUGIE (i ostatnie) MIEJSCE STYKU ZE ŚWIATEM: „to, co wpisał człowiek” → kształt wiersza
+// tabeli `koszty`. Pierwszym jest `naWiersz` (domena/koszt-metadane.js, kształt odpowiedzi
+// KSeF). Oba wychodzą TYM SAMYM kształtem i oba oddają kwoty jako NAPISY z dwoma miejscami
+// po przecinku — bo kolumny są TEXT-em, a arytmetyka pieniędzy idzie przez `grosze()`.
+// Trzeciego mapowania nie ma i mieć nie ma.
 //
-// PO CO TO ISTNIEJE: Facebook, Google, Anthropic, zakupy zagraniczne i paragony NIE MA I NIE
-// BEDZIE w KSeF. Do 13.08.2026 bylo to swiadomie poza zakresem (par. 8 specyfikacji) —
-// wlasciciel te decyzje zmienil, bo raport zarzadczy („ile zostaje") ma miec JEDNA prawde
-// o kosztach, a nie sume z panelu plus arkusz obok.
+// PO CO TO ISTNIEJE: Facebooka, Google'a, Anthropica, zakupów zagranicznych i paragonów NIE MA
+// I NIE BĘDZIE w KSeF, a raport zarządczy („ile zostaje”) ma mieć JEDNĄ prawdę
+// o kosztach, a nie sumę z panelu plus arkusz obok.
 //
-// ⚠️⚠️ TRZY POLA I ANI JEDNEGO WIECEJ (2026-08-13, prosba wlasciciela po obejrzeniu pierwszej
-// wersji: „wystarczy tabela z dopisywaniem fv: 1. Firma (pole wyboru np. facebook) 2. data
-// 3. kwota — tyle"). Poprzedni formularz mial osiem: date, nazwe sprzedawcy, NIP, numer
-// dokumentu, netto, VAT, brutto, walute i kategorie. Cala reszta bierze sie teraz sama:
-//   • NAZWA SPRZEDAWCY, KATEGORIA i TYP — ze slownika firm (db/firmy-reczne.js), bo te koszty
-//     wracaja co miesiac od tych samych kilku dostawcow;
-//   • NIP — zawsze pusty: to sa wystawcy BEZ polskiego NIP-u i wlasnie dlatego ich faktur nie
-//     ma w KSeF (gdyby ktorys go mial, jego faktura przyszlaby sama);
-//   • NUMER DOKUMENTU — skladany z firmy i daty (`numerRecznego` nizej);
-//   • NETTO / VAT / BRUTTO / WALUTA — z jednej kwoty w zlotowkach (patrz nizej).
+// ⚠️⚠️ TRZY POLA I ANI JEDNEGO WIĘCEJ: firma (wybór z listy), data i kwota.
+// Cała reszta bierze się sama:
+//   • NAZWA SPRZEDAWCY, KATEGORIA i TYP — ze słownika firm (oms/db/firmy-reczne.js), bo te koszty
+//     wracają co miesiąc od tych samych kilku dostawców;
+//   • NIP — zawsze pusty: to są wystawcy BEZ polskiego NIP-u i właśnie dlatego ich faktur nie
+//     ma w KSeF (gdyby któryś go miał, jego faktura przyszłaby sama);
+//   • NUMER DOKUMENTU — składany z firmy i daty (`numerRecznego` niżej);
+//   • NETTO / VAT / BRUTTO / WALUTA — z jednej kwoty w złotówkach (patrz niżej).
 //
 // ⚠️ CZEGO TU NIE MA: sprawdzania, czy taki dokument juz kiedys wpisano. Ten sam Facebook
 // wystawia co miesiac dokument o podobnym numerze, a dwa wpisy tej samej faktury poznaje
@@ -78,7 +75,7 @@ const DATA_DNIA = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
  * Wiersz tabeli `koszty` z trzech pol formularza (`firma`, `dataWystawienia`, `kwota`) oraz
- * DEFINICJI FIRMY ze slownika (db/firmy-reczne.js: `nazwa`, `sprzedawca`, `kategoria`, `typ`).
+ * DEFINICJI FIRMY ze slownika (oms/db/firmy-reczne.js: `nazwa`, `sprzedawca`, `kategoria`, `typ`).
  * Rzuca `bladOperatora` na kazdej niezgodnosci — komplet sprawdzen stoi TUTAJ, a nie w trasie:
  * trasa parsuje zadanie, domena rozstrzyga, co jest kosztem.
  */
@@ -95,7 +92,7 @@ export function naWierszReczny(dane = {}, firma = null) {
   }
 
   // ⚠️ DATA WYSTAWIENIA W POSTACI DNIA, TWARDO. Miesiac kosztow liczy sie po tej kolumnie,
-  // a zapytanie idzie ZAKRESEM po napisie (`kosztyMiesiaca` w db/koszty.js) — data w innym
+  // a zapytanie idzie ZAKRESEM po napisie (`kosztyMiesiaca` w oms/db/koszty.js) — data w innym
   // formacie ('5.08.2026') wypadlaby z KAZDEGO miesiaca. Dokument bylby w bazie i nie byloby
   // go w zadnej sumie: dokladnie ten rodzaj cichej dziury, przed ktorym broni caly ten modul.
   const dataWystawienia = napis(dane.dataWystawienia);
@@ -106,26 +103,26 @@ export function naWierszReczny(dane = {}, firma = null) {
     );
   }
 
-  // ⚠️⚠️ JEDNA KWOTA, W ZLOTOWKACH, ZAPISYWANA JAKO NETTO **ORAZ** BRUTTO, Z ZEROWYM VAT-em.
+  // ⚠️⚠️ JEDNA KWOTA, W ZŁOTÓWKACH, ZAPISYWANA JAKO NETTO **ORAZ** BRUTTO, Z ZEROWYM VAT-em.
   //
-  // To sa zakupy ZAGRANICZNE rozliczane jako IMPORT USLUG: VAT idzie odwrotnym obciazeniem
-  // (podatek nalicza i odlicza nabywca, czyli my), wiec sprzedawca zadnego VAT-u na dokumencie
+  // To są zakupy ZAGRANICZNE rozliczane jako IMPORT USŁUG: VAT idzie odwrotnym obciążeniem
+  // (podatek nalicza i odlicza nabywca, czyli my), więc sprzedawca żadnego VAT-u na dokumencie
   // nie nalicza, a do kosztu w KPiR wchodzi kwota NETTO. Rozbijanie jej na netto/VAT/brutto
-  // bylo wiec pytaniem o liczby, ktorych na dokumencie NIE MA — a operator ma pod reka
-  // dokladnie jedna: te z rozliczenia karty albo z wyciagu bankowego.
+  // byłoby więc pytaniem o liczby, których na dokumencie NIE MA — a operator ma pod ręką
+  // dokładnie jedną: tę z rozliczenia karty albo z wyciągu bankowego.
   //
-  // BRUTTO DOSTAJE TE SAMA WARTOSC, a nie NULL: kolumna jest `NOT NULL`, a suma miesiaca
-  // pokazuje trzy liczby obok siebie. Przy odwrotnym obciazeniu netto RZECZYWISCIE rowna sie
-  // brutto na dokumencie sprzedawcy, wiec to nie jest wypelniacz, tylko prawda o tym zakupie.
+  // BRUTTO DOSTAJE TĘ SAMĄ WARTOŚĆ, a nie NULL: kolumna jest `NOT NULL`, a suma miesiąca
+  // pokazuje trzy liczby obok siebie. Przy odwrotnym obciążeniu netto RZECZYWIŚCIE równa się
+  // brutto na dokumencie sprzedawcy, więc to nie jest wypełniacz, tylko prawda o tym zakupie.
   //
   // ⚠️ WALUTA TO PLN I DLATEGO NIE MA JEJ NA FORMULARZU. Dokument w obcej walucie stoi POZA
-  // suma miesiaca (domain/lista-kosztow.js: kursu nie zmyslamy) — czyli koszty, dla ktorych
-  // ta funkcja powstala, ladowaly poza suma, ktora mieli zasilic. Operator wpisuje kwote juz
-  // przeliczona przez bank i wiersz wchodzi do sumy normalnie.
+  // sumą miesiąca (domena/lista-kosztow.js: kursu nie zmyślamy) — czyli koszty, dla których
+  // ta funkcja powstała, lądowałyby poza sumą, którą mają zasilić. Operator wpisuje kwotę już
+  // przeliczoną przez bank i wiersz wchodzi do sumy normalnie.
   //
-  // ⚠️ STRAZNIKA „netto + VAT = brutto" TU NIE MA I NIE MA CZEGO PILNOWAC: przy jednej kwocie
-  // te trzy liczby nie moga sie rozjechac, bo pochodza z jednej. Byl on sensowny przy trzech
-  // polach — teraz sprawdzalby wylacznie, czy panel poprawnie przepisal liczbe sam sobie.
+  // ⚠️ STRAŻNIKA „netto + VAT = brutto” TU NIE MA I NIE MA CZEGO PILNOWAĆ: przy jednej kwocie
+  // te trzy liczby nie mogą się rozjechać, bo pochodzą z jednej — strażnik sprawdzałby
+  // wyłącznie, czy panel poprawnie przepisał liczbę sam sobie.
   const kwotaGrosze = kwotaGr(dane.kwota);
   const kwota = zl(kwotaGrosze);
 
@@ -142,7 +139,7 @@ export function naWierszReczny(dane = {}, firma = null) {
     brutto: kwota,
     waluta: 'PLN',
     // ⚠️ KATEGORIA WPROST NA DOKUMENCIE — jedyna droga dla sprzedawcy BEZ polskiego NIP-u.
-    // Mapa kategorii jest kluczowana NIP-em (db/kategorie-kosztow.js), wiec Google czy Meta
+    // Mapa kategorii jest kluczowana NIP-em (oms/db/kategorie-kosztow.js), wiec Google czy Meta
     // nie maja jak do niej trafic. Wartosc idzie ze slownika firm, a nie z formularza:
     // kategoria wpisywana przy kazdym koszcie od nowa rozpadala by sie po kwartale na
     // „Reklama" i „Marketing" — dwie grupy w rozbiciu, po cichu, z jednego kosztu.

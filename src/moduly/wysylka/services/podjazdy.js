@@ -14,26 +14,26 @@ const TRZYDZIESCI_MINUT = 30 * 60 * 1000;
 const LEASE_SPRAWDZENIA_MS = 120 * 1000;
 const dzien = /^\d{4}-\d{2}-\d{2}$/;
 const kluczTerminu = (t) => `${t?.date ?? ''}|${t?.minTime ?? ''}|${t?.maxTime ?? ''}`;
-// Potwierdzone rzeczywistym podjazdem 23.09.2026: zasób WzA tej usługi
+// Potwierdzone rzeczywistym podjazdem: zasób WzA tej usługi
 // podaje transport DPD, a szczegóły przyjętego podjazdu pickupCarrier=DPD.
 // Pozostałe metody wymagają osobnego pomiaru przed odblokowaniem POST.
-// ⚠️ Automaty Paczkowe DPD i Kurier DPD pobranie odblokowane 01.10.2026 BEZ takiego
-// pomiaru (decyzja właściciela): zasób WzA obu podaje transport ['DPD'] i ten sam termin
-// 13:00–17:00 co Kurier DPD (#1376, #1377), ale podjazdu zamówionego w panelu Allegro
+// ⚠️ Automaty Paczkowe DPD i Kurier DPD pobranie są odblokowane BEZ takiego
+// pomiaru (świadomie): zasób WzA obu podaje transport ['DPD'] i ten sam termin
+// 13:00–17:00 co Kurier DPD, ale podjazdu zamówionego w panelu Allegro
 // nie da się odczytać (GET /pickups = 405, brak pickupId). Pomiarem jest pierwszy
 // podjazd z OMS-u: `sprawdz` nie potwierdzi go, gdy `pickupCarrier` będzie inny niż tu.
 const KURIER_ODBIERAJACY = new Map([
   ['03f26351-f683-4db2-8895-f2c599280e3c', 'DPD'],
   ['09bcdcdb-c62a-41c4-ba42-f2c599280e3c', 'DPD'],
   ['13f26351-26fb-48d4-b5dd-f2c599280e3c', 'DPD'],
-  // PRZ-160 P4.02 (pomiar 13.11.2026, tylko GET zasobu przesyłki): obie usługi One podają transport
+  // Pomiar (tylko GET zasobu przesyłki): obie usługi One podają transport
   // ['ALLEGRO_ONE_KURIER'] i pickupAvailable: true. Propozycji terminów ani `pickupCarrier` przyjętego
   // podjazdu One nie mierzono — `sprawdz` porównuje go z tą mapą, więc inny przewoźnik da stan „nieznany”.
   ['0d83955a-4297-4169-adef-9790d53b11ff', 'ALLEGRO_ONE_KURIER'], // Allegro One Kurier
   ['0b9bed2c-0bc1-4e1f-9694-29bb39ebb483', 'ALLEGRO_ONE_KURIER'], // Allegro One Box, One Kurier
 ]);
 
-// Oferta samej daty (godzinę ustala przewoźnik) tylko dla One. DPD podaje okna (pomiar 23.09); puste okna DPD
+// Oferta samej daty (godzinę ustala przewoźnik) tylko dla One. DPD podaje okna (pomiar); puste okna DPD
 // zostają diagnozą — zlecenie u przewoźnika jest nieodwracalne, a samej daty dla DPD nikt nie mierzył.
 const dataBezGodzin = (kurier, data) => (kurier === 'ALLEGRO_ONE_KURIER' ? data : null);
 // Każdy kurier odbierający ma OSOBNY przełącznik: włączenie One nie odblokowuje DPD i odwrotnie.

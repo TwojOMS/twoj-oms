@@ -1,12 +1,12 @@
-// PRZ-068: role w bazie. Źródło prawdy dostępu = role_ekrany; tabela `uprawnienia` jest materializacją,
-// dzięki której kontoPoLoginie i strażnik działają bez zmian. Synchronizacja przy starcie wykonuje
-// przejście §3.2 idempotentnie: start nie zmienia niczyjego dostępu poza poszerzeniem administratora.
+// Role w bazie. Źródło prawdy dostępu = role_ekrany; tabela `uprawnienia` jest materializacją,
+// dzięki której kontoPoLoginie i strażnik działają bez zmian. Synchronizacja przy starcie przenosi
+// konta ze starych uprawnień na role idempotentnie: start nie zmienia niczyjego dostępu poza poszerzeniem administratora.
 import { randomBytes, createHash } from 'node:crypto';
 import { EKRANY, ROLE, ekranyRoli } from '../../domena/ekrany.js';
 import { uprawnieniaKonta, ustawUprawnienia } from '../../core/bezpieczenstwo/konta.js';
 
 export const ROLA_ADMINISTRATOR = 'administrator';
-/** Klucze spoza EKRANY, które konto może mieć dziś (integracja panelu :3000, „Dodaj do OMS”). */
+/** Klucze spoza EKRANY, które konto może mieć dziś (`api` — trasy `/api/*` dla programu zewnętrznego). */
 export const KLUCZE_DODATKOWE = ['api'];
 export const kluczeEkranow = () => [...EKRANY.map((e) => e.klucz), ...KLUCZE_DODATKOWE];
 export const MAKS_NAZWY_ROLI = 40;
@@ -86,7 +86,7 @@ export function rolaOsobista(db, { ekrany, etykietaBazowa, imie, teraz, losowyKl
 
 /**
  * Etykieta roli osobistej konta BEZ flagi admin. Konto z kluczem/rolą Administratora nie dostaje nazwy
- * „Administrator — X” — ta rola nie daje admina, więc nazwa mówi to wprost (recenzja D8 r1).
+ * „Administrator — X” — ta rola nie daje admina, więc nazwa mówi to wprost.
  */
 function etykietaOsobista(kluczRoli, rola) {
   if (kluczRoli === ROLA_ADMINISTRATOR || rola?.admin) return 'Własna bez admina';
@@ -169,7 +169,7 @@ export function opisSynchronizacjiRol(wynik) {
   return czesci.length ? `role (PRZ-068): ${czesci.join('; ')}` : null;
 }
 
-// ——— A3: ekran „Role i uprawnienia” ———————————————————————————————————————————————
+// ——— Ekran „Role i uprawnienia” ——————————————————————————————————————————————————
 
 export function walidujNazweRoli(nazwa) {
   const t = String(nazwa ?? '').trim();
@@ -235,7 +235,7 @@ export function usunRole(db, klucz) {
   });
 }
 
-// ——— A4: przypisanie roli kontu ————————————————————————————————————————————————————
+// ——— Przypisanie roli kontu ———————————————————————————————————————————————————————
 
 /** Stara trasa /uprawnienia: wynik per konto, ale zawsze przez rolę (niezmiennik konto = rola). */
 export function ustawPtaszkiPrzezRole(db, kontoId, { ekrany, admin, teraz, losowyKlucz = nowyKluczRoli }) {
@@ -261,7 +261,7 @@ export function ustawPtaszkiPrzezRole(db, kontoId, { ekrany, admin, teraz, losow
   });
 }
 
-/** Nazwa roli do ekranu; „ + zmiany” wyłącznie przy rozjeździe ptaszków konta z rolą (O5). */
+/** Nazwa roli do ekranu; „ + zmiany” wyłącznie przy rozjeździe ptaszków konta z rolą. */
 export function opisRoliKonta(db, kontoId) {
   if (!tabeleRolIstnieja(db)) return null;
   const k = db.prepare('SELECT rola FROM konta WHERE id = ?').get(kontoId);

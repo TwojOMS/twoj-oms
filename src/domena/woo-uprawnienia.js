@@ -1,7 +1,7 @@
-// PRZ-149.04 (C8): uprawnienia klucza REST sklepu WooCommerce wybrane w kreatorze (krok 2).
+// Uprawnienia klucza REST sklepu WooCommerce, wybrane w kreatorze.
 // „Odczyt” — OMS tylko pobiera zamówienia; nie zmienia statusu, nie dopisuje notatki z numerem
 // przesyłki i nie zapisuje SKU/wymiarów. Wybór leży w `kanaly_sklepy.ustawienia_json.uprawnienia`;
-// sklep bez zapisanego wyboru (sprzed tej zmiany, z env) pracuje jak dotąd — „Zapis/odczyt”.
+// sklep bez zapisanego wyboru (z pliku env albo zapisany bez niego) pracuje jako „Zapis/odczyt”.
 
 export const UPRAWNIENIA = Object.freeze(['odczyt', 'zapis']);
 

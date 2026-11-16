@@ -8,7 +8,7 @@ import {nawigacjaUstawien} from '../ustawienia/nawigacja.js';
 import {zakresDatyStartu} from './zakres-importu-allegro.ts';
 import {STAWKI_Z_ZW} from '../../domena/vat.js';
 
-/** Komunikat paska „zapisano” po przekierowaniu z operacji (PRZ-157.12u). */
+/** Komunikat paska „zapisano” po przekierowaniu z operacji. */
 const ZAPISANO:Record<string,string>={
  oferty:'Ustawienia ofert zapisane.',
  'pobierz-metody':'Pobrano metody dostawy z ERLI.',metody:'Metody dostawy zapisane.','pomin-metody':'Metody dostawy pominięte — ustawisz je później.',

@@ -1,4 +1,4 @@
-// PRZ-108.07 (zmiana B planu automatyzacji): dziennik wykonań reguł. Para (regula_id, przedmiot) jest UNIQUE w bazie
+// Dziennik wykonań reguł. Para (regula_id, przedmiot) jest UNIQUE w bazie
 // (migracje/0001-reguly.ts), więc dwa zegary, restart ani podwójne wykrycie nie dają drugiego wiersza — a wiersz
 // `wyslane` / `niepewne` / `blad` nigdy nie wraca do kolejki („najwyżej jeden mail z jednej reguły na zamówienie”).
 import { dopiszLog } from '../../../oms/db/zamowienia.js';
@@ -38,8 +38,8 @@ export function zaplanuj(db, { regula_id, przedmiot, zamowienie_id, przesylka_id
 }
 
 /**
- * Należne wykonania: zaplanowane, termin minął, ponowienie (jeśli było) też; najstarsze pierwsze. Recenzja 07, usterka 2:
- * okno nie może się zatkać jedną regułą — w SQL odpadają wiersze reguł wyłączonych, usuniętych i WSTRZYMANYCH, a z każdej
+ * Należne wykonania: zaplanowane, termin minął, ponowienie (jeśli było) też; najstarsze pierwsze.
+ * Okno nie może się zatkać jedną regułą — w SQL odpadają wiersze reguł wyłączonych, usuniętych i WSTRZYMANYCH, a z każdej
  * reguły wchodzi najwyżej tyle wierszy, ile zostało jej limitu godzinowego (paczka na regułę, `ROW_NUMBER` po regule).
  * Wiersze reguły wyłączonej przechodzą w „pominięte” przy wyłączeniu (db/reguly.js), więc tu nie giną.
  */
@@ -82,7 +82,7 @@ export function wpisDoHistorii(db, { zamowienie_id, stan, nazwa, powod }) {
 /**
  * Zakończenie wykonania (z wpisem w historii zamówienia przy pominięciu, błędzie i niepewności). Zmienia wiersz tylko
  * w stanie z `zeStanow` (domyślnie zaplanowane / w_toku) — wiersz pominięty w międzyczasie (np. wyłączenie reguły
- * w trakcie przebiegu) zostaje, jak był, i NIE dostaje drugiego wpisu (recenzja 07, usterka 9). Oddaje: czy zmienił.
+ * w trakcie przebiegu) zostaje, jak był, i NIE dostaje drugiego wpisu. Oddaje: czy zmienił.
  */
 export function zakoncz(db, wykonanie, { stan, powod = null, powod_kod = null, adresat = null, proby, teraz, nazwa,
   zeStanow = ['zaplanowane', 'w_toku'] }) {
@@ -96,14 +96,14 @@ export function zakoncz(db, wykonanie, { stan, powod = null, powod_kod = null, a
   });
 }
 
-/** Chwilowy błąd poczty przed przyjęciem listu: z powrotem do kolejki, próba + 1, następna za 15 min; kasuje kod odłożenia (MOK2). */
+/** Chwilowy błąd poczty przed przyjęciem listu: z powrotem do kolejki, próba + 1, następna za 15 min; kasuje kod odłożenia. */
 export function ponow(db, wykonanie, { nastepna, powod }) {
   db.prepare(`UPDATE automatyzacje_wykonania SET stan = 'zaplanowane', proby = proby + 1, nastepna_proba_at = ?, powod = ?, powod_kod = NULL
     WHERE id = ? AND stan = 'w_toku'`).run(nastepna, powod, wykonanie.id);
 }
 
 /**
- * PRZ-122.MAIL-OKNO: akcja jeszcze nie może iść (faktura w oknie poprawek) — wiersz ZOSTAJE `zaplanowane`, następna
+ * Akcja jeszcze nie może iść (faktura w oknie poprawek) — wiersz ZOSTAJE `zaplanowane`, następna
  * próba za 15 min, powód widoczny na ekranie reguł. Bez `proby + 1` (każda poprawka zaczyna okno od nowa; granicą jest
  * przeterminowanie 48 h) i bez wpisu w historii zamówienia (to nie pominięcie). Tylko przed rezerwacją.
  */

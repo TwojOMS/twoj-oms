@@ -1,6 +1,6 @@
 <%
-  // PRZ-160 E3.13 (D15, D24, D35, D42): krok 6 „Oferty”. Wartości z odrzuconego formularza (`wartosci`) mają
-  // pierwszeństwo przed zapisanymi; identyfikatory list tylko z „Pobierz z Allegro”. E3d.02-02: formularz nie ma
+  // Krok 6 „Oferty”. Wartości z odrzuconego formularza (`wartosci`) mają
+  // pierwszeństwo przed zapisanymi; identyfikatory list tylko z „Pobierz z Allegro”. Formularz nie ma
   // pola cennikDostaw — cenniki są w tabeli reguł (`_cenniki-reguly.ejs`).
   const u = ustawienia;
   const liczbaPl = (v) => v === null || v === undefined ? '' : String(v).replace('.', ',');
@@ -13,7 +13,7 @@
     producentId: u.producentId ?? '', osobaOdpowiedzialnaId: u.osobaOdpowiedzialnaId ?? '',
     buforSzt: liczbaPl(u.buforSzt), progSkokuSzt: liczbaPl(u.progSkokuSzt),
   };
-  // PRZ-160 E4.10 (D47, D48): bufor i próg skoku tylko, gdy stany magazynowe kiedykolwiek włączono.
+  // Bufor i próg skoku tylko, gdy stany magazynowe kiedykolwiek włączono.
   const polaLiczb = [['narzutProcent', 'Narzut %', 'text', 'decimal'], ['progPotwierdzeniaProcent', 'Próg potwierdzenia zmiany ceny %', 'text', 'decimal'], ['stalaIlosc', 'Stała liczba sztuk (wymagana)', 'number', 'numeric'], ['czasWysylkiDni', 'Czas wysyłki w dniach', 'number', 'numeric']];
   const pomocStanow = {buforSzt: 'Tyle sztuk OMS zostawi poza kanałem: wyśle stan karty pomniejszony o bufor.', progSkokuSzt: 'Niewyjaśniona zmiana stanu karty większa niż próg wstrzymuje ofertę do sprawdzenia.'};
   if (locals.stanyKiedys) { polaLiczb[2] = ['stalaIlosc', 'Stała liczba sztuk (gdy stany magazynowe są wyłączone)', 'number', 'numeric']; polaLiczb.splice(3, 0, ['buforSzt', 'Bufor (szt.)', 'number', 'numeric'], ['progSkokuSzt', 'Próg skoku stanu (szt.)', 'number', 'numeric']); }
@@ -71,7 +71,7 @@
       </select>
       <% if (bledyPol.stawkaVat) { %><br><span id="allegro-oferty-stawkaVat-blad"><%= bledyPol.stawkaVat %></span><% } %></p>
 
-    <%# PRZ-160 E3d.02-02: cennik dostaw jako reguły rozmiaru; cennik tylko z listy „Pobierz z Allegro”. %>
+    <%# Cennik dostaw jako reguły rozmiaru; cennik tylko z listy „Pobierz z Allegro”. %>
     <%- include('_cenniki-reguly.ejs', {prefiks: 'allegro-oferty-cenniki', zapisane: u.cenniki, wyslane: wartosci, bledy: bledyPol, opcje: slowniki?.cenniki ?? []}) %>
 
     <fieldset><legend>Warunki i dane z konta Allegro</legend>

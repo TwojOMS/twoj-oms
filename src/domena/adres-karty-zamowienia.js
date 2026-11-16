@@ -40,7 +40,7 @@ export function kluczPozycjiListy(kanonicznyAdres, definicje) {
   return `${PREFIKS_KLUCZA_POZYCJI}${hash}`;
 }
 
-// PRZ-147.03: ekran zwrotu zamówienia z tym samym `powrot`, co karta (ten sam idiom co `adresKartyZamowienia`).
+// Ekran zwrotu zamówienia z tym samym `powrot`, co karta (ten sam idiom co `adresKartyZamowienia`).
 export function adresEkranuZwrotu(id, { powrot = '/' } = {}, definicje) {
   const bezpiecznyPowrot = bezpiecznyPowrotNaListe(powrot, definicje);
   const query = bezpiecznyPowrot === '/' ? '' : `?${new URLSearchParams({ powrot: bezpiecznyPowrot }).toString()}`;

@@ -1,4 +1,4 @@
-// PIATY ZEGAR — odswiezanie lustra Centrum wiadomosci z OBU kont Allegro.
+// PIATY ZEGAR — odswiezanie lustra Centrum wiadomosci ze WSZYSTKICH kont Allegro.
 //
 // ⚠️⚠️ NIE ZATRZYMUJE SIE NA PIERWSZYM ZNANYM WATKU. Dokumentacja Allegro nie gwarantuje
 // kolejnosci przy GET /messaging/threads — podaje wylacznie `limit` i `offset`. Poller,
@@ -10,10 +10,10 @@
 // juz to mamy.
 //
 // ⚠️ NIE WOLAMY `PUT /messaging/threads/{id}/read`. To zmiana stanu po stronie Allegro:
-// skasowalaby znacznik „nowe" w aplikacji na telefonie wlasciciela. Przeczytanie zostaje
+// skasowalaby znacznik „nowe" w aplikacji na telefonie sprzedawcy. Przeczytanie zostaje
 // czynnoscia czlowieka.
 //
-// ⚠️ Awaria jednego kanalu nie moze zabic drugiego — dwa konta to dwie niezalezne skrzynki.
+// ⚠️ Awaria jednego kanalu nie moze zabic drugiego — kazde konto to niezalezna skrzynka.
 
 import { MAKS_STRON_WATKOW, LIMIT_STRONY_WATKOW } from '../../../oms/allegro/client.js';
 import { zapiszWatek, watek, zapiszWiadomosci } from '../../../oms/db/allegro-watki.js';
@@ -22,7 +22,7 @@ import { kanalZWiadomosciami } from '../../../domena/moduly-kanalow.ts';
 
 // ⚠️ `sprawy` (dyskusje i reklamacje) jedzie NA TYM SAMYM ZEGARZE, a nie na wlasnym — jeden
 // zegar, dwa zrodla. Osobny znaczylby drugiego straznika „jeden przebieg naraz" i druga rzecz
-// do pilnowania, a oba odczyty i tak pytaja te same dwa konta Allegro.
+// do pilnowania, a oba odczyty i tak pytaja te same konta Allegro.
 export function createPollerWiadomosci({
   db, klienci = {}, sprawy = null, brakiKanalu = () => [], teraz = () => new Date(),
 }) {
@@ -50,13 +50,13 @@ export function createPollerWiadomosci({
         // ⚠️ CALA korespondencja do lustra, nie sama ostatnia linijka — karta watku ma ja
         // pokazac bez dzwonienia do Allegro. Te wiadomosci i tak juz mamy w rece.
         zapiszWiadomosci(db, nazwa, t.id, wiadomosci);
-        // ⚠️⚠️ NAJNOWSZA PO DACIE, NIGDY PO POZYCJI W TABLICY. Do 29.08.2026 stalo tu
+        // ⚠️⚠️ NAJNOWSZA PO DACIE, NIGDY PO POZYCJI W TABLICY. Wczesniej stalo tu
         // `wiadomosci[wiadomosci.length - 1]` z komentarzem „Allegro oddaje watek
-        // chronologicznie" — ZALOZENIE, ktorego nikt nie zmierzyl. Pomiar na produkcji:
+        // chronologicznie" — ZALOZENIE, ktorego nikt nie zmierzyl. Pomiar na zywym koncie:
         // `GET /messaging/messages` oddaje OD NAJNOWSZEJ, wiec brany byl najstarszy wpis,
-        // prawie zawsze pytanie kupujacego. Wszystkie 18 watkow sklepu A swiecilo sie jako
-        // czekajace i nie zgaslo by nigdy, a czuwacz formulki wysyla DOKLADNIE do takich
-        // watkow. Szczegoly i cena tej pomylki: domain/najnowsza-wiadomosc.js.
+        // prawie zawsze pytanie kupujacego. Wszystkie watki swiecily sie jako
+        // czekajace i nie zgaslyby nigdy, a czuwacz formulki wysyla DOKLADNIE do takich
+        // watkow. Szczegoly i cena tej pomylki: domena/najnowsza-wiadomosc.js.
         const ostatnia = najnowszaWiadomosc(wiadomosci);
 
         zapiszWatek(db, {
@@ -98,14 +98,14 @@ export function createPollerWiadomosci({
       const licznik = { watkow: 0, odswiezonych: 0 };
       const bledy = [];
       for (const [nazwa, klient] of Object.entries(klienci)) {
-        // PRZ-157.12b: mapa kanałów niesie też klientów ERLI — oni nie mają wątków Allegro.
+        // Mapa kanałów niesie też klientów ERLI — oni nie mają wątków Allegro.
         if (!kanalZWiadomosciami(nazwa)) continue;
         // ⚠️⚠️ NIE WOLAMY ZASOBU, DO KTOREGO KANAL NIE MA UPRAWNIENIA. Bez tego panel wdrozony
-        // PRZED przewiazaniem kanalow strzela 403 przy kazdym przebiegu — okolo 1150 nieudanych
+        // PRZED przewiazaniem kanalow strzela 403 przy kazdym przebiegu — ponad tysiac nieudanych
         // wywolan na dobe prosto do raportu „Bledy techniczne" Allegro. Zakresy wchodza do tokenu
         // wylacznie przy autoryzacji, wiec ten stan trwa az do przewiazania, nie mija sam.
         // ⚠️ Pusta lista brakow znaczy „nie wiem" i przepuszcza — nie wnioskujemy z niewiedzy
-        // (ta sama zasada, co w domain/uprawnienia-kanalu.js).
+        // (ta sama zasada, co w domena/uprawnienia-kanalu.js).
         if (brakiKanalu(nazwa).includes('allegro:api:messaging')) continue;
         try {
           await kanal(nazwa, klient, pobranyAt, licznik);

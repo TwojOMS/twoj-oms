@@ -2,11 +2,11 @@ import { bladOperatora } from './bledy.js';
 
 // Klienci rozliczani ZBIORCZO: wiele zamowien w miesiacu, jedna faktura na koniec.
 //
-// ⚠️⚠️ ZRODLEM WARUNKOW JEST TABELA `klienci`, NIE `.env` (od 2026-08-24). Do tego dnia
-// caly kontrakt stal w jednym ciagu `OMS_KLIENCI_ZBIORCZY`, a klucz, nazwa, NIP i rabat
-// RÓWNOLEGLE w bazie stalych klientow — panel znal wiec dwie prawdy naraz i sam to
-// przyznawal pasem rozjazdu bez przycisku. `parsujKlientowZbiorczych` ponizej zyje juz
-// WYLACZNIE dla migracji jednorazowej (db/klienci.js) i nie ma innego konsumenta.
+// ⚠️⚠️ ZRODLEM WARUNKOW JEST TABELA `klienci`, NIE `.env`. Gdyby caly kontrakt stal
+// w jednym ciagu `OMS_KLIENCI_ZBIORCZY`, a klucz, nazwa, NIP i rabat
+// RÓWNOLEGLE w bazie stalych klientow, panel znalby dwie prawdy naraz.
+// `parsujKlientowZbiorczych` ponizej zyje wiec WYLACZNIE dla migracji jednorazowej
+// (oms/db/klienci.js) i nie ma innego konsumenta.
 //
 // ⚠️ Dopasowanie idzie po NIP-ie, NIE po adresie mailowym. Mail jest wlasciwoscia
 // KORESPONDENCJI (klient moze napisac z innego adresu, z telefonu, przez pracownika),
@@ -50,7 +50,7 @@ export const KODY_KRAJOW_UE = new Set([
  * Numer podatkowy w postaci porownywalnej: polski NIP to SAME CYFRY, numer z innego
  * panstwa Unii to KOD KRAJU + znaki alfanumeryczne, wielkimi literami.
  *
- * ⚠️⚠️ POLSKI NUMER MUSI WYCHODZIC STAD TAK SAMO JAK PRZED 26.08.2026 — i to jest
+ * ⚠️⚠️ POLSKI NUMER MUSI WYCHODZIC STAD TAK SAMO JAK PRZED DOPISANIEM NUMEROW UE — i to jest
  * najwazniejsze zdanie w tej funkcji. Cala kolumna `klienci.nip`, cala kolumna
  * `zamowienia.nip` i kazde przypisanie zamowienia do okresu porownuja wynik tej
  * normalizacji. Gdyby polski numer zaczal wychodzic inaczej, panel z dnia na dzien
@@ -64,7 +64,7 @@ export const KODY_KRAJOW_UE = new Set([
  *
  * ⚠️ FUNKCJA NIE RZUCA — jest uzywana takze do SZUKANIA (klientPoNip, zamowieniaPoNip)
  * po danych archiwalnych, gdzie w polu NIP-u lezy wszystko, co ktos kiedys wpisal.
- * Odmowa nalezy do sciezki ZAPISU (`znormalizujKlienta` w domain/klient-staly.js);
+ * Odmowa nalezy do sciezki ZAPISU (`znormalizujKlienta` w domena/klient-staly.js);
  * tutaj numer nierozpoznany oddaje po prostu same cyfry, tak jak dotad.
  */
 export function normalizujNip(nip) {
@@ -100,7 +100,7 @@ export function nipRozpoznany(surowy) {
 export function parsujKlientowZbiorczych(env) {
   const surowe = env?.OMS_KLIENCI_ZBIORCZY;
   // Brak sekcji to POPRAWNY tryb, nie awaria: nikt nie jest rozliczany zbiorczo,
-  // a panel robi swoje. Tak samo jak brak sekcji InPost w config.js.
+  // a panel robi swoje.
   if (surowe === undefined || surowe === '') return [];
 
   return surowe.split(',').map((wpisSurowy, indeks) => {

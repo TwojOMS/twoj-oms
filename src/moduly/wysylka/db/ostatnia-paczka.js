@@ -1,33 +1,30 @@
-// src/oms/db/ostatnia-paczka.js
+// src/moduly/wysylka/db/ostatnia-paczka.js
 //
-// JEDNA klauzula SQL wybierajaca „te paczke, ktora rzadzi rozliczeniem" — wspoldzielona
-// przez czterech czytelnikow: czuwacza pobran (services/oznaczanie-pobran.js), pas dlugow
-// (services/faktury-widok.js), skrypt sprzatajacy (services/sprzatanie-zaplat.js)
-// i kandydatow ostrzezenia o zwroconym pobraniu (db/ostrzezenia.js).
+// JEDNA klauzula SQL wybierająca „tę paczkę, która rządzi rozliczeniem” — współdzielona
+// przez trzech czytelników: czuwacza pobrań (services/oznaczanie-pobran.js), pas długów
+// (moduly/faktury/services/faktury-widok.js) i kandydatów ostrzeżenia o zwróconym pobraniu
+// (src/oms/db/ostrzezenia.js).
 //
-// ⚠️ MIESZKA W WARSTWIE `db/`, A NIE W SERWISIE, I TO JEST TRESC TEGO PLIKU. Do 31.08.2026
-// definicja stala w services/oznaczanie-pobran.js, wiec czwarty czytelnik — zapytanie
-// z warstwy `db/` — musialby importowac Z SERWISU. Byl to jedyny taki import w repo
-// (pozostale 35 modulow serwisow importuje z `db/`, nigdy odwrotnie) i pierwszy krok do
-// cyklu: wystarczyloby, zeby oznaczanie-pobran kiedykolwiek siegnelo po db/ostrzezenia.js.
-// Klauzula jest SQL-em, wiec warstwa `db/` jest jej wlasciwym miejscem, a nie kompromisem.
+// ⚠️ MIESZKA W WARSTWIE `db/`, A NIE W SERWISIE, I TO JEST TREŚĆ TEGO PLIKU. Dawniej
+// definicja stała w services/oznaczanie-pobran.js, więc czytelnik z warstwy `db/` — zapytanie
+// ostrzeżeń — musiałby importować Z SERWISU: odwrotnie niż zwykły kierunek serwis → `db/`
+// i pierwszy krok do cyklu: wystarczyłoby, żeby oznaczanie-pobran kiedykolwiek sięgnęło po
+// ostrzeżenia. Klauzula jest SQL-em, więc warstwa `db/` jest jej właściwym miejscem, a nie kompromisem.
 //
-// ⚠️ Uzasadnienie samej reguly (dlaczego „najnowsze zdarzenie", a nie „ktorakolwiek
-// doreczona") zostalo przy niej — patrz docblock nizej.
+// ⚠️ Dlaczego „najnowsze zdarzenie”, a nie „którakolwiek doręczona” — przy pierwszym czytelniku
+// (services/oznaczanie-pobran.js, komentarz nad `KANDYDACI`); ograniczenie porządku — w docblocku niżej.
 
 /**
  * DOKŁADNIE JEDNA PACZKA NA ZAMÓWIENIE — ta z najnowszym zdarzeniem u kuriera.
  *
- * ⚠️ EKSPORTOWANE, ŻEBY DRUGI CZYTELNIK PACZEK NIE MIAŁ WŁASNEJ KOPII TEJ REGUŁY. Skrypt
- * sprzątający (scripts/sonda-oznaczenia-zaplaty.mjs przez services/sprzatanie-zaplat.js)
- * pokazuje właścicielowi to samo, co robi ten skan — a wypis, który mówi o paczkach coś
- * innego niż czuwacz, byłby gorszy niż brak wypisu: człowiek zatwierdzałby zlecenia na
- * podstawie zdania, którego wykonanie nie potwierdzi. Klauzula ma być JEDNA, a nie dwie
- * wyglądające tak samo w dniu napisania. Uzasadnienie samej reguły — w komentarzu wyżej.
+ * ⚠️ EKSPORTOWANE, ŻEBY KOLEJNY CZYTELNIK PACZEK NIE MIAŁ WŁASNEJ KOPII TEJ REGUŁY. Czytelnik,
+ * który mówi o paczkach coś innego niż czuwacz, byłby gorszy niż brak odczytu: człowiek
+ * podejmowałby decyzje na podstawie zdania, którego wykonanie nie potwierdzi. Klauzula ma być
+ * JEDNA, a nie dwie wyglądające tak samo w dniu napisania.
  *
- * ⚠️ TRZECIM CZYTELNIKIEM JEST PAS DŁUGÓW (`POBRANIA_PRZESYLKI` w services/faktury-widok.js).
- * Do 28.08.2026 miał WŁASNĄ, przepisaną kopię tej klauzuli — mimo że komentarz obok obiecywał
- * „klauzula ma być JEDNA". Teraz naprawdę jest jedna.
+ * ⚠️ DRUGIM CZYTELNIKIEM JEST PAS DŁUGÓW (`POBRANIA_PRZESYLKI` w
+ * moduly/faktury/services/faktury-widok.js). Dawniej miał WŁASNĄ, przepisaną kopię tej klauzuli — mimo że komentarz obok
+ * obiecywał „klauzula ma być JEDNA”. Teraz naprawdę jest jedna.
  *
  * ⚠️⚠️ `ORDER BY` PORÓWNUJE NAPISY W RÓŻNYCH FORMATACH — świadomie i z ograniczeniem, które
  * trzeba znać. `status_kuriera_at` zapisujemy tak, jak oddaje je kurier: DPD `eventTime` BEZ

@@ -1,9 +1,9 @@
-<%# Ekran odmowy powstaje w onRequest, zanim istnieją locals wspólnej ramy. Jego świadomie
-    samodzielny dokument pozostaje jedynym użyciem tej furtki. Kampania przechodzi niżej. %>
+<%# Furtka `wlasnyUklad`: ekrany odmowy (brak-dostepu.ejs, odmowa-rdzenia.ejs) są samodzielnymi
+    dokumentami, bo część z nich powstaje w onRequest, zanim istnieją locals wspólnej ramy. %>
 <% if (locals.wlasnyUklad) { %><%- body %><% } else { %>
 <!doctype html>
-<%# `data-motyw` siedzi na <html>, a nie na <body>: podmiana zmiennych musi objac takze */
-    tlo strony i `color-scheme`, ktore przegladarka czyta z korzenia dokumentu. %>
+<%# `data-motyw` siedzi na <html>, a nie na <body>: podmiana zmiennych musi objąć także
+    tło strony i `color-scheme`, które przeglądarka czyta z korzenia dokumentu. %>
 <html lang="pl" data-motyw="<%= motyw %>">
 <head>
   <link rel="icon" type="image/png" href="<%= zasob('favicon-32.png') %>">
@@ -11,28 +11,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><%= title %></title>
   <link rel="stylesheet" href="<%= zasob('oms-uklad.css') %>">
-  <%# ⚠️ htmx — JEDYNA biblioteka po stronie przegladarki w tym panelu i jest tu po JEDNA
-      rzecz: zywe szukanie w magazynie (21.08.2026). Nie pisze sie w niej JavaScriptu —
-      atrybuty `hx-*` mowia, co pobrac i ktory kawalek strony podmienic, a serwer dalej
-      renderuje HTML z tych samych widokow EJS. Regula „widok nic nie liczy" zostaje
-      nietknieta: przegladarka nie dostaje ani jednej liczby do policzenia.
+  <%# ⚠️ htmx — JEDYNA biblioteka po stronie przeglądarki w tym panelu i jest tu po JEDNĄ
+      rzecz: żywe szukanie towaru z magazynu na nowym zamówieniu i przy edycji pozycji karty. Nie pisze się w niej JavaScriptu —
+      atrybuty `hx-*` mówią, co pobrać i który kawałek strony podmienić, a serwer dalej
+      renderuje HTML z tych samych widoków EJS. Reguła „widok nic nie liczy" zostaje
+      nietknięta: przeglądarka nie dostaje ani jednej liczby do policzenia.
 
-      ⚠️⚠️ WYLACZNIE NA ZADANIE WIDOKU (`htmx: true` z trasy), nigdy globalnie. Ekran zwrotu
-      ma NIE MIEC ANI JEDNEGO skryptu i pilnuje tego test — bo jego dwukrokowosc bierze sie
-      wlasnie stad, ze nic nie liczy sie na zywo; skrypt zrobilby z drugiego kroku ozdobe.
-      Wartosc domyslna (`false`) stoi w defaultContext w web/server.js, wiec ekran dopisany
-      w przyszlosci NIE dostaje biblioteki przez przypadek.
+      ⚠️⚠️ WYŁĄCZNIE NA ŻĄDANIE WIDOKU (`htmx: true` z trasy), nigdy globalnie. Ekran zwrotu
+      ma NIE MIEĆ skryptu liczącego i pilnuje tego test (tests/moduly/zwroty/web-zwroty.test.js) —
+      jego dwukrokowość bierze się stąd, że nic nie liczy się na żywo; skrypt zrobiłby z drugiego kroku ozdobę.
+      Wartość domyślna (`false`) stoi w defaultContext w core/web/pipeline.js, więc ekran dopisany
+      w przyszłości NIE dostaje biblioteki przez przypadek.
 
-      ⚠️ Z WLASNEGO HOSTA (`/public/htmx.min.js`), nigdy z CDN-u. Panel chodzi w LAN-ie bez
-      wyjscia na swiat, a plik jest ten sam, ktorego uzywa panel indywidualny — jedna kopia
-      w repo, nie dwie do rozjechania. %>
+      ⚠️ Z WŁASNEGO HOSTA (`/public/htmx.min.js`), nigdy z CDN-u. Panel może pracować w sieci
+      bez dostępu do internetu, a w repo jest jedna kopia pliku (public/htmx.min.js),
+      więc nie ma dwóch do rozjechania. %>
   <% if (htmx) { %><script src="<%= zasob('htmx.min.js') %>"></script><% } %>
   <link rel="stylesheet" href="<%= zasob('oms-design.css') %>"><% if (typeof nawigacja !== 'undefined' && nawigacja?.kontekst?.dzial === 'ustawienia') { %>
-  <link rel="stylesheet" href="<%= zasob('oms-ustawienia.css') %>"><% } %>
+  <link rel="stylesheet" href="<%= zasob('oms-ustawienia.css') %>"><% } %><% if (locals.ekranLogowania) { %>
+  <link rel="stylesheet" href="<%= zasob('oms-logowanie.css') %>"><% } %>
   <script src="<%= zasob('oms-podmenu.js') %>"></script>
 </head>
 <body>
-  <%# PRZ-085: ekran bez własnego `panelStatusow` bierze liczby z pipeline'u (`licznikiStatusow`); `locals.`, bo
+  <%# Ekran bez własnego `panelStatusow` bierze liczby z pipeline'u (`licznikiStatusow`); `locals.`, bo
       układ renderują też testy menu bez kontekstu pipeline.js. %>
   <% const licznikiWspolne = locals.licznikiStatusow ?? null;
     const statusyWzorcowe = (nawigacja?.kontekst?.statusy ?? []).map(s => licznikiWspolne && licznikiWspolne[s.klucz] !== undefined ? { ...s, liczba: licznikiWspolne[s.klucz] } : s);
@@ -71,10 +72,10 @@
     <%_ } _%>
     <div class="tresc">
     <div class="oms-main" id="tresc-glowna">
-      <%# PRZ-083: demo publiczne — pasek z licznikiem do resetu danych na kazdej zakladce (oms-demo.js). %>
-      <%# Bez JavaScriptu mowi godzine restartu; `demo` jest null poza demo publicznym (core/demo.ts). %>
-      <%# `locals.demo`, nie `demo`: uklad renderuja tez testy menu bez kontekstu pipeline.js — goly %>
-      <%# identyfikator dawal tam ReferenceError (pelna bramka PRZ-083, 239 testow). %>
+      <%# Demo publiczne — pasek z licznikiem do resetu danych na każdej zakładce (oms-demo.js). %>
+      <%# Bez JavaScriptu mówi godzinę restartu; `demo` jest null poza demo publicznym (core/demo.ts). %>
+      <%# `locals.demo`, nie `demo`: układ renderują też testy menu bez kontekstu pipeline.js — goły %>
+      <%# identyfikator dawałby tam ReferenceError. %>
       <% const demo = locals.demo ?? null; %>
       <% if (demo) { %>
       <div class="pasek-demo"<% if (demo.resetPlanowy) { %> data-demo-reset="<%= demo.resetPlanowy %>" data-demo-teraz="<%= Date.now() %>" data-demo-login="<%= demo.login %>" data-demo-haslo="<%= demo.haslo %>"<% } %>>
@@ -85,7 +86,7 @@
       <header class="oms-topbar">
         <div class="oms-breadcrumb"><% if (!menuUstawien) { %><span>Panel</span><span aria-hidden="true">/</span><% } %><strong><% if (typeof okruszki !== 'undefined' && Array.isArray(okruszki) && okruszki.length) { okruszki.forEach((o, i) => { if (i) { %> / <% } if (o.href) { %><a class="oms-breadcrumb-link" href="<%= o.href %>"><%= o.tekst %></a><% } else { %><%= o.tekst %><% } }); } else { %><%= title %><% } %></strong></div>
         <div class="oms-top-actions">
-          <%# PRZ-167: analizy przeniesione z górnego paska do menu bocznego (pozycja „Analityka”). %>
+          <%# Analizy są pozycją „Analityka” w grupie „Wyniki” menu bocznego, nie w górnym pasku. %>
           <% if (nawigacja.ustawienia) { %><a class="oms-theme-button oms-settings-button" href="<%= nawigacja.ustawienia.href %>"<%- nawigacja.ustawienia.aktywna ? ' aria-current="page"' : '' %> aria-label="Ustawienia" title="Ustawienia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></a><% } %>
           <form method="post" action="/motyw" class="oms-theme-form">
             <input type="hidden" name="powrot" value="<%= menuKonta?.powrot ?? (typeof sciezkaPowrotu !== 'undefined' ? sciezkaPowrotu : '/') %>">
@@ -109,8 +110,8 @@
           <div class="oms-settings-content">
             <%- include('_zakladki-ustawien.ejs', {nawigacja}) %>
         <% } %>
-        <%# PRZ-083: gosc demo publicznego OGLADA Ustawienia — tresc martwa (inert), nad nia jedno zdanie. Zapis i tak %>
-        <%# zatrzymuje hak podglad-demo.js (403); `inert` oszczedza gosciowi klikania w cos, co nie zadziala. %>
+        <%# Gość demo publicznego OGLĄDA Ustawienia — treść martwa (inert), nad nią jedno zdanie. Zapis i tak %>
+        <%# zatrzymuje hak core/bezpieczenstwo/podglad-demo.js (403); `inert` oszczędza gościowi klikania w coś, co nie zadziała. %>
         <% if (locals.podgladDemo) { %>
           <p class="pas-demo">W wersji demonstracyjnej ustawienia można tylko obejrzeć — zmiany są wyłączone.</p>
           <div class="podglad-demo" inert><%- body %></div>
@@ -127,7 +128,7 @@
   </div>
   <script type="module" src="<%= zasob('oms-nawigacja.js') %>"></script>
   <% if (locals.demo?.resetPlanowy) { %><script type="module" src="<%= zasob('oms-demo.js') %>"></script><% } %>
-  <% } else { %><div class="tresc"><%- body %></div><% } %>
+  <% } else { %><div class="tresc<%= locals.ekranLogowania ? ' tresc--logowanie' : '' %>"><%- body %></div><% } %>
 </body>
 </html>
 <% } %>

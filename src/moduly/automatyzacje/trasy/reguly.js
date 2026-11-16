@@ -1,9 +1,8 @@
-// PRZ-108.07 (zmiana B planu automatyzacji, sekcja 6; makieta makiety-2026-10-21/automatyzacje.html, kadry 1–6):
-// reguły na ekranie Ustawienia → Automatyzacje — kreator (krok 1: zdarzenie; krok 2: opóźnienie, kanały, akcja,
+// Reguły na ekranie Ustawienia → Automatyzacje — kreator (krok 1: zdarzenie; krok 2: opóźnienie, kanały, akcja,
 // nazwa i limit), „Sprawdź na ostatnich 30 dniach” (bez zapisu), dziennik reguły, włącz / wyłącz, zaległe, usuń.
 // Wszystko tylko dla admina (gość demo ogląda — tylkoAdmin z ekranu KSeF). Zapis tworzy regułę WYŁĄCZONĄ.
 // Rejestry zdarzeń i akcji są parametrem (pusty rejestr = katalog przygaszony „wkrótce”, reguły nie da się zapisać).
-// PRZ-108.08 (C1): status zdarzenia w kroku 1, warunki status / numer listu / dostawa / pobranie w kroku 2, podgląd
+// Status zdarzenia w kroku 1, warunki status / numer listu / dostawa / pobranie w kroku 2, podgląd
 // maila w „Sprawdź na 30 dniach”, reguła z martwym statusem albo szablonem na czerwono (i bez włączenia).
 import {
   sprawdzRegule, noweKanalyOdZapisu, zgodnoscSzablonu, pokazChwile, KATALOG_ZDARZEN, KATALOG_AKCJI, GRUPY_ZDARZEN,
@@ -66,7 +65,7 @@ const minut = (n) => {
 
 /**
  * Zależności tras liczone przy każdym żądaniu: szablony, kanały i statusy mogą się zmienić bez restartu.
- * PRZ-108.08: zdarzenie z parametrem (status) niesie `opcje` — klucze, które dziś da się wybrać (walidacja domeny).
+ * Zdarzenie z parametrem (status) niesie `opcje` — klucze, które dziś da się wybrać (walidacja domeny).
  */
 function kontekstReguly({ db, definicje, zdarzenia, akcje }) {
   const wlasne = wczytajSzablonyWiadomosci(db).wlasne;
@@ -149,7 +148,7 @@ function grupyKreatora(db, zdarzenia, wybrane = null, wybranyStatus = null) {
     ...zdarzenia.filter((d) => !KATALOG_ZDARZEN.some((z) => z.klucz === d.klucz))]
     .map((z) => {
       const dostepne = zdarzenia.some((d) => d.klucz === z.klucz);
-      // PRZ-108.08: zdarzenie z parametrem (status) — lista pod przyciskiem; domyślnie Wysłane (przypadek właściciela).
+      // Zdarzenie z parametrem (status) — lista pod przyciskiem; domyślnie Wysłane.
       const opcje = dostepne && z.opcjeParametru ? z.opcjeParametru(db) : null;
       const domyslny = opcje?.some((o) => o.klucz === wybranyStatus && o.dostepny) ? wybranyStatus
         : opcje?.find((o) => o.klucz === 'wyslane') ? 'wyslane' : opcje?.find((o) => o.dostepny)?.klucz ?? null;
@@ -177,7 +176,7 @@ function modelFormularza(z, { formularz, regula = null, bledy = [], sprawdzenie 
   const zdarzenie = String(formularz.zdarzenie ?? '');
   const wpisZdarzenia = z.zdarzenia.find((d) => d.klucz === zdarzenie);
   const zdarzenieStatus = wpisZdarzenia?.opcjeParametru ? String(formularz.zdarzenie_status ?? '') : null;
-  // PRZ-108.08: warunki w chwili wykonania. Szablon „Zamówienie wysłane” wymusza „ma numer listu” — pole zaznaczone
+  // Warunki w chwili wykonania. Szablon „Zamówienie wysłane” wymusza „ma numer listu” — pole zaznaczone
   // i zablokowane, wartość jedzie ukrytym polem (zablokowane pole wyboru formularz pomija).
   const szablon = String(formularz.szablon ?? '');
   const wymuszony = wymagaNumeruListu(szablon);
@@ -232,7 +231,7 @@ function formularzZReguly(r) {
     limit: String(r.limit_na_godzine), akcja: r.akcja, szablon: r.akcja_param?.szablon ?? '' };
 }
 
-/** Wartości startowe kroku 2 kreatora (makieta, kadr 4): opóźnienie 30 min, status zdarzenia jako warunek, „Zamówienie wysłane”. */
+/** Wartości startowe kroku 2 kreatora: opóźnienie 30 min, status zdarzenia jako warunek, „Zamówienie wysłane”. */
 function formularzStartowy(z, zdarzenie, zdarzenieStatus) {
   const szablon = zdarzenie === 'zamowienie_nowe' ? 'potwierdzenie' : zgodnoscSzablonu(zdarzenie, 'wyslane') ? 'wyslane' : '';
   return { zdarzenie, zdarzenie_status: zdarzenieStatus ?? '', opoznienie: '30', limit: String(LIMIT_DOMYSLNY), kanaly: [],
@@ -355,7 +354,7 @@ export function registerRegulyAutomatyzacji(app, zaleznosci) {
       sprawdzWarunki: z.sprawdzWarunki, teraz: z.teraz });
     const etykiety = new Map(kanalyWidoku(z.definicje).map((x) => [x.klucz, x.etykieta]));
     const akcja = z.akcje.find((a) => a.klucz === w.regula.akcja);
-    // PRZ-108.08: przykłady z numerami paczek (stan z dziś) i podgląd maila na pierwszym, który by wyszedł — ta sama
+    // Przykłady z numerami paczek (stan z dziś) i podgląd maila na pierwszym, który by wyszedł — ta sama
     // funkcja co podgląd na karcie i wysyłka (`wiadomosci.podglad`). Podgląd niczego nie zapisuje.
     const przyklady = wynik.przyklady.map((p) => {
       const zam = pobierzZamowienie(db, p.zamowienie_id);
@@ -399,7 +398,7 @@ export function registerRegulyAutomatyzacji(app, zaleznosci) {
   app.post(`${EKRAN_AUTOMATYZACJI}/:id/wlacz`, zRegula(async (req, reply, r) => {
     const przeszkoda = przeszkodaWlaczenia(z, r);
     if (przeszkoda) return widokDziennika(req, reply, z, r, { status: 409, blad: przeszkoda });
-    // Już włączona (np. stara karta) → bez zmian, z powrotem na ekran reguły (recenzja 07, usterka 7).
+    // Już włączona (np. stara karta) → bez zmian, z powrotem na ekran reguły.
     const wlaczona = wlaczRegule(db, r.id, { login: login(req), teraz: z.teraz });
     return z303(reply, `${EKRAN_AUTOMATYZACJI}/${r.id}${wlaczona ? '?zapisano=wlaczona' : ''}`);
   }));

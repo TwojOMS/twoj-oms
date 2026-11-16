@@ -1,9 +1,9 @@
-// Nazwy plikow i katalogow archiwum faktur na NAS-ie — WSPOLNE dla archiwum kosztow
-// (services/archiwum-kosztow.js: `Kosztowe <rok>/<Miesiac>/RRRR-MM-DD_SPRZEDAWCA_numer`)
-// i archiwum sprzedazy (services/archiwum-sprzedazy.js: `<rok>/<Miesiac>/RRRR-MM-DD_numer`).
+// Nazwy plikow i katalogow archiwum faktur na udziale sieciowym — WSPOLNE dla archiwum kosztow
+// (moduly/koszty/services/archiwum-kosztow.js: `Kosztowe <rok>/<Miesiac>/RRRR-MM-DD_SPRZEDAWCA_numer`)
+// i archiwum sprzedazy (moduly/faktury/services/archiwum-sprzedazy.js: `<rok>/<Miesiac>/RRRR-MM-DD_numer`).
 //
-// ⚠️ NAZWY MIESIECY BEZ POLSKICH ZNAKOW — tak wygladaja katalogi, ktore juz istnieja na NAS-ie
-// (udzial sieciowy biura: FAKTURY\2026\Sierpien, ...\Kosztowe 2026\Lipiec). Poprawienie ich „na
+// ⚠️ NAZWY MIESIECY BEZ POLSKICH ZNAKOW — tak wygladaja katalogi, ktore juz istnieja w archiwum
+// (np. FAKTURY\2026\Sierpien, ...\Kosztowe 2026\Lipiec). Poprawienie ich „na
 // ladniejsze" zalozyloby DRUGI komplet katalogow obok pierwszego, bez ani jednego bledu.
 export const MIESIACE_KATALOGOW = ['Styczen', 'Luty', 'Marzec', 'Kwiecien', 'Maj', 'Czerwiec',
   'Lipiec', 'Sierpien', 'Wrzesien', 'Pazdziernik', 'Listopad', 'Grudzien'];
@@ -28,7 +28,7 @@ export function katalogMiesiaca(dzien) {
 
 /**
  * Sciezka PDF-u faktury sprzedazowej lub korekty WZGLEDEM katalogu archiwum.
- * Konwencja z plikow, ktore juz leza na NAS-ie (eksport z 1.08.2026):
+ * Konwencja z plikow, ktore juz leza w archiwum:
  * `2026/Lipiec/2026-07-01_1-07-2026.pdf`, korekta `2026/Luty/2026-02-02_1-KOR-02-2026.pdf`.
  */
 export function sciezkaArchiwumSprzedazy({ invoiceDate, numer }) {

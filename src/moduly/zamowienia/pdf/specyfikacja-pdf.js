@@ -10,7 +10,7 @@ import { bladOperatora } from '../../../domena/bledy.js';
 // dokumenty w tym samym roku, wiec nie maja wygladac jak z dwoch roznych firm.
 //
 // ⚠️ TEN MODUL TYLKO RYSUJE. Zadnego liczenia kwot, VAT-u ani skladania pozycji — wszystko
-// przychodzi juz gotowe z domain/specyfikacja.js (daneSpecyfikacji, Zadanie 6). Arytmetyka
+// przychodzi juz gotowe z domena/specyfikacja.js (daneSpecyfikacji). Arytmetyka
 // dokumentu ma byc testowalna bez czytania PDF-a.
 
 const KATALOG = path.dirname(fileURLToPath(import.meta.url));
@@ -110,7 +110,7 @@ function komorka(doc, tekst, kol, y) {
 
 // Kwota juz przychodzi sformatowana w zlotowkach (`daneSpecyfikacji` wola `zl()`) — tu
 // dokladamy tylko walute. `null`/`undefined` (cena jednostkowa umie byc `null`, patrz
-// domain/specyfikacja.js) daje pusta komorke, nie napis "null PLN".
+// domena/specyfikacja.js) daje pusta komorke, nie napis "null PLN".
 const kwota = (napisZl) => (napisZl == null || napisZl === '' ? '' : `${napisZl} PLN`);
 
 const NAGLOWKI_TABELI = [
@@ -161,9 +161,9 @@ function wierszPozycji(doc, y, pozycja, lp) {
 // prawniczy, tylko powod, dla ktorego dokument w ogole moze zastapic wydruk faktury.
 //
 // ⚠️ WOLANA RAZ NA KAZDA STRONE, NA KONCU (`stopkaNaKazdejStronie` nizej), a NIE z konca
-// `rysujStrone`. Do 12.08.2026 stalo tu jedno wywolanie na koniec rysowania zamowienia —
+// `rysujStrone`. Wczesniej stalo tu jedno wywolanie na koniec rysowania zamowienia —
 // czyli stopka trafiala na strone BIEZACA W TEJ CHWILI, a wiec WYLACZNIE na ostatnia.
-// Zmierzone na 30 pozycjach: str. 1 i 2 niosly komplet pozycji, symboli i cen BEZ ANI JEDNEGO
+// Przy 30 pozycjach str. 1 i 2 niosly komplet pozycji, symboli i cen BEZ ANI JEDNEGO
 // zdania odcinajacego kartke od faktury — dokladnie ta kartka, przed ktorej zaksiegowaniem
 // drugi raz to zdanie ma bronic. Ksiegowa dostajaca do reki strone 1 nie ma z czego poznac,
 // ze to nie faktura.
@@ -238,7 +238,7 @@ function noweDoc(tytul, autor) {
  * Wiersz identyfikujacy na STRONIE KONTYNUACJI: powtorzony tytul dokumentu, numer zamowienia
  * i numer strony W OBREBIE TEGO ZAMOWIENIA. Zwraca `y`, od ktorego wolno pisac dalej.
  *
- * ⚠️ POWOD JEST TAKI SAM JAK PRZY STOPCE. Do 12.08.2026 strona druga i kazda nastepna
+ * ⚠️ POWOD JEST TAKI SAM JAK PRZY STOPCE. Wczesniej strona druga i kazda nastepna
  * zaczynala sie od golego naglowka tabeli: ani tytulu, ani numeru zamowienia — sama kartka
  * z symbolami i cenami. Wypadnie z paczki, wsunie sie miedzy dokumenty innego zamowienia
  * i nie ma po czym poznac, do czego nalezy. Zamowienie lamie sie na druga strone juz przy
@@ -268,7 +268,7 @@ function nowaStronaKontynuacji(doc, dane, stan) {
 
 /**
  * Jedna strona specyfikacji dla jednego zamowienia. Wejscie to WYLACZNIE `daneSpecyfikacji`
- * z domain/specyfikacja.js — ten modul nie zna zadnego innego ksztaltu.
+ * z domena/specyfikacja.js — ten modul nie zna zadnego innego ksztaltu.
  */
 function rysujStrone(doc, dane = {}) {
   const stan = { strona: 1 };
@@ -277,10 +277,10 @@ function rysujStrone(doc, dane = {}) {
   y += 32;
 
   zwykly(doc, 10).text(`Nr ${dane.numer ?? ''}`, L, y, { width: 260, lineBreak: false });
-  // ⚠️ „Data zamówienia", nie samo „Data" (24.08.2026) — i to nie jest kosmetyka. Na kartce
+  // ⚠️ „Data zamówienia", nie samo „Data" — i to nie jest kosmetyka. Na kartce
   // sa teraz DWIE daty (zlozenia i platnosci), wiec goly napis „Data" kazalby zgadywac,
   // ktora to. Wartosc sie nie zmienila: to zawsze byl dzien ZLOZENIA zamowienia
-  // (`utworzone_at` w czasie warszawskim, patrz domain/specyfikacja.js).
+  // (`utworzone_at` w czasie warszawskim, patrz domena/specyfikacja.js).
   zwykly(doc, 10).text(`Data zamówienia: ${dane.dataZamowienia ?? ''}`, 300, y, {
     width: R - 300, align: 'right', lineBreak: false,
   });
@@ -289,7 +289,7 @@ function rysujStrone(doc, dane = {}) {
   linia(doc, y);
   y += 18;
 
-  // ⚠️ NIP DOLOZONY 12.08.2026 (recenzja). Przy zamowieniach firmowych ta kartka ZASTEPUJE
+  // ⚠️ NIP SPRZEDAWCY na kartce. Przy zamowieniach firmowych ta kartka ZASTEPUJE
   // wydruk faktury (faktura i tak dociera przez KSeF) — dokument sprzedazowy dla odbiorcy
   // instytucjonalnego bez numeru identyfikacji podatkowej wystawcy byl widoczna dziura,
   // nawet gdy formalnie nie jest to faktura VAT. Ta sama zasada, co przy BDO wyzej: pusty
@@ -387,7 +387,7 @@ function rysujStrone(doc, dane = {}) {
   // ⚠️⚠️ DOKUMENT SPRZEDAZY — JEDNA LINIA, DWIE MOZLIWE TRESCI I ONE SIE WYKLUCZAJA.
   //
   // Faktura: linijka warunkowa, bo dokument powstaje czesto PRZED faktura i to nie jest blad.
-  // Paragon: dla klienta, ktory faktury NIE chcial — do 24.08.2026 taka kartka milczala
+  // Paragon: dla klienta, ktory faktury NIE chcial — wczesniej taka kartka milczala
   // o dokumencie sprzedazy w ogole, wiec klient dostawal specyfikacje bez jednego slowa
   // o tym, czym udokumentowany jest zakup.
   //
@@ -471,7 +471,7 @@ function uwagiKlienta(doc, dane, stan, yWejscia) {
  * klientowi ani ksiegowosci bez obu tych rzeczy: bez stopki kartka jest do zaksiegowania
  * drugi raz obok faktury z KSeF, bez numeru — nie wiadomo, do ktorej paczki nalezy.
  *
- * Wejscie: WYLACZNIE ksztalt `daneSpecyfikacji` (domain/specyfikacja.js) — `numer`,
+ * Wejscie: WYLACZNIE ksztalt `daneSpecyfikacji` (domena/specyfikacja.js) — `numer`,
  * `dataZamowienia`, `sprzedawca` (`nazwa`, `adres`, `nip`, `bdo`), `nabywca` (`firma`, `ulica`,
  * `kod`, `miasto`, `kraj`, `nip`), `pozycje` (`nazwa`, `symbol`, `ilosc`, `cenaZl`,
  * `wartoscZl`), `dostawaZl`, `razemZl`, `platnosc`, `dostawa`, `faktura` (`{ numer }` albo

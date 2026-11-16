@@ -40,10 +40,10 @@ function zlyPdf(bajty, nazwa) {
 // u kupujacego i panel nie ma czym go stamtad zabrac; skasowanie faktury w inFakcie NIE
 // zabiera jej kupujacemu z rak.
 //
-// ⚠️ WYSYLKA JEST RECZNA, PRZYCISKIEM (Zadanie 9). Automat w czuwaczu to Zadanie 12 —
-// pierwszy dokument u kupujacego ma pojsc pod okiem wlasciciela. Ta usluga NIE JEST
-// podpieta do zadnego zegara i tak ma zostac do czasu tamtej decyzji.
-// PRZ-118.07: PDF pobiera PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`).
+// ⚠️ DWIE DROGI DO TEJ USŁUGI, JEDNA BRAMKA: przycisk na karcie i automat po numerze KSeF
+// (czuwacz, `wyslijDoAllegroJesliWolno` w services/po-numerze-ksef.js). Obie pytają
+// `wolnoWyslacDoAllegro`, a odmowę i zajęcie wysyłki rozstrzyga `wyslij` niżej.
+// PDF pobiera PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`).
 export function createFakturaAllegro({ db, program: programPodany = null, infakt = null, klienciKanalow = {} }) {
   const program = zProgramu({ program: programPodany, infakt });
   async function wyslij(zamowienieId) {
@@ -57,26 +57,24 @@ export function createFakturaAllegro({ db, program: programPodany = null, infakt
     if (!klient) throw bladOperatora(`Panel nie ma połączenia z kanałem „${z.sklep}".`);
 
     const f = z.faktura;
-    // PRZ-121.04a: dokument innego programu niż moduł faktur OMS-u — odmowa 409 PRZED zajęciem wysyłki i PRZED
+    // Dokument innego programu niż moduł faktur OMS-u — odmowa 409 PRZED zajęciem wysyłki i PRZED
     // pierwszym bajtem do sieci (ani PDF z programu, ani nic do Allegro).
     const idDok = idDokumentuDla(f, program);
     const nazwa = nazwaPlikuFaktury(f.numer);
 
-    // ⚠️⚠️ ATOMOWE ZAJECIE PRZED PIERWSZYM BAJTEM DO SIECI (recenzja Partii 3, K1).
+    // ⚠️⚠️ ATOMOWE ZAJĘCIE PRZED PIERWSZYM BAJTEM DO SIECI.
     //
     // Bariera wyzej czyta `z.faktura` SPRZED dwoch `await`-ow (PDF z inFaktu, lista faktur
-    // z Allegro) i przed dwoma rownoleglymi zadaniami NIE CHRONI PRZED NICZYM — zmierzone:
-    // dwa `wyslij(id)` naraz dawaly 2 POST-y i 2 pliki, oba 302, zero ostrzezen. Allegro
-    // przyjmuje DO 10 FAKTUR na zamowienie, wiec drugi POST nie odbil by sie od niczego takze
+    // z Allegro) i przed dwoma równoległymi żądaniami NIE CHRONI PRZED NICZYM — bez zajęcia
+    // dwa `wyslij(id)` naraz dają 2 POST-y i 2 pliki, bez żadnego ostrzeżenia. Allegro
+    // przyjmuje DO 10 FAKTUR na zamówienie, więc drugi POST nie odbiłby się od niczego także
     // po ICH stronie, a `GET .../invoices` oddaje dzis 400 — o pierwszym dokumencie panel nie
     // dowiedzialby sie NIGDY.
     //
     // Ten sam wzorzec, co `rozpocznijFakture`: rozstrzyga WARUNKOWY UPDATE w bazie, a nie
-    // odczyt sprzed kilkuset milisekund. Zajecie stoi TUTAJ, a nie w trasie — do 01.09.2026
-    // dlatego, ze trasy byly DWIE i nie znaly sie nawzajem (druga, „bez numeru KSeF", zniknela
-    // decyzja właściciela); dzis dlatego, ze to jest regula uslugi, a nie jednej sciezki HTTP:
-    // dwa rownolegle klikniecia z dwoch kart musza sie wykluczyc niezaleznie od tego, ile
-    // trasa ma wejsc.
+    // odczyt sprzed kilkuset milisekund. Zajęcie stoi TUTAJ, a nie w trasie, bo to jest reguła
+    // usługi, a nie jednej ścieżki HTTP: dwa równoległe kliknięcia z dwóch kart (i automat
+    // po numerze KSeF) muszą się wykluczyć niezależnie od tego, ile wejść prowadzi do usługi.
     if (!zajmijWysylkeDoAllegro(db, f.id)) {
       throw bladOperatora(
         `Wysyłka faktury ${f.numer} do Allegro WŁAŚNIE TRWA — drugie żądanie nic nie wysłało. `
@@ -102,15 +100,15 @@ export function createFakturaAllegro({ db, program: programPodany = null, infakt
     z, f, idDok, nazwa, klient, zamowienieId,
   }) {
     // PDF POBIERAMY NA SWIEZO z inFaktu — panel nie trzyma kopii dokumentu (services/faktura.js).
-    // Numer KSeF jest W PIERWSZEJ LINII tego pliku (zmierzone 04.08.2026), wiec kupujacy
-    // dostaje dokladnie to, o co prosil wlasciciel. Kopia trzymana u nas klamalaby po korekcie.
+    // Numer KSeF jest W PIERWSZEJ LINII tego pliku, więc kupujący dostaje dokument z numerem
+    // KSeF. Kopia trzymana u nas kłamałaby po korekcie.
     const bajty = await program.pobierzPdf(idDok);
 
-    // ⚠️⚠️ SPRAWDZENIE PLIKU STOI PRZED PIERWSZYM ZADANIEM DO ALLEGRO (recenzja Partii 3, W2).
+    // ⚠️⚠️ SPRAWDZENIE PLIKU STOI PRZED PIERWSZYM ŻĄDANIEM DO ALLEGRO.
     //
-    // Do 06.08.2026 ta kontrola siedziala WYLACZNIE w `wyslijPlikFaktury` (allegro/client.js),
-    // czyli ZA nieodwracalnym `POST`-em. Zmierzone: gdy inFakt odda JSON bledu zamiast PDF-u,
-    // do Allegro I TAK leci `zglosFakture` — a to znaczy:
+    // Sama kontrola w `wyslijPlikFaktury` (allegro/client.js) stoi ZA nieodwracalnym
+    // `POST`-em: gdy inFakt odda JSON błędu zamiast PDF-u, do Allegro I TAK poleciałoby
+    // `zglosFakture` — a to znaczy:
     //   - spalony JEDEN Z DZIESIECIU slotow na faktury przy tym zamowieniu,
     //   - przy zamowieniu KUPUJACEGO wisi zgloszenie faktury BEZ PLIKU,
     //   - karta dalej pokazuje zielony przycisk, ktory w kolko oddaje ten sam blad
@@ -123,8 +121,8 @@ export function createFakturaAllegro({ db, program: programPodany = null, infakt
     const powodOdrzucenia = zlyPdf(bajty, program.opis.nazwa);
     if (powodOdrzucenia) throw bladOperatora(powodOdrzucenia);
 
-    // ⚠️ POMOCNICZY bezpiecznik przed duplikatem — I TYLKO POMOCNICZY (poprawka po rozpoznaniu
-    // 05.08.2026). Zasob oddaje dzis 400, wiec `pobierzFakturyZamowienia` zwraca wtedy pusta
+    // ⚠️ POMOCNICZY bezpiecznik przed duplikatem — I TYLKO POMOCNICZY.
+    // Zasob oddaje dzis 400, wiec `pobierzFakturyZamowienia` zwraca wtedy pusta
     // liste i ta galaz MILCZY. OCHRONA, NA KTOREJ STOIMY, jest LOKALNA kolumna
     // `allegro_invoice_id`, zapisywana PRZED wyslaniem pliku — nie ta lista.
     //
@@ -133,7 +131,7 @@ export function createFakturaAllegro({ db, program: programPodany = null, infakt
     // kiedys zacznie odpowiadac (albo zacznie po pierwszej fakturze — to jedna z dwoch
     // nierozstrzygnietych hipotez), luka zniknie sama, bez zmiany w kodzie.
     //
-    // ⚠️ PRZY OTWARTYM BEZPIECZNIKU POMIJAMY TO WYWOLANIE (spec 2026-08-28). Nie tracimy nic:
+    // ⚠️ PRZY OTWARTYM BEZPIECZNIKU POMIJAMY TO WYWOŁANIE. Nie tracimy nic:
     // przy martwym zasobie i tak oddaje `[]`, wiec ta galaz MILCZY tak czy tak — a operator
     // przestaje czekac przy przycisku na zadanie skazane na porazke. Gdy bezpiecznik sie
     // zamknie (pierwsza niepusta odpowiedz w czuwaczu), wywolanie wraca SAMO i luka „proces
@@ -163,8 +161,8 @@ export function createFakturaAllegro({ db, program: programPodany = null, infakt
     }
 
     const odp = await klient.wyslijPlikFaktury(z.zrodlo_id, invoiceId, bajty);
-    // ⚠️ TO JEST PIERWSZE (i dzis jedyne pewne) ZRODLO stanu weryfikacji — odpytywanie
-    // z Zadania 10 stoi na zasobie, ktory oddaje 400. Brak pola czytamy jako 'WAITING':
+    // ⚠️ TO JEST PIERWSZE (i dziś jedyne pewne) ŹRÓDŁO stanu weryfikacji — odpytywanie
+    // w czuwaczu stoi na zasobie, który oddaje 400. Brak pola czytamy jako 'WAITING':
     // plik poszedl, a Allegro jeszcze nic o nim nie powiedzialo.
     const weryfikacja = statusWeryfikacji(odp) ?? 'WAITING';
     zapiszWysylkeDoAllegro(db, f.id, { wyslanaAt: new Date().toISOString(), weryfikacja });

@@ -1,6 +1,6 @@
 import type {Srodowisko} from '../../core/kontrakty.ts';
 
-/** PRZ-148.07 (decyzja właściciela 04.11): w trybie próby (piaskownica, demo, lokalny serwer wykonawcy) żadne zapytanie
+/** W trybie próby (piaskownica, demo, lokalny serwer deweloperski) żadne zapytanie
  * nie idzie do allegro.pl. Allegro Sandbox tylko w jawnym profilu OMS_PROBA_ALLEGRO_SANDBOX=tak. */
 export type ProfilAllegroProby='bez-allegro'|'sandbox';
 export function profilAllegroProby(env:Srodowisko):ProfilAllegroProby{

@@ -1,4 +1,4 @@
-// PRZ-102.09: daty kompletności danych instalacji — z pliku konfiguracji albo z panelu (Finanse → Kompletność
+// Daty kompletności danych instalacji — z pliku konfiguracji albo z panelu (Finanse → Kompletność
 // danych), zapis w tabeli `ustawienia` pod kluczem `raporty.<klucz>`. Plik wygrywa; panel czytany przy każdym
 // użyciu, więc zapis działa bez restartu. Walidacja jak w konfiguracja.ts.
 import { kluczOkresu } from '../../domena/okres-rozliczeniowy.js';

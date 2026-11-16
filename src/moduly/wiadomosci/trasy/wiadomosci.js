@@ -30,10 +30,10 @@ export function registerWiadomosciRoutes(app, options) {
   });
 }
 function registerRoutes(app, { db, klienci = {}, podpis = PODPIS }) {
-  // PRZ-102.10: podpis może być funkcją (Ustawienia → Poczta, czytany przy każdym żądaniu) albo stałą.
+  // Podpis może być funkcją (Ustawienia → Poczta, czytany przy każdym żądaniu) albo stałą.
   const podpisTeraz = typeof podpis === 'function' ? podpis : () => podpis;
   /**
-   * PRZ-101.03: „Wstaw szablon" — szablony własne z podstawionymi polami TEGO wątku. Zamówienie wątku = najnowsze
+   * „Wstaw szablon" — szablony własne z podstawionymi polami TEGO wątku. Zamówienie wątku = najnowsze
    * zamówienie z tego konta Allegro z tym samym loginem kupującego; bez niego pola z zamówienia są puste
    * (nigdy dosłowne `{…}`), a bloki zamówienia znikają. Liczone z lustra i bazy — bez zapytań do Allegro.
    */
@@ -43,7 +43,7 @@ function registerRoutes(app, { db, klienci = {}, podpis = PODPIS }) {
     if (!wlasne.length) return { szablony: [], zamowienieSzablonow: null };
     const idZ = zamowienieWatku(db, w.kanal, w.interlocutor_login);
     const z = idZ ? pobierzZamowienie(db, idZ) : null;
-    // PRZ-102.19: „Pozdrawiamy," i stałe teksty bloków z Ustawień → Szablony wiadomości, przy każdym otwarciu wątku.
+    // „Pozdrawiamy," i stałe teksty bloków z Ustawień → Szablony wiadomości, przy każdym otwarciu wątku.
     const zdania = zdaniaPlatnosciTeraz(db);
     return {
       szablony: wlasne.map((s) => ({ id: s.id, nazwa: s.nazwa, tekst: tekstDoWatku(z, s, { podpis: podpisTeraz(), zdania }) })),
@@ -69,7 +69,7 @@ function registerRoutes(app, { db, klienci = {}, podpis = PODPIS }) {
   app.get('/wiadomosci/:kanal/:threadId', async (req, reply) => {
     const w = watek(db, req.params.kanal, req.params.threadId);
     const ctx = kontekst(w || null, true);
-    // PRZ-101.03: bez JavaScriptu „Wstaw" to GET z `?szablon=` — pole odpowiedzi przychodzi wypełnione.
+    // Bez JavaScriptu „Wstaw" to GET z `?szablon=` — pole odpowiedzi przychodzi wypełnione.
     const wstawiony = ctx.szablony.find((s) => s.id === String(req.query?.szablon ?? ''));
     if (wstawiony) ctx.szkic = wstawiony.tekst;
     return reply.code(w ? 200 : 404).view('wiadomosci.ejs', {...ctx,potwierdzonyDowod:String(req.query?.wyslano??'')} );
@@ -136,7 +136,7 @@ function registerRoutes(app, { db, klienci = {}, podpis = PODPIS }) {
     }
   });
 
-  // RECZNE „ZALATWIONE" — prosba wlasciciela z 29.08.2026: sa watki, w ktorych kupujacy
+  // RECZNE „ZALATWIONE": sa watki, w ktorych kupujacy
   // napisal na koniec „Dziekuje" i nie ma na co odpisywac. Panel nie ma jak odroznic
   // podziekowania od pytania, wiec te jedna rzecz musi mu powiedziec czlowiek.
   //

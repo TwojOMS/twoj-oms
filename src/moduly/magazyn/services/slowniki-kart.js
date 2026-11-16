@@ -1,4 +1,4 @@
-// PRZ-160.P3b.01 — słowniki kart: kategorie główne i marki (tabele z migracji 0016).
+// Słowniki kart: kategorie główne i marki (tabele z migracji 0016).
 // Słownik to lista nazw do wyboru na karcie; karta trzyma nazwę tekstem (`kategoria_glowna`, `marka`).
 // Zmiana nazwy przepisuje karty w JEDNEJ transakcji i oznacza pole jako ręczne (import go potem nie nadpisze).
 import { zapiszKarte } from '../../../oms/db/magazyn.js';
@@ -78,7 +78,7 @@ export function dodajDoSlownika(db, typ, nazwa, { at = teraz() } = {}) {
  * Zmiana nazwy: wszystkie karty ze starą nazwą dostają nową (ręcznie — zapiszKarte oznacza źródło),
  * stary wpis znika, nowy powstaje (albo już był — wtedy dwie nazwy się scalają). Jedna transakcja.
  */
-// PRZ-160.E3.11: mapowania Allegro idą za nazwą (tabele z migracji magazynu 0002 — w bazie bez modułu ich nie ma).
+// Mapowania Allegro idą za nazwą (tabele z migracji magazynu 0002 — w bazie bez modułu ich nie ma).
 // Przy scaleniu z istniejącą nazwą zostaje mapowanie nazwy docelowej (UPDATE OR IGNORE + usunięcie resztek).
 const MAPOWANIA_ALLEGRO = Object.freeze({
   kategorie: [['allegro_mapa_kategorii', 'kategoria_karty']],

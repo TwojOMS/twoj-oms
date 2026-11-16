@@ -15,7 +15,7 @@ function wiersz(db, zamowienieId) {
   return db.prepare('SELECT * FROM faktury WHERE zamowienie_id = ?').get(zamowienieId);
 }
 
-// PRZ-118.09: `nazwa` = odmiana nazwy programu fakturowego (domyślnie inFakt — domena/nazwa-programu.js).
+// `nazwa` = odmiana nazwy programu fakturowego (domyślnie inFakt — domena/nazwa-programu.js).
 function opisKolizji(f, nazwa = NAZWA_ZAPASOWA, program) {
   const gdzie = program ? gdzieDokument(program) : `w ${nazwa.miejscownik}`;
   const stan = stanFaktury(f);
@@ -29,7 +29,7 @@ function opisKolizji(f, nazwa = NAZWA_ZAPASOWA, program) {
       + 'Jeśli już poszła do KSeF, została po niej tylko KOREKTA, nie kasowanie.';
   }
   // Rezerwacja starsza niz prog to sierota po restarcie procesu, a nie trwajace wywolanie.
-  // Odpowiedz „wlasnie trwa" byla tu wieczna: nic jej nigdy nie zdejmowalo.
+  // Bez tego odpowiedź „właśnie trwa” byłaby wieczna: nic by jej nigdy nie zdejmowało.
   if (stan === 'zawieszona') {
     return `Rezerwacja faktury wisi od ${f.utworzona_at} i żadne wystawianie już nie trwa — `
       + `panel najpewniej został zrestartowany w trakcie wywołania ${nazwa.dopelniacz}. `
@@ -55,8 +55,8 @@ export function rozpocznijFakture(db, zamowienieId, { nazwa = NAZWA_ZAPASOWA, pr
   return wiersz(db, zamowienieId);
 }
 
-// PRZ-118.03 — podwojny zapis identyfikatora: `program` + `dokument_id` zawsze, a `infakt_uuid`
-// WYLACZNIE dla inFaktu (obraz sprzed zmiany czyta tylko te kolumne i pyta nia inFakt — cudzy
+// Podwojny zapis identyfikatora: `program` + `dokument_id` zawsze, a `infakt_uuid`
+// WYLACZNIE dla inFaktu (starsza wersja panelu, po cofnięciu wydania, czyta tylko tę kolumnę i pyta nią inFakt — cudzy
 // identyfikator w niej kazalby mu pytac o nie swoje dokumenty). JEDNA instrukcja: trzy kolumny
 // nie rozjada sie przy awarii w polowie. Brak `program` = inFakt (dzisiejsi wolajacy).
 export function zakonczFakture(db, id, { uuid, numer, ksefStatus }, { program = 'infakt' } = {}) {
@@ -67,21 +67,22 @@ export function zakonczFakture(db, id, { uuid, numer, ksefStatus }, { program = 
   ).run(program, uuid, program === 'infakt' ? uuid : null, numer, ksefStatus, id);
 }
 
-// Numer KSeF przeczytany z inFaktu przez czuwacza (services/czuwacz-ksef.js). Panel do KSeF
-// NIGDY nie wysyla — robi to wlasciciel recznie, w ciagu dnia; ten zapis wylacznie ODNOTOWUJE
-// fakt, ktory czuwacz tam zobaczyl.
+// Numer KSeF przeczytany z inFaktu przez czuwacza (services/czuwacz-ksef.js). Wysyłka do KSeF
+// to osobny krok (ręcznie z ekranu Faktur albo automatem KSeF — o ustalonej godzinie, przy TwojeFaktury
+// także „po wystawieniu”); ten zapis
+// wyłącznie ODNOTOWUJE fakt, który czuwacz tam zobaczył.
 //
 // ⚠️ `ksef_sprawdzona_at` zapisujemy ZAWSZE, takze gdy numeru nie ma — to jest data PYTANIA,
 // nie odpowiedzi. Sama w sobie nie wystarcza jednak do niczego: „pytalismy" nie znaczy
 // „dowiedzielismy sie". Druga polowe niesie `ksef_odczyt` ('ok' / 'blad'), i to NA NIEJ stoi
-// sprawa „czeka na KSeF" (domain/sprawy-karty.js) — bo niedostepny inFakt nie jest zadnym
-// dowodem na to, ze wlasciciel dokumentu nie wyslal.
+// sprawa „czeka na KSeF" (domena/sprawy-karty.js) — bo niedostepny inFakt nie jest zadnym
+// dowodem na to, że dokumentu nie wysłano.
 //
 // ⚠️ COALESCE, a nie zwykle przypisanie: przebieg, ktory numeru nie dostal (inFakt jeszcze go
 // nie ma), NIE MA PRAWA skasowac numeru zapisanego wczesniej. Numer KSeF jest jedynym dowodem,
 // ze dokument naprawde jest w KSeF — a to warunek wyslania faktury do Allegro.
 //
-// PRZ-126 C09f: `dokumentId` = dokument, o który pytano program. Zamiana faktury (zły NIP) może przepiąć wiersz na
+// `dokumentId` = dokument, o który pytano program. Zamiana faktury (zły NIP) może przepiąć wiersz na
 // nową fakturę W TRAKCIE pytania — wtedy odpowiedź dotyczy starej i jej numer nie ma prawa trafić do wiersza nowej.
 // Porównanie po `idDokumentuSql()`, bo stare wiersze inFaktu mają sam `infakt_uuid`. Zwraca, czy wiersz się zmienił.
 export function zapiszNumerKsef(db, id, { ksefNumer, sprawdzonaAt, dokumentId = null }) {
@@ -94,14 +95,14 @@ export function zapiszNumerKsef(db, id, { ksefNumer, sprawdzonaAt, dokumentId = 
 }
 
 // Odczyt, ktory sie NIE UDAL. Zapisujemy go z tego samego powodu, dla ktorego zapisujemy udany:
-// „pytalismy" jest faktem niezaleznym od odpowiedzi. Do 06.08.2026 ten zapis w ogole nie
-// istnial (czuwacz wolal `zapiszNumerKsef` WEWNATRZ `try`), wiec faktura z wiecznym 404 miala
-// `ksef_sprawdzona_at = NULL` na zawsze — nie do odroznienia od „nigdy nie pytalismy".
+// „pytalismy" jest faktem niezaleznym od odpowiedzi. Bez tego zapisu (gdyby czuwacz wolal tylko
+// `zapiszNumerKsef` WEWNĄTRZ `try`) faktura z wiecznym 404 miałaby `ksef_sprawdzona_at = NULL`
+// na zawsze — nie do odróżnienia od „nigdy nie pytaliśmy”.
 //
 // ⚠️ NIE DOTYKA `ksef_numer`: nieudany odczyt nie jest dowodem na nic, a numer raz zapisany
 // jest jedynym dowodem, ze dokument jest w KSeF.
 //
-// PRZ-126 C09g — `dokumentId` jak w `zapiszNumerKsef`: nieudany odczyt STAREJ faktury nie stempluje wiersza
+// `dokumentId` jak w `zapiszNumerKsef`: nieudany odczyt STAREJ faktury nie stempluje wiersza
 // przepiętego w trakcie pytania na zastępczą (nowa poczeka na własne pytanie). Zwraca, czy wiersz się zmienił.
 export function zapiszNieudanyOdczytKsef(db, id, { sprawdzonaAt, odczyt = 'blad', dokumentId = null }) {
   const info = db.prepare(
@@ -119,7 +120,7 @@ export function zapiszNieudanyOdczytKsef(db, id, { sprawdzonaAt, odczyt = 'blad'
 // ich stamtad zabrac. Od chwili, gdy ta kolumna jest niepusta, wolno WYLACZNIE doslac plik.
 //
 // Zdalna lista faktur (`GET .../invoices`) jest tylko POMOCNICZA: oddaje dzis 400, wiec
-// klient zwraca pusta liste i tamta galaz milczy (notatka 2026-08-05, §2). Ochrona, na
+// klient zwraca pustą listę i tamta gałąź milczy. Ochrona, na
 // ktorej naprawde stoimy, to TA kolumna.
 //
 // `allegro_wyslana_at` zapisujemy dopiero PO pliku, bo dopiero wtedy kupujacy cokolwiek
@@ -135,20 +136,20 @@ export function zapiszZgloszenieAllegro(db, id, invoiceId) {
 // skazuje zamowienia na czekanie do konca swiata po restarcie procesu.
 //
 // Ta sama zasada i ta sama liczba rzedow wielkosci, co PROG_ZAWIESZONEJ_FAKTURY_MS
-// (domain/faktura-stan.js) — i z tego samego powodu: rezerwacja, ktorej NIC NIGDY NIE ZDEJMUJE,
+// (domena/faktura-stan.js) — i z tego samego powodu: rezerwacja, ktorej NIC NIGDY NIE ZDEJMUJE,
 // zamienia sie w wieczne „wlasnie trwa".
 export const PROG_ZAJECIA_WYSYLKI_MS = 10 * 60 * 1000;
 
 // ⚠️⚠️ ATOMOWE ZAJECIE WYSYLKI FAKTURY DO ALLEGRO — BARIERA PRZED DRUGIM DOKUMENTEM
-// U KUPUJACEGO (recenzja Partii 3, K1).
+// U KUPUJACEGO.
 //
 // Dokladnie ten sam wzorzec, co `rozpocznijFakture` wyzej i z dokladnie tego samego powodu:
-// druga proba (dwuklik, dwie karty, back+resubmit, dwa zapytania rownolegle, OBIE TRASY NARAZ)
+// druga próba (dwuklik, dwie karty, back+resubmit, dwa zapytania równolegle, PRZYCISK I AUTOMAT NARAZ)
 // ma sie odbic od WARUNKOWEGO UPDATE-u w bazie, a nie od odczytu `z.faktura` sprzed kilkuset
 // milisekund. Miedzy tamtym odczytem a POST-em do Allegro stoja DWA `await`-y (PDF z inFaktu,
-// lista faktur z Allegro) — zmierzone: dwa rownolegle `wyslij(id)` dawaly 2 POST-y i 2 pliki,
-// oba 302, zero ostrzezen, a baza pamietala tylko DRUGI identyfikator. O pierwszym dokumencie
-// panel nie dowiedzialby sie NIGDY, bo `GET .../invoices` oddaje dzis 400.
+// lista faktur z Allegro) — bez zajęcia dwa równoległe `wyslij(id)` dają 2 POST-y i 2 pliki,
+// bez żadnego ostrzeżenia, a baza pamięta tylko DRUGI identyfikator. O pierwszym dokumencie
+// panel nie dowiedziałby się NIGDY, bo `GET .../invoices` oddaje dzis 400.
 //
 // ⚠️ WARUNEK JEST W KLAUZULI `WHERE`, NIE W `if`-ie NAD NIM. Odczyt-i-zapis w dwoch krokach
 // to ta sama luka, tyle ze wezsza — SQLite serializuje POJEDYNCZY UPDATE, wiec dokladnie
@@ -156,7 +157,7 @@ export const PROG_ZAJECIA_WYSYLKI_MS = 10 * 60 * 1000;
 //
 // ⚠️ TO JEST DZIERZAWA, NIE WIECZNY ZAMEK. Zajecie starsze niz `PROG_ZAJECIA_WYSYLKI_MS` jest
 // SIEROTA po restarcie procesu (nie trwajacym wywolaniem) i zdejmuje sie samo — bez tego panel
-// odpowiadalby „wlasnie trwa" NA ZAWSZE, czyli stan bez wyjscia (niezmiennik 4.9), a to jest
+// odpowiadałby „właśnie trwa” NA ZAWSZE, czyli stan bez wyjścia (reguła: każdy stan ma wyjście), a to jest
 // ta sama pulapka, ktora opisuje `opisKolizji` przy stanie 'zawieszona'.
 export function zajmijWysylkeDoAllegro(db, id, { teraz = Date.now(), prog = PROG_ZAJECIA_WYSYLKI_MS } = {}) {
   const znacznik = new Date(teraz).toISOString();
@@ -179,7 +180,7 @@ export function zwolnijWysylkeDoAllegro(db, id) {
   db.prepare('UPDATE faktury SET allegro_zgloszenie_at = NULL WHERE id = ?').run(id);
 }
 
-// ⚠️⚠️ ODNOTOWANIE, ZE CZUWACZ ZAJAL SIE TYM WIERSZEM (recenzja Partii 3, W6). To jest data
+// ⚠️⚠️ ODNOTOWANIE, ŻE CZUWACZ ZAJĄŁ SIĘ TYM WIERSZEM. To jest data
 // ZAJECIA SIE, a NIE data odpowiedzi — dokladnie ta sama roznica, co przy `ksef_sprawdzona_at`
 // wyzej („pytalismy" nie znaczy „dowiedzielismy sie").
 //
@@ -203,13 +204,13 @@ export function zapiszWysylkeDoAllegro(db, id, { wyslanaAt, weryfikacja }) {
 //
 // ⚠️⚠️ BEZ `status` NIE PISZEMY NIC. Brak naszej faktury na liście z Allegro znaczy „NIE WIEM",
 // a nie „nie ma": zasób `GET .../invoices` oddaje dziś 400 na każde nasze zamówienie, więc klient
-// zwraca PUSTĄ LISTĘ (notatka 2026-08-05, §2). Zapis pustej wartości skasowałby jedyną wiedzę,
+// zwraca PUSTĄ LISTĘ. Zapis pustej wartości skasowałby jedyną wiedzę,
 // jaką panel ma — tę z odpowiedzi na `PUT .../file`, czyli z chwili, w której plik naprawdę poszedł.
 //
-// To ta sama klasa usterki, którą recenzja Partii 2 nazwała „kolumną write-only", tylko odwrócona:
+// To ta sama klasa usterki co „kolumna write-only”, tylko odwrócona:
 // tam kolumna zapisywana bez czytelnika, tu czytelnik kasowany przez zapis bez treści.
 //
-// PRZ-126 C09g — `allegroInvoiceId` = zgłoszenie, o które czuwacz pytał. Zamiana faktury (zły NIP) zeruje
+// `allegroInvoiceId` = zgłoszenie, o które czuwacz pytał. Zamiana faktury (zły NIP) zeruje
 // `allegro_invoice_id` przepiętego wiersza; spóźniony status starego zgłoszenia nie trafia wtedy do wiersza nowej
 // faktury. Zwraca, czy wiersz się zmienił — przy false wołający nie robi żadnych skutków tego statusu.
 export function zapiszWeryfikacjeAllegro(db, id, status, allegroInvoiceId = null) {
@@ -221,7 +222,7 @@ export function zapiszWeryfikacjeAllegro(db, id, status, allegroInvoiceId = null
   return Number(info.changes) === 1;
 }
 
-// PRZ-126 C09f — tekst odmowy, gdy wysyłka faktury do Allegro właśnie trwa (plan C09, Z8/Z10). Ten sam dla ekranu
+// Tekst odmowy, gdy wysyłka faktury do Allegro właśnie trwa. Ten sam dla ekranu
 // (usługa sprawdza przed transakcją) i dla `przepnijNaZastepcza` (sprawdza pod blokadą).
 export const ODMOWA_WYSYLKA_ALLEGRO = 'Trwa wysyłka faktury do Allegro — spróbuj za chwilę.';
 const odmowaWysylkiAllegro = () => bladOperatora(ODMOWA_WYSYLKA_ALLEGRO, { kod: 'wysylka-allegro', status: 409 });
@@ -237,7 +238,7 @@ function chwila(teraz) {
   return ms;
 }
 
-// PRZ-126 C09f — stan wiersza `faktury` wobec Allegro w chwili zamiany faktury (macierz Z10). Czysta: bez bazy,
+// Stan wiersza `faktury` wobec Allegro w chwili zamiany faktury. Czysta: bez bazy,
 // nie rzuca na wierszu (rzuca tylko na zepsutym zegarze). `teraz` — ms, Date albo ISO; `prog` jak dzierżawa wysyłki.
 // 'w-toku'       — świeża dzierżawa `allegro_zgloszenie_at` (≥ teraz − prog): `wyslij` może jeszcze pisać do wiersza;
 // 'brak'         — ani zgłoszenia, ani pliku;
@@ -254,7 +255,7 @@ export function stanAllegroWiersza(f, { teraz = Date.now(), prog = PROG_ZAJECIA_
   return 'brak';
 }
 
-// ⚠️⚠️ PRZ-126 C09f — PRZEPIĘCIE ZAMÓWIENIA NA FAKTURĘ ZASTĘPCZĄ (zły NIP, plan C09 Z10).
+// ⚠️⚠️ PRZEPIĘCIE ZAMÓWIENIA NA FAKTURĘ ZASTĘPCZĄ (zły NIP).
 //
 // Działa W TRANSAKCJI WOŁAJĄCEGO (usługa zamiany: `BEGIN IMMEDIATE` → `zastapFakture` → to → `COMMIT`) — nie otwiera
 // własnej, więc odmowa i każdy wyjątek cofają całą zamianę razem z dokumentami TF.
@@ -265,10 +266,10 @@ export function stanAllegroWiersza(f, { teraz = Date.now(), prog = PROG_ZAJECIA_
 //
 // Jeden UPDATE (prawe strony w SQLite widzą wartości sprzed zapisu):
 // - `ksef_*` i `blad_opis` zerowane JAWNIE: `zapiszNumerKsef` ma COALESCE i numer KSeF starej udawałby numer nowej;
-// - `allegro_invoice_id` zerowany zawsze: plik nowej nie może trafić do zgłoszenia ze starym numerem (B), a czuwacz
-//   nie może dalej pytać o stare zgłoszenie (D — warunek weryfikacji wymaga id);
-// - `allegro_wyslana_at`/`allegro_weryfikacja` ZOSTAJĄ tylko w D (dokument może być u kupującego — automat nie
-//   wysyła drugiego); w C (`REJECTED`) znikają, bo inaczej `wolnoWyslacDoAllegro` odmawiałby nowej na zawsze;
+// - `allegro_invoice_id` zerowany zawsze: plik nowej nie może trafić do zgłoszenia ze starym numerem ('zgloszona'), a czuwacz
+//   nie może dalej pytać o stare zgłoszenie ('u-kupujacego' — warunek weryfikacji wymaga id);
+// - `allegro_wyslana_at`/`allegro_weryfikacja` ZOSTAJĄ tylko w 'u-kupujacego' (dokument może być u kupującego — automat nie
+//   wysyła drugiego); w 'odrzucona' (`REJECTED`) znikają, bo inaczej `wolnoWyslacDoAllegro` odmawiałby nowej na zawsze;
 // - `allegro_zgloszenie_at` (dzierżawa) — tu może być już tylko sierota, więc zerowana.
 export function przepnijNaZastepcza(db, {
   zamowienieId, staryDokumentId, nowyDokumentId, numer, teraz = Date.now(), prog = PROG_ZAJECIA_WYSYLKI_MS,
@@ -322,7 +323,7 @@ export function zwolnijFakture(db, id) {
 // w inFakcie mogl powstac i nie ma jak tego sprawdzic z panelu. Wiersz ZOSTAJE i blokuje
 // ponowienie — bo drugie klikniecie daloby drugi dokument. Panel go sam nie skasuje ani
 // nie ponowi: rozstrzyga czlowiek, ktory sprawdzil w inFakcie. Dopoki dokument (jesli
-// w ogole powstal) nie pojedzie wieczorem do KSeF, wystarczy go tam skasowac — po tej
+// w ogóle powstał) nie pojedzie do KSeF, wystarczy go tam skasowac — po tej
 // wysylce zostaje juz tylko KOREKTA.
 export function oznaczFaktureDoWyjasnienia(db, id, opis) {
   db.prepare("UPDATE faktury SET ksef_status = 'do_wyjasnienia', blad_opis = ? WHERE id = ?").run(opis, id);
@@ -335,8 +336,7 @@ export function oznaczFaktureDoWyjasnienia(db, id, opis) {
 //
 // Kasujemy WYLACZNIE stany wymagajace decyzji czlowieka. Wystawiona faktura jest
 // nietykalna: skasowanie jej wiersza zdjeloby blokade z dokumentu, ktory NA PEWNO
-// istnieje w inFakcie (a wieczorem, w zbiorczej wysylce, pojedzie do KSeF, o ile
-// wlasciciel go wczesniej nie usunie recznie), i nastepne klikniecie daloby drugi.
+// istnieje w inFakcie (i po wysyłce pójdzie do KSeF), a następne kliknięcie dałoby drugi.
 export function odblokujFakture(db, zamowienieId) {
   const f = wiersz(db, zamowienieId);
   if (!f) throw bladOperatora('To zamówienie nie ma zablokowanej faktury — nie ma czego odblokowywać.');
@@ -354,11 +354,10 @@ export function odblokujFakture(db, zamowienieId) {
   return f;
 }
 
-// DRUGIE wyjscie ze stanu, ktorego panel sam nie rozstrzygnie — powstalo 2026-07-30, gdy
-// zalozenie stojace za `odblokujFakture` (wystawiona faktura ZAWSZE istnieje w inFakcie,
-// wiec jej wiersza NIE WOLNO tykac) przestalo byc prawdziwe. Od tego dnia panel wystawia
-// faktury BEZ wysylki do KSeF (wlasciciel wysyla je sam, zbiorczo, wieczorem) — a niewyslana
-// faktura wolno po prostu skasowac w inFakcie, tak jak sie skasowaloby zwykla pomylke.
+// DRUGIE wyjście ze stanu, którego panel sam nie rozstrzygnie. Założenie stojące za
+// `odblokujFakture` (wystawiona faktura ZAWSZE istnieje w inFakcie, więc jej wiersza NIE WOLNO
+// tykać) nie zawsze jest prawdziwe: panel wystawia faktury BEZ wysyłki do KSeF (to osobny
+// krok), a niewysłaną fakturę wolno po prostu skasować w inFakcie jak zwykłą pomyłkę.
 // Bez tej funkcji takie zamowienie zostawaloby zablokowane NA ZAWSZE: UNIQUE (zamowienie_id)
 // odmawia drugiego wiersza, a `odblokujFakture` CELOWO odmawia dla kazdej faktury
 // wystawionej. To jest ta sama luka co przy `do_wyjasnienia`/`zawieszona` — panel wchodzi
@@ -372,8 +371,7 @@ export function odblokujFakture(db, zamowienieId) {
 //   naprawde skasowal w inFakcie;
 // - dziala WYLACZNIE, gdy `ksef_status` jest PUSTY. Zgodnie z faktura-stan.js kolumna po
 //   sukcesie trzyma to, co inFakt oddal w polu `ksef_data` — puste, dopoki dokument nie
-//   pojdzie do KSeF. Niepusta wartosc znaczy, ze inFakt zna dokument w KSeF (wlasciciel
-//   mogl go wyslac recznie, pojedynczo, przed wieczorna zbiorcza wysylka) — a takiego
+//   pojdzie do KSeF. Niepusta wartość znaczy, że inFakt zna dokument w KSeF — a takiego
 //   dokumentu SIE NIE KASUJE, tylko koryguje. Ta granica jest TWARDA i celowo BEZ furtki:
 //   w odroznieniu od `do_wyjasnienia`/`zawieszona`, gdzie wystarczy, ze czlowiek sprawdzil
 //   i potwierdzil fakt, tu pomylka jest juz NIEODWRACALNA — dokumentu w KSeF nie cofnie
@@ -382,13 +380,13 @@ export function odblokujFakture(db, zamowienieId) {
 // Panel NIE WOLA inFaktu i niczego tam NIE KASUJE — to WYLACZNIE odnotowanie faktu, ktory
 // czlowiek juz stwierdzil poza panelem: kasujemy lokalny wiersz rezerwacji, zeby zwolnic
 // zamowienie do ponownego wystawienia. Numer i UUID skasowanego dokumentu zwracamy wywolujacemu
-// (routes/zamowienia.js zapisuje je do logu zamowienia) — bez tego sladu po miesiacu nie da
+// (trasy/dokumenty.js zapisuje je do logu zamówienia) — bez tego sladu po miesiacu nie da
 // sie odtworzyc, co sie z ta faktura stalo.
 export function fakturaSkasowanaWInfakcie(db, zamowienieId) {
   const f = wiersz(db, zamowienieId);
   if (!f) throw bladOperatora('To zamówienie nie ma zablokowanej faktury — nie ma czego kasować.');
   const stan = stanFaktury(f);
-  // PRZ-126 P7b (recenzja): o tym, czy dokument da się skasować w inFakcie, mówi program WIERSZA, nie bieżący
+  // O tym, czy dokument da się skasować w inFakcie, mówi program WIERSZA, nie bieżący
   // program. Faktura TwojeFaktury zostaje w bazie panelu także po przełączeniu na inFakt albo „brak” — zwolnienie
   // zamówienia dałoby drugą fakturę na tę samą sprzedaż. Pusty `program` = wiersz bez dokumentu (migracja 0008).
   if (f.program && f.program !== 'infakt') {
@@ -405,15 +403,15 @@ export function fakturaSkasowanaWInfakcie(db, zamowienieId) {
           + 'Jeśli sprawdziłeś tam i dokumentu nie ma, użyj przycisku „Sprawdziłem w inFakcie — faktury nie ma, odblokuj".',
     );
   }
-  // ⚠️⚠️ TRZECIA PRZESŁANKA (Plan B, Zadanie 11): DOKUMENT JEST JUŻ NA KONCIE KUPUJĄCEGO
+  // ⚠️⚠️ TRZECIA PRZESŁANKA: DOKUMENT JEST JUŻ NA KONCIE KUPUJĄCEGO
   // W ALLEGRO. Skasowanie faktury w inFakcie NIE ZABIERA JEJ KUPUJĄCEMU Z RĄK — leży u niego
   // i panel nie ma czym jej stamtąd zabrać. Zwolnienie rezerwacji pozwoliłoby wystawić DRUGĄ
   // fakturę na to samo zamówienie: kupujący miałby dwa dokumenty na ten sam towar, a księgowość
   // dwa numery na jedną sprzedaż.
   //
-  // ⚠️ TA PRZESŁANKA STOI PRZED KSEF-OWĄ I JEST OD NIEJ NIEZALEŻNA. Faktura wysłana świadomą
-  // decyzją „bez numeru KSeF" (trasa faktura-allegro-bez-ksef) ma OBIE kolumny KSeF puste,
-  // więc tamta odmowa nie odezwałaby się ani słowem — a dokument u kupującego już leży.
+  // ⚠️ TA PRZESŁANKA STOI PRZED KSEF-OWĄ I JEST OD NIEJ NIEZALEŻNA. Wiersz z dokumentem
+  // u kupującego może mieć OBIE kolumny KSeF puste, a wtedy tamta odmowa nie odezwałaby się
+  // ani słowem.
   if (f.allegro_wyslana_at) {
     throw bladOperatora(
       `Faktura ${f.numer ? `${f.numer} ` : ''}została wysłana do Allegro ${f.allegro_wyslana_at} `
@@ -422,16 +420,13 @@ export function fakturaSkasowanaWInfakcie(db, zamowienieId) {
       + 'fakturę na ten sam towar. Jeśli dokument jest błędny, potrzebna jest KOREKTA.',
     );
   }
-  // ⚠️ DOWODEM „JEST W KSEF" SĄ OBIE KOLUMNY, NIE SAMA `ksef_status` (recenzja Partii 2, K3).
+  // ⚠️ DOWODEM „JEST W KSEF" SĄ OBIE KOLUMNY, NIE SAMA `ksef_status`.
   // `ksef_status` niesie to, co inFakt oddał w polu `ksef_data` W CHWILI WYSTAWIENIA — a panel
-  // wystawia BEZ wysyłki do KSeF, więc przy ręcznej wysyłce właściciela ta kolumna zostaje
+  // wystawia BEZ wysyłki do KSeF, więc przy wysyłce osobnym krokiem ta kolumna zostaje
   // PUSTA NA ZAWSZE. Dowód zbiera dopiero czuwacz (services/czuwacz-ksef.js) i zapisuje go do
-  // `ksef_numer`. Bez tego warunku panel WIEDZIAŁ, że dokument jest w KSeF, i dalej pozwalał
+  // `ksef_numer`. Bez tego warunku panel WIEDZIAŁBY, że dokument jest w KSeF, i dalej pozwalałby
   // odnotować jego skasowanie — co zwalnia zamówienie do ponownego wystawienia i wysyła do
   // KSeF DRUGI dokument. Po tym zostaje już tylko korekta.
-  //
-  // To jest ZAOSTRZENIE odmowy o dowód, który panel dopiero teraz zaczął zbierać. Zadanie 11
-  // poluzuje inną odmowę (wysyłkę do Allegro bez numeru KSeF) — świadomie i w innym miejscu.
   const wKsef = f.ksef_numer || f.ksef_status;
   if (wKsef) {
     throw bladOperatora(
@@ -445,8 +440,7 @@ export function fakturaSkasowanaWInfakcie(db, zamowienieId) {
 
 /**
  * Faktury, przy ktorych wolno odnotowac „skasowalem ja w inFakcie" — lista dla zakladki
- * FAKTURY (przeniesienie z karty zamowienia, prosba właściciela 01.09.2026: „na co dzien jest to
- * nieuzywane").
+ * FAKTURY (przeniesiona z karty zamówienia, bo na co dzień akcja nie jest potrzebna).
  *
  * ⚠️⚠️ LISTA IDZIE Z NASZEJ BAZY, NIGDY Z inFAKTU — i to jest cala trudnosc tej przeprowadzki.
  * Zakladka FAKTURY pokazuje dokumenty pobrane z inFaktu NA ZYWO, a faktura skasowana
@@ -462,7 +456,7 @@ export function fakturaSkasowanaWInfakcie(db, zamowienieId) {
  *
  * Warunki (te same, co w barierze): dokument MA numer (jest co odnotowac) · NIE poszedl do
  * kupujacego w Allegro · nie ma ZADNEGO sladu w KSeF (obie kolumny puste — `ksef_status`
- * z chwili wystawienia i `ksef_numer` od czuwacza) · dokument jest z inFaktu (`program` wiersza, PRZ-126 P7b).
+ * z chwili wystawienia i `ksef_numer` od czuwacza) · dokument jest z inFaktu (`program` wiersza).
  */
 export function fakturyMozliweDoOdnotowaniaSkasowania(db, { miesiac } = {}) {
   return db.prepare(
@@ -482,7 +476,7 @@ export function fakturyMozliweDoOdnotowaniaSkasowania(db, { miesiac } = {}) {
 }
 
 /**
- * PRZ-121.04a — dokumenty znane OMS-owi po identyfikatorze w programie: Map identyfikator → LISTA wierszy
+ * Dokumenty znane OMS-owi po identyfikatorze w programie: Map identyfikator → LISTA wierszy
  * `{ program, dokument_id }` (kształt dla `programDokumentu`/`czyDokumentProgramu`/`idDokumentuDla`). Wysyłka do KSeF
  * z listy FAKTURY ma sam identyfikator, a program dokumentu zna tylko wiersz faktury zamówienia albo faktury okresu.
  * Lista, nie jeden wiersz: dwa programy mogą nadać ten sam identyfikator (np. „123”), a o tym, czy dokument należy

@@ -1,8 +1,6 @@
-// ETAP PRZESYLKI — klasa stanu liczona z OPISU zdarzenia kuriera (audyt 22.08; zgoda
-// właściciela 23.08: pastylka „w drodze (N dni) / w doręczeniu / doręczona" przy paczce,
-// zakladka /przesylki i ostrzezenie „bez ruchu > 3 dni ROBOCZE" — wiekszosc paczek
-// dochodzi nastepnego dnia, wiec 3 dni robocze to juz realny zator, a weekend nie
-// jest wina kuriera).
+// ETAP PRZESYŁKI — klasa stanu liczona z OPISU zdarzenia kuriera: pastylka „w drodze (N dni) / w doręczeniu / doręczona"
+// przy paczce, zakładka /przesylki i ostrzeżenie „bez ruchu > 3 dni ROBOCZE" — większość paczek dochodzi następnego dnia,
+// więc 3 dni robocze to już realny zator, a weekend nie jest winą kuriera.
 //
 // ⚠️ ETAP GRUPUJE, NIE TLUMACZY. Surowy opis kuriera zostaje na ekranie ZAWSZE; etap
 // sluzy pastylce, filtrom i regule bez ruchu. Nieznany opis z historia zdarzen to
@@ -15,8 +13,8 @@
 // dwoch galezi niczego nie zmienia — sprawdzone mutacja (przezyla jako ROWNOWAZNA, nie
 // jako luka; to inna sytuacja niz p24/przelew w metodach platnosci, gdzie wzorzec jeden
 // ZAWIERA drugi i kolejnosc jest trescia).
-// Wzorce DPD zmierzone sonda na zywym API zdarzen (23.08) i produkcyjna baza; wzorce
-// InPost to NASZE etykiety z OPISY_STANOW (kurierzy/inpost.js) — jedno zrodlo slow.
+// Wzorce DPD zmierzone sondą na żywym API zdarzeń i bazą produkcyjną; wzorce
+// InPost to NASZE etykiety z OPISY_STANOW (oms/kurierzy/inpost.js) — jedno źródło słów.
 
 import { dzienWarszawa } from './format-daty.js';
 
@@ -31,18 +29,18 @@ const ETYKIETY = {
 };
 
 /**
- * KODY MASZYNOWE ALLEGRO → etap. Zmierzone sonda na zywym API 25.08.2026
- * (`GET /order/carriers/ALLEGRO/tracking`, konto allegro_a).
+ * KODY MASZYNOWE ALLEGRO → etap. Zmierzone sondą na żywym API
+ * (`GET /order/carriers/ALLEGRO/tracking`).
  *
  * ⚠️ ISTNIEJE, BO OPIS ALLEGRO JEST TLUMACZENIEM. Zasob oddaje `code` (maszynowy) obok
  * `description` zaleznego od `Accept-Language` — po polsku „Przesyłka została doręczona",
  * po angielsku „Parcel has been delivered". Klasyfikowanie po opisie dzialaloby dzis
  * i zamilkloby PO CICHU przy pierwszej korekcie tekstu u Allegro albo przy zmianie
- * naglowka. To ta sama regula, ktora w domain/allegro-dostawa.js i allegro-wysylka.js
+ * naglowka. To ta sama regula, ktora w domena/allegro-dostawa.js i allegro-wysylka.js
  * kaze mapowac po `delivery.method.id`, a nigdy po nazwie uslugi.
  *
  * ⚠️ NOWY KOD NIE MOZE WPASC TU PO CICHU. Kod spoza mapy schodzi do dopasowania po opisie,
- * a strazniku zupelnosci w tests/oms/etap-przesylki.test.js pilnuje, ze komplet zmierzonych
+ * a strazniku zupelnosci w tests/domena/etap-przesylki.test.js pilnuje, ze komplet zmierzonych
  * kodow ma jawna decyzje — paczka ZWROCONA sklasyfikowana jako jadaca znikneloby z pola
  * widzenia dokladnie wtedy, gdy wymaga czlowieka.
  */

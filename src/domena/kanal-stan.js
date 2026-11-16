@@ -3,12 +3,12 @@
 // ⚠️⚠️ TA JEDNA REGULA RZADZI DWIEMA RZECZAMI NARAZ: tym, co panel POKAZUJE, i tym, czy
 // POZWALA kliknac wiazanie. Druga kopia rozjechalaby sie przy pierwszym nowym stanie —
 // a rozjazd znaczy albo przycisk prowadzacy prosto w odmowe, albo ostrzezenie bez wyjscia
-// (niezmiennik 4.9). Dlatego jest CZYSTA: bez sieci, bez bazy, bez zegara poza `zostaloDni`.
+// (reguła: każdy stan ma wyjście). Dlatego jest CZYSTA: bez sieci, bez bazy, bez zegara poza `zostaloDni`.
 //
-// POWSTALA PO AWARII 14.08.2026. Kanal `allegro_a` przestal odpowiadac o 23:34,
-// panel zapisal blad do `tokeny_kanalu.ostatni_blad` i do `stan_pollera` o 06:14 —
-// I NA TYM SKONCZYL. Wlasciciel dowiedzial sie kilka godzin pozniej, bo nie dalo sie nadac
-// paczki. Panel WIEDZIAL i nie powiedzial.
+// POWSTALA PO AWARII, W KTOREJ KANAL PRZESTAL ODPOWIADAC. Panel zapisal blad do
+// `tokeny_kanalu.ostatni_blad` i do `stan_pollera` — I NA TYM SKONCZYL. Sprzedawca
+// dowiedzial sie kilka godzin pozniej, bo nie dalo sie nadac paczki. Panel WIEDZIAL
+// i nie powiedzial.
 
 // Ile dni przed koncem waznosci refresh tokena uprzedzamy. Ta sama liczba, co
 // `DNI_OSTRZEZENIA` w allegro/tokeny.js — kanal ma miec JEDEN termin, a nie dwa zdania
@@ -34,29 +34,29 @@ export function stanKanalu(wejscie) {
 
   // ⚠️ BIALA LISTA POL, NIGDY `...wejscie`. Ta funkcja bywa wolana `stanDlaEkranu()`, ale
   // nic nie broni komus podac jej surowego wiersza z `tokeny_kanalu` — a tam siedza TOKENY.
-  // Przepisanie wejscia w calosci wypchneloby je na ekran (niezmiennik 4.10).
+  // Przepisanie wejscia w calosci wypchneloby je na ekran (reguła: sekrety nie wychodzą).
   const {
     kanal = null, polaczony = false, zostaloDni = null, refreshWygasaAt = null, ostatniBlad = null,
     // ⚠️ Nazwy zakresow NIE SA poswiadczeniem — wolno je pokazac, i trzeba, bo bez nazwy
-    // czlowiek nie wie, co dodac w aplikacji Allegro (domain/uprawnienia-kanalu.js).
+    // czlowiek nie wie, co dodac w aplikacji Allegro (domena/uprawnienia-kanalu.js).
     brakujaceUprawnienia = [],
     // ⚠️ IDENTYFIKATOR KONTA ALLEGRO TEZ NIE JEST POSWIADCZENIEM — i jest JEDYNA rzecza,
-    // po ktorej czlowiek pozna, ze przewiazal kanal na zle konto (domain/tozsamosc-kanalu.js).
+    // po ktorej czlowiek pozna, ze przewiazal kanal na zle konto (domena/tozsamosc-kanalu.js).
     kontoAllegro = null,
     // Czy inny kanal wisi na TYM SAMYM koncie. Liczone poza ta funkcja, bo wymaga
     // spojrzenia na WSZYSTKIE kanaly naraz, a ta ocenia jeden.
     kolizjaKonta = false,
-    // PRZ-160 E3.02 (D42): token bez zakresów ofert, aplikacja je ma, ktoś kliknął
+    // Token bez zakresów ofert, aplikacja je ma, ktoś kliknął
     // „Chcę wystawiać oferty". Same flagi, żadnych poświadczeń.
     brakOfert = false, aplikacjaMaOferty = false, chceOfert = false,
   } = wejscie;
 
   const nazwa = kanal ? `Kanał ${kanal}` : 'Kanał Allegro';
 
-  // ⚠️ ZAPISANY BLAD WYSTARCZA — TERMIN NIE RATUJE. 14.08 `refresh_wygasa_at` pokazywalo
-  // 89 dni, a kanal nie odpowiadal od siedmiu godzin: `invalid_grant` znaczy, ze token
-  // ZOSTAL ZUZYTY (jest jednorazowy), a nie ze wygasl. Regula czytajaca sam termin uznalaby
-  // ten kanal za zdrowy.
+  // ⚠️ ZAPISANY BLAD WYSTARCZA — TERMIN NIE RATUJE. Zdarza sie, ze `refresh_wygasa_at`
+  // pokazuje jeszcze dziesiatki dni, a kanal od godzin nie odpowiada: `invalid_grant` znaczy,
+  // ze token ZOSTAL ZUZYTY (jest jednorazowy), a nie ze wygasl. Regula czytajaca sam termin
+  // uznalaby ten kanal za zdrowy.
   const zepsuty = Boolean(String(ostatniBlad ?? '').trim());
   const pilne = !polaczony || zepsuty;
 
@@ -82,10 +82,10 @@ export function stanKanalu(wejscie) {
   // zamowienia pod swoja nazwa: dubluje zamowienia i platnosci (przychod liczony dwa razy)
   // i przestawia kursor pollera, przez co prawdziwe zamowienia zostaja po cichu pominiete.
   //
-  // ⚠️ TU LEZY POWOD, DLA KTOREGO 28.08.2026 NIE BYLO PRZYCISKU. Kanal na cudzym koncie
-  // przechodzil przez wszystkie trzy dotychczasowe sita jako zdrowy — polaczony, bez bledu,
-  // komplet zakresow, 89 dni waznosci — wiec panel UKRYWAL wiazanie dokladnie wtedy, gdy
-  // bylo jedyna naprawa. Czlowiek musial isc do terminala na NAS-ie.
+  // ⚠️ TU LEZY POWOD, DLA KTOREGO W TYM STANIE MUSI BYC PRZYCISK. Kanal na cudzym koncie
+  // przechodzi przez pozostale sita jako zdrowy — polaczony, bez bledu, komplet zakresow,
+  // dluga waznosc — wiec panel UKRYWALBY wiazanie dokladnie wtedy, gdy jest jedyna naprawa,
+  // a czlowiek musialby szukac jej poza panelem.
   if (kolizjaKonta) {
     return {
       kanal,
@@ -118,7 +118,7 @@ export function stanKanalu(wejscie) {
   // a odswiezenie ich NIE DOPISUJE. Bez tego warunku jedyna droga do nowego uprawnienia
   // wiodlaby przez zepsucie kanalu albo przez czekanie do terminu waznosci.
   const niekompletny = Array.isArray(brakujaceUprawnienia) && brakujaceUprawnienia.length > 0;
-  // ⚠️⚠️ ZGODA NA OFERTY OTWIERA WIĄZANIE TYLKO NA ŻĄDANIE (D42). Wszystkie trzy warunki:
+  // ⚠️⚠️ ZGODA NA OFERTY OTWIERA WIĄZANIE TYLKO NA ŻĄDANIE. Wszystkie trzy warunki:
   // token wiadomo że bez zakresów ofert, aplikacja je ma (inaczej nowa zgoda niczego nie
   // doda, a zużyje działającą parę), i człowiek kliknął „Chcę wystawiać oferty". Samo
   // „aplikacja może" nie wystarcza — zdrowe konto nie zaprasza do przewiązania.
@@ -134,8 +134,8 @@ export function stanKanalu(wejscie) {
     // ⚠️ PRZY KANALE ZDROWYM WIAZAC NIE WOLNO — i to jest BARIERA, nie kosmetyka. Ponowne
     // wiazanie NADPISUJE dzialajaca pare i uniewaznia ja po stronie Allegro; cofnac sie
     // z tego nie da. Przycisk stojacy obok innych przyciskow zaprasza do klikniecia
-    // „na wszelki wypadek" i zabija dzialajacy kanal. Przewodnik mowil o tym wprost
-    // („«Połącz z Allegro» NIE JEST PRZYCISKIEM") — tu zdanie jest ZAWEZONE, nie zdjete.
+    // „na wszelki wypadek" i zabija dzialajacy kanal. Dlatego „Połącz z Allegro" nie jest
+    // zwyklym przyciskiem: pojawia sie tylko w stanach z listy nizej.
     wolnoWiazac: uprzedzenie || niekompletny || zgodaOfertOtwarta,
     zgodaOfertOtwarta,
     brakujaceUprawnienia,
@@ -162,11 +162,11 @@ export function stanKanalu(wejscie) {
  *
  * ⚠️⚠️ FUNKCJA ISTNIEJE PO TO, ZEBY EKRAN I USLUGA LICZYLY TO SAMO. `stanKanalu()` ocenia
  * JEDEN kanal, a kolizja kont jest widoczna dopiero przy spojrzeniu na wszystkie. Gdyby
- * ekran liczyl ja u siebie, a usluga wiazania (dawne `services/wiazanie-kanalow.js`, usuniete) u siebie, pierwsza rozbieznosc
+ * ekran liczyl ja u siebie, a usluga wiazania u siebie, pierwsza rozbieznosc
  * dalaby PRZYCISK PROWADZACY PROSTO W ODMOWE: kanal pokazany jako do przewiazania, a POST
  * odrzucony przez bariere „kanal dziala". Przed tym ostrzega naglowek tego pliku.
  *
- * Wejscie to lista `stanDlaEkranu()` — bialych list pol bez poswiadczen (niezmiennik 4.10).
+ * Wejscie to lista `stanDlaEkranu()` — bialych list pol bez poswiadczen (reguła: sekrety nie wychodzą).
  */
 export function stanyKanalowZKolizjami(stanyDlaEkranu) {
   const lista = stanyDlaEkranu ?? [];
@@ -177,11 +177,10 @@ export function stanyKanalowZKolizjami(stanyDlaEkranu) {
 /**
  * Kanaly, o ktorych panel MA POWIEDZIEC — w kolejnosci pilnosci.
  *
- * ⚠️ TA FUNKCJA ISTNIEJE, BO FILTR W TRASIE BYL NIETESTOWALNY. Mutacja doklejajaca
- * `.slice(0, 1)` do wyrazenia w trasie PRZEZYLA cala suite: testy sprawdzaly ksztalt
- * wyrazenia w zrodle, a nie jego WYNIK. Przy dwoch zepsutych kanalach drugi byl niewidoczny
- * — czyli dokladnie ta wada, ktora ten pas mial naprawic (`poller.stan()` oddaje PIERWSZEGO
- * pollera z bledem).
+ * ⚠️ TA FUNKCJA ISTNIEJE, BO FILTR W TRASIE BYL NIETESTOWALNY. Test sprawdzajacy
+ * ksztalt wyrazenia w zrodle nie wykryje, ze przy dwoch zepsutych kanalach drugi jest
+ * niewidoczny — czyli dokladnie tej wady, ktora ten pas ma naprawic (`poller.stan()`
+ * oddaje PIERWSZEGO pollera z bledem). Filtr jest osobna funkcja, zeby testowac jego WYNIK.
  *
  * ⚠️ AWARIE PRZED UPRZEDZENIAMI. Kanal martwy i kanal wygasajacy za tydzien to dwie rozne
  * pilnosci; kolejnosc na ekranie jest tu trescia, nie estetyka.

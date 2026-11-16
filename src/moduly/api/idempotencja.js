@@ -6,7 +6,7 @@ const wyslij = (reply, status, cialo) =>
   reply.code(status).type('application/json; charset=utf-8').send(cialo);
 
 /**
- * Zapis `/api/v1` odporny na powtórkę po zerwanym połączeniu (plan PRZ-153, E5.1; Review Focus pkt 3).
+ * Zapis `/api/v1` odporny na powtórkę po zerwanym połączeniu.
  *
  * Bez nagłówka `Idempotency-Key` → `wykonaj()` bez śladu. Z nagłówkiem → JEDNA transakcja (`BEGIN IMMEDIATE`):
  * wpis `(klucz_id, klucz_zadania)` jest → ta sama trasa: zapisany status i to samo ciało, inna trasa: 422;
@@ -14,6 +14,7 @@ const wyslij = (reply, status, cialo) =>
  * Zapamiętany jest każdy wynik < 500 poza 404 i 409, także 400 i 422. Odpowiedzi 404 i 409 zależą od chwilowego stanu danych.
  * Wynik 404, 409, ≥ 500 i wyjątek → ROLLBACK (razem z tym, co zapisało
  * `wykonaj`), nic nie zostaje i powtórka wykonuje się od nowa; wyjątek idzie dalej do obsługi błędów pluginu.
+ * Wywołanie już wewnątrz transakcji nie otwiera własnej: BEGIN, COMMIT i ROLLBACK zostają przy tej zewnętrznej.
  *
  * `wykonaj` jest synchroniczne (`node:sqlite`) i działa wewnątrz tej transakcji — nie otwiera własnej `BEGIN`
  * (wzór: `if (db.isTransaction) return praca()`). Ciało jest serializowane tutaj raz, więc pierwsza odpowiedź

@@ -5,7 +5,7 @@ import { kontoZTokenu } from '../../domena/tozsamosc-kanalu.js';
 
 // Refresh token Allegro zyje 3 miesiace. Ostrzegamy 7 dni wczesniej, bo wygasniecie jest
 // stanem, z ktorego panel SAM NIE WYJDZIE — wymaga czlowieka przy przegladarce (device
-// flow). Awaria bylaby cicha: lista dalej pokazuje stare zamowienia (niezmiennik 4.9).
+// flow). Awaria byłaby cicha: lista dalej pokazuje stare zamówienia (reguła: każdy stan ma wyjście).
 export const DNI_OSTRZEZENIA = 7;
 
 // Token „wazny jeszcze przez dwie minuty" jest w praktyce martwy: zdazy wygasnac w srodku
@@ -57,7 +57,7 @@ function mapaTrwajacych(db) {
 // Kod bledu OAuth (`invalid_grant`, `invalid_client`, `authorization_pending`…) wolno
 // pokazac czlowiekowi — nie niesie poswiadczen. ⚠️ Ale bierzemy go WYLACZNIE wtedy, gdy
 // wyglada jak kod OAuth (male litery i podkreslenia, krotki). Serwer, ktory wsadzi w to
-// pole cokolwiek innego, nie ma jak przemycic sekretu do bazy ani na ekran (4.10).
+// pole cokolwiek innego, nie ma jak przemycić sekretu do bazy ani na ekran (reguła: sekrety nie wychodzą).
 // `error_description` nie jest czytane NIGDZIE — tam OAuth potrafi wstawic fragment
 // poswiadczen.
 function kodOauth(d) {
@@ -94,8 +94,8 @@ function komunikatOdmowy(status, kod, kanal) {
 
 export function createTokeny({ db, kanal, ustawienia, fetchImpl, http = transport({ fetchImpl }) }) {
   // ⚠️ Naglowek Basic budujemy PRZY KAZDYM ZADANIU i nigdzie go nie zapamietujemy — ma zyc
-  // tylko tyle, ile trwa wywolanie (niezmiennik 4.10: poswiadczenia nie ida do logu ani na
-  // ekran, wiec tym bardziej nie maja lezec w polu obiektu, ktory ktos moze wypisac).
+  // tylko tyle, ile trwa wywołanie (reguła: sekrety nie wychodzą — poświadczenia nie idą do logu
+  // ani na ekran, wiec tym bardziej nie maja lezec w polu obiektu, ktory ktos moze wypisac).
   const basic = () => Buffer.from(`${ustawienia.clientId}:${ustawienia.clientSecret}`).toString('base64');
   const naglowki = () => ({
     Authorization: `Basic ${basic()}`,
@@ -131,7 +131,7 @@ export function createTokeny({ db, kanal, ustawienia, fetchImpl, http = transpor
     };
   }
 
-  // To samo, ale BEZ POSWIADCZEN — wersja dla szablonu i dla logu (niezmiennik 4.10).
+  // To samo, ale BEZ POŚWIADCZEŃ — wersja dla szablonu i dla logu (reguła: sekrety nie wychodzą).
   // Buduje sie z BIALEJ LISTY pol, a nie przez usuwanie tokenow z `stan()`: dopisanie
   // kolejnej kolumny do tabeli nie ma prawa cicho wypchnac sekretu na ekran.
   function stanDlaEkranu() {
@@ -149,19 +149,19 @@ export function createTokeny({ db, kanal, ustawienia, fetchImpl, http = transpor
       ostatniBlad: s.ostatni_blad ?? null,
       zaktualizowaneAt: s.zaktualizowane_at ?? null,
       // ⚠️⚠️ NAZWY BRAKUJACYCH ZAKRESOW, NIGDY SAM TOKEN. Token jest tu odczytany i od razu
-      // sprowadzony do listy nazw — te nie sa poswiadczeniem (niezmiennik 4.10 dotyczy
-      // tokenow i hasel), a bez nich panel nie ma jak zauwazyc, ze kanal dziala przy
+      // sprowadzony do listy nazw — te nie są poświadczeniem (reguła „sekrety nie wychodzą”
+      // dotyczy tokenów i haseł), a bez nich panel nie ma jak zauwazyc, ze kanal dziala przy
       // zamowieniach i jednoczesnie nie ma zakresu do Centrum wiadomosci. Odswiezenie tokenu
       // zakresow NIE DOPISUJE — wchodza wylacznie przy nowej autoryzacji.
       brakujaceUprawnienia: brakujaceUprawnienia(s.access_token),
-      // PRZ-160 E3.02 (D42): zgoda na oferty — same flagi z zakresow tokenu, nigdy token.
+      // Zgoda na oferty — same flagi z zakresów tokenu, nigdy token.
       brakOfert: brakZgodyNaOferty(s.access_token),
       zgodaOfert: maZgodeNaOferty(s.access_token),
       // UWAGA UWAGA: Z JAKIM KONTEM ALLEGRO TEN KANAL JEST NAPRAWDE ZWIAZANY. Identyfikator
-      // konta nie jest poswiadczeniem (niezmiennik 4.10 dotyczy tokenow i hasel), a jest
+      // konta nie jest poświadczeniem (reguła „sekrety nie wychodzą” dotyczy tokenów i haseł), a jest
       // JEDYNA rzecza, po ktorej czlowiek pozna, ze przewiazal kanal na zle konto —
       // device flow wiaze z kontem ZALOGOWANYM W PRZEGLADARCE, a nie z nazwa kanalu.
-      // 28.08.2026 kosztowalo to 6 zdublowanych zamowien i przestawiony kursor pollera.
+      // Taka pomyłka kończy się zdublowanymi zamówieniami i przestawionym kursorem pollera.
       kontoAllegro: kontoZTokenu(s.access_token),
     };
   }
@@ -186,7 +186,7 @@ export function createTokeny({ db, kanal, ustawienia, fetchImpl, http = transpor
     const generacja = generacjaDostepu(db, kanal);
     sprawdzGeneracjeDostepu(db, kanal, generacja);
     // ⚠️ TUTAJ OSLONY NA `fetch` NIE MA I MIEC NIE MOZE — i to jest decyzja, a nie
-    // przeoczenie (sprawdzone przy naprawie wiazania, 2026-08-05).
+    // przeoczenie.
     //
     // REFRESH TOKEN ALLEGRO JEST JEDNORAZOWY. Wyjatek
     // z `fetch` jest przy tym NIEROZSTRZYGALNY — zadanie moglo nie wyjsc wcale, ale rownie
@@ -215,7 +215,7 @@ export function createTokeny({ db, kanal, ustawienia, fetchImpl, http = transpor
       //
       // Do bazy i do wyjatku idzie kod HTTP, kod bledu OAuth i zdanie napisane przez nas.
       // `error_description` NIE JEST CZYTANE — przy bledach OAuth potrafi w nim stac
-      // fragment poswiadczen (niezmiennik 4.10).
+      // fragment poświadczeń (reguła: sekrety nie wychodzą).
       const kod = kodOauth(d);
       zapiszBladTokenu(db, kanal, komunikatOdmowy(r.status, kod, kanal));
       throw new Error(`Allegro ${kanal}: odświeżenie tokenu odrzucone (HTTP ${r.status}${kod ? `, ${kod}` : ''})`);
@@ -260,7 +260,7 @@ export function createTokeny({ db, kanal, ustawienia, fetchImpl, http = transpor
 
     // ⚠️ `finally`, a nie `then`: odswiezenie zakonczone BLEDEM tez musi zwolnic wpis.
     // Niezwolniona blokada wyciszylaby kanal na zawsze — cicho, bo panel dalej dziala
-    // (ta sama lekcja co `wTrakcie` w services/poller.js).
+    // (ta sama lekcja co `wTrakcie` w moduly/kanaly/services/poller.js).
     //
     // ⚠️ Porownujemy z `zpilnowana`, czyli z TYM, CO NAPRAWDE LEZY W MAPIE — nie z surowa
     // `obietnica`. Pomylka tych dwoch znaczy, ze warunek nigdy nie jest prawdziwy, wpis

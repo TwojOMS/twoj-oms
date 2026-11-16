@@ -1,4 +1,4 @@
-// PRZ-108.09 (zmiana C2 planu automatyzacji): czy paczka ma DOWÓD, że kurier ją odebrał — podstawa zdarzenia „Kurier
+// Czy paczka ma DOWÓD, że kurier ją odebrał — podstawa zdarzenia „Kurier
 // odebrał paczkę”, a więc maila do klienta, którego nie da się cofnąć.
 //
 // ⚠️ BIAŁA LISTA, NIE `etapPrzesylki`. Etap grupuje do pastylki i filtra: nieznany opis uznaje za „w drodze”
@@ -8,7 +8,7 @@
 //  • `przejeta_at` — dowód przejęcia paczki „Wysyłam z Allegro” (domena/przejecie-przesylki.js);
 //  • Allegro — maszynowy kod zasobu śledzenia; KOD ROZSTRZYGA (opis to tłumaczenie zależne od Accept-Language), więc
 //    paczka z nieznanym kodem nie przechodzi po opisie. Lista = PRZEJETE_ALLEGRO (wszystko z KODY_ALLEGRO poza PENDING);
-//  • DPD — opisy zdarzeń z sondy na żywym API (23.08) i bazy produkcyjnej: PRZEJETE_DPD (domena/przejecie-przesylki.js);
+//  • DPD — opisy zdarzeń z sondy na żywym API i z bazy produkcyjnej: PRZEJETE_DPD (domena/przejecie-przesylki.js);
 //  • InPost — NASZE opisy stanów z OPISY_STANOW (oms/kurierzy/inpost.js) dla stanów PO przyjęciu przez InPost. Każdy stan
 //    słownika ma tu jawną decyzję (strażnik w tests/domena/dowod-odbioru.test.js): nowy stan bez decyzji = czerwony test;
 //  • historia ostatniej odpowiedzi (DPD oddaje całą listę zdarzeń, Allegro też): czuwacz pyta co godzinę, więc najnowsze
@@ -35,17 +35,17 @@ const INPOST_PO_OPISIE = new Map(Object.entries(OPISY_ODBIORU_INPOST).map(([stan
 const tekst = (w) => String(w ?? '').trim();
 
 /**
- * Recenzja 09, usterka 1: dowód odbioru bywa SPÓŹNIONY — pierwszy odczyt śledzenia przychodzi dni po odbiorze (awaria
+ * Dowód odbioru bywa SPÓŹNIONY — pierwszy odczyt śledzenia przychodzi dni po odbiorze (awaria
  * czuwacza, kurier podłączony w Ustawieniach później, numer z Allegro dociągnięty przy otwarciu karty). Odbiór zapisuje się
  * wtedy dla historii, ale reguła „Kurier odebrał paczkę” pomija wykonanie: „paczka odebrana” trzy dni po fakcie myli
- * kupującego bardziej, niż pomaga. 48 h — ta sama miara co przeterminowanie wykonania w silniku (plan, sekcja 5).
+ * kupującego bardziej, niż pomaga. 48 h — ta sama miara co przeterminowanie wykonania w silniku.
  */
 export const ODBIOR_SPOZNIONY_H = 48;
 const GODZINA_MS = 3600 * 1000;
 
 /**
  * Chwila zdarzenia kuriera jako ms. DPD oddaje `eventTime` BEZ STREFY („2026-07-29T20:07:14.918”) — to czas warszawski
- * (usługa DPD Polska; sonda 23.08), więc liczymy przesunięcie Europe/Warsaw dla tej chwili (lato +2, zima +1; w godzinie
+ * (usługa DPD Polska; sonda na żywym API), więc liczymy przesunięcie Europe/Warsaw dla tej chwili (lato +2, zima +1; w godzinie
  * zmiany czasu błąd do 1 h — bez znaczenia przy progu 48 h). Allegro (`Z`) i InPost (przesunięcie strefy) — jak podano.
  */
 export function msCzasuKuriera(tekst) {

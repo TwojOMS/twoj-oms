@@ -1,6 +1,6 @@
 import type { Zegar } from '../../core/kontrakty.ts';
 
-/** PRZ-108.07: silnik reguł tyka co minutę (plan, sekcja 5). Przy zerze włączonych reguł — jedno SELECT, zero zapisów. */
+/** Silnik reguł tyka co minutę (plan, sekcja 5). Przy zerze włączonych reguł — jedno SELECT, zero zapisów. */
 export const ODSTEP_AUTOMATYZACJI_MS = 60_000;
 
 type Silnik = { przebieg: () => Promise<{ wlaczonych?: number; zapisow?: number; pominiety?: boolean } | undefined> };

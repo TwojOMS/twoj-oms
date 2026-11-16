@@ -30,7 +30,7 @@ export function registerFormularzRoutes(app, { db, korekta = null, definicje, in
       // Ponowny odczyt WYLACZNIE po doczytaniu: `z` powyzej niesie zwroty sprzed petli, wiec
       // numer korekty zapisany przez `doczytaj` w tym samym zadaniu bylby na ekranie niewidoczny
       // az do przeladowania strony. Ta sama pulapka i to samo lekarstwo, co przy numerze KSeF
-      // na karcie zamowienia (routes/zamowienia.js: ponowny odczyt po `doczytanieKsef.dlaFaktury`).
+      // na karcie zamowienia (moduly/zamowienia/karta.js: ponowny odczyt po `doczytanieKsef.dlaFaktury`).
       z = pobierzZamowienie(db, z.id);
     }
     return pokazKrok1(req, reply, z);
@@ -39,21 +39,19 @@ export function registerFormularzRoutes(app, { db, korekta = null, definicje, in
   /**
    * KROK 2 — „Dalej — sprawdź sumę". NICZEGO NIE ZAPISUJE.
    *
-   * ⚠️⚠️ TU KWOTY PODAZAJA ZA ILOSCIA (`przygotujKrok2` w domain/zwrot-formularz.js) — naprawa
-   * wady krytycznej z recenzji 2026-08-15. Kwota, ktorej operator nie tknal (rowna propozycji
+   * ⚠️⚠️ TU KWOTY PODĄŻAJĄ ZA ILOŚCIĄ (`przygotujKrok2` w domena/zwrot-formularz.js). Kwota, ktorej operator nie tknal (rowna propozycji
    * przyniesionej z kroku 1 w polu ukrytym), przelicza sie dla liczby sztuk, ktora wpisal;
    * kwota zmieniona recznie wygrywa, ale wraca stad jako OSTRZEZENIE do pokazania na ekranie.
    *
-   * ⚠️ Kwote laczna liczy `przygotujKrok2` (domain/zwrot-formularz.js), a nie operator — i to
-   * jest cala przebudowa. Bariera spojnosci w `parsujZwrot` (kwota laczna = suma kwot przy
+   * ⚠️ Kwote laczna liczy `przygotujKrok2` (domena/zwrot-formularz.js), a nie operator. Bariera spojnosci w `parsujZwrot` (kwota laczna = suma kwot przy
    * pozycjach) przestaje przez to kogokolwiek odrzucac i zostaje STRAZNIKIEM miedzy krokiem 2
    * a zapisem: pola ukryte kroku 2 nioslyby rozjazd rownie dobrze, gdyby ktos je podmienil.
    *
    * ⚠️ Reguly sa TE SAME, co przy zapisie (`parsujZwrot`) — odmowa ma przyjsc TU, na kroku 2,
    * a nie dopiero po kliknieciu „Zarejestruj zwrot" na ekranie bez pol do poprawienia.
    *
-   * ⚠️ BEZ WPISU DO LOGU — i to jest jedyne odstepstwo od zasady „kazda trasa w tym pliku pisze
-   * do logu zamowienia" z naglowka pliku. Ta trasa NICZEGO NIE ZMIENIA: nie zapisuje zwrotu,
+   * ⚠️ BEZ WPISU DO LOGU, choć trasy zwrotów, które coś zapisują, piszą do logu zamówienia
+   * (`slad` w wspolne.js). Ta trasa NICZEGO NIE ZMIENIA: nie zapisuje zwrotu,
    * nie dotyka inFaktu, nie zmienia statusu. Wpis przy kazdej literowce zasypywalby log
    * zamowienia szumem i utrudnial odczytanie tego, co zapisano NAPRAWDE — a to jest dokladnie
    * ten log, z ktorego po miesiacu odtwarza sie, ile i kiedy zdjeto z przychodu.
@@ -62,12 +60,12 @@ export function registerFormularzRoutes(app, { db, korekta = null, definicje, in
     const z = zamowienieAlbo404(req, reply);
     if (!z) return reply;
     const dzis = dzienWarszawa(new Date().toISOString());
-    // ⚠️⚠️ `try` WOKOL PRZELICZENIA (drobiazg I2, recenzja kontrolna 2026-08-15). Pozycja bez
-    // ceny wywraca `wartoscPozycjiGrosze` — a ta trasa nie miala `try`, wiec zamiast zdania po
-    // polsku oddawala 500. Z ekranu jest to nieosiagalne (krok 1 blokuje takie zamowienie
+    // ⚠️⚠️ `try` WOKOL PRZELICZENIA. Pozycja bez
+    // ceny wywraca `wartoscPozycjiGrosze` — bez `try` trasa zamiast zdania po
+    // polsku oddałaby 500. Z ekranu jest to nieosiagalne (krok 1 blokuje takie zamowienie
     // wczesniej, patrz `pokazKrok1`), ale sciezka POST istnieje i przyjmuje cialo od kogokolwiek.
-    // DOMKNIETE Z DWOCH STRON: straznik zera stoi teraz PRZED odczytem ceny
-    // (domain/zwrot-formularz.js), a tu lezy siatka na przypadek, w ktorym ceny naprawde
+    // DOMKNIETE Z DWOCH STRON: straznik zera stoi PRZED odczytem ceny
+    // (domena/zwrot-formularz.js), a tu lezy siatka na przypadek, w ktorym ceny naprawde
     // potrzeba. Odmowa wraca na KROK 1 tym samym zdaniem, ktore oddalby zapis.
     let cialo;
     let ostrzezenia;
@@ -83,7 +81,7 @@ export function registerFormularzRoutes(app, { db, korekta = null, definicje, in
     // ⚠️ Wracaja wartosci PO PRZELICZENIU (`cialo`), a nie surowe `req.body`. Inaczej kwota,
     // ktora panel wlasnie policzyl dla nowej liczby sztuk, wrocilaby na ekran w starej postaci,
     // przy nastepnym podejsciu wygladalaby jak „wpisana recznie" i przestalaby podazac za
-    // iloscia — czyli wada krytyczna wracalaby bocznymi drzwiami przy kazdej odmowie reguly.
+    // ilością — przy każdej odmowie reguły kwoty znów przestawałyby liczyć się same.
     if (blad) return pokazKrok1(req, reply, z, { blad, wpisane: cialo, kod: 400 });
     return reply.view('zwrot-podglad.ejs', {
       title: `Zamówienie ${z.numer} / Zwrot`,

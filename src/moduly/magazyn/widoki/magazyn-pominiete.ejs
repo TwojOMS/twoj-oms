@@ -1,18 +1,18 @@
-<%# MAGAZYN — czego panel NIE zamienil w karte produktu i dlaczego.
+<%# MAGAZYN — czego panel NIE zamienił w kartę produktu i dlaczego.
 
-    ⚠️⚠️ TEN EKRAN ISTNIEJE PO TO, ZEBY ROBOTA NIE UTONELA W RZECZACH CELOWYCH. Pominietych
-    jest okolo 473, z czego 447 to oferty Allegro, ktore kart nie zakladaja Z ZALOZENIA
-    (karta powstaje z katalogu sklepu, a oferte wiaze sie z nia recznie). Realnej roboty jest
-    okolo 26. Plaska lista utopilaby te 26 w tamtych 447, a pierwsza reakcja na ekran pelen
-    „pominietych" brzmi „to blad, napraw".
+    ⚠️⚠️ TEN EKRAN ISTNIEJE PO TO, ŻEBY ROBOTA NIE UTONĘŁA W RZECZACH CELOWYCH. Pominiętych
+    bywają setki, z czego zdecydowana większość to oferty Allegro, które kart nie zakładają
+    Z ZAŁOŻENIA (karta powstaje z katalogu sklepu, a ofertę wiąże się z nią ręcznie). Realnej
+    roboty jest zwykle mniejszość. Płaska lista utopiłaby je w tamtych setkach, a pierwsza
+    reakcja na ekran pełen „pominiętych” brzmi „to błąd, napraw”.
 
-    ⚠️ WIDOK NICZEGO NIE ROZSTRZYGA: powody pisze domain/karta-z-produktu.js, grupuje i ustawia
-    w kolejnosci domain/magazyn-pominiete.js. Tutaj zostaje wylacznie rysowanie.
+    ⚠️ WIDOK NICZEGO NIE ROZSTRZYGA: powody pisze domena/karta-z-produktu.js, grupuje i ustawia
+    w kolejności domena/magazyn-pominiete.js. Tutaj zostaje wyłącznie rysowanie.
 
-    ⚠️ ANI JEDNEGO KOLORU WPROST — wszystko z palety w layout-oms.ejs (dwa motywy). %>
+    ⚠️ ANI JEDNEGO KOLORU WPROST — wszystko z palety w public/oms-uklad.css (jasny i ciemny motyw). %>
 
-<%# Powrot na ZAWEZONA liste, z ktorej tu wszedl operator (4.13d) — `adresPowrotu` jest juz
-    zwalidowany w trasie (`bezpiecznyWroc`), tak samo jak na karcie produktu i w hurcie. %>
+<%# Powrót na ZAWĘŻONĄ listę, z której tu wszedł operator —
+    `adresPowrotu` jest już zwalidowany w trasie (`bezpiecznyWroc`), tak samo jak na karcie produktu i w hurcie. %>
 <p class="wroc"><a href="<%= adresPowrotu %>">← Magazyn</a></p>
 
 <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Pominięte przy tworzeniu kart", opisHtml: include('_naglowek-opis-magazyn-pominiete.ejs')}) %>
@@ -31,14 +31,14 @@
   <section class="panel">
     <div class="panel-glowa">
       <h2><%= g.celowo ? 'Tak ma być' : 'Do zrobienia' %> — <%= g.ile %> poz.</h2>
-      <%# Powod idzie DOSLOWNIE z domeny — ten sam napis, ktory rozstrzygnal o pominieciu. %>
+      <%# Powód idzie DOSŁOWNIE z domeny — ten sam napis, który rozstrzygnął o pominięciu. %>
       <span class="dopisek"><%= g.powod %></span>
     </div>
     <div class="panel-cialo">
       <% if (g.celowo) { %>
-        <%# Grupa CELOWA jest zwinieta: ma byc policzalna i sprawdzalna, ale nie ma zabierac
-            ekranu rzeczom, ktore czekaja na czlowieka. Zwinieta, a NIE ukryta — kto chce
-            sprawdzic, co dokladnie odpadlo, ma to jedno klikniecie dalej. %>
+        <%# Grupa CELOWA jest zwinięta: ma być policzalna i sprawdzalna, ale nie ma zabierać
+            ekranu rzeczom, które czekają na człowieka. Zwinięta, a NIE ukryta — kto chce
+            sprawdzić, co dokładnie odpadło, ma to jedno kliknięcie dalej. %>
         <p class="wyjasnienie">
           Te pozycje nie zakładają kart <strong>z założenia</strong> i nie ma tu nic do
           naprawienia. Ofertę wiąże się z kartą ręcznie — karta powstaje z katalogu sklepu.

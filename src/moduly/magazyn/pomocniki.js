@@ -26,7 +26,7 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
   const KANALY_SKLEPOW = kanalySklepow;
   const KANALY_ALLEGRO = kanalyAllegro;
   const KANALY_MAGAZYNU = listaNaZadanie(()=>[...kanalySklepow, ...kanalyAllegro]);
-  // PRZ-090: bez sklepu Woo karty powstają z ofert Allegro — ta sama lista dla zakładania, „pominiętych” i grup.
+  // Bez sklepu Woo karty powstają z ofert Allegro — ta sama lista dla zakładania, „pominiętych” i grup.
   const KANALY_ZRODLOWE = listaNaZadanie(()=>kanalyZrodloweKart(kanalySklepow, kanalyAllegro));
   const filtryZZapytania = q => filtryDomeny(q, KANALY_MAGAZYNU);
   const ocenZapis = (w,p,j) => ocenZapisDomeny(w,p,j,kanalySklepow);
@@ -44,7 +44,7 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
 
 
 // EKRAN MAGAZYNU. Trasa jest CIENKA: parsuje zadanie, wola zapytanie, sklada wiersze i
-// renderuje. Reguly siedza w `domain/` (rozmiar, paczkomat, miniatury, grupowanie
+// renderuje. Reguly siedza w `src/domena/` (rozmiar, paczkomat, miniatury, grupowanie
 // pominietych), zapytania w `db/magazyn.js`, odczyt sklepow w `services/magazyn-przebieg.js`.
 //
 // ⚠️ WIDOK NICZEGO NIE LICZY I NICZEGO NIE ROZSTRZYGA — wszystko przychodzi policzone stad
@@ -57,9 +57,9 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
 // Z tego samego powodu widok nie dostaje stad `motyw` ani `sciezkaPowrotu` — wstawia je
 // globalny hook do KAZDEGO widoku.
 
-// ⚠️ CZTERY OSOBNE KOLUMNY, Allegro rozbite na dwa konta (wymaganie wlasciciela). Kolejnosc
+// ⚠️ OSOBNA KOLUMNA NA KAZDY KANAL — kazdy sklep i kazde konto Allegro osobno (`kanalySklepow` + `kanalyAllegro`). Kolejnosc
 // jest kolejnoscia kolumn na ekranie i JEDNYM zrodlem dla naglowka i dla wierszy — dwie
-// listy rozjechalyby sie o jedna kolumne, czyli cena ze sklepu B wyladowalaby pod sklepem A.
+// listy rozjechalyby sie o jedna kolumne, czyli cena z jednego sklepu wyladowalaby pod drugim.
 //
 // ⚠️ TA SAMA LISTA JEST LISTA WARTOSCI FILTRU KANALU (`KANALY_MAGAZYNU` z domeny). Trzecia
 // kopia rozjechalaby sie po cichu w jedna albo w druga strone: filtr oferowalby kanal,
@@ -74,7 +74,7 @@ const POLA_FORMULARZA_FILTROW = Object.freeze(
   ['kanal', 'kategoria', 'marka', 'paczkomat', 'brak', 'cenaOd', 'cenaDo', 'oferty'],
 );
 
-// Nazwy kanalow bierzemy z `domain/kanaly.js` — TEJ SAMEJ mapy, ktora opisuje kolumne
+// Nazwy kanalow bierzemy z `domena/kanaly.js` — TEJ SAMEJ mapy, ktora opisuje kolumne
 // „Kanal sprzedazy" na liscie zamowien i pozycje filtra kanalu. Druga mapa etykiet
 // rozjechalaby sie przy pierwszej zmianie nazwy konta.
 const NAGLOWKI_KANALOW = listaNaZadanie(()=>KOLUMNY_KANALOW.map((klucz) => ({ klucz, etykieta: adresKanalu(klucz) })));
@@ -95,7 +95,7 @@ const BEZ_SKLEPOW_ODMOWA = 'Panel nie ma podpiętego żadnego sklepu ani konta A
 
 // Adres produktu z lustra laduje wprost w atrybucie `href` naszego HTML-a, a lustro bierze
 // sie z cudzego API (`zapiszProduktSklepowy` przepuszcza dowolny napis w kolumnie `adres`).
-// Ten sam warunek, co przy adresach zdjec w `domain/miniatury.js` i `services/magazyn-sync.js`
+// Ten sam warunek, co przy adresach zdjec w `domena/miniatury.js` i `services/magazyn-sync.js`
 // — i z tego samego powodu. Adres, ktoremu odmawiamy, gasi WYLACZNIE odnosnik: cena zostaje
 // na ekranie, bo o niej ten wiersz mowi.
 const ADRES_HTTP = /^https?:\/\//i;
@@ -104,15 +104,13 @@ const adresSklepu = (a) => (typeof a === 'string' && ADRES_HTTP.test(a.trim()) ?
 /**
  * MINIATURA KARTY — z pierwszego kanalu, ktory JA MA, w kolejnosci kolumn.
  *
- * ⚠️⚠️ WARTOSC ZAPISANA, NIGDY WYLICZONA Z NAZWY PLIKU. Do 2026-08-12 stalo tu
- * `adresMiniatury(pierwszeZdjecie(...))`, czyli doklejenie `-150x150` do nazwy pliku
- * oryginalu. Zmierzone wtedy na WSZYSTKICH adresach obu sklepow: sklep B 103/103
- * trafien, sklep A 76/684 — 608 razy 404 (89%), bo TEN sklep skaluje miniatury do
- * 247x296. Prawdziwy adres przynosi teraz odczyt katalogow ze Store API i kladzie go
- * w kolumnie `miniatura` (services/magazyn-sync.js, domain/miniatury.js).
+ * ⚠️⚠️ WARTOSC ZAPISANA, NIGDY WYLICZONA Z NAZWY PLIKU. Doklejanie `-150x150` do nazwy
+ * pliku oryginalu zawodzi: sklep, ktory skaluje miniatury do innych rozmiarow, oddaje
+ * wtedy 404 na wiekszosci adresow. Prawdziwy adres przynosi teraz odczyt katalogow ze Store
+ * API i kladzie go w kolumnie `miniatura` (services/magazyn-sync.js, domena/miniatury.js).
  *
  * ⚠️⚠️ BRAK ZOSTAJE BRAKIEM. Zaden odwrot do zgadywania i zadne podstawienie oryginalu:
- * pierwsze daje 404, drugie sciaga na JEDNA strone listy ponad 150 MB zdjec produktowych.
+ * pierwsze daje 404, drugie sciaga na JEDNA strone listy wiele MB zdjec produktowych w pelnej wielkosci.
  * Pusta komorka jest dzis i tak stanem widocznym, a wypelni sie sama po najblizszym odczycie.
  *
  * ⚠️ KOLEJNOSC JEST STALA, a nie „ktore znajdzie sie pierwsze w obiekcie": ta sama karta ma
@@ -173,10 +171,9 @@ function opisLiczbyKanalow(ile) {
  *
  * ⚠️ NAZWA KANALU SKLADA SIE TUTAJ, a nie w widoku: `blad` z odczytu mowi o kluczu
  * (`sklep_b`), a czlowiek patrzacy na ekran mysli adresem sklepu (`sklep-b.example`). Jedno
- * miejsce, w ktorym te dwie postacie sie spotykaja, to `domain/kanaly.js`.
+ * miejsce, w ktorym te dwie postacie sie spotykaja, to `domena/kanaly.js`.
  *
- * ⚠️⚠️ REGULA Z SEKCJI 9 PRZEWODNIKA (przebudowa 2026-08-25, Zadanie 3): wynik odczytu MUSI
- * BYC WIDOCZNY — cichy zly odczyt ma wygladac IDENTYCZNIE jak sklep bez zmian WYLACZNIE
+ * ⚠️⚠️ REGULA: wynik odczytu MUSI BYC WIDOCZNY — cichy zly odczyt ma wygladac IDENTYCZNIE jak sklep bez zmian WYLACZNIE
  * wtedy, gdy naprawde nic sie nie stalo. `otworz` rozstrzyga, czy `<details>` na ekranie
  * renderuje sie z atrybutem `open`: zwiniecie wolno WYLACZNIE przy spokoju — trwanie i
  * KAZDY blad (przebiegu jako calosci albo pojedynczego kanalu) maja sekcje otworzyc.
@@ -201,7 +198,7 @@ function opisPrzebiegu(stan) {
   };
 }
 
-// PRZ-160.04b: stan przebiegu „Pobierz treść i zdjęcia ofert" dla widoku. `null` = brak połączonego konta
+// Stan przebiegu „Pobierz treść i zdjęcia ofert" dla widoku. `null` = brak połączonego konta
 // Allegro (przycisku nie ma). Tabela błędów ucięta do 50 wierszy — reszta jako liczba.
 const BLEDY_TRESCI_NA_EKRANIE = 50;
 function opisPrzebieguTresci(stan) {
@@ -232,9 +229,9 @@ function opisPrzebieguTresci(stan) {
  *
  * ⚠️⚠️ ADRES SKLADA SIE Z PELNEGO KOMPLETU (`adresMagazynu`), A NIE OD ZERA. Naglowek
  * budowany jako `/magazyn?sort=…&kier=…` GUBILBY fraze i wszystkie filtry — czyli klikniecie
- * w „Wymiary" kasowaloby zawezenie, po ktorym wlasciciel wlasnie chcial zaznaczyc wszystko
+ * w „Wymiary" kasowaloby zawezenie, po ktorym czlowiek wlasnie chcial zaznaczyc wszystko
  * i ustawic pole hurtem. To jest ten sam blad, ktory na liscie zamowien dawal
- * „przefiltrowana, ale ZUPELNIE INNA liste" (niezmiennik 4.13b przewodnika).
+ * „przefiltrowana, ale ZUPELNIE INNA liste" (reguła: filtry nie kasują frazy).
  *
  * `Object.create(null)`, bo kluczami sa nazwy z adresu HTTP — na literale `{}` zapytanie
  * o „constructor" siegnaloby do prototypu (ta sama pulapka, co przy bialej liscie w db/).
@@ -265,7 +262,7 @@ function linkiSortowania(sort, kier, filtry, zaznacz = false, widok = 'porzadki'
 }
 
 // ⚠️ `adresPowrotuListy` to WLASNY adres TEJ listy (`adresMagazynu(filtry, {sort, kier,
-// widok})` od wywolujacego, Zadanie 6) — kazdy wiersz linkuje karte z NIM jako `wroc`, zeby
+// widok})` od wywolujacego) — kazdy wiersz linkuje karte z NIM jako `wroc`, zeby
 // powrot z karty trafil TU, a nie na goly „/magazyn". Koder liczy sie TUTAJ, przez
 // `adresKarty` (ten sam, co na karcie), a NIE w widoku — widok niczego nie liczy.
 function wierszKarty(w, adresPowrotuListy) {
@@ -273,7 +270,7 @@ function wierszKarty(w, adresPowrotuListy) {
     id: w.id,
     nazwa: w.nazwa,
     sku: w.sku || null,
-    // Milimetry → „70 × 100 cm" liczy domena, nie widok (domain/rozmiar.js).
+    // Milimetry → „70 × 100 cm" liczy domena, nie widok (domena/rozmiar.js).
     wymiary: opisWymiarow(w),
     kategoria: w.kategoria_glowna || null,
     marka: w.marka || null,
@@ -325,20 +322,20 @@ function opisZawezenia(filtry, ile) {
 // EKRAN POWIAZAN OFERT ALLEGRO Z KARTAMI PRODUKTOW
 //
 // Karta powstaje z katalogu SKLEPU; oferte wiaze sie z nia RECZNIE, bo `external` jest na
-// Allegro puste we wszystkich 447 ofertach, a nazwy sa sprzedazowe. Miara podobienstwa
-// siedzi w `domain/dopasowanie-ofert.js` — tutaj zostaje odczyt, kolejnosc i skladanie
+// Allegro zwykle puste, a nazwy sa sprzedazowe. Miara podobienstwa
+// siedzi w `domena/dopasowanie-ofert.js` — tutaj zostaje odczyt, kolejnosc i skladanie
 // wierszy dla widoku.
 //
-// ⚠️⚠️ NIC NIE WIAZE SIE BEZ KLIKNIECIA (rozstrzygniecie wlasciciela). Trasa GET wylacznie
+// ⚠️⚠️ NIC NIE WIAZE SIE BEZ KLIKNIECIA. Trasa GET wylacznie
 // CZYTA — zadnego „powiąż wszystkie pewne" jako skutku ubocznego wejscia na strone. Ocena
-// jest PODPOWIEDZIA, a nie decyzja: zmierzone na prawdziwych danych, ze w kubelku 0,50–0,67
+// jest PODPOWIEDZIA, a nie decyzja: sprawdzone na prawdziwych danych — w kubelku 0,50–0,67
 // siedza trafienia poprawne, wiec kazdy prog automatu wiazalby albo za duzo, albo za malo.
 
 const BEZ_KART = {
   title: 'Magazyn — powiązania',
   naglowek: 'Najpierw karty, potem powiązania',
-  // ⚠️ TO JEST STAN DZISIEJSZY PRODUKCJI, a nie przypadek krancowy: lustro ma 447 ofert
-  // Allegro i ZERO kart, bo zakladanie kart to OSOBNY przycisk. Tabela z 447 wierszami
+  // ⚠️ TO JEST STAN POCZATKOWY, a nie przypadek krancowy: lustro ma oferty
+  // Allegro i ZERO kart, bo zakladanie kart to OSOBNY przycisk. Tabela z setkami wierszy
   // bez ani jednego kandydata wygladalaby jak zepsute dopasowanie — a to tylko brak katalogu.
   opis: 'Rejestr kart jest pusty, więc nie ma do czego przypinać ofert. Karta powstaje '
     + 'z katalogu sklepu: wejdź w Magazyn → Importuj, wybierz sklep i zaimportuj jego produkty. '
@@ -351,8 +348,8 @@ const BEZ_KART = {
 //
 // ⚠️⚠️ `Object.hasOwn`, NIGDY `SORTOWANIE[x] ?? domyslne`. Ta druga postac oddaje przy
 // `?sort=constructor` FUNKCJE z `Object.prototype` (nie `undefined`), `??` jej nie zlapie,
-// a `lista.sort(Object)` konczy sie pieciusetka — realna, zlapana przy Zadaniu 4 na
-// glownym ekranie magazynu.
+// a `lista.sort(Object)` konczy sie pieciusetka — realna, na glownym ekranie
+// magazynu.
 const SORTOWANIE_POWIAZAN = {
   nazwa: (a, b) => a.nazwa.localeCompare(b.nazwa, 'pl'),
   ocena: (a, b) => a.najlepsza - b.najlepsza,
@@ -362,7 +359,7 @@ const SORTOWANIE_POWIAZAN_DOMYSLNE = 'nazwa';
 
 // ⚠️ Nierozpoznana nazwa kolejnosci WRACA DO DOMYSLNEJ, a nierozpoznany filtr po prostu
 // NIE ZAWEZA — obie decyzje sa te same, co na ekranie magazynu, i z tego samego powodu:
-// literowka w adresie ma pokazac liste, a nie pusty ekran. Pusty ekran przy 447 ofertach
+// literowka w adresie ma pokazac liste, a nie pusty ekran. Pusty ekran przy setkach ofert
 // wyglada jak „nie ma czego wiazac".
 const napis = (surowy) => (typeof surowy === 'string' && surowy.trim() ? surowy.trim() : null);
 const kanalAllegro = (surowy) => {
@@ -397,7 +394,7 @@ function numerKarty(surowy) {
  * wpisal wlasny wybor, wyrazil zdanie DRUGIE. Odwrotna kolejnosc znaczylaby, ze wpisanie
  * czegokolwiek w pole reczne nie robi nic — po cichu.
  *
- * ⚠️ NIEZMIENNIK 4.13a: pominiete wracaja Z POWODEM i musza byc widoczne. Ciche wyrzucenie
+ * ⚠️ REGULA „pominiete wracaja Z POWODEM”: musza byc widoczne. Ciche wyrzucenie
  * wiersza z hurtu znaczyloby „zatwierdzilem czterdziesci, weszlo trzydziesci dziewiec".
  *
  * ⚠️ IDENTYFIKATORY BIERZEMY Z CIALA ZADANIA, ale nazwy i kolejnosc z ODCZYTANYCH list —
@@ -471,8 +468,8 @@ function wierszOferty(o, karty) {
   };
 }
 
-// Pozycja wspolnej listy podpowiedzi. JEDNA na strone, nie jedna na wiersz: 447 wierszy
-// razy ~965 kart to megabajty HTML-a (rozstrzygniecie wlasciciela).
+// Pozycja wspolnej listy podpowiedzi. JEDNA na strone, nie jedna na wiersz: setki wierszy
+// razy setki kart to megabajty HTML-a.
 //
 // ⚠️ NAZWA STOI W `value`, A NUMER W NAWIASIE NA KONCU — nie odwrotnie. Przegladarka
 // filtruje `<datalist>` po WARTOSCI, nie po etykiecie, wiec numer w `value` dawalby liste
@@ -486,9 +483,9 @@ const pozycjaListy = (w) => ({
  * Adres ekranu powiazan z PELNYM kompletem: fraza, filtr konta i kolejnosc.
  *
  * ⚠️ KAZDY ODNOSNIK EKRANU MA SIE SKLADAC TUTAJ, a nie od zera. Naglowek sortujacy budowany
- * jako `/magazyn/powiazania?sort=…` gubilby zawezenie, po ktorym wlasciciel wlasnie chcial
+ * jako `/magazyn/powiazania?sort=…` gubilby zawezenie, po ktorym czlowiek wlasnie chcial
  * przejsc kilkanascie wierszy — to jest ten sam blad, ktory na liscie zamowien dawal
- * „przefiltrowana, ale ZUPELNIE INNA liste" (niezmiennik 4.13b).
+ * „przefiltrowana, ale ZUPELNIE INNA liste" (reguła: filtry nie kasują frazy).
  */
 function adresPowiazan(filtry, { sort, kier, wroc = null } = {}) {
   const czesci = [];
@@ -496,7 +493,7 @@ function adresPowiazan(filtry, { sort, kier, wroc = null } = {}) {
   if (filtry?.kanal) czesci.push(['kanal', filtry.kanal]);
   if (sort) czesci.push(['sort', sort]);
   if (kier) czesci.push(['kier', kier]);
-  // ⚠️ ADRES POWROTU JEST CZESCIA KOMPLETU (4.13d), a nie doklejka przy odnosniku: ten ekran
+  // ⚠️ ADRES POWROTU JEST CZESCIA KOMPLETU (reguła: powrót na zawężony widok), a nie doklejka przy odnosniku: ten ekran
   // ma wlasne filtry, szukajke i trzy naglowki sortujace, wiec powrot naprawiony wylacznie
   // w odnosniku dzialalby do PIERWSZEGO klikniecia w cokolwiek na stronie — a po to sie tu
   // wchodzi, zeby przejsc kilkanascie wierszy zawezeniem.
@@ -538,7 +535,7 @@ function ukrytePowiazan(filtry, { sort, kier, wroc = null }, pomin = []) {
   // Kolejnosc NIE JEST filtrem, ale jedzie tymi samymi formularzami: bez tych dwoch pol
   // klikniecie „Filtruj" na liscie ulozonej po ocenie wracaloby do kolejnosci domyslnej.
   pary.push({ name: 'sort', value: sort }, { name: 'kier', value: kier });
-  // Adres powrotu tez nie jest filtrem, a jedzie z tego samego powodu (4.13d): zawezenie
+  // Adres powrotu tez nie jest filtrem, a jedzie z tego samego powodu (reguła: powrót na zawężony widok): zawezenie
   // ekranu przezywa klikniecie „Filtruj", a powrot na zawezony magazyn ma przezyc tak samo.
   if (wroc) pary.push({ name: 'wroc', value: wroc });
   return pary;
@@ -550,15 +547,15 @@ function ukrytePowiazan(filtry, { sort, kier, wroc = null }, pomin = []) {
 // Ekran karty jest stanowiskiem pracy przy JEDNEJ karcie: dane, komplet powiazanych produktow
 // i ofert (z cenami, odnosnikami i zdjeciami) oraz dopisanie oferty Allegro.
 //
-// ⚠️⚠️ EKRAN KARTY JEST DOMYSLNIE DO ODCZYTU (wymaganie wlasciciela, wprost: „Dane karty z opisem
+// ⚠️⚠️ EKRAN KARTY JEST DOMYSLNIE DO ODCZYTU (wymaganie wprost: „Dane karty z opisem
 // nie da sie edytowac przed klknieciem przycisku «Edytuj»"). Formularz otwiera dopiero
 // `?edytuj=dane`, BEZ JavaScriptu — dokladnie ten sam wzorzec, co trzy panele karty
 // zamowienia (`zamowienie.ejs`: `?edytuj=wysylka|faktura|szczegoly`).
 //
 // ⚠️⚠️ EKRAN KARTY NIE ZAPISUJE NICZEGO DO SKLEPU ANI NA ALLEGRO. Zapis SKU i wymiarow
-// do WooCommerce to Zadanie 15 i ma wlasny, obowiazkowy podglad. Tutaj nie ma prawa
-// pojawic sie ani jedno zadanie modyfikujace do cudzego API — stad w calym tym module
-// nie ma importu klienta sklepu ani Allegro (pilnuje tego test).
+// do WooCommerce idzie osobna droga (`zapis.js`) z wlasnym, obowiazkowym podgladem. Tutaj nie ma
+// prawa pojawic sie ani jedno zadanie modyfikujace do cudzego API — ten plik nie importuje
+// klienta sklepu ani Allegro.
 
 // Pola, ktore FORMULARZ KARTY wysyla. Wezsze niz `POLA_KARTY` w db/magazyn.js i tak ma byc:
 // kolumny w milimetrach wypelnia wylacznie przeliczenie z centymetrow nizej, a nie ktos, kto dopisze pole do zadania HTTP.
@@ -591,7 +588,7 @@ const doKolumny = (tekst) => (tekst.trim() ? tekst.trim() : null);
  * a nie „to, co dalo sie odczytac". Polowiczny zapis zostawialby w bazie stan, o ktorym
  * ekran mowi „nie zapisalem", i nikt by juz nie wiedzial, ktora polowa weszla.
  *
- * ⚠️ PACZKOMAT JEDZIE SUROWY — normalizuje go `zapiszKarte` (`domain/paczkomat.js`, trzy stany).
+ * ⚠️ PACZKOMAT JEDZIE SUROWY — normalizuje go `zapiszKarte` (`domena/paczkomat.js`, trzy stany).
  * Druga normalizacja tutaj rozjechalaby sie z tamta przy pierwszej zmianie, a to ona
  * rozstrzyga o filtrze „bez oznaczenia paczkomatu".
  */
@@ -606,7 +603,7 @@ function zmianyZFormularza(db, karta, body) {
     zmiany[klucz] = klucz === 'paczkomat' ? surowe : doKolumny(surowe);
   }
 
-  // ⚠️ CENTYMETRY WCHODZA, MILIMETRY LADUJA W BAZIE — przelicza domena (`domain/rozmiar.js`),
+  // ⚠️ CENTYMETRY WCHODZA, MILIMETRY LADUJA W BAZIE — przelicza domena (`domena/rozmiar.js`),
   // bo to ta sama regula, ktora czyta rozmiar z nazwy produktu. `null` z niej znaczy „NIE
   // ROZUMIEM tego napisu" i jest CZYM INNYM niz `{ mm: null }` („skasuj wymiar"): ciche
   // zrownanie tych dwoch kasowaloby wymiar przy literowce, po cichu i na karcie, z ktorej
@@ -625,7 +622,7 @@ function zmianyZFormularza(db, karta, body) {
     zmiany[KOLUMNA_WYMIARU[klucz]] = wynik.mm;
   }
 
-  // PRZ-090: waga w KILOGRAMACH na karcie, w gramach w bazie — ta sama zasada „nie rozumiem” ≠ „skasuj”.
+  // Waga w KILOGRAMACH na karcie, w gramach w bazie — ta sama zasada „nie rozumiem” ≠ „skasuj”.
   const wagaSurowa = pole(body, 'waga_kg');
   if (wagaSurowa !== null) {
     const waga = gramyZKilogramow(wagaSurowa);
@@ -636,7 +633,7 @@ function zmianyZFormularza(db, karta, body) {
     zmiany.waga_g = waga.g;
   }
 
-  // PRZ-153.E5.3c: EAN, cena katalogowa i stawka VAT — ta sama zasada: puste kasuje (`null`),
+  // EAN, cena katalogowa i stawka VAT — ta sama zasada: puste kasuje (`null`),
   // napis niezrozumialy wstrzymuje CALY zapis. Pole formularza to `cena_zl`, nie `cena_gr`:
   // kolumne w groszach wypelnia wylacznie przeliczenie nizej.
   const eanSurowy = pole(body, 'ean');
@@ -655,7 +652,7 @@ function zmianyZFormularza(db, karta, body) {
     let cena = null;
     if (tekst) {
       // Przecinek dziesietny czlowieka → kropka; reszte (znak, walute, drugi przecinek) odrzuca
-      // `groszeZKwoty` (domain/kwota.js) — przeliczenie po cyfrach, bez mnozenia na floacie.
+      // `groszeZKwoty` (domena/kwota.js) — przeliczenie po cyfrach, bez mnozenia na floacie.
       try { cena = groszeZKwoty(tekst.replace(',', '.'), 'cena katalogowa karty'); } catch { cena = undefined; }
     }
     if (cena === undefined) {
@@ -684,7 +681,7 @@ function zmianyZFormularza(db, karta, body) {
   //
   // ⚠️ CZYM TO GROZI, ODKAD ISTNIEJE EDYCJA HURTEM: karta z sama szerokoscia wpada do filtru
   // „bez wymiarów", czyli dokladnie w zawezenie, po ktorym idzie hurt. Hurt ustawilby jej
-  // 70×100, KASUJAC jedyna zmierzona wartosc — przy 645 wierszach naraz i bez cofniecia.
+  // 70×100, KASUJAC jedyna zmierzona wartosc — przy setkach wierszy naraz i bez cofniecia.
   // Hurt zachowuje sie przy tym poprawnie (bierze to, co filtr uznal za brak); to ekran karty
   // wpuszczala do rejestru stan, ktorego reszta modulu nie uznaje za istniejacy.
   //
@@ -733,7 +730,7 @@ function zmianyZFormularza(db, karta, body) {
   return { zmiany, blad: null };
 }
 
-// Adres powrotu na liste (Zadanie 6). WYLACZNIE wlasny ekran magazynu — wartosc przychodzi
+// Adres powrotu na liste. WYLACZNIE wlasny ekran magazynu — wartosc przychodzi
 // z paska adresu (albo od kogos, kto podesle spreparowany odnosnik), wiec bez tej bariery
 // karta bylaby przekaznikiem na DOWOLNY adres (open redirect), a `//host` przegladarka
 // czyta jako adres absolutny bez schematu (`//evil.example` == `https://evil.example`
@@ -744,13 +741,13 @@ const bezpiecznyWroc = (surowy) => (
 );
 
 // Adres karty z PELNYM kompletem stanu ekranu: otwarta sekcja edycji, fraza, filtr konta
-// i — od Zadania 6 — adres powrotu na liste (`wroc`, JUZ zwalidowany przez `bezpiecznyWroc`
+// i adres powrotu na liste (`wroc`, JUZ zwalidowany przez `bezpiecznyWroc`
 // u kazdego wywolujacego). ⚠️ Ten sam powod, co przy `adresMagazynu` i `adresPowiazan`
-// (niezmiennik 4.13b): odnosnik budowany od zera gubilby to, co czlowiek przed chwila
+// (reguła: filtry nie kasują frazy): odnosnik budowany od zera gubilby to, co czlowiek przed chwila
 // ustawil — a tu gubilby TAKZE otwarty formularz i to, na jaka liste ma wrocic.
 //
 // ⚠️ `wroc` DOKLEJA SIE JAKO OSTATNI — kolejnosc parametrow ma zostac STALA (ta sama zasada,
-// co przy `POLA` w domain/magazyn-filtry.js), zeby ten sam stan ekranu mial zawsze ten sam
+// co przy `POLA` w domena/magazyn-filtry.js), zeby ten sam stan ekranu mial zawsze ten sam
 // adres (zakladki, historia przegladarki, testy porownujace adresy).
 function adresKarty(id, {
   edytuj, fraza, kanal, wroc,
@@ -775,26 +772,22 @@ const zWroc = (sciezka, wroc) => (
 // ================================================================================
 // EDYCJA HURTEM — WYMIARY, KATEGORIA GLOWNA, PACZKOMAT, SKROCENIE NAZWY
 //
-// PO CO TO JEST (zmierzone na produkcji 2026-08-12): 645 kart bez wymiaru, 965 bez
-// oznaczenia paczkomatu, 152 bez kategorii glownej. Wlasciciel potwierdzil, ze wiekszosc
-// produktow ze sklepu A ma TEN SAM wymiar 70×100 cm. Bez tego ekranu trzeba by otworzyc
-// 645 kart po kolei.
+// PO CO TO JEST: gdy wiele kart nie ma wymiaru, oznaczenia paczkomatu albo kategorii glownej — a czesc z nich ma ten sam wymiar — bez tego ekranu trzeba by otwierac je po kolei.
 //
 // ⚠️⚠️ PUSTE POLE ZNACZY „NIE RUSZAJ", ODWROTNIE NIZ NA KARCIE — cale rozstrzygniecie stoi
-// w `domain/magazyn-hurt.js`, razem z powodem. Tutaj zostaje wylacznie droga.
+// w `domena/magazyn-hurt.js`, razem z powodem. Tutaj zostaje wylacznie droga.
 //
 // ⚠️⚠️ PODGLAD JEST OBOWIAZKOWY I JEST OSOBNA TRASA. `POST /magazyn/hurt` WYLACZNIE liczy
 // i pokazuje; zapisuje dopiero `POST /magazyn/hurt/zatwierdz`. Jedna trasa z polem
-// „czy na pewno" znaczylaby, ze pomylka w tym polu zapisuje 645 kart bez pokazania czego
+// „czy na pewno" znaczylaby, ze pomylka w tym polu zapisuje setki kart bez pokazania czego
 // — a to jest ta sama zasada, ktora obowiazuje faktury hurtem i zapis do sklepow.
 //
 // ⚠️⚠️ ZESTAW ZMIAN LICZONY PONOWNIE PRZY ZATWIERDZENIU. Formularz podgladu przynosi
 // IDENTYFIKATORY i WARTOSCI (decyzja czlowieka), nigdy gotowego „z czego na co": odczyt
 // katalogow albo druga karta miedzy podgladem a kliknieciem zmienilyby zbior po cichu.
 //
-// ⚠️ ANI JEDNEGO ZADANIA DO SKLEPU CZY ALLEGRO. Zapis SKU i wymiarow do WooCommerce to
-// Zadanie 15 z wlasnym podgladem — stad w calym tym module nie ma importu klienta sklepu
-// (pilnuje tego test).
+// ⚠️ ANI JEDNEGO ZADANIA DO SKLEPU CZY ALLEGRO. Zapis SKU i wymiarow do WooCommerce idzie
+// osobna droga (`zapis.js`) z wlasnym podgladem — ten plik nie importuje klienta sklepu.
 
 /**
  * Numery zaznaczonych kart z ciala zadania.

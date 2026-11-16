@@ -1,9 +1,9 @@
-// PRZ-102.10: podpis maili do klientów (marka i stopka) z Ustawień → Integracje → Poczta wychodząca.
+// Podpis maili do klientów (marka i stopka) z Ustawień → Integracje → Poczta wychodząca.
 //
 // Dwa wiersze tabeli `ustawienia` (klucz → wartość, bez migracji; wzór oms/db/moduly-opcjonalne.js).
-// **Plik wygrywa** (zasada PRZ-092), osobno dla każdego pola: niepuste OMS_MAIL_MARKA albo OMS_MAIL_STOPKA w pliku
+// **Plik wygrywa**, osobno dla każdego pola: niepuste OMS_MAIL_MARKA albo OMS_MAIL_STOPKA w pliku
 // konfiguracji blokuje zapis tego pola w panelu, a mail bierze wartość z pliku. Puste w pliku = jak brak — ta sama
-// reguła, która od PRZ-029 daje bajtowo ten sam mail przy pustej zmiennej i bez niej (oprawa-pusta-konfiguracja).
+// reguła daje bajtowo ten sam mail przy pustej zmiennej i bez niej (tests/moduly/wiadomosci/oprawa-pusta-konfiguracja.test.ts).
 // Zapis z panelu działa od następnego maila: usługi wołają `podpisZPanelu` przy każdym złożeniu, nie raz przy starcie.
 import { oprawaMaila, tekstZeStopka } from './oprawa.js';
 import { renderSzablonHtml, podpisHtml } from '../../core/poczta/szablon-html.js';
@@ -17,7 +17,7 @@ export const MAKS_PODPISU = Object.freeze({ marka: 120, stopka: 600, linieStopki
 
 // Znaki sterujące (C0, DEL, C1), separatory linii Unicode i znaki zmiany kierunku tekstu (podszywanie się pod
 // inną treść w nagłówku maila). Stopka dopuszcza wyłącznie nową linię. To samo wyrażenie sprawdza zdania o płatności
-// (PRZ-102.17, zdania-platnosci.js) — jedna lista zakazanych znaków dla wszystkiego, co operator wpisuje do maila.
+// (zdania-platnosci.js) — jedna lista zakazanych znaków dla wszystkiego, co operator wpisuje do maila.
 export const ZAKAZANE = /[\p{Cc}\u2028\u2029\u202A-\u202E\u2066-\u2069]/u;
 
 /**
@@ -111,7 +111,7 @@ const PRZYKLAD = ['Dzień dobry,', '', 'tu stoi treść wiadomości — zależy 
  * Podgląd na ekranie Poczty: ten sam renderer co mail ze szablonu (renderSzablonHtml → kopertaMaila), więc marka
  * w nagłówku, podpis i stopka wyglądają jak w prawdziwym mailu, a wartości są escapowane przez renderer.
  */
-// PRZ-102.19: `zdania` — „Pozdrawiamy," z Ustawień → Szablony wiadomości (zdaniaPlatnosciTeraz), jak w prawdziwym mailu.
+// `zdania` — „Pozdrawiamy," z Ustawień → Szablony wiadomości (zdaniaPlatnosciTeraz), jak w prawdziwym mailu.
 export function podgladPodpisu(oprawa, { zdania = null } = {}) {
   const { pozdrowienie } = zdaniaDoMaila(zdania ?? {});
   const { czesci, tekst } = zlozTresc(PRZYKLAD, { pola: {}, bloki: { podpis: liniePodpisu(oprawa.podpis, pozdrowienie) } });

@@ -1,20 +1,19 @@
 // GENERATOR SKU — regula czysta. Zadnej bazy, zadnego HTTP: tutaj rozstrzyga sie WYLACZNIE,
 // jaki numer PROPONUJEMY dla ktorej karty i ktora propozycja jest kolizja.
 //
-// PO CO TO ISTNIEJE (zmierzone na produkcji 2026-08-12): 965 kart bez SKU. Numer nadany
-// tutaj pojedzie w Zadaniu 15 do produkcyjnych sklepow i stanie sie TOZSAMOSCIA produktu —
-// zly albo zdublowany numer to nie literowka na ekranie, tylko numer wpisany do cudzego
-// produktu.
+// PO CO TO ISTNIEJE: kart bez SKU bywa bardzo duzo. Numer nadany tutaj pojedzie do sklepow
+// i stanie sie TOŻSAMOŚCIĄ produktu — zły albo zdublowany numer to nie literówka na ekranie,
+// tylko numer wpisany do cudzego produktu.
 //
 // ⚠️⚠️ KOLIZJA MA BYC WIDOCZNA, ZANIM COKOLWIEK SIE ZAPISZE, i to wobec OBU zbiorow naraz:
 // naszych numerow (`karty.sku`) ORAZ numerow, ktore ZYJA JUZ w sklepach
-// (`produkty_sklepowe.sku_sklepu` — 218 sztuk, 184 na sklepie B i 115 na sklepie A). Ograniczenie
+// (`produkty_sklepowe.sku_sklepu`). Ograniczenie
 // `UNIQUE` na kolumnie jest OSTATNIA linia obrony, nie pierwsza: wywalony zapis z bazy to
-// komunikat, ktorego czlowiek nie zrozumie, a przy 965 wierszach nie dowie sie nawet, ktory
+// komunikat, ktorego czlowiek nie zrozumie, a przy setkach wierszy nie dowie sie nawet, ktory
 // numer zawinil.
 //
 // ⚠️⚠️ TEN MODUL NICZEGO NIE NADAJE. Oddaje PROPOZYCJE dla czlowieka, ktory kliknie — ta sama
-// zasada, co przy `domain/dopasowanie-ofert.js` (podpowiedz niczego nie wiaze).
+// zasada, co przy `domena/dopasowanie-ofert.js` (podpowiedz niczego nie wiaze).
 //
 // ⚠️ POWTARZALNOSC JEST WYMAGANIEM, NIE MILA CECHA. Ten sam zbior wejsciowy i ten sam wzorzec
 // maja dac ten sam wynik — stad jawne sortowanie nizej i zero losowania. Bez tego dwa podglady
@@ -31,7 +30,7 @@
 // ⚠️ SKLADANIE ZNAKOW ZDEJMUJEMY, ALE „ł" NIE MA POSTACI ROZLOZONEJ — NFD go nie rusza, wiec
 // „Ściany żółte łąki" bez osobnej reguly dalaby „SCIANY-ZOTE-AKI". Klasa `\p{M}` zamiast
 // zakresu wpisanego znakami: znaki diakrytyczne sa same w sobie NIEWIDOCZNE i w edytorze
-// doklejaja sie do sasiedniego nawiasu (ta sama postac, co w domain/dopasowanie-ofert.js).
+// doklejaja sie do sasiedniego nawiasu (ta sama postac, co w domena/dopasowanie-ofert.js).
 function bezOgonkow(tekst) {
   return tekst.normalize('NFD').replace(/\p{M}/gu, '')
     .replace(/ł/gu, 'l').replace(/Ł/gu, 'L');
@@ -53,7 +52,7 @@ function czlonNumeru(tekst) {
 
 // Czlon dla karty, ktora kategorii glownej nie ma. ⚠️ MUSI BYC NAZWANY, a nie pusty: numer
 // „--001" wyglada jak usterka, a `-001` gubi informacje, ze kategorii po prostu nie wybrano.
-// 152 karty nie mialy kategorii glownej w dniu pomiaru, wiec to jest droga typowa.
+// Kart bez kategorii glownej bywa wiele, wiec to jest droga typowa.
 const BEZ_KATEGORII = 'BEZ-KATEGORII';
 
 // ——— WZORZEC ————————————————————————————————————————————————————————————————

@@ -1,8 +1,7 @@
 // Pamięć podręczna zdjęć OFERT Allegro (tabela `zdjecia_ofert`).
 //
-// ⚠️ DLACZEGO OSOBNA TABELA, A NIE KOLUMNA W `pozycje` — uzasadnienie w całości stoi przy
-// `CREATE TABLE zdjecia_ofert` w db/schema.sql. W skrócie: poller kasuje i wstawia pozycje
-// sklepowe co dwie minuty (przewodnik OMS, 4.7), więc adres zapisany przy pozycji przepadałby
+// ⚠️ DLACZEGO OSOBNA TABELA, A NIE KOLUMNA W `pozycje`: poller kasuje i wstawia pozycje
+// sklepowe co dwie minuty (reguła: dane ręczne obok danych sklepu), więc adres zapisany przy pozycji przepadałby
 // przy każdej synchronizacji, a panel odpytywałby Allegro o to samo 720 razy na dobę.
 // Zdjęcie należy do OFERTY, nie do pozycji zamówienia.
 
@@ -15,10 +14,10 @@ const teraz = () => new Date().toISOString();
 // Doba, a nie „nigdy" i nie „przy każdym przebiegu":
 //   * „przy każdym przebiegu" znaczyłoby, że oferta skasowana z Allegro (403/404 na zawsze)
 //     kosztuje zapytanie CO DWIE MINUTY, i to bez końca — dokładnie ta klasa awarii, przed
-//     którą broni dławik godzinowy przy numerach listów (routes/zamowienia.js);
+//     którą broni dławik godzinowy przy numerach listów (moduly/wysylka/db/przesylki.js);
 //   * „nigdy" byłoby gorsze w drugą stronę: jeden timeout albo jedna pięćsetka Allegro
 //     zabierałaby zdjęcie tej oferty NA ZAWSZE, bez żadnego wyjścia poza ręcznym DELETE
-//     w bazie — czyli wprost naruszenie niezmiennika 4.9 (panel nie wchodzi w stan, z którego
+//     w bazie — czyli wprost naruszenie reguły „każdy stan ma wyjście" (panel nie wchodzi w stan, z którego
 //     nie umie wyjść).
 // Doba to jedno zapytanie dziennie na martwą ofertę — koszt niemierzalny, a droga powrotna
 // dla awarii przejściowej zostaje otwarta.
@@ -36,8 +35,8 @@ export const PONOWIENIE_PO_MS = 24 * 60 * 60 * 1000;
  *
  * ⚠️ `LIMIT` NIE JEST OSTROŻNOŚCIĄ NA ZAPAS. Pierwszy przebieg po wdrożeniu widzi WSZYSTKIE
  * oferty z archiwum naraz; bez ograniczenia jedno tyknięcie zegara zamieniłoby się w setki
- * żądań do Allegro w jednej serii. Produktów są dziesiątki, więc przy takim tempie pamięć
- * i tak zapełnia się w kilku przebiegach, a potem ruch spada prawie do zera — nowa oferta
+ * żądań do Allegro w jednej serii. Z ograniczeniem pamięć
+ * zapełnia się porcjami w kolejnych przebiegach, a potem ruch spada prawie do zera — nowa oferta
  * pojawia się tylko razem z nowym produktem.
  */
 export function ofertyDoSprawdzenia(db, kanal, { limit, ponowieniePoMs = PONOWIENIE_PO_MS, at = teraz() } = {}) {

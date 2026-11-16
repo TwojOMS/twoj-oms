@@ -9,16 +9,16 @@ import { powodBrakuPaczki, numeryPaczek } from './wiadomosc-wyslane.js';
 import { idDokumentu } from './dokument-programu.js';
 import { NAZWA_ZAPASOWA } from './nazwa-programu.js';
 
-// TEMATY WIADOMOŚCI DO KLIENTA — jedyne miejsce rozstrzygające „czy wolno wysłać" (22.08.2026).
+// TEMATY WIADOMOŚCI DO KLIENTA — jedyne miejsce rozstrzygające „czy wolno wysłać".
 //
-// ⚠️ ODMOWA MA MIEĆ POWÓD, nie być samym brakiem przycisku (niezmiennik 4.9 przewodnika OMS).
+// ⚠️ ODMOWA MA MIEĆ POWÓD, nie być samym brakiem przycisku (reguła: odmowa ma powód).
 // Brak przycisku bez wyjaśnienia jest stanem, z którego operator sam nie wychodzi: albo
 // grzebie w bazie, albo wysyła maila ręcznie poza panelem — i panel przestaje o nim wiedzieć.
 //
 // ⚠️ WIDOK, TRASA I USŁUGA PYTAJĄ TĘ SAMĄ FUNKCJĘ. Druga kopia warunku po stronie widoku
 // znaczyłaby przycisk, który się pokazuje, a po kliknięciu odmawia — albo, groźniej, odwrotnie.
 
-// PRZ-102.21: `wyslane` — „Zamówienie wysłane", ręcznie z karty; PRZ-108.08: także regułą z Ustawienia → Automatyzacje.
+// `wyslane` — „Zamówienie wysłane", ręcznie z karty, a także regułą z Ustawienia → Automatyzacje.
 export const TEMATY = Object.freeze(['potwierdzenie', 'proforma', 'faktura', 'przypomnienie', 'wyslane']);
 
 export const NAZWA_TEMATU = Object.freeze({
@@ -31,15 +31,14 @@ export const NAZWA_TEMATU = Object.freeze({
 
 const odmowa = (powod) => ({ wolno: false, powod });
 
-// ⚠️ ZAMROŻONE (recenzja 22.08.2026): to jeden, WSPÓLNY obiekt zwracany przez referencję
+// ⚠️ ZAMROŻONE: to jeden, WSPÓLNY obiekt zwracany przez referencję
 // trzem konsumentom (widok, trasa podglądu, usługa wysyłki). Bez `Object.freeze` jedno
 // przypadkowe `zg.powod = …` u któregoś z nich zatruwałoby odpowiedź dla wszystkich
 // pozostałych — a taki błąd nie krzyczy, tylko cicho psuje kolejne odczyty w tym samym procesie.
 const zgoda = Object.freeze({ wolno: true, powod: null });
 
-// ⚠️ `zlotowki` IMPORTOWANE Z `kwoty.js`, NIE PRZEPISANE TUTAJ (poprawka 22.08.2026,
-// recenzja Zadania 6). Trzecia prywatna kopia tej samej funkcji — po jednej usuniętej
-// wcześniej z `potwierdzenie-zamowienia.js` i `blok-platnosci.js` — dokładnie to, przed
+// ⚠️ `zlotowki` IMPORTOWANE Z `kwoty.js`, NIE PRZEPISANE TUTAJ.
+// Trzecia prywatna kopia tej samej funkcji — po jednej usuniętej wcześniej z `potwierdzenie-zamowienia.js` i `blok-platnosci.js` — dokładnie to, przed
 // czym ostrzega komentarz w `kwoty.js`. Kanoniczna wersja ma dodatkowo strażnik pustki
 // (`'' → '—'`, nie `' zł'` bez liczby) — patrz `stanTematu` niżej, które teraz go dziedziczy.
 
@@ -71,7 +70,7 @@ export function czyWolnoWyslac(z, temat_id, kontekst = {}) {
     if (!kontekst.proforma) {
       return odmowa('To zamówienie nie ma aktualnej proformy. Najpierw wystaw proformę — sekcja Faktura wyżej.');
     }
-    // ⚠️ UNIEWAŻNIONA NIE MA PRAWA WYJŚĆ (recenzja 22.08.2026, proforma-stan.js:33-34):
+    // ⚠️ UNIEWAŻNIONA NIE MA PRAWA WYJŚĆ (patrz `aktualnaProforma` w proforma-stan.js):
     // klient dostałby mailem dokument na STARĄ kwotę i przelałby według niej. Bramka ma się
     // bronić SAMA — dziś chroni nas to, że wołający podaje `kontekst.proforma` przez
     // `aktualnaProforma` (która unieważnione odsiewa), ale to jest jedyne miejsce
@@ -90,9 +89,8 @@ export function czyWolnoWyslac(z, temat_id, kontekst = {}) {
     if (!kontekst.faktura) {
       return odmowa('To zamówienie nie ma faktury. Najpierw wystaw fakturę — sekcja Faktura wyżej.');
     }
-    // ⚠️ NUMER WYMAGANY OBOK infakt_uuid (recenzja 22.08.2026, ta sama reguła co
-    // allegro-faktura.js:42): bez numeru klient nie połączy dokumentu z naszą księgowością,
-    // a `stanTematu` napisałby „bez numeru · PDF z inFaktu" — mail, który nie umie się
+    // ⚠️ NUMER WYMAGANY OBOK infakt_uuid (ta sama reguła co w allegro-faktura.js): bez numeru
+    // klient nie połączy dokumentu z naszą księgowością, a `stanTematu` napisałby „bez numeru · PDF z inFaktu" — mail, który nie umie się
     // nazwać, jest gorszy niż brak przycisku.
     if (!idDokumentu(kontekst.faktura) || !kontekst.faktura.numer) {
       return odmowa('Faktura nie została do końca wystawiona w inFakcie — PDF-u nie ma jeszcze skąd pobrać.');
@@ -118,21 +116,21 @@ export function czyWolnoWyslac(z, temat_id, kontekst = {}) {
     return powod ? odmowa(powod) : zgoda;
   }
 
-  // ⚠️ WARTOWNIK, NIE MARTWY KOD (recenzja 22.08.2026). `TEMATY.includes` na samej górze
-  // funkcji już odrzuca każdy temat spoza czwórki — ale PRZYPOMNIENIE do dziś było wyjściem
-  // DOMYŚLNYM funkcji, nie jawnym warunkiem. Piąty temat dopisany kiedyś do `TEMATY` bez
-  // własnej gałęzi tutaj odziedziczyłby po cichu regułę przypomnienia i wyszedłby na świat
-  // z `wolno: true`, choć nikt go dla niego nie napisał. Ten sam błąd naprawiono już
-  // w sąsiednim module (`wiadomosc-platnicza.js:75-82`) — tam RZUCA, tu ODMAWIA, bo to
+  // ⚠️ WARTOWNIK, NIE MARTWY KOD. `TEMATY.includes` na samej górze funkcji już odrzuca
+  // każdy temat spoza listy — ale PRZYPOMNIENIE było kiedyś wyjściem DOMYŚLNYM funkcji,
+  // nie jawnym warunkiem. Kolejny temat dopisany do `TEMATY` bez własnej gałęzi tutaj
+  // odziedziczyłby po cichu regułę przypomnienia i wyszedłby na świat z `wolno: true`,
+  // choć nikt go dla niego nie napisał. Ten sam błąd naprawiono już w sąsiednim module
+  // (`wiadomosc-platnicza.js`, wiodące zdanie według tematu) — tam RZUCA, tu ODMAWIA, bo to
   // funkcja pytana o zgodę, nie składająca treść.
   return odmowa('Nie ma takiego tematu wiadomości.');
 }
 
 /**
- * Czy wolno wysłać SZABLON WŁASNY (PRZ-101.03) — jedyny warunek: jest adres e-mail.
+ * Czy wolno wysłać SZABLON WŁASNY — jedyny warunek: jest adres e-mail.
  *
  * ⚠️ ANULOWANE NIE BLOKUJE, i to świadomie: szablon własny pisze operator i bywa nim właśnie „Anulowanie
- * zamówienia" albo „Brak towaru". Zakaz z `czyWolnoWyslac` chroni cztery maile, których treść twierdzi coś
+ * zamówienia" albo „Brak towaru". Zakaz z `czyWolnoWyslac` chroni maile, których treść twierdzi coś
  * o zamówieniu (przyjęte, do zapłaty) — szablon własny twierdzi to, co napisał człowiek, a podgląd przed wysyłką
  * zostaje.
  */
@@ -146,10 +144,9 @@ export function czyWolnoWyslacWlasny(z) {
 /**
  * Najnowsza wiadomość KAŻDEGO tematu — policzona RAZ, z jednej listy (mapa `temat_id` → wiersz).
  *
- * ⚠️⚠️ ROZSTRZYGA NAJWIĘKSZE `id`, A NIE KOLEJNOŚĆ W LIŚCIE (sprzątanie po recenzji całości
- * gałęzi, 22.08.2026). Do tej daty odpowiedź na to samo pytanie liczyły DWA miejsca: trasa
- * (zapytaniem `ORDER BY id DESC LIMIT 1` na temat) i widok karty (`…filter(…).pop()` po
- * liście wysłanych). Dawały ten sam wynik WYŁĄCZNIE dlatego, że lista jest posortowana
+ * ⚠️⚠️ ROZSTRZYGA NAJWIĘKSZE `id`, A NIE KOLEJNOŚĆ W LIŚCIE. Wcześniej odpowiedź na to samo
+ * pytanie liczyły DWA miejsca: trasa (zapytaniem `ORDER BY id DESC LIMIT 1` na temat) i widok
+ * karty (`…filter(…).pop()` po liście wysłanych). Dawały ten sam wynik WYŁĄCZNIE dlatego, że lista jest posortowana
  * rosnąco — przestawienie jej na „najnowsze u góry" (naturalne przy dłuższej historii)
  * przesunęłoby po cichu ostrzeżenie „Ta wiadomość poszła już…" i etykietę „Wyślij ponownie"
  * na NAJSTARSZY wpis. Bez błędu, bez czerwieni w suicie — a jest to jedyny hamulec przed
@@ -179,7 +176,7 @@ export function stanTematu(z, temat_id, kontekst = {}) {
   const zg = czyWolnoWyslac(z, temat_id, kontekst);
   if (!zg.wolno) return zg.powod;
 
-  // ⚠️ `fmtDataCzasKrotko`, NIE WŁASNE CIĘCIE NAPISU (recenzja 22.08.2026). `wyslana_at`
+  // ⚠️ `fmtDataCzasKrotko`, NIE WŁASNE CIĘCIE NAPISU. `wyslana_at`
   // zapisujemy jako `new Date().toISOString()` w kontenerze z TZ=UTC — samo `slice(0, 16)`
   // obcina strefę BEZ przeliczenia i pokazuje operatorowi czas o 2 godziny wcześniejszy
   // (latem) niż naprawdę. Reszta karty czyta znaczniki przez ten sam formater (precedens
@@ -197,14 +194,13 @@ export function stanTematu(z, temat_id, kontekst = {}) {
   }
 
   if (temat_id === 'faktura') {
-    // ⚠️ BEZ REZERWY `?? 'bez numeru'` — I TO NIE JEST PRZEOCZENIE (sprzątanie po recenzji
-    // całości gałęzi, 22.08.2026). Ten stan jest NIEOSIĄGALNY: `czyWolnoWyslac` kilkadziesiąt
-    // linii wyżej odmawia przy pustym `kontekst.faktura.numer`, a `stanTematu` wraca powodem
-    // odmowy, zanim tu dojdzie. Rezerwa opisywała więc stan, którego nie da się wywołać —
+    // ⚠️ BEZ REZERWY `?? 'bez numeru'` — I TO NIE JEST PRZEOCZENIE. Ten stan jest NIEOSIĄGALNY:
+    // `czyWolnoWyslac` kilkadziesiąt linii wyżej odmawia przy pustym `kontekst.faktura.numer`,
+    // a `stanTematu` wraca powodem odmowy, zanim tu dojdzie. Rezerwa opisywała więc stan, którego nie da się wywołać —
     // i zarazem zapowiadała operatorowi maila „bez numeru", którego wysłać nie wolno. Gdyby
     // kiedyś zniknął tamten strażnik, ma tu wyjść puste miejsce w napisie, a nie cicha
     // podmiana na zdanie brzmiące jak stan dopuszczalny.
-    // PRZ-118.09: `kontekst.nazwaProgramu` — odmiana nazwy programu fakturowego (domyślnie inFakt).
+    // `kontekst.nazwaProgramu` — odmiana nazwy programu fakturowego (domyślnie inFakt).
     return [`${kontekst.faktura.numer} · PDF z ${(kontekst.nazwaProgramu ?? NAZWA_ZAPASOWA).dopelniacz}`, ostatnio].filter(Boolean).join(' · ');
   }
 

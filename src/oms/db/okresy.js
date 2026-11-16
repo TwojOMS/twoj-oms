@@ -1,6 +1,6 @@
-// Warstwa bazy dla okresow rozliczeniowych klienta zbiorczego (spec 2026-08-01).
+// Warstwa bazy dla okresow rozliczeniowych klienta zbiorczego.
 //
-// Stany bierzemy z domain/okres-rozliczeniowy.js, a nie z wlasnej stalej obok: druga lista
+// Stany bierzemy z domena/okres-rozliczeniowy.js, a nie z wlasnej stalej obok: druga lista
 // napisow rozjechalaby sie z domenowa przy pierwszej zmianie, a rozjazd byby CICHY —
 // `okresPrzyjmujeZamowienia` po prostu przestalaby uznawac okres za otwarty i zamowienia
 // przestalyby sie do niego dopisywac, bez ani jednego bledu.
@@ -83,7 +83,7 @@ export function otworzOkresPonownie(db, id) {
 /**
  * Rezerwacja PRZED wywolaniem inFaktu — ten sam wzorzec, co `rozpocznijFakture`
  * w db/faktury.js. Kolumny nazywaja sie tak samo, wiec `stanFaktury()` z
- * domain/faktura-stan.js czyta ten wiersz bez zadnej adaptacji.
+ * domena/faktura-stan.js czyta ten wiersz bez zadnej adaptacji.
  *
  * ⚠️ Wiersz okresu istnieje od pierwszego zamowienia miesiaca (inaczej niz przy fakturze
  * pojedynczej, gdzie rezerwacja to `INSERT` odbijajacy sie od `UNIQUE`), wiec rezerwacja
@@ -119,7 +119,7 @@ export function rozpocznijFaktureOkresu(db, id) {
   return pobierzOkres(db, id);
 }
 
-// PRZ-118.03 — ten sam podwojny zapis co `zakonczFakture` w moduly/faktury/db/faktury.js:
+// Ten sam podwojny zapis co `zakonczFakture` w moduly/faktury/db/faktury.js:
 // `program` + `dokument_id` zawsze, `infakt_uuid` tylko dla inFaktu, jedna instrukcja.
 export function zakonczFaktureOkresu(db, id, { uuid, numer, ksefStatus }, { program = 'infakt' } = {}) {
   if (typeof program !== 'string' || !program) throw new Error('zakonczFaktureOkresu: brak nazwy programu fakturowego');
@@ -163,10 +163,10 @@ export function oznaczOkresDoWyjasnienia(db, id, opis) {
  * JEDYNE wyjscie ze stanu, ktorego panel sam nie rozstrzygnie — odpowiednik `odblokujFakture`
  * z db/faktury.js i istnieje z dokladnie tego samego powodu.
  *
- * Blokada po awarii niejednoznacznej jest sluszna, ale bez tej furtki okres zostawal
- * zablokowany NA ZAWSZE: ani `do_wyjasnienia`, ani `zawieszona` nie mialy zadnej drogi
+ * Blokada po awarii niejednoznacznej jest sluszna, ale bez tej furtki okres zostawałby
+ * zablokowany NA ZAWSZE: ani `do_wyjasnienia`, ani `zawieszona` nie miałyby żadnej drogi
  * wyjscia, a `zawieszona` powstaje przy ZWYKLYM restarcie panelu w trakcie wywolania
- * inFaktu. Jedynym ratunkiem byla reczna edycja pliku SQLite na produkcji — czyli dokladnie
+ * inFaktu. Jedynym ratunkiem byłaby ręczna edycja pliku SQLite — czyli dokładnie
  * to, przed czym panel ma chronic.
  *
  * Panel NIE WOLA inFaktu i niczego tam NIE KASUJE. To wylacznie odnotowanie faktu, ktory
@@ -175,7 +175,7 @@ export function oznaczOkresDoWyjasnienia(db, id, opis) {
  *
  * ⚠️ Odblokowujemy WYLACZNIE stany wymagajace decyzji czlowieka. Faktura wystawiona jest
  * nietykalna — zdjecie jej blokady zwolniloby okres, ktorego dokument NA PEWNO istnieje
- * w inFakcie (i wieczorem, w zbiorczej wysylce, pojedzie do KSeF), a nastepne klikniecie
+ * w inFakcie (i pojedzie do KSeF), a nastepne klikniecie
  * daloby drugi. Stan CZYTAMY przez `stanFakturyOkresu`, nie przez `stanFaktury`: swiezy okres
  * ma puste kolumny faktury, wiec `stanFaktury` uznalby go za „wystawiony" i odmowilby
  * komunikatem o nieistniejacym dokumencie.
@@ -204,13 +204,13 @@ export function odblokujFaktureOkresu(db, id) {
 }
 
 /**
- * Odpiecie zamowienia od okresu — WYJSCIE Z POMYLKI, ktorego ten modul nie mial do 17.08.2026.
+ * Odpiecie zamowienia od okresu — WYJSCIE Z POMYLKI.
  *
  * ⚠️ WARUNKIEM JEST PARA (okres, zamowienie), nie samo zamowienie — ten sam wzorzec, co
  * `usunWplateOkresu`. Identyfikator ze starej, otwartej karty albo z cudzego ekranu
  * odpinalby inaczej zamowienie z MIESIACA, na ktory operator wcale nie patrzy.
  *
- * ⚠️ Bariera „czy w ogole wolno odpinac" (stan faktury okresu) siedzi w `domain/zmiana-okresu.js`
+ * ⚠️ Bariera „czy w ogole wolno odpinac" (stan faktury okresu) siedzi w `domena/zmiana-okresu.js`
  * i wola ja trasa. Tutaj jest wylacznie tozsamosc pary — warstwa `db/` nie zna stanow faktury.
  */
 export function odepnijZamowienieOdOkresu(db, okresId, zamowienieId) {

@@ -1,8 +1,7 @@
 <%#
-  Zakladanie zamowienia recznego przy telefonie — przebudowa na formularz JEDNORAZOWY
-  (makieta wlasciciela, docs/superpowers/specs — patrz zadanie „nowe zamowienie formularz").
-  Dawny ekran zakladal puste zamowienie, a wszystko wpisywalo sie dopiero na karcie; teraz
-  jeden „Zaloz zamowienie” tworzy je razem z adresem, faktura i pozycjami.
+  Zakładanie zamówienia ręcznego przy telefonie — formularz JEDNORAZOWY.
+  Pusty ekran zakładający zamówienie, z wpisywaniem wszystkiego dopiero na karcie, byłby
+  gorszy: jeden „Załóż zamówienie” tworzy je razem z adresem, fakturą i pozycjami.
 
   ZERO POL OBOWIAZKOWYCH: numer nadany od razu przy telefonie jest wart wiecej niz komplet
   danych — karta i tak zapali ostrzezenia przy nadaniu i fakturze pozniej. Trasa POST nie
@@ -62,11 +61,11 @@
 <%# JEDEN formularz obejmuje WSZYSTKO ponizej (trzy kolumny + pozycje + stopka) — dwa
     zagniezdzone formularze sa niepoprawnym HTML-em, wiec „Pobierz z GUS” nizej wysyla
     TEN SAM formularz pod inny adres przez `formaction`, zamiast byc osobnym formularzem. %>
-<%# PRZ-105: data-vat = stawka DOMYŚLNA z Ustawień (nowy wiersz), data-wdt — nabywca z UE (liczy się wtedy 0%). %>
+<%# data-vat = stawka DOMYŚLNA z Ustawień (nowy wiersz), data-wdt — nabywca z UE (liczy się wtedy 0%). %>
 <form method="post" action="/zamowienia/nowe" data-vat="<%= stawkaVat %>" data-wdt="<%= wdtFormularza ? '1' : '0' %>"<%- zwolniona ? ' data-zwolniona="1"' : '' %>>
 
-<%# ⚠️ TEN PRZYCISK MUSI STAC PIERWSZY I DLATEGO WYGLADA NA ZBEDNY (ustalenie recenzji
-    2026-08-01). Enter w dowolnym polu wysyla formularz PRZYCISKIEM DOMYSLNYM, a domyslnym
+<%# ⚠️ TEN PRZYCISK MUSI STAC PIERWSZY I DLATEGO WYGLADA NA ZBEDNY.
+    Enter w dowolnym polu wysyla formularz PRZYCISKIEM DOMYSLNYM, a domyslnym
     jest PIERWSZY przycisk typu submit w kolejnosci znacznikow — czyli „Pobierz z GUS”
     nizej. Operator wpisywal nazwisko, wciskal Enter i zamiast zalozonego zamowienia
     dostawal ekran z komunikatem GUS-u. Kopia glownej akcji, schowana przed okiem i przed
@@ -153,7 +152,7 @@
         <label>Miasto<input name="f_miasto" value="<%= wart(f.miasto) %>"></label>
         <label>E-mail do faktury<input name="f_email" type="email" value="<%= wart(formularz.f_email) %>" placeholder="np. faktury@firma.pl"></label>
         <%# ⚠️ NIC NIE ZAPISUJE — przestawia wartosci miedzy polami i oddaje formularz
-            (routes/zamowienia.js: POST /zamowienia/nowe/kopiuj-do-wysylki). Bliźniak z karty
+            (moduly/zamowienia/reczne.js: POST /zamowienia/nowe/kopiuj-do-wysylki). Bliźniak z karty
             MUSI zapisywac, bo tam zamowienie juz istnieje; tutaj jeszcze nie ma czego.
             Imie, nazwisko i telefon zostaja NIETKNIETE: kurier wymaga osoby do kontaktu,
             a dane faktury jej nie niosa. `formaction`, bo zagniezdzanie formularzy jest
@@ -180,22 +179,22 @@
         </label>
         <%# ⚠️ KOD PACZKOMATU JEST ADRESEM TEJ PRZESYLKI — bez niego nie ma czego nadac.
             Pole stoi ZAWSZE, a nie pokazuje sie po wybraniu paczkomatu: przelaczanie widoku
-            wymagaloby JavaScriptu, ktorego ten ekran nie ma poza przeliczaniem kwot.
-            Wpisane przy innej dostawie po prostu NIE ZAPISUJE SIE (domain/nowe-zamowienie.js) —
+            wymagaloby skryptu po stronie przegladarki, a ekran dziala tez bez niego.
+            Wpisane przy innej dostawie po prostu NIE ZAPISUJE SIE (domena/nowe-zamowienie.js) —
             kod zostawiony przy innej dostawie bylby smieciem udajacym adres. %>
         <label>Kod paczkomatu
           <input name="punkt_odbioru" value="<%= wart(formularz.punkt_odbioru) %>" placeholder="np. KTY01M">
         </label>
-        <%# ⚠️ KWOTA ZGODNA Z WYBRANA METODA (17.08.2026, ustawienia panelu). Do tego dnia stalo
-            tu wpisane wprost `19,00` — takze przy paczkomacie, ktory w sklepie kosztuje 13 zl,
-            wiec operator poprawial to recznie przy kazdym takim zamowieniu. Kwoty przychodza
-            z domain/ustawienia-panelu.js, widok nie zna ani jednej liczby.
+        <%# ⚠️ KWOTA ZGODNA Z WYBRANA METODA. Kwota wpisana wprost (np. `19,00`)
+            bylaby zla przy tanszej dostawie, takiej jak paczkomat, i operator poprawialby ja
+            recznie przy kazdym takim zamowieniu. Kwoty przychodza
+            z domena/ustawienia-panelu.js, widok nie zna ani jednej liczby.
             `=== undefined` ODROZNIA pierwsze wejscie na ekran od pola SWIADOMIE wyczyszczonego:
             po „Pobierz z GUS”, po „Skopiuj dane do wysylki” i po odmowie zapisu formularz wraca
             z tym, co operator naprawde mial — podstawienie kwoty drugi raz przywracaloby
             wartosc, ktora wlasnie skasowal. %>
         <label>Koszt dostawy (brutto)<input name="koszt_dostawy_brutto" value="<%= formularz.koszt_dostawy_brutto === undefined ? kwotyDostawy[formularz.dostawa || dostawaDomyslna] : wart(formularz.koszt_dostawy_brutto) %>" inputmode="decimal" placeholder="0,00"></label>
-        <%# PRZ-104: „najpozniej do” — zastepuje standardowy termin (zegar listy, „Po terminie”, statystyki). %>
+        <%# „najpozniej do” — zastepuje standardowy termin (zegar listy, „Po terminie”, statystyki). %>
         <%# Granice min/max to tylko podpowiedz przegladarki; rozstrzyga parsujDateWysylki przy zapisie. %>
         <label>Data wysyłki <span class="wyjasnienie">puste = standardowy czas</span>
           <input type="date" name="data_wysylki" value="<%= wart(formularz.data_wysylki) %>" min="<%= dzisWysylki.od %>" max="<%= dzisWysylki.do %>">
@@ -209,13 +208,13 @@
           </select>
         </label>
         <%# Każdy stały klient: własna etykieta zeruje dostawę, a włączona obsługa
-            dodaje pozycję opłaty. Odbiór osobisty ma pierwszeństwo — services/oplata.js. %>
+            dodaje pozycję opłaty. Odbiór osobisty ma pierwszeństwo — domena/oplata-obslugi.js. %>
         <label class="pole-przelacznik">
           <input type="checkbox" name="etykieta_klienta" <%= formularz.etykieta_klienta ? 'checked' : '' %>>
           Klient nadaje na swojej etykiecie
         </label>
         <%# Dotyczy WYLACZNIE klientow rozliczanych zbiorczo: hurt jedzie do siedziby klienta
-            i dostaje fakture OD RAZU, wiec nie wchodzi do okresu miesiecznego (services/okres.js).
+            i dostaje fakture OD RAZU, wiec nie wchodzi do okresu miesiecznego (moduly/faktury/services/okres.js).
             Przy pozostalych zamowieniach zaznaczenie nie zmienia niczego. %>
         <label class="pole-przelacznik">
           <input type="checkbox" name="hurt" <%= formularz.hurt ? 'checked' : '' %>>
@@ -224,14 +223,14 @@
         <%# ——— USTALENIA HANDLOWE ——————————————————————————————————————————————— %>
         <%# ⚠️ B2B TO KANAL RAPORTOWY, nie etykietka. Zaznaczone tutaj zostaje na zamowieniu %>
         <%# jako MIGAWKA i od tej chwili to ono rozstrzyga, gdzie liczy sie ta sprzedaz %>
-        <%# (domain/kanaly-raportowe.js). Da sie to poprawic pozniej na karcie. %>
+        <%# (domena/kanaly-raportowe.js). Da sie to poprawic pozniej na karcie. %>
         <label class="pole-przelacznik">
           <input type="checkbox" name="b2b" <%= formularz.b2b ? 'checked' : '' %>>
           Liczony w raportach jako kanał B2B (hurt)
         </label>
         <%# ⚠️ TERMIN UZGODNIONY Z KLIENTEM, nie wybor na fakturze. Wchodzi do maila %>
         <%# z potwierdzeniem i podstawia sie w formularzu faktury — ale NIGDY nie wygrywa %>
-        <%# z pobraniem ani z faktem oplacenia (domain/termin-platnosci.js). %>
+        <%# z pobraniem ani z faktem oplacenia (domena/termin-platnosci.js). %>
         <label>Termin płatności
           <select name="termin_platnosci">
             <option value="">— nie uzgodniono —</option>
@@ -257,14 +256,13 @@
 </div>
 
 <%# ——— POZYCJE ——————————————————————————————————————————————————————————————————————— %>
-<%# ⚠️ KOLUMNA „Suma” I WIERSZ „Razem” LICZA SIE W PRZEGLADARCE (07.08.2026, decyzja
-    wlasciciela: przeliczanie na zywo). Do tego dnia stalo tu zdanie, ze tego NIE robimy, bo
-    byloby to druga implementacja reguly z domain/suma-pozycji.js. Obiekcja nie znikla —
-    zostala splacona testem: tests/oms/suma-podglad.test.js puszcza plik przegladarki
-    (src/web/public/suma-podglad.js) i prawdziwy parser serwera po wspolnej tablicy
+<%# ⚠️ KOLUMNA „Suma” I WIERSZ „Razem” LICZA SIE W PRZEGLADARCE: operator widzi sume
+    na zywo, podczas rozmowy. Jest to druga implementacja reguly z domena/suma-pozycji.js,
+    wiec rozjazd pilnuje test: tests/domena/suma-podglad.test.js puszcza plik przegladarki
+    (src/public/suma-podglad.js) i prawdziwy parser serwera po wspolnej tablicy
     przypadkow i wymaga IDENTYCZNEGO wyniku. Rozjazd wywala test, nie fakture.
     ⚠️ Podglad NIE obejmuje oplaty za obsluge klienta rozliczanego zbiorczo — decyduje o niej
-    NIP z konfiguracji SERWERA. Bez ostrzezenia na ekranie, swiadoma decyzja wlasciciela. %>
+    NIP z konfiguracji SERWERA. Bez ostrzezenia na ekranie — to swiadoma decyzja. %>
 <section class="panel" id="pozycje">
   <div class="panel-glowa">
     <h2>Pozycje</h2>
@@ -286,11 +284,11 @@
         </tr>
       </thead>
       <tbody>
-        <%# PRZ-103 (21.10.2026): wiersze DOKLADA i KASUJE operator. „+ Dodaj wiersz” i „Usun”
+        <%# Wiersze DOKLADA i KASUJE operator. „+ Dodaj wiersz” i „Usun”
             to przyciski tego samego formularza (`formaction`, jak „Pobierz z GUS”) — bez
             JavaScriptu odsylaja formularz i wracaja z wierszem wiecej albo mniej, nic nie
             zapisujac. Z JavaScriptem public/pozycje-wiersze.js robi to samo bez przeladowania.
-            ⚠️ Kazdy wiersz MUSI miec wszystkie osiem pol `poz_*` (takze ukryte) — serwer czyta
+            ⚠️ Kazdy wiersz MUSI miec wszystkie pola `poz_*` (takze ukryte) — serwer czyta
             je jako rownolegle tablice, a wiersz bez jednego pola przesunalby reszte. %>
         <% for (let i = 0; i < liczbaWierszy; i++) { %>
           <tr data-wiersz-pozycji>
@@ -308,7 +306,7 @@
               <input type="hidden" name="poz_cena_katalogowa" value="<%= wart(pozCenaKatalogowa[i]) %>">
             </td>
             <td><input class="pole-cena cena-netto" name="poz_cena_netto" value="<%= wart(pozCenaNetto[i]) %>" placeholder="netto" inputmode="decimal"></td>
-            <%# PRZ-105: stawka między netto a brutto (prośba właściciela 21.10); pusta w formularzu = domyślna. %>
+            <%# Stawka między netto a brutto; pusta w formularzu = domyślna. %>
             <% const stawkaW = stawkiVat.includes(String(pozVat[i] ?? '')) ? String(pozVat[i]) : stawkaVat; %>
             <td class="kol-vat"><select name="poz_vat" aria-label="Stawka VAT"><% stawkiVat.forEach(function (s) { %><option value="<%= s %>"<%= s === stawkaW ? ' selected' : '' %>><%= s === 'zw' ? 'zw' : `${s}%` %></option><% }); %></select></td>
             <td><input class="pole-cena" name="poz_cena_brutto" value="<%= wart(pozCenaBrutto[i]) %>" placeholder="brutto"></td>
@@ -326,7 +324,7 @@
           pozycji by je uznal. Myslnik zamiast liczby znaczy „wiersz zaczety, ale niepelny” —
           kwota mniejsza o pominiety wiersz wygladalaby na prawdziwa. %>
       <tfoot>
-        <%# PRZ-106 (właściciel 21.10: „dodaj wiersz przenieś pod wiersze, nad RAZEM”). W stopce, nie
+        <%# Wiersz „dodaj” stoi pod wierszami, nad RAZEM. W stopce, nie
             w <tbody> — skrypty chodzą po `tr[data-wiersz-pozycji]`, a ten wiersz pozycją nie jest. %>
         <tr class="wiersz-dodaj">
           <td colspan="8">
@@ -335,7 +333,7 @@
             <span class="wyjasnienie">Pusty wiersz jest pomijany przy zapisie.</span>
           </td>
         </tr>
-        <%# PRZ-105 (właściciel 21.10: „Dodaj wiersz z dostawą”): dostawa z pola „Koszt dostawy (brutto)” w Szczegółach, %>
+        <%# Wiersz z dostawą: dostawa z pola „Koszt dostawy (brutto)” w Szczegółach, %>
         <%# z netto i stawką — tak jak linia „Dostawa” na fakturze. Liczby wypełnia public/suma-podglad.js. %>
         <tr class="wiersz-dostawy" data-wiersz-dostawy>
           <td class="kol-ilosc"></td>
@@ -360,10 +358,10 @@
       </tfoot>
     </table>
     </div>
-    <%# PRZ-105: Razem netto · VAT · Razem brutto (właściciel 21.10: „Brak sumy netto”) — regułą faktury, na żywo. %>
+    <%# Razem netto · VAT · Razem brutto — regułą faktury, na żywo. %>
     <%- include('_podsumowanie-vat.ejs', { p: { nettoZl: null, vatZl: null, bruttoZl: null, wdt: wdtFormularza, zeroKrajowe: false, blad: null } }) %>
 
-    <%# ——— DODAJ Z MAGAZYNU (21.08.2026) ———————————————————————————————————————————— %>
+    <%# ——— DODAJ Z MAGAZYNU ———————————————————————————————————————————— %>
     <%# ⚠️ TE PRZYCISKI SA CZESCIA WIELKIEGO FORMULARZA EKRANU (zagniezdzanie formularzy %>
     <%# jest niepoprawne), wiec kieruja gdzie indziej przez `formaction`. Dzieki temu %>
     <%# szukanie i dodawanie odsylaja CALY wpisany formularz i dostaja go z powrotem — %>
@@ -382,7 +380,7 @@
         <%# %>
         <%# ⚠️ TO JEST ODCZYT, wiec GET: ochrona CSRF dotyczy metod zmieniajacych stan, %>
         <%# a szukanie niczego nie zmienia. `hx-include` doklada wybrany cennik. %>
-        <%# PRZ-103: po „Dodaj” kursor wraca do tego pola (`autofocus`, skrypt zaznacza fraze), %>
+        <%# Po „Dodaj” kursor wraca do tego pola (`autofocus`, skrypt zaznacza fraze), %>
         <%# zeby nastepny produkt wpisac od razu, bez siegania po mysz. %>
         <%# ⚠️ Enter w tym polu SZUKA, a nie zaklada zamowienia (public/pozycje-wiersze.js) — %>
         <%# domyslny przycisk formularza to ukryte „Zaloz zamowienie” na gorze. %>
@@ -396,7 +394,7 @@
                  hx-indicator="#magazyn-pasek">
         </label>
         <%# ⚠️ CENNIK, NIE „KANAL" — ceny biora sie WYLACZNIE ze sklepow. Allegro ma %>
-        <%# w cenie prowizje, wiec cennikiem nie jest (domain/magazyn-do-zamowienia.js). %>
+        <%# w cenie prowizje, wiec cennikiem nie jest (domena/magazyn-do-zamowienia.js). %>
         <label class="magazyn-pole">Cennik
           <select name="cennik"
                   hx-get="/zamowienia/nowe/magazyn/wyniki"
@@ -439,7 +437,7 @@
 </form>
 
 <%- include('_skrypt-cena.ejs') %>
-<%# ⚠️ PLIK, NIE SKRYPT W STRONIE — i to jest warunek, nie styl. Test (tests/oms/suma-podglad.test.js)
+<%# ⚠️ PLIK, NIE SKRYPT W STRONIE — i to jest warunek, nie styl. Test (tests/domena/suma-podglad.test.js)
     IMPORTUJE dokladnie ten plik i porownuje jego wynik z parserem serwera; skrypt wpisany
     w widok dalby sie sprawdzic tylko kopia, czyli pilnowalby sam siebie.
     `type="module"` z tego samego powodu (plik ma `export`) i przy okazji odracza wykonanie

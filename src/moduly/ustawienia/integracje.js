@@ -3,7 +3,7 @@ import { KATALOG_INTEGRACJI, filtrujIntegracje } from '../../domena/katalog-inte
 import { polaczeniaIntegracji, podsumowanie, liczPolaczenia } from './services/polaczenia-integracji.ts';
 import { nawigacjaUstawien } from './nawigacja.js';
 import { MODULY_KURIEROW } from '../../domena/moduly-kurierow.ts';
-// PRZ-136.14 (U13): w piaskownicy kurierzy z atrapą (DPD, InPost), KSeF i GUS działają na atrapach jak inFakt i poczta,
+// W piaskownicy kurierzy z atrapą (DPD, InPost), KSeF i GUS działają na atrapach jak inFakt i poczta,
 // więc lista pokazuje ich wiersze także bez zapisu — jak inne atrapy.
 const ATRAPY_PIASKOWNICY = new Set([...Object.values(MODULY_KURIEROW).filter((o) => o.piaskownica?.atrapa).map((o) => o.idKatalogu), 'ksef', 'gus']);
 function wPiaskownicy(integracje, proba) {

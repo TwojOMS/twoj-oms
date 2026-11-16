@@ -1,7 +1,7 @@
-// PRZ-122.ZGODA-TFc: jedyne miejsce, w którym wspólny kod sięga po pliki TwojeFaktury (plik WSPÓLNY).
+// Jedyne miejsce, w którym wspólny kod sięga po pliki TwojeFaktury (plik WSPÓLNY).
 // Kopia bez modułu TwojeFaktury nie ma `szew-twojefaktury.ts` → `null` (moduł „wkrótce”, bez tabel `tf_*`).
 // Za „brak szwu” uchodzi WYŁĄCZNIE brak tego jednego pliku. Każdy inny błąd ładowania — także brak pliku, który szew
-// importuje (częściowe wycięcie) — przerywa start, a nie udaje „wkrótce” (decyzja kierownika ZGODA-TFc).
+// importuje (częściowe wycięcie) — przerywa start, a nie udaje „wkrótce”.
 // Specyfikator zmienny (URL z `import.meta.url`), więc `tsc` w drzewie bez szwu nie szuka pliku.
 import { fileURLToPath } from 'node:url';
 import type { SzewTwojeFaktury } from './szew-kontrakt.ts';

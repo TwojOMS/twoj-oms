@@ -12,7 +12,7 @@ const PRZEWOZNICY = new Set([
   'raben', 'rhenus', 'rohligSuus', 'hellmann',
 ]);
 
-// Konto do zwrotu nie jest potrzebne OMS-owi (D7), także w payloadach zmian.
+// Konto do zwrotu nie jest potrzebne OMS-owi, także w payloadach zmian.
 function bezKonta(dane) {
   if (Array.isArray(dane)) return dane.map(bezKonta);
   if (dane && typeof dane === 'object') {
@@ -143,7 +143,7 @@ export function createErliClient({ adresApi, kluczApi, fetchImpl, wersja = '1', 
     }
     if (!odpowiedz.ok) {
       // Serwer może odbić dane żądania w opisie błędu. Usuwamy klucz i wartości ciała.
-      // Krótkie napisy i wartości słownikowe zostają — inaczej „[ukryto]” rozbija zwykłe słowa w opisie (recenzja).
+      // Krótkie napisy i wartości słownikowe zostają — inaczej „[ukryto]” rozbija zwykłe słowa w opisie.
       const wrazliwe = [];
       const zbierz = (wartosc, pole) => {
         if (typeof wartosc === 'string') {
@@ -158,7 +158,7 @@ export function createErliClient({ adresApi, kluczApi, fetchImpl, wersja = '1', 
         for (const wartosc of wrazliwe.sort((a, b) => b.length - a.length)) tekst = tekst.split(wartosc).join('[ukryto]');
         return tekst;
       };
-      // Opis: [{errorCode, errorMessage}] ze specyfikacji, potem polishMessage, potem message, potem kod HTTP (rozdz. 2b).
+      // Opis: [{errorCode, errorMessage}] ze specyfikacji, potem polishMessage, potem message, potem kod HTTP.
       let opis = `ERLI: błąd HTTP ${odpowiedz.status}.`;
       const surowyBlad = await odpowiedz.text().catch(() => '');
       let bledy;
@@ -173,7 +173,7 @@ export function createErliClient({ adresApi, kluczApi, fetchImpl, wersja = '1', 
         if (wybrany) opis = `ERLI: ${ukryj(wybrany)} (HTTP ${odpowiedz.status})`;
       }
       const blad = new Error(opis);
-      // Status potrzebny wywołującemu: 404 na /orders/changes przełącza poller na /inbox (D1).
+      // Status potrzebny wywołującemu: 404 na /orders/changes przełącza poller na /inbox.
       blad.status = odpowiedz.status;
       blad.kod = `ERLI_${odpowiedz.status}`;
       blad.chwilowy = odpowiedz.status >= 500;
@@ -189,7 +189,7 @@ export function createErliClient({ adresApi, kluczApi, fetchImpl, wersja = '1', 
     if (odpowiedz.status === 204) return undefined;
     try {
       if (binarnie) return Buffer.from(await odpowiedz.arrayBuffer());
-      // Zapis może odpowiedzieć 202 bez ciała (rozdz. 2a) — to sukces, nie błąd odczytu.
+      // Zapis może odpowiedzieć 202 bez ciała — to sukces, nie błąd odczytu.
       const surowe = await odpowiedz.text();
       return surowe.trim() ? bezKonta(JSON.parse(surowe)) : undefined;
     } catch {
@@ -227,10 +227,10 @@ export function createErliClient({ adresApi, kluczApi, fetchImpl, wersja = '1', 
     mojSklep: () => zapytaj(adres('/me'), 'GET'),
     zmianyZamowien: (dane = {}) => zapytaj(adres('/orders/changes/_search'), 'POST', dane),
     oznaczPrzeczytane: dane => zapytaj(adres('/orders/changes/mark-read'), 'POST', dane),
-    // Starsze /inbox — sandbox nie ma /orders/changes (D1, rozdz. 2a).
+    // Starsze /inbox — sandbox nie ma /orders/changes.
     inboxSzukaj: (dane = {}) => zapytaj(adres('/inbox/_search'), 'POST', dane),
     inboxOznacz: dane => zapytaj(adres('/inbox/mark-read'), 'POST', dane),
-    // Czas wysyłki produktu, gdy pozycja nie ma dispatchTime (D6). Brak produktu → null.
+    // Czas wysyłki produktu, gdy pozycja nie ma dispatchTime. Brak produktu → null.
     async pobierzProdukt(externalId) {
       try {
         return await zapytaj(adres(`/products/${identyfikator(externalId)}`), 'GET');

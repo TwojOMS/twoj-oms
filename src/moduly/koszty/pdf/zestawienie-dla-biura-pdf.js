@@ -5,18 +5,17 @@ import { zl } from '../../../domena/kwoty.js';
 import { fmtDataCzasKrotko } from '../../../domena/format-daty.js';
 import { MIESIACE } from '../../../domena/okres-rozliczeniowy.js';
 
-// Zestawienie dokumentow miesiaca dla biura rachunkowego (spec 2026-09-02, Czesc D) —
-// pierwsze strony paczki: osobne dla sprzedazy i osobne dla kosztow, bo od 2026-09-02
-// wieczorem sa to DWA OSOBNE PLIKI do pobrania (decyzja wlasciciela). To jest kartka, po
-// ktorej ksiegowa sprawdza, CZY DOSTALA CALY MIESIAC: numery po kolei, kwoty i sumy per
-// waluta, a przy wierszach „z pogranicza" zdanie, dlaczego lezy w tej paczce.
+// Zestawienie dokumentów miesiąca dla biura rachunkowego — pierwsze strony paczki: osobne
+// dla sprzedaży i osobne dla kosztów, bo są to DWA OSOBNE PLIKI do pobrania. To jest kartka,
+// po której księgowa sprawdza, CZY DOSTAŁA CAŁY MIESIĄC: numery po kolei, kwoty i sumy per
+// waluta, a przy wierszach „z pogranicza” zdanie, dlaczego leży w tej paczce.
 //
 // A4 POZIOMO, bo dwanascie kolumn (w tym 35-znakowy numer KSeF, ktory jest JEDYNYM
 // identyfikatorem laczacym wiersz z oryginalem w systemie Ministerstwa) nie miesci sie
 // w pionie w czcionce, ktora da sie czytac.
 //
 // ⚠️ TEN MODUL TYLKO RYSUJE — tak samo jak koszt-pdf.js. Wiersze, kolejnosc, uwagi, sumy
-// per waluta i ostrzezenia przychodza gotowe z domain/paczka-dla-biura.js. Ani jednego
+// per waluta i ostrzezenia przychodza gotowe z domena/paczka-dla-biura.js. Ani jednego
 // dodawania tutaj: suma, ktora rozeszlaby sie z sumami z domeny, jest gorsza niz jej brak,
 // bo to wlasnie ta liczba idzie do deklaracji.
 
@@ -71,10 +70,10 @@ const SZARY_LINIA = '#bbbbbb';
 // „NL123456789B01" (14 znakow) = 62,9 pkt. Kolumna wezsza od tego numeru go ucina
 // wielokropkiem — ksiegowa traci mozliwosc porownania z deklaracja VIES. Stad 65 pkt.
 //
-// ⚠️ ODSTEPY LICZA SIE DO SZEROKOSCI STRONY. Uklad z briefu zadania rozdzielal reszte
-// wiersza bez uwzglednienia jedenastu odstepow po 4 pkt i kolumna Uwagi wyjezdzala 44 pkt
-// ZA prawy margines — na ekranie widac tam tekst, na wydruku juz nie. Pilnuje tego teraz
-// `kolumnyZ` nizej, przy imporcie modulu.
+// ⚠️ ODSTĘPY LICZĄ SIĘ DO SZEROKOŚCI STRONY. Układ rozdzielający resztę wiersza bez
+// uwzględnienia jedenastu odstępów po 4 pkt wypychał kolumnę Uwagi 44 pkt ZA prawy
+// margines — na ekranie widać tam tekst, na wydruku już nie. Pilnuje tego `kolumnyZ`
+// niżej, przy imporcie modułu.
 const KOLUMNY = {
   sprzedaz: [
     ['Lp.', 16, 'right', 'lp'],
@@ -117,11 +116,10 @@ const TYTUL = {
   koszty: 'KOSZTY — faktury zakupowe',
 };
 
-// ⚠️ CZESC STOI W NAGLOWKU PIERWSZEJ LINII, bo od 2026-09-02 wieczorem paczka to DWA OSOBNE
-// PLIKI (decyzja wlasciciela: „podzial — dwa pliki do pobrania, jeden kosztowy, drugi
-// przychodowy"). Dwa wydruki o identycznej pierwszej linii mieszaja sie na biurku, a rozniaca
-// je linia druga jest o polowe mniejsza — ta jedna klatka na oku ksiegowej jest tansza niz
-// telefon „ktory to plik".
+// ⚠️ CZĘŚĆ STOI W NAGŁÓWKU PIERWSZEJ LINII, bo paczka to DWA OSOBNE PLIKI do pobrania:
+// kosztowy i przychodowy. Dwa wydruki o identycznej pierwszej linii mieszają się na biurku,
+// a różniąca je linia druga jest o połowę mniejsza — ta jedna klatka na oku księgowej jest
+// tańsza niż telefon „który to plik”.
 const CZESC_W_NAGLOWKU = { sprzedaz: 'SPRZEDAŻ', koszty: 'KOSZTY' };
 
 // Skad wzielo sie to zestawienie — plik sprzedazowy powstaje z inFaktu, kosztowy z KSeF
@@ -131,7 +129,7 @@ const ZRODLO = { sprzedaz: 'inFakt', koszty: 'KSeF' };
 
 // Kryterium doboru na wydruku, bo to pierwsze pytanie ksiegowej przy dokumencie, ktorego
 // data wystawienia nie pasuje do miesiaca paczki (art. 19a i art. 86 ust. 10b ustawy o VAT
-// — patrz komentarz w domain/paczka-dla-biura.js).
+// — patrz komentarz w domena/paczka-dla-biura.js).
 const KRYTERIUM = {
   sprzedaz: 'wg daty sprzedaży (korekty wg daty wystawienia); dokumenty wystawione w innym miesiącu oznaczone w Uwagach',
   koszty: 'wg daty otrzymania (KSeF: dzień pobrania dokumentu; ręczne: data wystawienia)',
@@ -284,7 +282,7 @@ function bajty(doc) {
  * Zestawienie dokumentow paczki dla biura jako gotowy PDF (A4 poziomo).
  *
  * Wejscie:
- *   `paczka`           — wynik `zlozPaczke` (domain/paczka-dla-biura.js): `sprzedaz`,
+ *   `paczka`           — wynik `zlozPaczke` (domena/paczka-dla-biura.js): `sprzedaz`,
  *                        `koszty`, `sumy` per waluta, `ostrzezenia`.
  *   `czesc`            — 'sprzedaz' albo 'koszty'; kazda czesc jest OSOBNYM plikiem do
  *                        pobrania, a jej zestawienie stoi PRZED jej grupa dokumentow.
@@ -292,9 +290,9 @@ function bajty(doc) {
  *   `liczbaStron`      — ile stron ma CALY PLIK tej czesci (nie samo zestawienie i nie oba
  *                        pliki razem) — po tej liczbie ksiegowa sprawdza kompletnosc wydruku.
  *   `liczbaDokumentow` — ile dokumentow niesie ta czesc paczki.
- *   `kryterium`        — PRZ-122.B13d1: napis „Kryterium: …” w metryczce; domyslnie `KRYTERIUM[czesc]`
+ *   `kryterium`        — napis „Kryterium: …” w metryczce; domyslnie `KRYTERIUM[czesc]`
  *                        (zestawienie zaznaczonych faktur podaje wlasny — dobor recznie z listy FAKTURY).
- *   `sekcje`, `sumyRazem`, `zrodlo` — tylko zestawienie KOSZTOW (PRZ-086): kilka tabel pod
+ *   `sekcje`, `sumyRazem`, `zrodlo` — tylko zestawienie KOSZTOW: kilka tabel pod
  *                        wlasnymi naglowkami (`{ naglowek, opis, wiersze, sumy, pusto, etykietaSum }`),
  *                        suma laczna pod nimi i opis zrodla na wydruku. Bez nich — jedna tabela.
  */
@@ -321,7 +319,7 @@ export async function zbudujZestawieniePdf({
 
   const kol = UKLAD_KOLUMN[czesc];
   const kolUwagi = kol[kol.length - 1];
-  // Zwykle zestawienie to JEDNA tabela. Zestawienie kosztów (PRZ-086) podaje `sekcje` —
+  // Zwykle zestawienie to JEDNA tabela. Zestawienie kosztów podaje `sekcje` —
   // kilka tabel pod własnymi nagłówkami, każda z własnymi sumami, plus `sumyRazem` na końcu.
   const sekcje = sekcjeWejscie ?? [{
     naglowek: null,
@@ -368,7 +366,7 @@ export async function zbudujZestawieniePdf({
 
   // ── Sumy per waluta ───────────────────────────────────────────────────────
   // ⚠️ `sumy` NIESIE OBOK KOSZYKOW WALUT KLUCZ `niepelne: true` (patrz komentarz
-  // w domain/paczka-dla-biura.js). Petla po `Object.entries` bez tego sita wywrocilaby sie
+  // w domena/paczka-dla-biura.js). Petla po `Object.entries` bez tego sita wywrocilaby sie
   // na `s.nettoGr` albo — gorzej — wydrukowala wiersz „Razem" w walucie „niepelne".
   const netto = kol.find((c) => c.klucz === 'nettoGr');
   const etykieta = { x: L, w: netto.x - L - ODSTEP, align: 'left' };
@@ -408,8 +406,8 @@ export async function zbudujZestawieniePdf({
       // Tytuł części + nagłówek tabeli + choć jeden wiersz muszą stać na jednej stronie —
       // tytuł osierocony na dole kartki wygląda jak część bez zawartości.
       // Zapas liczony ze WSZYSTKIM, co stoi przed pierwszym wierszem: odstęp od poprzedniej
-      // części, tytuł, opis, nagłówek kolumn (recenzja: przy 28 fakturach z KSeF tytuł części
-      // ręcznej zostawał sam na dole strony, bo zapas pomijał odstęp i opis).
+      // części, tytuł, opis, nagłówek kolumn (zapas bez odstępu i opisu zostawiał tytuł części
+      // ręcznej samego na dole strony).
       const zapas = (idx > 0 ? 10 : 0) + 16 + (sk.opis ? 10 : 0) + WYS_LINII + 6 + WIERSZ_H;
       if (y + zapas > DOL) nowaStrona(false);
       else if (idx > 0) y += 10;
@@ -460,9 +458,9 @@ export async function zbudujZestawieniePdf({
   // Po stronach, ktore NAPRAWDE POWSTALY, a nie przy kazdym `addPage()`: przy wywolaniu
   // „recznym" nowe miejsce lamania zostaje bez stopki i nikt tego nie widzi, dopoki kartka
   // nie trafi do biura (stad `bufferPages: true`).
-  // ⚠️ „CAŁY PLIK", A NIE „CAŁA PACZKA" — od 2026-09-02 wieczorem paczka miesiaca to DWA
-  // pliki, wiec liczba stron dotyczy TEGO wydruku. Napis „cała paczka: 42 stron" na jednym
-  // z dwoch plikow kazalby ksiegowej liczyc kartki przeciw liczbie, ktora nigdy sie nie zgodzi.
+  // ⚠️ „CAŁY PLIK”, A NIE „CAŁA PACZKA” — paczka miesiąca to DWA pliki, więc liczba stron
+  // dotyczy TEGO wydruku. Napis „cała paczka: 42 stron” na jednym z dwóch plików kazałby
+  // księgowej liczyć kartki przeciw liczbie, która nigdy się nie zgodzi.
   const opis = `${opisSekcji} · ${opisMiesiaca(paczka.miesiac)} · dokumentów: ${liczbaDokumentow ?? liczbaWierszy} · cały plik: ${liczbaStron ?? '?'} stron`;
   const { start, count } = doc.bufferedPageRange();
   for (let i = start; i < start + count; i += 1) {

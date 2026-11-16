@@ -1,4 +1,4 @@
-// PRZ-161 — wynik ostatniego sprawdzenia połączenia z Fakturownią (przy zapisie i przyciskiem „Sprawdź połączenie”).
+// Wynik ostatniego sprawdzenia połączenia z Fakturownią (przy zapisie i przyciskiem „Sprawdź połączenie”).
 //
 // Ekran mówi „Podłączony” TYLKO wtedy, gdy Fakturownia przyjęła token. Wynik jest przypięty odciskiem do domeny
 // i tokenu, z którymi go uzyskano: zmiana danych (nowy token, inna domena, zapis z pominięciem ekranu) unieważnia

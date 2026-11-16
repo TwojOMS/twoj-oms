@@ -1,6 +1,6 @@
-// PRZ-092 — integracje skonfigurowane w Ustawieniach (tabela `konfiguracja_integracji`, migracja rdzenia 6).
+// Integracje skonfigurowane w Ustawieniach (tabela `konfiguracja_integracji`, migracja rdzenia 6).
 //
-// ⚠️ `sekrety` SĄ POŚWIADCZENIAMI (niezmiennik 4.10, jak `tokeny_kanalu`). `wczytajKonfiguracjeIntegracji`
+// ⚠️ `sekrety` SĄ POŚWIADCZENIAMI (reguła: sekrety nie wychodzą; jak `tokeny_kanalu`). `wczytajKonfiguracjeIntegracji`
 // oddaje je dla budowy klienta integracji; ekran dostaje WYŁĄCZNIE `stanDlaEkranu` — same ustawienia jawne
 // i nazwy zapisanych sekretów, nigdy ich wartości.
 

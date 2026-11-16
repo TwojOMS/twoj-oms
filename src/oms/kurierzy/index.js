@@ -1,81 +1,66 @@
 import { bladOperatora } from '../../domena/bledy.js';
 import { kurierDlaMetody, KURIER_DOMYSLNY } from '../../domena/moduly-kurierow.ts';
 
-// Reszta modulu nie wie, ktory kurier jest podpiety.
+// Reszta modułu nie wie, który kurier jest podpięty.
 //
-// PRZ-135.04a: mapa „metoda → kurier" (dawniej stala `DLA_METODY` w tym pliku) to teraz
-// `metody` kurierow w rejestrze `MODULY_KURIEROW` (domena/moduly-kurierow.ts), czytane przez
-// `kurierDlaMetody`. Historia nizej mowi o „wpisie w DLA_METODY" — dzis znaczy to „metoda
-// w `metody` kuriera w rejestrze"; zasada sie nie zmienila: BRAK WPISU = ODMOWA NADANIA.
+// Mapa „metoda → kurier” (dawniej stała `DLA_METODY`; pod tą nazwą występuje jeszcze w testach
+// i w zamowienie.ejs) to `metody` kurierów w rejestrze `MODULY_KURIEROW` (domena/moduly-kurierow.ts),
+// czytane przez `kurierDlaMetody`. Zasada: BRAK METODY W REJESTRZE = ODMOWA NADANIA.
 //
-// UWAGA `odbior_osobisty` CELOWO NIE MA TU WPISU. Brak wpisu to nie przeoczenie, tylko
-// mechanizm odmowy: wybierzKuriera rzuca na nieznanej metodzie, wiec sprzedaz na miejscu
-// nie ma jak wygenerowac paczki. Dopisanie jej tutaj = paczka do klienta, ktory stoi
-// przy ladzie, za ktora zaplacimy i ktorej nie da sie cofnac.
+// UWAGA `odbior_osobisty` CELOWO NIE MA WPISU. Brak wpisu to nie przeoczenie, tylko
+// mechanizm odmowy: wybierzKuriera rzuca na nieznanej metodzie, więc sprzedaż na miejscu
+// nie ma jak wygenerować paczki. Dopisanie jej = paczka do klienta, który stoi
+// przy ladzie, za którą zapłacimy i której nie da się cofnąć.
 //
-// ⚠️ NIE MA TU JUZ `dpd_pobranie` (2026-08-01) i to nie jest przeoczenie: pobranie
-// przestalo byc metoda wysylki, a stalo sie flaga obok niej. Ten sam kurier obsluguje
-// paczke z inkasem i bez — roznica siedzi w kopercie (<cod> w kurierzy/dpd.js), a nie
+// ⚠️ NIE MA TU `dpd_pobranie` i to nie jest przeoczenie: pobranie
+// nie jest metodą wysyłki, tylko flagą obok niej. Ten sam kurier obsługuje
+// paczkę z inkasem i bez — różnica siedzi w kopercie (<cod> w kurierzy/dpd.js), a nie
 // w tym, do kogo dzwonimy.
-// ⚠️ `inpost_paczkomat` DOSTAJE WPIS DOPIERO TERAZ (Zadanie 6), mimo ze metoda istnieje
-// w domenie od Zadania 3. Do tej chwili paczkomat byl metoda NIEOBSLUGIWANA — i to bylo
-// poprawne: klient ShipX jeszcze nie istnial, wiec jedyna uczciwa odpowiedz panelu brzmiala
-// „nie umiem tego nadac". Ten wpis jest CALYM przelacznikiem: od niego paczkomat idzie do
-// kuriera `inpost` (bootstrap.js podpina go pod ta sama nazwa).
-// ⚠️⚠️ `allegro_dpd` DOSTAJE WPIS 11.08.2026 — i to jest ta jedna linijka, ktora wlacza
-// WYDAWANIE PIENIEDZY. Komentarz wyzej mowil, ze metody allegrowe wpisu miec nie moga;
-// to bylo PRAWDZIWE i przestalo byc — tak samo, jak „ten klient wylacznie czyta" przestalo
-// byc prawda w Planie B. Powod dawnego zakazu nie znika, zmienia sie ADRESAT: zakaz chronil
-// przed nadaniem allegrowej paczki NASZA umowa DPD, a ten wpis prowadzi do kuriera
-// `allegro_wza`, ktory kupuje przewoz NA UMOWIE ALLEGRO — ta sama usluga, ktora wybral
-// kupujacy, wiec i z zachowanym Smart.
+// ⚠️ `inpost_paczkomat` prowadzi do kuriera `inpost` (moduly/wysylka/kurierzy.ts składa go
+// pod tą samą nazwą). Bez skonfigurowanego klienta ShipX wybierzKuriera odmawia — jedyna
+// uczciwa odpowiedź panelu brzmi wtedy „nie umiem tego nadać”.
+// ⚠️⚠️ METODY ALLEGROWE WŁĄCZAJĄ WYDAWANIE PIENIĘDZY: `allegro_dpd`, `allegro_punkt`,
+// `allegro_kurier` i `allegro_inne` prowadzą do kuriera `allegro_wza`, który kupuje przewóz
+// NA UMOWIE ALLEGRO — tę samą usługę, którą wybrał kupujący, więc i z zachowanym Smart.
 //
-// ⚠️ `allegro_paczkomat`, `allegro_punkt`, `allegro_inne`, `allegro_kurier` wpisu DALEJ NIE
-// MAJA i brak jest mechanizmem odmowy, nie przeoczeniem. Paczkomat i Kurier24 z Allegro to
-// uslugi o `owner: CLIENT` (zmierzone 10.08.2026) — Allegro wystawia je na NASZEJ umowie
-// InPostu, wiec nadanie ich przez WzA byloby drugim, platnym przewozem.
-// ⚠️⚠️ METODY ALLEGROWE PROWADZA WYLACZNIE DO ADAPTERA WzA, NIGDY DO NASZEGO KURIERA.
-// To rozroznienie jest cala ochrona przed drugim, platnym przewozem: WzA kupuje etykiete
-// na umowie ALLEGRO (przesylka, ktora kupujacy ma juz oplacona), a `dpd`/`inpost` nadaja
-// na NASZEJ. Trzy metody punktowe doszly 18.09.2026 razem z osmioma uslugami w `METODY_WZA`.
-//
-// ⛔ `allegro_paczkomat` TU NIE WCHODZI — nadajemy go sami (`NADAJEMY_SAMI`
-// w domain/kurier-nadania.js), bo Allegro nie sprzedaje na niego etykiety.
+// ⚠️ `allegro_paczkomat` wpisu NIE MA i brak jest mechanizmem odmowy, nie przeoczeniem.
+// Paczkomat z Allegro to usługa o `owner: CLIENT` (domena/allegro-wysylka.js) —
+// Allegro wystawia ją na NASZEJ umowie InPostu, więc nadanie jej przez WzA byłoby drugim,
+// płatnym przewozem. ⛔ `allegro_paczkomat` nadajemy sami (`NADAJEMY_SAMI`
+// w domena/kurier-nadania.js → `inpost_paczkomat`).
+// ⚠️⚠️ METODY ALLEGROWE PROWADZĄ WYŁĄCZNIE DO ADAPTERA WzA, NIGDY DO NASZEGO KURIERA.
+// To rozróżnienie jest całą ochroną przed drugim, płatnym przewozem: WzA kupuje etykietę
+// na umowie ALLEGRO (przesyłka, którą kupujący ma już opłaconą), a `dpd`/`inpost` nadają
+// na NASZEJ. Usługi WzA są w `METODY_WZA` (domena/allegro-wysylka.js).
 
 /**
- * Kurier dla przesylki nadanej POZA panelem (wpis reczny, routes/zamowienia.js).
+ * Kurier dla przesyłki nadanej POZA panelem (wpis ręczny, moduly/wysylka/trasy/nadanie.js).
  *
- * Rozni sie od `wybierzKuriera` dwiema rzeczami i obie sa celowe:
+ * Różni się od `wybierzKuriera` dwiema rzeczami i obie są celowe:
  *  - NIE wymaga skonfigurowanego klienta — panel niczego tu nie nada, tylko odnotowuje fakt;
- *  - NIE RZUCA na nieznanej metodzie, bo zamowienie „bez metody" jest tu przypadkiem
- *    NAJCZESTSZYM: wlasnie takie nadaje sie z reki.
+ *  - NIE RZUCA na nieznanej metodzie, bo zamówienie „bez metody” jest tu przypadkiem
+ *    NAJCZĘSTSZYM: właśnie takie nadaje się z ręki.
  *
- * ⚠️ Do 2026-08-04 trasa wpisywala `kurier: 'dpd'` NA SZTYWNO. Odkad wiersz przesylki steruje
- * linkiem do sledzenia i wyborem uslugi statusu, taki wpis znaczyl, ze paczkomat nadany
+ * ⚠️ Kurier NIE MOŻE być wpisany na sztywno. Wiersz przesyłki steruje
+ * linkiem do śledzenia i wyborem usługi statusu, więc stałe `'dpd'` znaczyłoby, że paczkomat nadany
  * w Managerze Paczek InPostu linkuje na tracktrace.dpd.com.pl i pyta DPD o numer InPostu.
- * Zapasowe 'dpd' (od PRZ-135: `KURIER_DOMYSLNY` z rejestru, dzis 'dpd') zostaje WYLACZNIE dla metody nieznanej — zeby dzisiejsze zachowanie panelu
- * dla wszystkiego, czego nie umiemy nazwac, nie drgnelo.
+ * Zapasowy `KURIER_DOMYSLNY` z rejestru (dziś 'dpd') zostaje WYŁĄCZNIE dla metody nieznanej.
  *
- * ⚠️ KANAL ALLEGRO MA WLASNA WARTOSC `'allegro'` (2026-08-04) — i to NIE JEST wpis
- * w `DLA_METODY`. Tamta mapa steruje NADAWANIEM i brak w niej metod allegrowych jest
- * mechanizmem odmowy, ktorego nie wolno tknac; tutaj chodzi wylacznie o ODNOTOWANIE faktu
- * o paczce, ktora juz jedzie. Bez tego warunku zapasowe 'dpd' braloby numer listu z Allegro
- * („AD…") i linkowalo go na tracktrace.dpd.com.pl, a petla odswiezania pytalaby DPD o CUDZA
- * przesylke — jeden do jednego usterka naprawiona 04.08.2026 przy paczkomatach. Reczny wpis
- * jest dostepny od chwili, gdy zamowienia Allegro pojawia sie na liscie, wiec ten warunek
- * musi stac razem z kanalem, a nie razem z przesylkami.
+ * ⚠️ KANAŁ ALLEGRO MA WŁASNĄ WARTOŚĆ `'allegro'` — i to NIE JEST metoda
+ * w rejestrze kurierów. Rejestr steruje NADAWANIEM; tutaj chodzi wyłącznie o ODNOTOWANIE faktu
+ * o paczce, która już jedzie. Bez tego warunku zapasowe 'dpd' brałoby numer listu z Allegro
+ * („AD…”) i linkowało go na tracktrace.dpd.com.pl, a pętla odświeżania pytałaby DPD o CUDZĄ
+ * przesyłkę. Ręczny wpis
+ * jest dostępny od chwili, gdy zamówienia Allegro pojawią się na liście, więc ten warunek
+ * musi stać razem z kanałem, a nie razem z przesyłkami.
  *
- * `'allegro'` nie ma i nie ma miec KLIENTA w mapie kurierow: panel o te paczke nikogo nie
- * pyta, bo nadal jej nie my (brak klienta = brak odpytywania, i to jest POPRAWNA odpowiedz,
- * nie luka).
+ * `'allegro'` ma w mapie kurierów tylko klienta ODCZYTU (kurierzy/allegro.js, podpinany
+ * w moduly/wysylka/kurierzy.ts): panel niczego nim nie nada, ale pyta Allegro o status paczki.
  *
- * ⚠️ WZORCA W `domain/tracking.js` TAKZE NIE MA — i tu historia jest kreta, wiec warto ja
- * znac. Zadanie 9 wzorzec dopisalo (adres z briefu, `moje-allegro/zakupy/…`), a recenzja
- * tego samego zadania go ZDJELA: nikt go nie otworzyl w przegladarce, a sciezka jest po
- * stronie KUPUJACEGO, nie sprzedajacego. Brak wzorca NIE jest tu ubytkiem — `lista-ikony.js`
- * robi `href: sledzenie ?? '/zamowienia/<id>'`, wiec ikona prowadzi wtedy do KARTY
- * ZAMOWIENIA, czyli do linku, ktory na pewno dziala. Wzorzec wroci dopiero po POMIARZE
- * (szczegoly, co zmierzyc, stoja w domain/tracking.js w miejscu po wpisie).
+ * ⚠️ LINK DO ŚLEDZENIA liczy `linkSledzeniaPaczki` (domena/przewoznik-przesylki.js) z prawdziwego
+ * przewoźnika paczki. Gdy przewoźnika nie da się ustalić, link jest `null`, a `lista-ikony.js`
+ * robi `href: sledzenie ?? '/zamowienia/<id>'`, więc ikona prowadzi wtedy do KARTY
+ * ZAMÓWIENIA, czyli do linku, który na pewno działa — nigdy do zgadniętego adresu.
  */
 export function kurierWpisuRecznego(metoda) {
   if (String(metoda ?? '').startsWith('allegro_')) return 'allegro';

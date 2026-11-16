@@ -1,4 +1,4 @@
-<%# Lewe menu Ustawień — działy. PRZ-167 (właściciel 15.11): aktywny dział rozwija podstrony (`podstrony` z modelNawigacjiUstawien). %>
+<%# Lewe menu Ustawień — działy; aktywny dział rozwija podstrony (`podstrony` z modelNawigacjiUstawien). %>
 <nav class="oms-menu" aria-label="Działy Ustawień"><ul>
   <% pozycje.forEach(p => { %>
   <li<%- p.aktywna ? ' class="aktywna"' : '' %>><a href="<%= p.href %>"<%- p.aktywna ? (p.podstrony?.length ? ' aria-current="true"' : ' aria-current="page"') : '' %>><span><%= p.etykieta %></span><% if (p.wkrotce) { %><span class="menu-ustawien-wkrotce">wkrótce</span><% } %><% if (p.beta) { %><span class="menu-ustawien-beta">BETA</span><% } %></a>

@@ -32,7 +32,7 @@ function parsujJson(tekst: string, nazwa: string): any {
 function obiekt(wartosc: unknown): wartosc is Record<string, any> {
   return wartosc !== null && typeof wartosc === 'object' && !Array.isArray(wartosc);
 }
-export function mapowanieSklepu(tekst: string, nazwa: string) { // PRZ-134: opcjonalne bramkiPobrania (identyfikatory payment_method Woo); brak pola = jak dziś
+export function mapowanieSklepu(tekst: string, nazwa: string) { // Opcjonalne bramkiPobrania (identyfikatory payment_method Woo); brak pola = jak dziś
   const mapowanie = parsujJson(tekst, nazwa);
   if (!obiekt(mapowanie) || !mapowanie.instancje || !Array.isArray(mapowanie.poPozycji)) throw bladKonfiguracji(`${nazwa}: oczekiwano instancje i poPozycji`);
   for (const m of [...Object.values(mapowanie.instancje), ...mapowanie.poPozycji] as { metoda?: string }[]) {

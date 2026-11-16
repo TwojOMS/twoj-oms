@@ -3,46 +3,46 @@ import { PACZKOMAT_WARTOSCI } from './paczkomat.js';
 import { groszeZKwoty } from './kwota.js';
 import { zl } from './kwoty.js';
 
-// WYSZUKIWARKA I FILTRY MAGAZYNU — warstwa czysta miedzy adresem HTTP a `db/magazyn.js`.
+// WYSZUKIWARKA I FILTRY MAGAZYNU — warstwa czysta między adresem HTTP a `oms/db/magazyn.js`.
 //
-// ⚠️ TEN MODUL JEST SLOWNIKIEM I MUSI SIE ZGADZAC Z WARSTWA ZAPYTAN CO DO JEDNEJ WARTOSCI.
-// `warunkiKart` w db/magazyn.js traktuje nieznana wartosc filtru jako `1 = 0`, czyli oddaje
-// PUSTO — swiadomie, bo filtr, ktorego nie rozumiemy, nie ma prawa poszerzac zbioru tuz przed
-// edycja hurtem. Skutek uboczny: pozycja wystawiona w interfejsie, a nieznana bazie, daje
-// PUSTY EKRAN zamiast wyniku i wyglada jak „nie ma takich kart", a nie jak funkcja, ktorej
-// nikt nie napisal. Dlatego kazda lista nizej jest przypieta testem do zachowania zapytania,
-// a nie tylko do samej siebie (tests/oms/magazyn-filtry.test.js).
+// ⚠️ TEN MODUŁ JEST SŁOWNIKIEM I MUSI SIĘ ZGADZAĆ Z WARSTWĄ ZAPYTAŃ CO DO JEDNEJ WARTOŚCI.
+// `warunkiKart` w oms/db/magazyn.js traktuje nieznaną wartość filtru jako `1 = 0`, czyli oddaje
+// PUSTO — świadomie, bo filtr, którego nie rozumiemy, nie ma prawa poszerzać zbioru tuż przed
+// edycją hurtem. Skutek uboczny: pozycja wystawiona w interfejsie, a nieznana bazie, daje
+// PUSTY EKRAN zamiast wyniku i wygląda jak „nie ma takich kart”, a nie jak funkcja, której
+// nikt nie napisał. Dlatego każda lista niżej jest przypięta testem do zachowania zapytania,
+// a nie tylko do samej siebie (tests/moduly/magazyn/magazyn-filtry.test.js).
 //
-// ⚠️ FILTRY LACZA SIE Z FRAZA, A NIE KASUJA JEJ (niezmiennik 4.13b przewodnika). Ten
-// niezmiennik zostal raz zlamany na liscie zamowien i objawial sie jako „przefiltrowana,
-// ale ZUPELNIE INNA lista" — bo formularz GET wysyla wylacznie WLASNE pola. Stad
-// `parametryUkryte` (formularze niosa nawzajem swoje wartosci) i `adresMagazynu` (kazdy
-// odnosnik ekranu sklada sie z PELNEGO kompletu, a nie od zera).
+// ⚠️ FILTRY ŁĄCZĄ SIĘ Z FRAZĄ, A NIE KASUJĄ JEJ (reguła: filtry nie kasują frazy). Ta
+// reguła została raz złamana na liście zamówień i objawiała się jako „przefiltrowana,
+// ale ZUPEŁNIE INNA lista” — bo formularz GET wysyła wyłącznie WŁASNE pola. Stąd
+// `parametryUkryte` (formularze niosą nawzajem swoje wartości) i `adresMagazynu` (każdy
+// odnośnik ekranu składa się z PEŁNEGO kompletu, a nie od zera).
 
 // Listę kanałów magazynu przekazuje moduł z konfiguracji danej instancji.
-// Ta sama kolejnosc jest kolejnoscia kolumn na ekranie (web/routes/magazyn.js) i lista
-// wartosci filtru kanalu — trzecia kopia rozjechalaby sie po cichu: filtr oferowalby kanal,
-// ktorego nie ma w kolumnach, albo kolumna stalaby bez mozliwosci zawezenia do niej.
+// Ta sama kolejność jest kolejnością kolumn na ekranie i listą
+// wartości filtru kanału — trzecia kopia rozjechałaby się po cichu: filtr oferowałby kanał,
+// którego nie ma w kolumnach, albo kolumna stałaby bez możliwości zawężenia do niej.
 
-// ⚠️⚠️ PIEC POZYCJI, DOKLADNIE TE, KTORE ZNA `warunkiKart`. Plan Zadania 10 proponowal
-// `brak ∈ sku|wymiary|allegro` — wartosci `allegro` w db/magazyn.js NIE MA, a nieznana
-// wartosc leci tam w `1 = 0`. Pozycja „bez oferty na Allegro" wystawiona w interfejsie
-// oddawalaby PUSTA LISTE przy kazdym klknieciu. Braku po stronie Allegro nie ma tu wcale:
-// zeby go policzyc, trzeba pytac o NIEOBECNOSC w kanale (`NOT EXISTS`), a takiego warunku
-// warstwa zapytan nie zna. Dopisanie go jest zmiana w db/, nie w tym slowniku.
+// ⚠️⚠️ SIEDEM POZYCJI, DOKŁADNIE TE, KTÓRE ZNA `warunkiKart`. Wartości `allegro`
+// w oms/db/magazyn.js NIE MA, a nieznana wartość leci tam w `1 = 0`. Pozycja „bez oferty
+// na Allegro” wystawiona w interfejsie oddawałaby PUSTĄ LISTĘ przy każdym kliknięciu.
+// Braku po stronie Allegro nie ma tu wcale: żeby go policzyć, trzeba pytać o NIEOBECNOŚĆ
+// w kanale (`NOT EXISTS`), a takiego warunku warstwa zapytań nie zna. Dopisanie go jest
+// zmianą w oms/db/, nie w tym słowniku.
 //
-// ⚠️ OSTATNI JEST KAFLEM POSTEPU: `komplet` oddaje karty, ktorym
-// NICZEGO nie brakuje — druga strona tej samej monety, liczona tym samym wyrazeniem
-// (`LICZBA_BRAKOW_SQL` w db/magazyn.js). Stoi w tej samej liscie, bo jedzie tym samym polem
+// ⚠️ OSTATNI JEST KAFLEM POSTĘPU: `komplet` oddaje karty, którym
+// NICZEGO nie brakuje — druga strona tej samej monety, liczona tym samym wyrażeniem
+// (`LICZBA_BRAKOW_SQL` w oms/db/magazyn.js). Stoi w tej samej liście, bo jedzie tym samym polem
 // adresu (`?brak=…`) i tym samym polem wyboru.
 export const BRAKI_MAGAZYNU = Object.freeze(['sku', 'wymiary', 'kategoria', 'paczkomat', 'zdjecie', 'opis', 'komplet']);
 
-// Trzy stany paczkomatu (domain/paczkomat.js) plus nazwa trzeciego, jakiej uzywa zapytanie.
-// ⚠️ Plan proponowal `tak|nie|brak`; baza zna `nieoznaczone`, a `brak` leci u niej w `1 = 0`.
+// Trzy stany paczkomatu (domena/paczkomat.js) plus nazwa trzeciego, jakiej uzywa zapytanie.
+// ⚠️ Nie `brak`: baza zna `nieoznaczone`, a `brak` leci u niej w `1 = 0`.
 export const PACZKOMAT_DO_FILTRA = Object.freeze([...PACZKOMAT_WARTOSCI, 'nieoznaczone']);
 
 // Etykiety pol wyboru. Stoja TUTAJ, a nie w widoku, z tego samego powodu, co nazwy kanalow
-// w domain/kanaly.js: druga mapa rozjechalaby sie z pierwsza przy pierwszej zmianie.
+// w domena/kanaly.js: druga mapa rozjechalaby sie z pierwsza przy pierwszej zmianie.
 export const BRAKI_ETYKIETY = Object.freeze({
   sku: 'bez SKU',
   wymiary: 'bez wymiarów',
@@ -79,9 +79,9 @@ function napis(surowy) {
 }
 
 /**
- * Wartosc z ZAMKNIETEJ listy. `Array.includes` (a nie `MAPA[x] ?? domyslne`), bo ta druga
- * postac oddaje funkcje z `Object.prototype` przy `?kanal=constructor` — realna pieciusetka
- * zlapana przy Zadaniu 4 na sortowaniu, a filtry czytaja z tego samego adresu.
+ * Wartość z ZAMKNIĘTEJ listy. `Array.includes` (a nie `MAPA[x] ?? domyslne`), bo ta druga
+ * postać oddaje funkcję z `Object.prototype` przy `?kanal=constructor` — realna pięćsetka
+ * złapana na sortowaniu, a filtry czytają z tego samego adresu.
  */
 const zeSlownika = (surowy, slownik) => {
   const s = napis(surowy);
@@ -128,7 +128,7 @@ export function filtryZZapytania(query = {}, kanaly) {
     // liscie zamowien: kanaly dokladamy MY, bramki platnosci sklep). Nazwa nietrafiona po
     // prostu nie trafi w zadna karte, i to jest co innego niz wartosc spoza slownika.
     kategoria: napis(query?.kategoria),
-    // PRZ-160.P3b.02: marka jak kategoria — lista otwarta, nazwa nietrafiona nie trafi w kartę.
+    // Marka jak kategoria — lista otwarta, nazwa nietrafiona nie trafi w kartę.
     marka: napis(query?.marka),
     brak: zeSlownika(query?.brak, BRAKI_MAGAZYNU),
     paczkomat: zeSlownika(query?.paczkomat, PACZKOMAT_DO_FILTRA),
@@ -139,14 +139,14 @@ export function filtryZZapytania(query = {}, kanaly) {
 }
 
 /**
- * Czy cokolwiek zawęża liste — fraza wliczona.
+ * Czy cokolwiek zawęża listę — fraza wliczona.
  *
- * ⚠️ TO JEST PYTANIE, OD KTOREGO ZALEZY, CO MOWI PUSTA TABELA. „Nie ma tu jeszcze ani jednej
- * karty" przy aktywnym filtrze jest NIEPRAWDA i wyglada jak utrata danych: katalog ma ~1000
- * pozycji, a ekran twierdzi, ze jest pusty. Pusty wynik filtrowania to inny komunikat.
+ * ⚠️ TO JEST PYTANIE, OD KTÓREGO ZALEŻY, CO MÓWI PUSTA TABELA. „Nie ma tu jeszcze ani jednej
+ * karty” przy aktywnym filtrze jest NIEPRAWDĄ i wygląda jak utrata danych: katalog ma setki
+ * albo tysiące pozycji, a ekran twierdzi, że jest pusty. Pusty wynik filtrowania to inny komunikat.
  *
- * `!= null` zamiast prawdziwosci: `cenaOd === 0` JEST filtrem („od 0 zl" ma sens i zawęża do
- * produktow z cena), a `0` jest falszywe.
+ * `!= null` zamiast prawdziwości: `cenaOd === 0` JEST filtrem („od 0 zł” ma sens i zawęża do
+ * produktów z ceną), a `0` jest fałszywe.
  */
 export function saJakiesFiltry(filtry) {
   return POLA.some((k) => filtry?.[k] !== null && filtry?.[k] !== undefined);
@@ -164,15 +164,15 @@ function wartoscWAdresie(klucz, filtry) {
 }
 
 /**
- * Wartosci do przeniesienia UKRYTYMI POLAMI w formularzu GET.
+ * Wartości do przeniesienia UKRYTYMI POLAMI w formularzu GET.
  *
- * ⚠️ SEDNO NIEZMIENNIKA 4.13b. Formularz GET wysyla WYLACZNIE wlasne pola, wiec bez tego
- * klikniecie „Filtruj" gubiloby fraze, a wpisanie frazy gubiloby filtry — i czlowiek
- * dostawalby przefiltrowana, ale ZUPELNIE INNA liste niz ta, na ktora patrzyl.
+ * ⚠️ SEDNO REGUŁY „filtry nie kasują frazy”. Formularz GET wysyła WYŁĄCZNIE własne pola, więc bez tego
+ * kliknięcie „Filtruj” gubiłoby frazę, a wpisanie frazy gubiłoby filtry — i człowiek
+ * dostawałby przefiltrowaną, ale ZUPEŁNIE INNĄ listę niż ta, na którą patrzył.
  *
- * ⚠️ `pomin` NIE JEST OZDOBA. Formularz, ktory ma wlasne pole `kanal`, nie moze wyslac
- * `kanal` DRUGI RAZ ukrytym polem: Fastify oddaje wtedy tablice, parser slusznie odrzuca ja
- * do `null` i filtr znika dokladnie w tym formularzu, ktory sluzy do jego ustawiania.
+ * ⚠️ `pomin` NIE JEST OZDOBĄ. Formularz, który ma własne pole `kanal`, nie może wysłać
+ * `kanal` DRUGI RAZ ukrytym polem: Fastify oddaje wtedy tablicę, parser słusznie odrzuca ją
+ * do `null` i filtr znika dokładnie w tym formularzu, który służy do jego ustawiania.
  */
 export function parametryUkryte(filtry, { pomin = [] } = {}) {
   const pary = [];
@@ -202,17 +202,17 @@ export function wartosciPol(filtry) {
 }
 
 /**
- * Adres ekranu magazynu z PELNYM kompletem: fraza, filtry i sortowanie.
+ * Adres ekranu magazynu z PEŁNYM kompletem: fraza, filtry i sortowanie.
  *
- * ⚠️ KAZDY ODNOSNIK EKRANU MA SIE SKLADAC TUTAJ, a nie od zera. Naglowek sortujacy budowany
- * jako `/magazyn?sort=…&kier=…` gubi wszystko pozostale — czyli klikniecie w „Wymiary"
- * kasuje zawezenie, po ktorym wlasciciel wlasnie chcial zaznaczyc wszystko i ustawic pole
- * hurtem. To jest ten sam blad, ktory na liscie zamowien dawal „przefiltrowana, ale zupelnie
- * inna liste", i dlatego jest tu przypiety testem, a nie tylko zrobiony.
+ * ⚠️ KAŻDY ODNOŚNIK EKRANU MA SIĘ SKŁADAĆ TUTAJ, a nie od zera. Nagłówek sortujący budowany
+ * jako `/magazyn?sort=…&kier=…` gubi wszystko pozostałe — czyli kliknięcie w „Wymiary”
+ * kasuje zawężenie, po którym sprzedawca właśnie chciał zaznaczyć wszystko i ustawić pole
+ * hurtem. To jest ten sam błąd, który na liście zamówień dawał „przefiltrowaną, ale zupełnie
+ * inną listę”, i dlatego jest tu przypięty testem, a nie tylko zrobiony.
  *
- * `encodeURIComponent`, nie `URLSearchParams`: ten drugi koduje spacje jako „+", co w czesci
+ * `encodeURIComponent`, nie `URLSearchParams`: ten drugi koduje spację jako „+”, co w części
  * zapytania jest poprawne, ale nieczytelne w pasku adresu (ta sama decyzja, co w
- * `adresZFiltrami` listy zamowien).
+ * `adresZFiltrami` listy zamówień).
  */
 export function adresMagazynu(filtry, { sort, kier, zaznacz = false, widok } = {}) {
   const czesci = parametryUkryte(filtry).map((p) => [p.name, p.value]);
@@ -229,13 +229,13 @@ export function adresMagazynu(filtry, { sort, kier, zaznacz = false, widok } = {
   // ⚠️ RUCH TYLKO NA WARTOSC ZNANA, nigdy „cokolwiek przyszlo": biala lista stoi w trasie,
   // ale i ta funkcja nie ma prawa wpisac do adresu napisu, ktorego ekran nie zna.
   if (widok === 'katalog') czesci.push(['widok', 'katalog']);
-  // „Zaznacz wszystkie" jedzie ADRESEM, tak samo jak filtry i kolejnosc — bo bez JavaScriptu
-  // tylko adres potrafi zmienic stan calej listy (ten sam mechanizm, co na liscie zamowien).
-  // ⚠️ SKLADA SIE GO TUTAJ, a nie doklejajac `&zaznacz=1` przy odnosniku: doklejenie na
-  // piechote gubiloby zawezenie przy pustym komplecie filtrow (adres „/magazyn" bez znaku
-  // zapytania), czyli czlowiek zaznaczylby CALY katalog zamiast 277 pozycji, ktore widzial.
-  // ⚠️⚠️ ZAZNACZENIE NIE JEST FILTREM i nie ma prawa nim zostac: `parametryUkryte` go NIE
-  // zna, wiec nie wchodzi ani do pol formularza filtrow, ani do zawezenia przenoszonego
+  // „Zaznacz wszystkie” jedzie ADRESEM, tak samo jak filtry i kolejność — bo bez JavaScriptu
+  // tylko adres potrafi zmienić stan całej listy (ten sam mechanizm, co na liście zamówień).
+  // ⚠️ SKŁADA SIĘ GO TUTAJ, a nie doklejając `&zaznacz=1` przy odnośniku: doklejenie na
+  // piechotę gubiłoby zawężenie przy pustym komplecie filtrów (adres „/magazyn” bez znaku
+  // zapytania), czyli człowiek zaznaczyłby CAŁY katalog zamiast pozycji, które widział.
+  // ⚠️⚠️ ZAZNACZENIE NIE JEST FILTREM i nie ma prawa nim zostać: `parametryUkryte` go NIE
+  // zna, więc nie wchodzi ani do pól formularza filtrów, ani do zawężenia przenoszonego
   // do akcji hurtowych.
   if (zaznacz) czesci.push(['zaznacz', '1']);
   if (!czesci.length) return '/magazyn';

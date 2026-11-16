@@ -1,35 +1,35 @@
-// PRZ-160.04a (E1.04 cz. 1) — treść oferty Allegro → karta produktu. Reguła CZYSTA: bez sieci, bazy i zegara.
+// Treść oferty Allegro → karta produktu. Reguła CZYSTA: bez sieci, bazy i zegara.
 //
-// Wejście: odpowiedź `GET /sale/product-offers/{id}` (kształt z pomiaru P8, `docs/plany/PRZ-160-pomiary.md`)
+// Wejście: odpowiedź `GET /sale/product-offers/{id}`
 // i opis kategorii z pamięci podręcznej (`opisKategorii`, trzymany w `kanaly_kategorie`). Oferta niesie tylko
 // `category.id` i wartości parametrów — typ, jednostkę i `describesProduct` zna dopiero opis kategorii.
 //
 // Czego tu świadomie NIE ma:
-//   • producenta, osoby odpowiedzialnej i informacji o bezpieczeństwie (D28 — to ustawienie konta, nie karty);
-//   • rozstrzygania, czy pole wolno zapisać (D4 — `importMozeZapisac` w `zrodla-pol.js`, robi to zapis w 04b);
+//   • producenta, osoby odpowiedzialnej i informacji o bezpieczeństwie (to ustawienie konta, nie karty);
+//   • rozstrzygania, czy pole wolno zapisać (`importMozeZapisac` w `zrodla-pol.js` — robi to zapis karty w `moduly/magazyn/services/allegro-tresc-kart.js`);
 //   • walidacji EAN — zapisujemy to, co sprzedawca wpisał w parametrze EAN; ocena należy do ekranu karty.
 import { sekcjeAllegroDoSekcji } from './opis-sekcje.js';
 import { groszeZCeny } from './allegro-oferta.js';
 import { STAWKI_VAT } from './vat.js';
 
-/** Id parametru „EAN (GTIN)” — jedyne id parametru wpisane w kod (pole `options.isGTIN` w odpowiedzi nie występuje, P8). */
+/** Id parametru „EAN (GTIN)” — jedyne id parametru wpisane w kod (pole `options.isGTIN` w odpowiedzi nie występuje). */
 export const PARAMETR_EAN = '225693';
 
-/** Słownik dłuższy niż tyle wartości nie trafia do pamięci (słownik marek to 95–99% z ok. 1 MB odpowiedzi, P8). */
+/** Słownik dłuższy niż tyle wartości nie trafia do pamięci (słownik marek to 95–99% z ok. 1 MB odpowiedzi). */
 export const PROG_SLOWNIKA = 200;
 
 const napis = v => (typeof v === 'string' && v.trim() ? v : null);
 const id = v => (typeof v === 'string' || typeof v === 'number') && String(v).trim() ? String(v) : null;
 
-/** Wersja kształtu opisu kategorii (E3.05). Wiersz pamięci w innej wersji jest pobierany ponownie. */
+/** Wersja kształtu opisu kategorii. Wiersz pamięci w innej wersji jest pobierany ponownie. */
 export const WERSJA_OPISU_KATEGORII = 2;
 
-// Warunki i ograniczenia Allegro przechodzą bez zmian (kształt z P9), ale jako kopia — opis nie dzieli referencji
+// Warunki i ograniczenia Allegro przechodzą bez zmian, ale jako kopia — opis nie dzieli referencji
 // z odpowiedzią. Wartości to czysty JSON, więc structuredClone wystarcza.
 const kopiaObiektu = v => (v && typeof v === 'object' ? structuredClone(v) : null);
 
 /**
- * Opis kategorii do pamięci podręcznej (wersja 2, PRZ-160.E3.05): ścieżka (od korzenia do liścia), czy kategoria
+ * Opis kategorii do pamięci podręcznej (wersja 2): ścieżka (od korzenia do liścia), czy kategoria
  * jest liściem i pozwala tworzyć produkt (`options.productCreationEnabled` liścia) oraz opisy parametrów
  * z wymagalnością (`required`, `requiredForProduct`, `requiredIf`), widocznością i ograniczeniami.
  * `lisc` i `tworzenieProduktu` = null, gdy ścieżki nie ma (nie wiadomo).

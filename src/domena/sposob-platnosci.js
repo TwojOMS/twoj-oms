@@ -6,27 +6,26 @@ import { normalizujMetode } from './metody-platnosci.js';
  *
  * ⚠️ ISTNIEJE, BO PANEL TEGO POLA NIE WYSYLAL W OGOLE. inFakt podstawial wtedy wartosc
  * domyslna z ustawien konta, czyli `transfer` — i KAZDA faktura za pobraniem wychodzila
- * z napisem „przelew". Zgloszenie wlasciciela 2026-08-07, na fakturze 18/08/2026 do
- * zamowienia allegrowego za pobraniem (220,89 zl, nabywca: spolka z o.o.).
+ * z napisem „przelew".
  *
  * Formalnie taki dokument NIE JEST wadliwy: sposob zaplaty nie stoi w katalogu
  * obowiazkowych elementow faktury (art. 106e ust. 1 ustawy o VAT), wiec ani KSeF, ani
  * urzad go nie odrzuci. Problem jest praktyczny i konkretny: dokument mowi „do zaplaty
- * 220,89 przelewem, termin dzis", a te same pieniadze klient odda kurierowi przy odbiorze.
+ * przelewem, termin dzis", a te same pieniadze klient odda kurierowi przy odbiorze.
  * Przy nabywcy instytucjonalnym — ksiegowosc placaca Z DOKUMENTU, nie z pamieci o paczce —
  * to jest prosta droga do drugiej zaplaty i do zwrotu nadplaty.
  *
  * ⚠️ WARTOSC `delivery` JEST ZMIERZONA NA ZYWYM KONCIE, NIE WZIETA Z DOKUMENTACJI —
  * dokumentacja API v3 listy dopuszczalnych wartosci nie podaje, a zgadywanie nazwy pola
- * dokumentu ksiegowego jest dokladnie tym, czego ten modul unika od lipca. Pomiar
- * 2026-08-07 na 400 fakturach konta: `transfer` 273, **`delivery` 30**, `przelewy24` 15,
- * `payu` 10, `cash` 2. Wszystkie 30 wystawilo Apilo (rozpoznanie po niepustym `notes` —
- * patrz przewodnik OMS, kolizja numeracji Apilo x OMS).
+ * dokumentu ksiegowego jest dokladnie tym, czego ten modul unika. Pomiar na kilkuset
+ * fakturach konta: najczesciej wystepowal `transfer`, a `delivery` (kilka procent),
+ * `przelewy24`, `payu` i `cash` byly rzadkie.
+ * Wszystkie faktury z `delivery` wystawił integrator sprzedaży (Apilo), nie ten panel —
+ * rozpoznanie po niepustym `notes`.
  *
  * Ze `delivery` znaczy WLASNIE pobranie, potwierdza korelacja z drugiej strony, a nie sama
- * nazwa: faktura `40/07/2026` ma `payment_method: 'delivery'`, kwote **171,80 zl** i w polu
- * `notes` numer zamowienia Woo **28066** — a 171,80 zl to dokladnie to JEDNO zamowienie za
- * pobraniem, jakie sklep A mial w tamtym okresie (przewodnik OMS, Etap 2).
+ * nazwa: sprawdzona faktura z `delivery` miała kwotę i numer zamówienia w `notes` zgodne z jedynym
+ * zamówieniem za pobraniem w tamtym okresie.
  *
  * ⚠️ CZEGO TEN POMIAR NIE ROZSTRZYGA: wartosci odczytane z dokumentow nie musza byc tym
  * samym zbiorem, ktory API przyjmuje przy ZAPISIE (Apilo mogloby je ustawiac inna droga).
@@ -48,7 +47,7 @@ export const PLATNOSC_POBRANIE = 'delivery';
  * przez program. Bez deklaracji pozostaje samo `delivery`: zapis `card` w inFakcie
  * nie został zmierzony. Bramki online pozostawiają domyślną metodę programu.
  *
- * ⚠️ `czyPobranie` (domain/wysylka.js), a NIE kolumna `pobranie` wprost: reczna korekta
+ * ⚠️ `czyPobranie` (domena/wysylka.js), a NIE kolumna `pobranie` wprost: reczna korekta
  * metody wysylki na karcie wygrywa nad tym, co powiedzial sklep. Zamowienie przestawione
  * recznie na pobranie ma dostac dokument mowiacy o pobraniu — inaczej poprawka na karcie
  * i tresc faktury rozjechalyby sie po cichu.

@@ -3,8 +3,8 @@ import { zamowienieWymagaCzlowieka, przesylkaUkryta } from './przesylka-stan.js'
 import { zwrotRozliczony } from './zwrot.js';
 
 // ⚠️ KOLEJNOSC KLUCZY STERUJE KOLEJNOSCIA ZAKLADEK w panelu bocznym listy
-// (routes/zamowienia.js sklada je `Object.keys(ETYKIETY).map`). „indywidualne" stoi zaraz
-// za „nowe" na prosbe wlasciciela („dodatkowy status obok nowe").
+// (domena/statusy-konfiguracja.js sklada je z `Object.entries(ETYKIETY)`). „indywidualne"
+// stoi zaraz za „nowe", jako dodatkowy status obok nowych.
 export const ETYKIETY = {
   nowe: 'Nowe',
   indywidualne: 'Indywidualne',
@@ -19,42 +19,42 @@ export const ETYKIETY = {
 export function wyliczStatus(z) {
   if (z.anulowane) return 'anulowane';
   // ⚠️ DWA ZRODLA JEDNEGO STANU I OBA SA POTRZEBNE.
-  //   `ma_zwrot`  — jest wpis w tabeli `zwroty` (od 08.2026 jedyna droga rejestracji).
-  //   `zwrot_at`  — stary znacznik reczny, bez kwoty i bez pozycji. Na produkcji takie
+  //   `ma_zwrot`  — jest wpis w tabeli `zwroty` (jedyna dzisiejsza droga rejestracji).
+  //   `zwrot_at`  — stary znacznik reczny, bez kwoty i bez pozycji. W starszych bazach takie
   //                 zamowienia leza i dopisywanie im kwot wstecz byloby zmyslaniem danych,
   //                 ktorych nikt nie zapisal.
   //
   // ⚠️ `ma_zwrot` USTAWIAJA OBIE DROGI ODCZYTU (pobierzZamowienie i listaZamowien) i to jest
-  // warunek poprawnosci: `wyliczStatus` wola tez `allegro-status.js` i `sync-sklep.js`.
+  // warunek poprawnosci: `wyliczStatus` wola tez (przez `statusBazowy`) `allegro-status.js`
+  // i `sync-sklep.js`.
   // Wiersz bez tego pola oddalby 'wyslane' i panel odeslalby do Allegro status realizacji
   // zamowienia, ktore wlasnie wrocilo.
   if (z.zwrot_at || z.ma_zwrot) return 'zwrot';
   // ⚠️ „WYSLANE" WYNIKA Z WLASNEGO FAKTU (`wyslane_at`), A NIE Z ISTNIENIA PACZKI.
   //
-  // Do 2026-07-31 wystarczyla nadana przesylka — i to bylo zle w codziennej robocie:
+  // Kiedys wystarczyla nadana przesylka — i to bylo zle w codziennej robocie:
   // etykieta powstaje przy PAKOWANIU, a paczka wyjezdza dopiero z kurierem, czesto
   // nastepnego dnia. Status skakal na „Wyslane" w chwili wydruku etykiety i zamowienie
-  // znikalo z listy roboczej, choc lezalo jeszcze na stole. Decyzja wlasciciela: „po
-  // utworzeniu etykiety nie zmieniaj statusu na wyslane".
+  // znikalo z listy roboczej, choc lezalo jeszcze na stole — wiec utworzenie etykiety
+  // nie zmienia statusu na wyslane.
   //
   // Konsekwencja, ktora trzeba znac: „Wyslane" jest teraz statusem USTAWIANYM RECZNIE
-  // (jest na liscie w domain/status-reczny.js). Panel nie zgaduje momentu wyjazdu paczki,
+  // (jest na liscie w domena/status-reczny.js). Panel nie zgaduje momentu wyjazdu paczki,
   // bo go nie zna — zna tylko moment wydruku etykiety, a to nie to samo.
   if (z.wyslane_at) return 'wyslane';
   const wlasny = (z.statusy_wlasne ?? []).find(s => s.klucz === z.status_wlasny && ['nowe', 'w_realizacji'].includes(s.jak));
   if (wlasny) return wlasny.klucz;
   if (z.w_realizacji_at) return 'w_realizacji';
-  // ⚠️ „INDYWIDUALNE" STOI NA SAMYM DOLE DRABINKI, TUZ NAD „NOWE" — i to jest cala regula
-  // (prosba wlasciciela 2026-08-07): „zamowienie trafia tam na czas jego przetwarzania,
-  // az projekt indywidualny zostanie zaakceptowany, i przenoszone jest do «w realizacji»
-  // razem z reszta zamowien".
+  // ⚠️ „INDYWIDUALNE" STOI NA SAMYM DOLE DRABINKI, TUZ NAD „NOWE" — i to jest cala regula:
+  // zamowienie trafia tam na czas jego przetwarzania, az projekt indywidualny zostanie
+  // zaakceptowany, i jest przenoszone do „w realizacji" razem z reszta zamowien.
   //
   // Wyjscie ze statusu jest wiec DOKLADNIE TYM SAMYM faktem, co dla kazdego innego
   // zamowienia — `w_realizacji_at`, ustawianym recznie z belki karty. Zadnego nowego
   // przelacznika, zadnej nowej kolumny: akceptacja projektu to klikniecie „W realizacji".
   //
   // ⚠️ `z.indywidualne` TO ZNACZNIK KANALU, NIE STAN — liczy go poller z pozycji zamowienia
-  // (domain/indywidualne.js) i przepisuje przy KAZDEJ synchronizacji. Zostaje na zamowieniu
+  // (domena/indywidualne.js) i przepisuje przy KAZDEJ synchronizacji. Zostaje na zamowieniu
   // takze po przejsciu dalej i ma zostac: czyta go `/api/v1/sprzedaz` (kanal
   // SKLEP_INDYWIDUALNE), filtr kanalu i odznaka na liscie. Ta linia go NIE KONSUMUJE —
   // tylko czyta. Dlatego „indywidualne" nie ma i nie moze miec wpisu w STATUSY_RECZNE:
@@ -65,20 +65,17 @@ export function wyliczStatus(z) {
 
 // Anulowanie PO nadaniu albo PO wystawieniu faktury. `wyliczStatus` slusznie oddaje wtedy
 // 'anulowane' (to FAKT ze sklepu), ale sam ten status chowal zamowienie razem z paczka
-// w drodze i faktura, ktora czeka w inFakcie na wieczorna zbiorcza wysylke do KSeF (panel
-// jej tam sam nie wysyla — patrz services/faktura.js). Nie trzeba zadnego wyscigu —
+// w drodze i faktura, ktora czeka na wysylke do KSeF. Nie trzeba zadnego wyscigu —
 // wystarczy anulowanie dzien po wysylce. Faktura liczy sie TAKZE wystawiona: wlasnie ona
 // jest tu problemem, bo jej nikt sam nie skasuje ani nie skoryguje — a dopoki nie pojdzie
 // do KSeF, to jeszcze KASOWANIE w inFakcie, nie korekta.
 export function anulowaneWymagaUwagi(z) {
-  // ⚠️⚠️ UKRYTA PACZKA NIE JEST SPRAWĄ — bo człowiek już ją zamknął (13.09.2026).
+  // ⚠️⚠️ UKRYTA PACZKA NIE JEST SPRAWĄ — bo człowiek już ją zamknął.
   //
-  // Komentarz przy kolumnie `ukryta_at` w schema.sql mówi to od dnia jej dołożenia
-  // (25.08.2026): „Ukrycie zdejmuje zamowienie TAKZE z listy roboczej, wiec musi byc
-  // wiadomo, czyja to decyzja — stad `ukryta_przez`". Do dziś nie było to prawdą: ta
-  // funkcja liczyła KAŻDY wiersz przesyłki, także ukryty. Zmierzone na produkcji 13.09:
-  // zamówienie 1267 (anulowane ręcznie, paczka ukryta 25.08, list 1000123456789U) wisiało
-  // na „Do zrobienia" 19 dni jako 1 z 7 pozycji — wbrew decyzji, która ma w bazie autora.
+  // Ukrycie zdejmuje zamówienie także z listy roboczej, więc musi być wiadomo, czyja to
+  // decyzja — stąd kolumna `ukryta_przez`. Kiedyś ta funkcja liczyła KAŻDY wiersz
+  // przesyłki, także ukryty: zamówienie anulowane ręcznie, z ukrytą paczką, wisiało na
+  // „Do zrobienia" całymi tygodniami — wbrew decyzji, która ma w bazie autora.
   //
   // ⚠️ PREDYKATEM JEST `przesylkaUkryta`, NIE goła kolumna. Ukrycie WYGASA, gdy u kuriera
   // wydarzy się coś PO nim: paczka spisana na straty, która ruszyła, znów jest sprawą.
@@ -93,7 +90,7 @@ export function anulowaneWymagaUwagi(z) {
 }
 
 /**
- * PRZ-101.04 (recenzja, W3): DOŁĄCZONE ANULOWANE W SKLEPIE PO SCALENIU. Dołączone nie ma wiersza
+ * DOŁĄCZONE ANULOWANE W SKLEPIE PO SCALENIU. Dołączone nie ma wiersza
  * na liście, a jego paczka i faktura są na głównym — więc `anulowaneWymagaUwagi` dołączonego nie
  * widzi nikt. Sprawę niesie GŁÓWNE: ten napis trzyma je na „Do zrobienia”, stoi przy wierszu i na
  * karcie, a gotowość nadania odmawia nim nadania paczki grupy.
@@ -111,7 +108,7 @@ export function uwagaDolaczonychAnulowanych(z) {
 // Lista robocza = to, co zostalo do zrobienia. "Oplacone" celowo nie ma tu wplywu:
 // oplacenie jest faktem obok statusu, nie etapem procesu.
 //
-// ⚠️ `teraz` (PRZ-051) — ta sama chwila trafia do obu regul zaleznych od czasu (faktura
+// ⚠️ `teraz` — ta sama chwila trafia do obu regul zaleznych od czasu (faktura
 // i paczka „zawieszone" po progu). Indeks listy pyta o nia dla chwil PRZYSZLYCH, zeby
 // zapisac moment, w ktorym zamowienie samo wraca na liste, zamiast przeliczac cala baze
 // przy kazdym otwarciu. Domyslnie „teraz" — dotychczasowi wolajacy nic nie zmieniaja.
@@ -131,7 +128,7 @@ export function doZrobienia(z, teraz = Date.now()) {
   // na liscie. Patrzenie tylko na pierwsza przywrociloby dokladnie te wade, ktora zdanie
   // wyzej opisuje jako juz raz naprawiona.
   if (zamowienieWymagaCzlowieka(z.przesylki, teraz)) return true;
-  // TA SAMA ZASADA, TERAZ DLA STATUSU CALEGO ZAMOWIENIA (K1, recenzja Partii 1 Planu B).
+  // TA SAMA ZASADA, TERAZ DLA STATUSU CALEGO ZAMOWIENIA.
   // `zamowienia.sync_woo_blad` znaczy: panel zapisal decyzje czlowieka, ale druga strona
   // (sklep albo Allegro) jej NIE PRZYJELA — czyli klient/kupujacy widzi u siebie stary stan.
   // Bez tej linii `wyliczStatus` dawal 'wyslane' i zamowienie schodzilo z listy w tej samej
@@ -143,7 +140,7 @@ export function doZrobienia(z, teraz = Date.now()) {
   // (przycisk „Wyslij ponownie" na karcie), wiec to nie jest sprawa nie do zalatwienia.
   //
   // Kolumna o tej samej nazwie przy PRZESYLCE jest czym innym (notatka z numerem listu)
-  // i ma wlasna regule w `sprawyPrzesylki` — patrz komentarz w db/db.js przy migracji.
+  // i ma wlasna regule w `sprawyPrzesylki` (domena/przesylka-stan.js).
   if (z.sync_woo_blad) return true;
   if (anulowaneWymagaUwagi(z)) return true;
   if (uwagaDolaczonychAnulowanych(z)) return true;
@@ -155,10 +152,10 @@ export function doZrobienia(z, teraz = Date.now()) {
   // Liczone po KAZDYM zwrocie: zamowienie z pierwszym zwrotem rozliczonym i drugim swiezym
   // ma zostac na liscie.
   if ((z.zwroty ?? []).some((w) => !zwrotRozliczony(z, w))) return true;
-  // ⚠️ „indywidualne" JEST TU OD 2026-08-07 i bez tego wpisu wdrozenie statusu zdjeloby
-  // z listy roboczej komplet zamowien z panelu indywidualnego W DNIU WEJSCIA — wypadlyby
-  // z „Do zrobienia" nie dlatego, ze cos sie z nimi stalo, tylko dlatego, ze zmienila sie
-  // nazwa ich stanu. To jest praca do wykonania (projekt czeka na akceptacje), a nie stan
+  // ⚠️ „indywidualne" JEST TU CELOWO: bez tego wpisu zamowienia z panelu indywidualnego
+  // wypadlyby z listy roboczej — z „Do zrobienia" nie dlatego, ze cos sie z nimi stalo,
+  // tylko dlatego, ze zmienila sie nazwa ich stanu. To jest praca do wykonania (projekt
+  // czeka na akceptacje), a nie stan
   // koncowy.
   return ['nowe', 'indywidualne', 'w_realizacji'].includes(statusBazowy(z));
 }

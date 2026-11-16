@@ -3,15 +3,14 @@ import { wolnoWyslacDoAllegro } from '../../../domena/allegro-faktura.js';
 
 // CO SIE MA STAC, GDY PRZY FAKTURZE POJAWI SIE NUMER KSeF.
 //
-// ⚠️⚠️ ISTNIEJE, BO ZAPIS NUMERU MA NASTEPSTWO — A DRUGI PISARZ NUMERU O TYM NIE WIEDZIAL.
-// Regresja z produkcji 14.08.2026, zgloszenie wlasciciela: „faktury nie wysylaja sie do
-// Allegro". Mechanizm:
+// ⚠️⚠️ ISTNIEJE, BO ZAPIS NUMERU MA NASTĘPSTWO — A DRUGI PISARZ NUMERU O TYM NIE WIEDZIAŁ.
+// Bez tego modułu faktury nie wysyłały się do Allegro. Mechanizm:
 //
-//   1. czuwacz szuka faktur po warunku `ksef_numer IS NULL` (domain/ksef-oczekiwanie.js);
-//   2. po znalezieniu numeru to ON wysylal dokument kupujacemu na Allegro;
-//   3. karta zamowienia dostala 12.08.2026 wlasne doczytywanie numeru na zywo
-//      (services/ksef-doczytanie.js) — i zapisywala numer NIE ROBIAC NIC DALEJ;
-//   4. faktura wypadala z kolejki czuwacza NA ZAWSZE i nie szla do kupujacego NIGDY.
+//   1. czuwacz szuka faktur po warunku `ksef_numer IS NULL` (domena/ksef-oczekiwanie.js);
+//   2. po znalezieniu numeru to ON wysyłał dokument kupującemu na Allegro;
+//   3. karta zamówienia ma własne doczytywanie numeru na żywo (services/ksef-doczytanie.js)
+//      — i zapisywała numer, NIE ROBIĄC NIC DALEJ;
+//   4. faktura wypadała z kolejki czuwacza NA ZAWSZE i nie szła do kupującego NIGDY.
 //
 // Trafialo za KAZDYM razem, bo naturalna kolejnosc ruchow operatora to dokladnie „zlec wysylke
 // do KSeF w zakladce FAKTURY, potem zajrzyj na karte".
@@ -42,7 +41,7 @@ export function createPoNumerzeKsef({ db, fakturaAllegro = null }) {
         wynik: 'AUTOMAT: numer KSeF się pojawił, więc panel sam wysłał fakturę do kupującego.',
       });
     } catch (e) {
-      // PRZ-122.B10a: PDF dla nabywcy czeka na numer KSeF w programie (np. numer bieżącej wersji jeszcze nie przyszedł)
+      // PDF dla nabywcy czeka na numer KSeF w programie (np. numer bieżącej wersji jeszcze nie przyszedł)
       // — „później”, nie błąd; slotu w Allegro nic nie zajęło (PDF pobiera się przed zgłoszeniem).
       // ⚠️ `ksef_numer` ZOSTAJE (zapiszNumerKsef: numer raz zapisany się nie kasuje) — wysyłka przyciskiem na karcie.
       if (e?.czekaNaKsef) {

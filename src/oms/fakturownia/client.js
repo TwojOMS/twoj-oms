@@ -2,10 +2,10 @@ import { transport } from '../../integracje/transport.js';
 import { bladOperatora } from '../../domena/bledy.js';
 import { PROG_ZAWIESZONEJ_FAKTURY_MS } from '../../domena/faktura-stan.js';
 
-// PRZ-119.02 — klient HTTP Fakturowni: sam transport, bez mapowania pól (to adapter
+// Klient HTTP Fakturowni: sam transport, bez mapowania pól (to adapter
 // integracje/programy/fakturownia.ts) i bez decyzji biznesowych (duplikat `oid`, walidacja —
 // klient oddaje status i zamaskowaną treść, rozstrzyga adapter). Kształty odpowiedzi
-// zmierzone na koncie próbnym 12.11.2026 (docs/plany/PRZ-119-pomiary.md, fixture F1–F17).
+// zmierzone na koncie próbnym (odpowiedzi wzorcowe F01–F17 bez F13, plus F9B w tests/fixtures/fakturownia/).
 //
 // ⚠️⚠️ WYSTAWIENIE FAKTURY NIGDY JEJ NIE WYSYŁA DO KSeF — tak samo jak w inFakcie
 // (src/oms/infakt/client.js, komentarz na górze): wystawienie i wysyłka to dwie osobne decyzje
@@ -13,7 +13,7 @@ import { PROG_ZAWIESZONEJ_FAKTURY_MS } from '../../domena/faktura-stan.js';
 // WYŁĄCZNIE w `wyslijDokumentDoKsef` na końcu tego pliku. Każde inne żądanie przechodzi przez
 // strażnika w `zapytaj`: w adresie nie ma `send_to_ksef` ani `api_token`, a w treści żadnego
 // z tych kluczy ani żadnego klucza `gov_*` (pola KSeF Fakturowni są tylko do odczytu; tak
-// odpada też parametr wystawienia z wysyłką, którego nazwy nie ma w src/ — strażnik PRZ-118).
+// odpada też parametr wystawienia z wysyłką, którego nazwy nie ma w src/ — strażnik tests/core/straznik-wysylki-ksef-prz118.test.js).
 
 // Twardy limit JEDNEGO żądania — ten sam powód co w inFakcie: „rezerwacja starsza od progu”
 // musi znaczyć „nic nie leci”, więc żywe wywołanie nie może dociągnąć do progu zawieszonej faktury.
@@ -340,7 +340,7 @@ export function createFakturowniaClient({ token, domena, fetchImpl, http }) {
   /**
    * `POST /invoices/{id}/change_status.json?status=paid` (F09) — surowa odpowiedź. F09: Fakturownia
    * ustawia wtedy `paid_date` na DZIŚ, więc podana data zapłaty (`paidDate`, RRRR-MM-DD) idzie drugim
-   * żądaniem `PUT /invoices/{id}.json {invoice:{paid_date}}` — pomiar F9B (12.11): HTTP 200, `paid_date` zapisana,
+   * żądaniem `PUT /invoices/{id}.json {invoice:{paid_date}}` — pomiar F9B: HTTP 200, `paid_date` zapisana,
    * `status`/`paid` bez zmian, także data sprzed daty sprzedaży. Zła data → odmowa przed siecią. Gdy PUT padnie, faktura JEST już opłacona — błąd to mówi
    * (`zaplataOznaczona: true`), żeby nikt nie oznaczał jej drugi raz.
    */
@@ -373,8 +373,8 @@ export function createFakturowniaClient({ token, domena, fetchImpl, http }) {
   }
 
   /**
-   * ⚠️⚠️ JEDYNE MIEJSCE, KTÓRE WYSYŁA DO KSeF. Wołane wyłącznie przez adapter z trasy zatwierdzenia
-   * (moduly/faktury/services/wysylka-ksef.js) — strażnik PRZ-118 pilnuje, żeby nikt inny.
+   * ⚠️⚠️ JEDYNE MIEJSCE W TYM KLIENCIE, KTÓRE WYSYŁA DO KSeF. Wołane wyłącznie przez adapter (integracje/programy/fakturownia.ts)
+   * z moduly/faktury/services/wysylka-ksef.js (trasa zatwierdzenia albo automat KSeF) — strażnik tests/core/straznik-wysylki-ksef-prz118.test.js pilnuje, żeby nikt inny.
    *
    * Dokładnie JEDNO `GET /invoices/{id}.json?send_to_ksef=yes` — GET ze skutkiem ubocznym. Bez
    * ponowienia przy limicie czasu, 429 ani 5xx: brak odpowiedzi znaczy „nie wiadomo”, a drugie
@@ -400,7 +400,7 @@ export function createFakturowniaClient({ token, domena, fetchImpl, http }) {
   }]));
 }
 
-/** Nazwy metod klienta Fakturowni (atrapa w zmianie 04 wystawia te same). */
+/** Nazwy metod klienta Fakturowni (atrapa deploy/proba/atrapy/fakturownia.mjs wystawia te same). */
 export const METODY_FAKTUROWNI = Object.freeze([
   'sprawdzPolaczenie', 'listaFaktur', 'pobierzFakture', 'pobierzPdf', 'iluMaNumer', 'znajdzKlientowPoNip',
   'wystaw', 'wystawKorekte', 'oznaczZaplacona', 'wyslijDokumentDoKsef',

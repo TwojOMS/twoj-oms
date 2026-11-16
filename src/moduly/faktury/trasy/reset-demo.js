@@ -5,7 +5,7 @@ import { nawigacjaUstawien } from '../../ustawienia/nawigacja.js';
 export const ADRES_DANYCH_DEMO = '/ustawienia/dane-demo';
 const odmowa = reply => reply.code(403).view('brak-dostepu.ejs', { title: 'Brak dostępu', wlasnyUklad: true });
 
-// PRZ-122.ZGODA-TFb: `numerDemo()` — następny numer serii FV TwojeFaktury (db/twojefaktury-numery.js), podaje modul.ts.
+// `numerDemo()` — następny numer serii FV TwojeFaktury (db/twojefaktury-numery.js), podaje modul.ts.
 // Ten plik nie importuje kodu TwojeFaktury; bez funkcji (baza bez `tf_*`) ekran nie pokazuje numeru.
 export function registerResetDemoRoutes(app, { db, wyborProgramu, nipTeraz, teraz, restart, numerDemo = null }) {
   function widok(req, reply, bledy = []) {

@@ -1,6 +1,5 @@
-// Cztery ikony wiersza listy (Zadanie „strona główna", punkt C). Widok NIE liczy tego
-// sam — ta sama zasada, co przy stanie przesyłki i fakturze na karcie (przewodnik OMS,
-// sekcja 3): decyzja domenowa ma brzmieć tak samo na liście i na karcie, więc mieszka
+// Cztery ikony wiersza listy. Widok NIE liczy tego
+// sam — ta sama zasada, co przy stanie przesyłki i fakturze na karcie: decyzja domenowa ma brzmieć tak samo na liście i na karcie, więc mieszka
 // w jednym miejscu. Każda funkcja oddaje `stan` (krótki klucz, widok dobiera po nim
 // kolor/kształt) i `opis` — opis jest OBOWIĄZKOWY, bo sam kolor nie może nieść znaczenia
 // („zielone kółko" nie mówi nic komuś, kto widzi to pierwszy raz, ani czytnikowi ekranu).
@@ -19,11 +18,11 @@ import { modulZamowienia } from './moduly-kanalow.ts';
  * Płatność. Pobranie WYGRYWA nad opłacone/nieopłacone: przy wysyłce za pobraniem brak
  * wpłaty jest stanem NORMALNYM (kurier inkasuje przy doręczeniu), nie problemem — karta
  * zamówienia (zamowienie.ejs) NIE ostrzega o braku wpłaty przy pobraniu z dokładnie tego
- * samego powodu. Obie strony pytają TĘ SAMĄ funkcję `czyPobranie` (od 2026-08-01 pobranie
+ * samego powodu. Obie strony pytają TĘ SAMĄ funkcję `czyPobranie` (pobranie
  * to osobna wartość, nie nazwa metody) — gdyby ikona liczyła to sama, lista kłamałaby karcie.
  *
  * `z.oplacone_at` czytamy WPROST — to już FAKT WYLICZANY z listy wpłat (zLinii w
- * db/zamowienia.js, przewodnik OMS 4.1), nie surowa kolumna sklepu.
+ * oms/db/zamowienia.js; reguła: status wynika z faktów), nie surowa kolumna sklepu.
  */
 export function ikonaPlatnosci(z) {
   if (czyPobranie(z)) {
@@ -78,7 +77,7 @@ export function ikonaPrzesylki(z) {
 
 /**
  * Faktura chciana — TA SAMA funkcja `chceFakture` co karta i fakturowanie
- * (domain/dane-faktury.js), NIGDY surowa kolumna `chce_fakture`: ręczny przełącznik
+ * (domena/dane-faktury.js), NIGDY surowa kolumna `chce_fakture`: ręczny przełącznik
  * musi wygrywać tu dokładnie tak samo, jak wygrywa wszędzie indziej w module.
  */
 export function ikonaChceFaktury(z) {
@@ -98,9 +97,9 @@ const OPISY_FAKTURY = {
 
 /**
  * Faktura wystawiona — TA SAMA funkcja `stanFaktury` co karta i lista robocza
- * (domain/faktura-stan.js). Trzy stany pośrednie ('w_toku', 'zawieszona',
+ * (domena/faktura-stan.js). Trzy stany pośrednie ('w_toku', 'zawieszona',
  * 'do_wyjasnienia') NIE są tym samym co „brak" — to sprawy wymagające człowieka
- * (przewodnik OMS 4.9) i dostają WŁASNY opis, żeby nie zniknęły pod jednym „nie ma".
+ * (reguła: każdy stan ma wyjście) i dostają WŁASNY opis, żeby nie zniknęły pod jednym „nie ma".
  */
 export function ikonaFaktury(z) {
   const stan = stanFaktury(z?.faktura);
@@ -115,13 +114,13 @@ export function ikonaFaktury(z) {
  * Odznaka wiersza: status zamówienia NIE DOJECHAŁ tam, skąd zamówienie przyszło
  * (`zamowienia.sync_woo_blad`). Oddaje krótki tekst albo `null`.
  *
- * ⚠️ K1 (recenzja Partii 1 Planu B). Od tej samej zmiany taki ślad TRZYMA zamówienie na
- * liście roboczej (domain/status.js → doZrobienia) — a stan, który wraca na listę bez
+ * ⚠️ Taki ślad TRZYMA zamówienie na
+ * liście roboczej (domena/status.js → doZrobienia) — a stan, który wraca na listę bez
  * podanego powodu, jest tylko innym rodzajem ciszy. Ta sama konstrukcja, co przy sprawach
  * przesyłki (`sprawyZamowienia`): tekst liczy DOMENA, widok go nie skleja.
  *
  * ⚠️ BRZMIENIE PO KANALE, NIE PO NAZWIE KOLUMNY — dokładnie jak na pasku karty
- * (domain/sprawy-karty.js). „Do sklepu" przy
+ * (domena/sprawy-karty.js). „Do sklepu" przy
  * zamówieniu z Allegro wysyłałoby operatora szukać usterki w WooCommerce, gdzie tego
  * zamówienia NIE MA.
  */

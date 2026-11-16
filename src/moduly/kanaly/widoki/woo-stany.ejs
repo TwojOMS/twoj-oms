@@ -1,5 +1,5 @@
 <%
-  // PRZ-160 E4.10 (D47, D48, D61): krok 6 „Stany” sklepu Woo. Zawsze w szkielecie; bez stanów magazynowych nic nie
+  // Krok 6 „Stany” sklepu Woo. Zawsze w szkielecie; bez stanów magazynowych nic nie
   // robi. Domyślnie wstrzymane — OMS nie wysyła stanów do sklepu, dopóki ktoś świadomie nie wybierze „czynne”.
   const u = ustawieniaStanow ?? { zapisane: false, czynne: false, buforSzt: 0, progSkokuSzt: 5 };
   const czynne = wartosciStanow ? wartosciStanow.czynne === 'czynne' : (u.zapisane && u.czynne === true);

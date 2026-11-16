@@ -95,29 +95,28 @@ import { dolaczoneZamowienia, zamowienieZGrupa } from '../../oms/db/scalenia.js'
 import { odmianaNazwyProgramu, ekranProgramu, gdzieDokument } from '../../domena/nazwa-programu.js';
 import { zdanieBrakuProgramu } from '../../domena/wybor-programu.js';
 import {teraz,AKCJA_ALLEGRO_PROBA,allegroWymagaOdpytania,miniaturyEkranu,ktoKlikal,sprzedawcaSpecyfikacji,daneKarty,KATALOG_WIDOKOW,fragment} from './wspolne.js';
-// PRZ-126.C02: pola nabywcy, których odmowa (`pole` z domeny) otwiera „Dane do faktury” w edycji.
+// Pola nabywcy, których odmowa (`pole` z domeny) otwiera „Dane do faktury” w edycji.
 const POLA_FAKTURY_W_DANYCH = ['nip', 'nazwa', 'kraj'];
 
 export function createKontekstZamowien(opcje) {
 const {
   db, config = {}, poller, nadanie, faktura, proforma = null, kurierzy = {}, gus = null, syncSklep = null,
-  // ⚠️ WSZYSTKIE MAILE DO KLIENTA Z KARTY (services/wiadomosci.js, 22.08.2026) — sekcja
+  // ⚠️ WSZYSTKIE MAILE DO KLIENTA Z KARTY (moduly/wiadomosci/services/wiadomosci.js) — sekcja
   // „Wiadomosci" na dole karty i trasa POST /zamowienia/:id/wiadomosc/:temat. `null` (panel
   // bez skonfigurowanej poczty) to tryb POPRAWNY: sekcja sie nie renderuje, a trasa odmawia
   // wprost 503. Ta sama zasada, co przy `faktura`, `gus` i `fakturaAllegro`.
   //
-  // ⚠️ USLUGI `potwierdzenie` TE TRASY JUZ NIE BIORA (22.08.2026, sprzatanie po recenzji
-  // calosci galezi). Potwierdzenie przyjecia zamowienia wysyla `services/wiadomosci.js`,
-  // DELEGUJAC do `services/potwierdzenie.js` — a osierocony ekran `GET/POST
-  // /zamowienia/:id/potwierdzenie` (bez ani jednego odnosnika po przenosinach paska na dol
-  // karty) zniknal razem z widokiem `potwierdzenie-podglad.ejs`.
+  // ⚠️ USLUGI `potwierdzenie` TE TRASY JUZ NIE BIORA. Potwierdzenie przyjecia zamowienia
+  // wysyla `moduly/wiadomosci/services/wiadomosci.js`, DELEGUJAC do
+  // `moduly/wiadomosci/services/potwierdzenie.js`; osobnego ekranu potwierdzenia na karcie
+  // nie ma (nic do niego nie prowadzilo po przeniesieniu paska na dol karty).
   wiadomosci = null,
   przesylkiAllegro = null,
-  // Stan kanalow dla paska ostrzezenia (domain/kanal-stan.js). Funkcja, bo stan zmienia sie
+  // Stan kanalow dla paska ostrzezenia (domena/kanal-stan.js). Funkcja, bo stan zmienia sie
   // miedzy zadaniami; `null` to panel bez kanalow Allegro.
   stanyKanalow = null,
   // Ocena zdrowia dla ostrzezen `integracja` — TA SAMA funkcja, ktora odpowiada czujce na
-  // /health (sklada ja bootstrap.js). `null` to tryb POPRAWNY (stary sklad, testy): tabelka
+  // /health (sklada ja moduly/zamowienia/modul.ts). `null` to tryb POPRAWNY (stary sklad, testy): tabelka
   // pokazuje wtedy pozostale typy, a integracje po prostu milcza.
   zdrowie = null,
   kopie = null,
@@ -131,23 +130,23 @@ const {
   // (503), dokladnie jak nadanie bez skonfigurowanego kuriera.
   fakturaHurtem = null,
   doczytanieKsef = null,
-  // PRZ-102.23: przycisk „Wyślij do KSeF” przy fakturze na karcie prowadzi do podglądu tej usługi
+  // Przycisk „Wyślij do KSeF” przy fakturze na karcie prowadzi do podglądu tej usługi
   // (POST /faktury/ksef/podglad). `null` (panel bez inFaktu) = bez przycisku — podgląd i tak odda 503.
   wysylkaKsef = null,
-  // PRZ-118.09: usługa `infakt` modułu faktur (surowy klient inFaktu albo program fakturowy; `null` = panel bez
+  // Usługa `infakt` modułu faktur (surowy klient inFaktu albo program fakturowy; `null` = panel bez
   // programu) — WYŁĄCZNIE do zdań na karcie (nazwa, ekran programu) i reguły VAT podsumowania (`opis.regulaVat`).
   infakt: programFaktur = null,
-  // PRZ-121.03b: wybór modułu faktur (usługa `faktury.wyborProgramu`; `null` = bez modułu faktur). Tylko do zdania "zdanieBraku".
+  // Wybór modułu faktur (usługa `faktury.wyborProgramu`; `null` = bez modułu faktur). Tylko do zdania "zdanieBraku".
   wyborProgramu = null,
-  // PRZ-122.ZGODA-TFb: `niepewneKsef(teraz)` — wysyłki KSeF bez rozstrzygnięcia od ponad doby (usługa
+  // `niepewneKsef(teraz)` — wysyłki KSeF bez rozstrzygnięcia od ponad doby (usługa
   // `faktury.niepewneKsefPonadDobe`, program wbudowany). Ten plik nie importuje kodu TwojeFaktury; `null` = brak ostrzeżenia.
   niepewneKsef = null,
-  // PRZ-126.C05a: `stanDrukuFaktur()` — komputery z drukarką faktur (usługa `faktury.stanDrukuFaktur`); `null` = bez blokady „Drukuj”.
+  // `stanDrukuFaktur()` — komputery z drukarką faktur (usługa `faktury.stanDrukuFaktur`); `null` = bez blokady „Drukuj”.
   stanDrukuFaktur = null,
 }=opcje;
-// PRZ-152.G10b1: grosze dokumentu → „449,00 zł”; brak kwoty → `null` (widok pokaże „—”).
+// Grosze dokumentu → „449,00 zł”; brak kwoty → `null` (widok pokaże „—”).
 const kwotaDokumentu = (gr) => (gr === null || gr === undefined ? null : zlotowki(zl(gr)));
-// PRZ-126.C05a: błąd odczytu stanu drukarki nie może położyć karty ani zablokować „Drukuj” — wtedy `null`.
+// Błąd odczytu stanu drukarki nie może położyć karty ani zablokować „Drukuj” — wtedy `null`.
 const drukarkaFaktur = () => {
   if (!stanDrukuFaktur) return null;
   try { return stanDrukuFaktur() ?? null; } catch { return null; }
@@ -160,25 +159,25 @@ const programKarty = zProgramu(opcje);
 const gdzieProgramu = gdzieDokument(programFaktur);
 // Reguła VAT programu; obiekt bez opisu (surowy klient inFaktu, mock) i brak programu = „wierszami”, jak przed zmianą.
 const regulaVat = programFaktur?.opis?.regulaVat ?? 'wierszami';
-// PRZ-122.B07c: stawka „zw” WYŁĄCZNIE przy programie wbudowanym (TwojeFaktury) — lista stawek formularzy i flaga `zw`
+// Stawka „zw” WYŁĄCZNIE przy programie wbudowanym (TwojeFaktury) — lista stawek formularzy i flaga `zw`
 // dla parsowania, zapisu i liczenia z JEDNEJ reguły (domena/vat.js). Inny program i brak programu: jak dotąd.
 const stawkiProgramu = stawkiDlaProgramu(programFaktur?.opis);
 const opcjeZw = opcjeZwProgramu(programFaktur?.opis);
-// PRZ-122.B07f: firma zwolniona z VAT (program wbudowany + zapisane zwolnienie) — wtedy numer UE nabywcy to nie WDT,
+// Firma zwolniona z VAT (program wbudowany + zapisane zwolnienie) — wtedy numer UE nabywcy to nie WDT,
 // ceny zamówienia zostają brutto (bez ÷ stawka). Czytane przy każdym żądaniu: zmiana w Ustawieniach działa od razu.
 const zwolnionaFirma = () => sprzedawcaZwolniony(db, programFaktur?.opis);
-// PRZ-108.02: usługa wiadomości powstaje także bez poczty (poczta z Ustawień może dojść po starcie) i mówi
+// Usługa wiadomości powstaje także bez poczty (poczta z Ustawień może dojść po starcie) i mówi
 // `gotowe()`, czy poczta jest TERAZ ustawiona. Pytamy przy każdym żądaniu: bez poczty = jak `null` wyżej.
 const wiadomosciCzynne = () => (wiadomosci && wiadomosci.gotowe?.() !== false ? wiadomosci : null);
 const powrotKarty =(req) => bezpiecznyPowrotNaListe(req.query?.powrot ?? req.body?.powrot, config.definicje, etykietyStatusow(db));
-// Cenniki „Dodaj z magazynu" (PRZ-060): `OMS_CENNIKI` albo sklepy Woo z definicji kanałów.
+// Cenniki „Dodaj z magazynu": `OMS_CENNIKI` albo sklepy Woo z definicji kanałów.
 // Składane RAZ, przy budowie tras — zła lista odmawia startu, a nie pierwszego telefonu.
 const cennikiInstalacji = zbudujCenniki({ lista: config.cenniki ?? null, definicje: config.definicje ?? [] });
 const adresPowrotuNaKarte = (req, id, opcje = {}) => adresKartyZamowienia(id, {
     powrot: powrotKarty(req),
     ...opcje,
   }, config.definicje);
-// ⚠️ OD PRZ-051 LISTA NIE CZYTA CALEJ BAZY. `ids` — tylko te zamowienia (strona listy,
+// ⚠️ LISTA NIE CZYTA CALEJ BAZY. `ids` — tylko te zamowienia (strona listy,
 // zaznaczenie akcji masowej), w porzadku listy; bez `ids` dawny komplet (zostal dla wolajacych,
 // ktorzy naprawde potrzebuja wszystkiego). Liczniki zakladek i wybor strony daje indeks listy
 // (oms/db/indeks-listy.js), a ten wiersz liczy TE SAME funkcje, z ktorych indeks bierze odpowiedzi.
@@ -188,11 +187,11 @@ const adresPowrotuNaKarte = (req, id, opcje = {}) => adresKartyZamowienia(id, {
 // i oddaje go przez `naPominiete(z)` (lista nazywa go z numerem); akcje masowe i karta zostaja
 // przy dawnej odmowie.
 const wczytajListe = (ids, { teraz = new Date(), bezSurowych = false, pomijajUszkodzone = false, naPominiete = () => {} } = {}) => {
-    // ⚠️ JEDNO „teraz" NA CALY RENDER (recenzja galezi, FIX 6) — liczone RAZ, przed `.map`,
+    // ⚠️ JEDNO „teraz" NA CALY RENDER — liczone RAZ, przed `.map`,
     // a nie osobno w kazdym wierszu. Dwa wiersze zegara wieku licza sie wzgledem TEJ SAMEJ
     // chwili: osobne `new Date()` na wiersz moglyby na styku sekundy/doby oddac dwoch
     // sasiadow w tabeli inny dzien albo inny stan „po terminie" dla identycznego zamowienia.
-    // Od PRZ-051 te sama chwile dostaje `doZrobienia` i indeks listy (trasa podaje ja z gory).
+    // Te sama chwile dostaje `doZrobienia` i indeks listy (trasa podaje ja z gory).
     const zamowienia = ids === undefined ? listaZamowien(db) : zamowieniaPoId(db, ids, { bezSurowych, naBlad: pomijajUszkodzone ? (w) => naPominiete(w) : null });
     const dekoruj = (z) => ({
       ...z,
@@ -206,15 +205,15 @@ const wczytajListe = (ids, { teraz = new Date(), bezSurowych = false, pomijajUsz
       // dokladnie tak samo jak sprawa pierwszej (patrz sprawyZamowienia).
       sprawyPrzesylki: sprawyZamowienia(z.przesylki, teraz.getTime()),
       anulowaneZUwaga: anulowaneWymagaUwagi(z),
-      // PRZ-101.04 (recenzja, W3): powód, dla którego główne grupy wraca na „Do zrobienia”.
+      // Powód, dla którego główne grupy wraca na „Do zrobienia”.
       uwagaDolaczonych: uwagaDolaczonychAnulowanych(z),
       // Kanal sprzedazy do wyswietlenia — z kolumny `sklep`, NIGDY zaszyty na sztywno
-      // w widoku (brief zadania „strona glowna": kolejne kanaly dojda).
+      // w widoku (kolejne kanaly dojda).
       kanalSprzedazy: adresKanalu(z.sklep, config.definicje),
       // Rodzaj kanału (Allegro / WooCommerce) do plakietki w kolorze marki — z `typ` definicji, NIE z nazwy
-      // sklepu (PRZ-094.17). `null` = kanał bez marki (ręczne, indywidualne), wtedy bez plakietki.
+      // sklepu. `null` = kanał bez marki (ręczne, indywidualne), wtedy bez plakietki.
       rodzajKanalu: rodzajKanalu(z.sklep, config.definicje),
-      // Kolumna „Klient” (PRZ-094.19): osoba, firma i — tylko w Allegro — login kupującego. Z bloku `klient`
+      // Kolumna „Klient”: osoba, firma i — tylko w Allegro — login kupującego. Z bloku `klient`
       // wiersza, bez `surowe_json` (domena/klient-listy.js). Rodzaj liczony drugi raz, bo obiekt wyżej jeszcze nie istnieje.
       klientListy: klientListy(z.klient, rodzajKanalu(z.sklep, config.definicje)),
       // Przewoźnik z TEJ SAMEJ funkcji, co logo i filtr w zakładce Przesyłki (domena/przewoznik-przesylki.js),
@@ -224,14 +223,14 @@ const wczytajListe = (ids, { teraz = new Date(), bezSurowych = false, pomijajUsz
       // pozycji w polu wyboru filtra i w panelu bocznym — widok nie wpisuje jej u siebie.
       etykietaIndywidualnego: adresKanalu('indywidualne', config.definicje),
       // Znacznik zamowienia z panelu indywidualnego — Z KOLUMNY, nie liczony tu drugi raz
-      // z `surowe_json` (tym zajmuje sie poller i przeliczenie wstecz w db/db.js).
+      // z `surowe_json` (tym zajmuje sie poller i przeliczenie wstecz w oms/db/uzupelnienia-zamowien.js).
       // Kolumna jest INTEGER, wiec sprowadzamy ja do boolean: filtr kanalu i licznik panelu
       // pytaja o PRAWDE, a nie o 0/1, i nie maja prawa rozjechac sie na tym, ktore z nich
       // zapomni o rzutowaniu.
       indywidualne: Boolean(z.indywidualne),
-      // Cztery ikony wiersza (brief, punkt C). Widok NIE liczy niczego sam — ta sama
+      // Cztery ikony wiersza. Widok NIE liczy niczego sam — ta sama
       // zasada, co przy stanie przesylki i fakturze wyzej: kazda ikona to DECYZJA
-      // DOMENOWA (domain/lista-ikony.js), zeby lista i ewentualne inne miejsce, ktore
+      // DOMENOWA (domena/lista-ikony.js), zeby lista i ewentualne inne miejsce, ktore
       // kiedys zechce tego samego skrotu, nie mogly sie rozjechac.
       // Kolumna „Kwota" pokazuje KWOTE OCZEKIWANA OD KLIENTA (ze sklepu + dopisane recznie),
       // a nie samo `kwota_brutto`. Lista jest ekranem, na ktory operator patrzy pierwszy —
@@ -240,11 +239,11 @@ const wczytajListe = (ids, { teraz = new Date(), bezSurowych = false, pomijajUsz
       // (podsumowaniePozycji), ktora NIGDY nie rzuca: uszkodzona kwota nie ma prawa wywalic
       // listy, a wtedy pokazuje sie wartosc ze sklepu.
       kwotaOczekiwanaZl: podsumowaniePozycji(z).oczekiwanaZl,
-      // Kupony sklepu pod kwota (kampania WRZESIEN30) — plakietka w kolumnie „Kwota",
+      // Kupony sklepu pod kwota — plakietka w kolumnie „Kwota",
       // bo kupon jest faktem PIENIEZNYM i tam operator go szuka. Nie w komorce numeru:
-      // znacznik EKSPRES juz raz rozepchnal tamta kolumne (przewodnik 4.61).
+      // znacznik EKSPRES juz raz rozepchnal tamta kolumne (reguła: ekspres przy numerze).
       kupony: kuponyZWiersza(z.kupony_json),
-      // Zegar wieku i terminu (domain/wiek-zamowienia.js) — jak ikony: widok dostaje
+      // Zegar wieku i terminu (domena/wiek-zamowienia.js) — jak ikony: widok dostaje
       // GOTOWE napisy i flagę, niczego nie liczy sam. `null` = zegar nie dotyczy
       // (wysłane/anulowane). Znacznik EKSPRES osobno, bo żyje dłużej niż zegar.
       zegar: wiekZamowienia(z, teraz),
@@ -253,15 +252,15 @@ const wczytajListe = (ids, { teraz = new Date(), bezSurowych = false, pomijajUsz
       ikonaPrzesylki: ikonaPrzesylki(z),
       ikonaChceFaktury: ikonaChceFaktury(z),
       ikonaFaktury: ikonaFaktury(z),
-      // Status, ktory nie dojechal do sklepu/Allegro (K1). Od tej samej zmiany taki slad
+      // Status, ktory nie dojechal do sklepu/Allegro. Taki slad
       // trzyma zamowienie na liscie roboczej (doZrobienia), wiec musi miec na tej liscie
       // WIDOCZNY powod — inaczej zamowienie wraca i nie wiadomo po co.
       odznakaSync: odznakaSyncStatusu(z),
-      // ⚠️ Odznaka zwrotu (Zadanie 5, spec §4.4): NIE „ma zwrot" (to juz mowi kolorowa
+      // ⚠️ Odznaka zwrotu: NIE „ma zwrot" (to juz mowi kolorowa
       // pastylka statusu — `wyliczStatus` oddaje 'zwrot' na zawsze, gdy `z.ma_zwrot`, wiec
       // druga plakietka z tym samym slowem obok byla by czystym powtorzeniem). Ta odznaka
       // niesie NOWA informacje: zwrot jest jeszcze NIEROZLICZONY (pieniadze nieoddane albo
-      // brak korekty), czyli DOKLADNIE powod, dla ktorego `doZrobienia` (domain/status.js)
+      // brak korekty), czyli DOKLADNIE powod, dla ktorego `doZrobienia` (domena/status.js)
       // trzyma to zamowienie na liscie roboczej mimo koncowego statusu. Ta sama funkcja
       // `podsumowanieZwrotow`, co na karcie — jedno miejsce liczy `nierozliczonych`.
       zwrotPodsumowanie: podsumowanieZwrotow(z),
@@ -271,7 +270,7 @@ const wczytajListe = (ids, { teraz = new Date(), bezSurowych = false, pomijajUsz
       try { return [dekoruj(z)]; } catch { naPominiete(z); return []; }
     });
   };
-// Kolumna boczna karty — TE SAME liczniki, co na liscie: z indeksu listy (PRZ-051), a nie
+// Kolumna boczna karty — TE SAME liczniki, co na liscie: z indeksu listy, a nie
 // z przeczytania calej bazy przy kazdym otwarciu karty.
 const statusyDlaKarty = async (z, req = null) => {
     // ⚠️ BEZ LICZB, gdy indeks sie nie odswiezyl (pelny dysk, baza tylko do odczytu): liczba
@@ -303,7 +302,7 @@ function zbierzOstrzezenia(req) {
       const teraz = new Date();
       const odIso = new Date(teraz.getTime() - OKNO_OSTRZEZEN_PRZESYLEK_DNI * 24 * 3600 * 1000).toISOString();
       // Numer zamowienia czyta sie LENIWIE — tylko dla paczki, ktora naprawde stoi i trafia do
-      // ostrzezenia (PRZ-051). Mapa calej tabeli kosztowala 32–56 ms przy 15 000 zamowien,
+      // ostrzezenia. Mapa calej tabeli kosztowala 32–56 ms przy 15 000 zamowien,
       // a mapa calego okna 60 dni — 70 ms przy 28 000 paczek; stojacych paczek jest kilka.
       const przesylki = przesylkiDoSledzenia(db, odIso);
       const znane = new Map();
@@ -314,16 +313,16 @@ function zbierzOstrzezenia(req) {
       const dzis = dzienWarszawa(teraz.toISOString());
       const wiersze = [
         ...ostrzezeniaIntegracji({ zdrowie: zdrowie?.() ?? null }),
-        // PRZ-122.B16a: kopia bazy (stara, brak, katalog niewidoczny, program wbudowany bez nadzoru). Własny
+        // Kopia bazy (stara, brak, katalog niewidoczny, program wbudowany bez nadzoru). Własny
         // try/catch: błąd odczytu katalogu kopii nie może zgasić reszty tabelki.
         ...(() => { try { return ostrzezeniaKopii({ kopie: kopie?.() ?? null }); } catch { return []; } })(),
         ...ostrzezeniaFaktur({ luki: lukiKsef(db), dzis }),
-        // PRZ-102.12: kłopot ostatniego przebiegu automatu KSeF (błąd, przerwany, „nie wiadomo”, pominięte).
+        // Kłopot ostatniego przebiegu automatu KSeF (błąd, przerwany, „nie wiadomo”, pominięte).
         ...(() => { const a = wczytajAutomatKsef(db); return ostrzezeniaAutomatuKsef({ wynik: a.wynik, wstrzymane: a.wstrzymane, nazwa: nazwaProgramu, gdzie: gdzieProgramu, tryb: a.tryb }); })(),
-        // PRZ-123 C09cb: wysyłka KSeF bez rozstrzygnięcia od ponad doby — sprawdzić w KSeF przed ponowieniem. Własny
+        // Wysyłka KSeF bez rozstrzygnięcia od ponad doby — sprawdzić w KSeF przed ponowieniem. Własny
         // try/catch: błąd tego źródła nie może zgasić całego Zdrowia.
         ...(() => { try { return ostrzezeniaNiepewnychKsef({ wysylki: niepewneKsef ? niepewneKsef(teraz) : [] }); } catch { return []; } })(),
-        // PRZ-108.08: reguła automatyzacji wstrzymana albo niepewna wysyłka maila — tylko administrator (reguły i ich
+        // Reguła automatyzacji wstrzymana albo niepewna wysyłka maila — tylko administrator (reguły i ich
         // dziennik są w Ustawieniach, dostępnych wyłącznie dla niego).
         ...(req?.konto?.admin ? ostrzezeniaAutomatyzacji({ reguly: regulyDoOstrzezen(db,
           new Date(teraz.getTime() - 7 * 24 * 3600 * 1000).toISOString()) }) : []),
@@ -331,10 +330,10 @@ function zbierzOstrzezenia(req) {
         ...ostrzezeniaZwrotow({ zwroty: zwrotyBezKorekty(db), dzis }),
         ...ostrzezeniaPobran({ pobrania: pobraniaBezGotowki(db) }),
         ...ostrzezeniaPrzesylek({ przesylki, zamowienia: numery, teraz }),
-        // PRZ-167: w trybie próby (piaskownica, demo publiczne) wątki są z atrapy — „nowa wiadomość” byłaby szumem.
+        // W trybie próby (piaskownica, demo publiczne) wątki są z atrapy — „nowa wiadomość” byłaby szumem.
         ...(config.proba === true ? [] : ostrzezeniaWiadomosci({ watki: listaWatkow(db), teraz })),
       ];
-      // PRZ-102.04: najpierw prawa konta (wiersz bez prawa do ekranu przycisku = 403 po kliku).
+      // Najpierw prawa konta (wiersz bez prawa do ekranu przycisku = 403 po kliku).
       return zlozOstrzezenia({ wiersze: ostrzezeniaDlaKonta({ wiersze, konto: req?.konto ?? null }), odrzucone: odrzucenia(db), teraz, ukryteTypy: ukryteTypyKonta(db, req?.konto?.id) });
     } catch (e) {
       req?.log?.error?.(e, 'ostrzeżenia strony głównej nie policzyły się');
@@ -350,11 +349,11 @@ function wyborWiadomosci(req) {
       // ⚠️ `wybrany` to WYLACZNIE prawdziwy temat. Adres z nieznana wartoscia zostaje w stanie
       // „podglad" i dostaje POWOD z uslugi („Nie ma takiego tematu wiadomosci."), ale nie
       // udaje wybranego tematu — inaczej formularz wysylki celowalby w nieistniejaca trase.
-      // PRZ-101.03: albo istniejący szablon własny (`wlasny-N`) — usunięty w międzyczasie już nim nie jest.
+      // Albo istniejący szablon własny (`wlasny-N`) — usunięty w międzyczasie już nim nie jest.
       wybrany: TEMATY.includes(wybor) || tematyWlasne().some((t) => t.id === wybor) ? wybor : null,
     };
   }
-// Szablony własne z Ustawień → Szablony wiadomości (PRZ-101.03); panel bez poczty albo stara usługa = brak.
+// Szablony własne z Ustawień → Szablony wiadomości; panel bez poczty albo stara usługa = brak.
 function tematyWlasne() {
     return wiadomosciCzynne()?.tematyWlasne?.() ?? [];
   }
@@ -363,17 +362,16 @@ function daneWiadomosci(req, z, dodatki = {}) {
     if (!uslugaWiadomosci) return { wiadomosciSekcja: null };
 
     // ⚠️ JEDEN OBIEKT ZAMOWIENIA NA CALA SEKCJE — `k.z`, ten sam, na ktorym usluga rozstrzyga
-    // zgode i sklada maila (poprawka 22.08.2026). Do tej pory adresat brał sie z obiektu
+    // zgode i sklada maila. Wczesniej adresat brał sie z obiektu
     // trasy, a zgoda i stan tematu z odczytanego tutaj ponownie: dwa zrodla w jednym pasku,
     // z ktorych kazde mogloby opisywac inny stan zamowienia.
     const k = uslugaWiadomosci.kontekst(z.id);
     const { stan, wybrany } = wyborWiadomosci(req);
 
-    // ⚠️⚠️ REZERWA ZA STARĄ KOLUMNĘ `zamowienia.potwierdzenie_wyslane_at` (ZNALEZISKO RECENZJI
-    // CAŁOŚCI GAŁĘZI, 22.08.2026 — styk trasy i schematu bazy). `schema.sql` obiecuje wprost:
-    // kolumna „ZOSTAJE i dalej jest zapisywana […] karta ma mówić prawdę także o mailach
-    // wysłanych PRZED powstaniem rejestru" — rejestr `wiadomosci` istnieje dopiero od
-    // 22.08.2026. Zamówienie potwierdzone WCZEŚNIEJ (np. 21.08) nie ma w nim ani jednego
+    // ⚠️⚠️ REZERWA ZA STARĄ KOLUMNĘ `zamowienia.potwierdzenie_wyslane_at`. Kolumna ZOSTAJE
+    // i dalej jest zapisywana (`oznaczPotwierdzenieWyslane` w oms/db/zamowienia.js), żeby karta
+    // mówiła prawdę także o mailach wysłanych PRZED powstaniem rejestru `wiadomosci`.
+    // Zamówienie potwierdzone wcześniej nie ma w rejestrze ani jednego
     // wiersza tematu „potwierdzenie", choć mail naprawdę poszedł (kolumna to pamięta). Bez tej
     // rezerwy karta takiego zamówienia kłamała na TRZY sposoby naraz: ekran wyboru pokazywał
     // „jeszcze nie wysłane", ekran podglądu nie pokazywał paska „Ta wiadomość poszła już…",
@@ -381,13 +379,13 @@ function daneWiadomosci(req, z, dodatki = {}) {
     // wysłaniem klientowi DRUGIEGO potwierdzenia, a maila nie da się cofnąć.
     //
     // ⚠️ REJESTR MA PIERWSZEŃSTWO: rezerwa dokłada się WYŁĄCZNIE wtedy, gdy w rejestrze nie ma
-    // ani jednego wiersza tego tematu — od dnia powstania rejestru każde potwierdzenie zapisuje
-    // się TAM (services/potwierdzenie.js), więc kolumna i rejestr nigdy się nie przeczą,
-    // kolumna jest po prostu starsza o kilka dni.
+    // ani jednego wiersza tego tematu — od powstania rejestru każde potwierdzenie zapisuje
+    // się TAM (moduly/wiadomosci/services/potwierdzenie.js), więc kolumna i rejestr nigdy się nie przeczą,
+    // kolumna jest po prostu starsza od rejestru.
     //
     // Rezerwę będzie można usunąć, gdy nie zostanie już ani jedno zamówienie potwierdzone przed
     // powstaniem rejestru — w praktyce dla danych tego panelu nigdy, ale to nie szkodzi:
-    // kolumna zostaje w schema.sql (patrz komentarz tam), przestaje tylko mieć czytelnika.
+    // kolumna zostaje w bazie, przestaje tylko mieć czytelnika.
     const zRejestru = wiadomosciZamowienia(db, k.z.id);
     const rezerwaPotwierdzenia = !zRejestru.some((w) => w.temat_id === 'potwierdzenie')
       && k.z.potwierdzenie_wyslane_at
@@ -396,7 +394,7 @@ function daneWiadomosci(req, z, dodatki = {}) {
     const lista = rezerwaPotwierdzenia ? [rezerwaPotwierdzenia, ...zRejestru] : zRejestru;
 
     // ⚠️ „KIEDY TEN TEMAT POSZEDŁ OSTATNIO" — POLICZONE RAZ, Z LISTY, KTÓRĄ I TAK MAMY.
-    // Do 22.08.2026 stały tu CZTERY osobne zapytania `ostatniaWiadomosc` (po jednym na temat),
+    // Wcześniej stały tu CZTERY osobne zapytania `ostatniaWiadomosc` (po jednym na temat),
     // a widok karty liczył to samo PO RAZ PIĄTY, po `w.lista`, z własną — i inną — regułą
     // („ostatni pasujący element listy" zamiast „największe id"). Karta otwiera się
     // kilkadziesiąt razy dziennie, a dwie reguły na jedno pytanie rozjeżdżają się przy
@@ -409,7 +407,7 @@ function daneWiadomosci(req, z, dodatki = {}) {
       zgoda: czyWolnoWyslac(k.z, temat_id, k),
       stan: stanTematu(k.z, temat_id, { ...k, ostatnia: ostatnie.get(temat_id) ?? null, nazwaProgramu }),
     }));
-    // PRZ-101.03: szablony własne — ta sama lista, ten sam podgląd, ta sama wysyłka i to samo ostrzeżenie
+    // Szablony własne — ta sama lista, ten sam podgląd, ta sama wysyłka i to samo ostrzeżenie
     // „Ta wiadomość poszła już…" (rejestr `wiadomosci` z temat_id = `wlasny-N`).
     for (const { id, nazwa } of tematyWlasne()) {
       const zgoda = czyWolnoWyslacWlasny(k.z);
@@ -437,7 +435,7 @@ function daneWiadomosci(req, z, dodatki = {}) {
       },
     };
   }
-// PRZ-101.04: sekcja „Zamówienie scalone” na karcie GŁÓWNEGO — pozycje całej grupy w jednej
+// Sekcja „Zamówienie scalone” na karcie GŁÓWNEGO — pozycje całej grupy w jednej
 // tabeli, wysyłka wg decyzji i suma grupy. Liczy TA SAMA funkcja, co faktura (`zamowienieGrupy`),
 // więc karta pokazuje dokładnie to, co pojedzie na dokument. Uszkodzona kwota członka nie ma
 // prawa wywrócić karty — sekcja mówi wtedy wprost, że sumy nie da się policzyć.
@@ -447,13 +445,13 @@ function scalenieKarty(z) {
   const dolaczone = dolaczoneZamowienia(db, z);
   let grupa = null;
   try { grupa = zamowienieGrupy(z, dolaczone); } catch { grupa = null; }
-  // Wpłaty grupy i saldo grupy liczy `platnosciKarty` niżej (PRZ-101.11) — sekcja „Płatności”.
+  // Wpłaty grupy i saldo grupy liczy `platnosciKarty` niżej — sekcja „Płatności”.
   return {
     wysylka: decyzja.wysylka,
     dolaczone: dolaczone.map((d) => ({
       id: d.id, numer: d.numer, sklep: adresKanalu(d.sklep, config.definicje ?? []), anulowane: Boolean(d.anulowane),
     })),
-    // Recenzja, W3: dołączone anulowane w sklepie — ta sama reguła, co lista robocza i nadanie.
+    // Dołączone anulowane w sklepie — ta sama reguła, co lista robocza i nadanie.
     uwagaDolaczonych: uwagaDolaczonychAnulowanych(z),
     razem: grupa?.kwota_brutto ?? null,
     // Ta sama reguła, co odmowa w `rozdzielZamowienia` — przycisk tylko tam, gdzie zadziała.
@@ -468,8 +466,8 @@ function zKartyZGrupa(z) {
   try { return zamowienieZGrupa(db, z); } catch { return z; }
 }
 
-// PRZ-101.11 (właściciel 19.10: „jeżeli oba zamówienia były opłacone, to obie wpłaty powinny pojawić się
-// na liście wpłat”): sekcja „Płatności” głównego pokazuje wpłaty CAŁEJ grupy, a saldo liczy z kwoty
+// Gdy oba zamówienia były opłacone, obie wpłaty mają pojawić się na liście wpłat: sekcja „Płatności”
+// głównego pokazuje wpłaty CAŁEJ grupy, a saldo liczy z kwoty
 // grupy (ta sama `zamowienieGrupy`, co faktura). Wpłaty zostają w bazie przy SWOICH zamówieniach —
 // `zZamowienia` to numer dołączonego (dopisek „zam. N”), `null` przy wpłacie głównego.
 function platnosciKarty(z) {
@@ -493,7 +491,7 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
       zgloszeniaZwrotowKanalu = zgloszeniaZwrotowErli(surowe?.returns, surowe?.items);
     } catch { /* brak czytelnych danych źródłowych — brak zgłoszeń */ }
   }
-  // Liczniki kolumny bocznej czekaja na indeks listy (PRZ-051) — stad funkcja asynchroniczna;
+  // Liczniki kolumny bocznej czekaja na indeks listy — stad funkcja asynchroniczna;
   // wszyscy wolajacy i tak oddaja jej wynik z trasy asynchronicznej.
   const panelStatusow = await statusyDlaKarty(z, req);
   // Widok NIE liczy niczego sam — kazda decyzja domenowa (stan przesylki, sprawy do
@@ -503,7 +501,7 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
   const paczki = z.przesylki.map((p) => ({
     p,
     stan: stanPrzesylki(p),
-    // PRZ-152.G7: ta sama funkcja co zakladka Przesylki i mail — paczka WzA jadaca DPD ma link DPD.
+    // Ta sama funkcja co zakladka Przesylki i mail — paczka WzA jadaca DPD ma link DPD.
     link: linkSledzeniaPaczki(p, z),
     // Przycisk „zalatwione recznie" ma sie pokazywac WYLACZNIE wtedy, gdy jest co zdjac
     // — inaczej kusilby operatora akcja, ktora i tak odbije sie od 400.
@@ -511,23 +509,23 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     // Czy numer listu PRZEPISAL CZLOWIEK — czyli czy moze byc w nim literowka. Steruje
     // znacznikiem przy paczce I przyciskiem kasowania, a liczy to TA SAMA funkcja, ktora
     // rozstrzyga odmowe w bazie (skasujPrzesylkeReczna). Widok nie ma prawa liczyc tego sam
-    // po `kurier`: 'allegro' niesie i wpis reczny, i numer odczytany z API (poprawka I-1).
+    // po `kurier`: 'allegro' niesie i wpis reczny, i numer odczytany z API.
     wpisanaZReki: numerWpisanyZReki(p),
     // Stan przycisku „Drukuj" / „Porzuć" — WYŁĄCZNIE najnowszy wiersz kolejki druku dla
     // TEJ przesyłki (starsze wiersze to historia po ewentualnym reprincie).
     ostatniaPozycjaKolejki: ostatniaPozycjaDlaPrzesylki(db, p.id),
-    // ⚠️ „Ukryj" WYLACZNIE przy paczce, do ktorej nadano juz kolejna (04.09.2026) — regula
+    // ⚠️ „Ukryj" WYLACZNIE przy paczce, do ktorej nadano juz kolejna — regula
     // liczona w domenie, bo widok nie ma prawa jej powtarzac. Uzasadnienie „opcja, nie
-    // automat" stoi przy `mozliweUkrycie` (domain/przesylka-stan.js).
+    // automat" stoi przy `mozliweUkrycie` (domena/przesylka-stan.js).
     mozliweUkrycie: mozliweUkrycie(p, z.przesylki),
     ukryta: przesylkaUkryta(p),
   })).map((poz) => ({
     ...poz,
-    // PRZ-152.G8: napisy nowego układu karty paczki (plakietka, jeden status, zdarzenie, „Do:”, stopka).
+    // Napisy nowego układu karty paczki (plakietka, jeden status, zdarzenie, „Do:”, stopka).
     karta: kartaPaczki({ p: poz.p, z, stan: poz.stan, kol: poz.ostatniaPozycjaKolejki }),
   }));
 
-  // Zadanie B: karta jest domyslnie TYLKO DO ODCZYTU — formularz danych klienta pojawia
+  // Karta jest domyslnie TYLKO DO ODCZYTU — formularz danych klienta pojawia
   // sie WYLACZNIE po kliknieciu „Edytuj" przy danej sekcji, osobno dla wysylki i osobno
   // dla faktury, sterowane parametrem adresu (bez JavaScriptu, zgodnie z reszta panelu).
   //
@@ -537,7 +535,7 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
   // Fastify oddaje jako tablice, wiec `typeof === 'string'` odrzuca go tak samo jak
   // nieznana wartosc — obie sekcje wracaja do odczytu.
   const edytujParam = typeof req.query?.edytuj === 'string' ? req.query.edytuj : null;
-  // PRZ-126.C02: odmowa zapisu danych (`bladDanych.sekcja`) albo wystawienia z błędem w danych
+  // Odmowa zapisu danych (`bladDanych.sekcja`) albo wystawienia z błędem w danych
   // nabywcy (`bladFaktury.pole`) wraca na kartę z TĄ sekcją otwartą w edycji — operator poprawia
   // pole od razu, bez szukania „Edytuj". Wpisane wartości wracają do pól (niżej `wartosciDanych`).
   const bladDanych = dodatki.bladDanych ?? null;
@@ -554,7 +552,7 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
   // otwarcie edycji pozycji Z DEFINICJI nie moze otworzyc naraz danych klienta ani drugiej
   // pozycji. Nieznany klucz po prostu niczego nie otwiera (karta zostaje do odczytu).
   const edytujPozycje = edytujParam?.startsWith('pozycja-') ? edytujParam.slice('pozycja-'.length) : null;
-  // Czwarty rodzaj edycji (przebudowa karty 2026-07-31): CALY panel pozycji naraz.
+  // Czwarty rodzaj edycji: CALY panel pozycji naraz.
   // Ten sam parametr, wiec z definicji nie otwiera sie razem z zadnym innym trybem.
   const edytujWszystkiePozycje = edytujParam === 'pozycje' || bladDanych?.sekcja === 'pozycje';
   // Sekcja „Szczegoly" (status + metoda wysylki) — do tej pory oba formularze staly
@@ -568,7 +566,7 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     ? Object.fromEntries(['kwota', 'data', 'metoda', 'uwaga'].map((p) => [p, String(bladWplaty.wartosci?.[p] ?? '')]))
     : null;
 
-  // HISTORIA ZMIAN (PRZ-094.18) — sekcja na samym dole karty, DOMYSLNIE ZWINIETA.
+  // HISTORIA ZMIAN — sekcja na samym dole karty, DOMYSLNIE ZWINIETA.
   // ⚠️⚠️ ZWINIETA = ZERO ZAPYTAN DO `log`. Tabela nie ma indeksu po `zamowienie_id`, wiec
   // nawet samo policzenie wpisow to pelny skan przy kazdym otwarciu karty. Odczyt idzie
   // WYLACZNIE za `?historia=N` (N = numer strony, od 1); wszystko inne — brak parametru,
@@ -578,16 +576,15 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     ? Number(req.query.historia) : null;
   const historia = stronaHistorii ? { strona: stronaHistorii, ...historiaLogu(db, z.id, { strona: stronaHistorii }) } : null;
 
-  // Zadanie 7 (proforma): widok NIE liczy niczego sam — ta sama zasada, co przy kazdej
+  // Proforma: widok NIE liczy niczego sam — ta sama zasada, co przy kazdej
   // innej decyzji domenowej na tej karcie. Lista jest HISTORIA (najstarsze pierwsze,
-  // db/proformy.js), a „ktora jest aktualna" i „czy w ogole wolno wystawic kolejna"
-  // licza sie TU, jedna funkcja na jedno pytanie (domain/proforma-stan.js), zeby karta
-  // i serwis (services/proforma.js) nie mogly kiedys odpowiedziec na nie inaczej.
+  // moduly/faktury/db/proformy.js), a „ktora jest aktualna" i „czy w ogole wolno wystawic kolejna"
+  // licza sie TU, jedna funkcja na jedno pytanie (domena/proforma-stan.js), zeby karta
+  // i serwis (moduly/faktury/services/proforma.js) nie mogly kiedys odpowiedziec na nie inaczej.
   const listaProform = proformyZamowienia(db, z.id);
   const proformaAktualna = aktualnaProforma(listaProform);
 
-  // Zadanie 6 (plan 2026-08-04-oms-faktura-data-sprzedazy-i-zaplacone): propozycja daty
-  // sprzedazy i domyslny wybor terminu na fakture — obie decyzje domenowe, licza sie TU,
+  // Propozycja daty sprzedazy i domyslny wybor terminu na fakture — obie decyzje domenowe, licza sie TU,
   // ta sama zasada co wyzej (proforma) i wszedzie indziej na tej karcie.
   const propozycjaSprzedazy = proponowanaDataSprzedazy(z);
   // Kolejnosc jest ISTOTNA i CELOWA:
@@ -598,7 +595,7 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
   //      korektach, `platnoscPrzyOdbiorze` — TA SAMA funkcja co pasek Szczegolow nizej)
   //      → „przy odbiorze".
   //   3. Pozostale → 14 dni, jak dotychczas.
-  //   4. NOWE (21.08.2026): uzgodnienie zapisane PRZY ZAMOWIENIU zastepuje zapasowe „14 dni"
+  //   4. Uzgodnienie zapisane PRZY ZAMOWIENIU zastepuje zapasowe „14 dni"
   //      — i wylacznie je. Regula siedzi w domenie (`terminFaktury`), bo o kolejnosci tych
   //      czterech przypadkow nie ma prawa rozstrzygac ani widok, ani trasa.
   const platnosci = platnosciKarty(z);
@@ -609,13 +606,13 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
   });
   const okresZamowienia = z.okres_rozliczeniowy_id ? pobierzOkres(db, z.okres_rozliczeniowy_id) : null;
   const stan = stanPlatnosciKarty(platnosci.doSalda, { zwroty: z.zwroty, wOkresie: Boolean(okresZamowienia) });
-  // PRZ-122.B20e: wejście do ekranu faktury programu wbudowanego — stan (otwarta / co zamknęło) z ADAPTERA
+  // Wejście do ekranu faktury programu wbudowanego — stan (otwarta / co zamknęło) z ADAPTERA
   // (`stanDokumentu`), bez SQL modułu faktur tutaj. inFakt tej metody nie ma → `null`, karta jak dotąd.
   // Dokument innego programu niż bieżący → `null`. Prawo (`mozeAdres`) sprawdza widok.
   const fakturaWbudowana = programFaktur?.opis?.wbudowany === true && typeof programFaktur.stanDokumentu === 'function'
     && czyDokumentProgramu(z.faktura, programFaktur)
     ? await programFaktur.stanDokumentu(idDokumentu(z.faktura)) : null;
-  // PRZ-123 C09b: „korekta czeka na pierwotną” tylko przy korekcie, która naprawdę czeka — bez numeru KSeF swojego
+  // „Korekta czeka na pierwotną” tylko przy korekcie, która naprawdę czeka — bez numeru KSeF swojego
   // i bez numeru KSeF pierwotnej (wiersz adaptera). Błąd odczytu → zdanie zostaje jak dotąd.
   const korektyBezCzekania = [];
   if (programFaktur?.opis?.wbudowany === true && typeof programFaktur.pobierzFakture === 'function') {
@@ -626,10 +623,10 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
       } catch { /* zdanie „czeka” zostaje */ }
     }
   }
-  // PRZ-151.C04: jeden odczyt korekty programu zewnętrznego na zwrot.
+  // Jeden odczyt korekty programu zewnętrznego na zwrot.
   // Numer korekty i rezerwacja mają pierwszeństwo przed blokadą pierwotnej.
   const ksefKorektKarty = {};
-  // PRZ-152.G10b1 (D6): kwota korekty z dokumentu programu zewnętrznego (`gross_price` korekty — ta sama reguła co kolumna
+  // Kwota korekty z dokumentu programu zewnętrznego (`gross_price` korekty — ta sama reguła co kolumna
   // Brutto listy FAKTURY). TwojeFaktury trzymają w `brutto_gr` korekty stan PO korekcie, a lista pokazuje różnicę
   // (domena/twojefaktury/wiersz-listy.js), więc korekta TF zostaje bez kwoty („—”).
   const kwotyKorekt = {};
@@ -662,7 +659,7 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
       }
     }
   }
-  // PRZ-148.03: zwrot z dostawą bez korekty — pozycje faktury z programu, żeby karta znała regułę „faktura bez pozycji
+  // Zwrot z dostawą bez korekty — pozycje faktury z programu, żeby karta znała regułę „faktura bez pozycji
   // Dostawa” (domena/zwrot.js) zanim operator kliknie. Pytamy tylko w tym stanie; błąd odczytu → przycisk zostaje,
   // a odmowę da jak dotąd usługa korekty.
   let fakturaKorekty = null;
@@ -670,10 +667,10 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     && (z.zwroty ?? []).some(zwrotWymagaPozycjiDostawy)) {
     fakturaKorekty = await podgladFakturyZTerminem(programFaktur, idDokumentu(z.faktura));
   }
-  // PRZ-152.G10b1 (D6): kwota faktury zawsze z dokumentu, nigdy z zamówienia. Program wbudowany — `bruttoGr` ze stanu
+  // Kwota faktury zawsze z dokumentu, nigdy z zamówienia. Program wbudowany — `bruttoGr` ze stanu
   // dokumentu (odczytany wyżej). Program zewnętrzny — `gross_price` przez `groszeZInfaktu` (ta sama reguła co kolumna
   // Brutto listy FAKTURY): najwyżej JEDEN odczyt na kartę — gdy dokument czytał już podgląd korekty wyżej, bierzemy go.
-  // Odczyt przez `podgladFakturyZTerminem` (PRZ-148.03): błąd albo odpowiedź po terminie (2,5 s) → kwota `null` („—”),
+  // Odczyt przez `podgladFakturyZTerminem`: błąd albo odpowiedź po terminie (2,5 s) → kwota `null` („—”),
   // karta się nie wstrzymuje.
   let kwotaFakturyGr = null;
   if (fakturaWbudowana) kwotaFakturyGr = fakturaWbudowana.bruttoGr ?? null;
@@ -685,24 +682,24 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     }
     kwotaFakturyGr = groszeZInfaktu(dokument?.gross_price);
   }
-  // PRZ-122.B07f: firma zwolniona z VAT — numer UE nabywcy to nie WDT (ceny, stawki i podsumowanie jak u krajowego).
+  // Firma zwolniona z VAT — numer UE nabywcy to nie WDT (ceny, stawki i podsumowanie jak u krajowego).
   const zwolniona = zwolnionaFirma();
 
   // Bez tej flagi widok kusil przyciskiem „Wystaw fakturę" takze wtedy, gdy inFakt
   // nie jest w ogole skonfigurowany — klikniecie konczylo sie 503 bez wyjasnienia.
   return reply.view('zamowienie.ejs', {
     title: `Zamówienie ${z.numer}`,
-    // PRZ-101.05: plakietka przewoźnika przy metodzie wysyłki — to samo rozpoznanie co `przewoznikListy` na liście
+    // Plakietka przewoźnika przy metodzie wysyłki — to samo rozpoznanie co `przewoznikListy` na liście
     // (domena/przewoznik-przesylki.js, po nazwie i metodzie dostawy zamówienia); `null` = bez plakietki.
     przewoznikKarty: przewoznikWiersza(null, z),
-    // PRZ-104: wiersz „Termin wysyłki” w Szczegółach — napisy z domeny (wiek-zamowienia.js), ta sama
+    // Wiersz „Termin wysyłki” w Szczegółach — napisy z domeny (wiek-zamowienia.js), ta sama
     // miara spóźnienia co zegar listy i statystyki.
     terminWysylkiKarty: terminNaKarcie(z, new Date()),
-    // PRZ-091: karty produktów na minusie, które zdejmuje to zamówienie. Stany wyłączone / zamówienie anulowane = [].
+    // Karty produktów na minusie, które zdejmuje to zamówienie. Stany wyłączone / zamówienie anulowane = [].
     // Liczone TU, a nie w trasie GET, żeby każda odsłona karty (także po odmowie formularza) mówiła to samo.
     brakiNaStanie: brakiNaStanieZamowienia(db, z.id),
     scalenie: scalenieKarty(z),
-    // N1: wynik „Odłącz anulowane” przy wystawionej fakturze grupy (trasa scalania renderuje kartę).
+    // Wynik „Odłącz anulowane” przy wystawionej fakturze grupy (trasa scalania renderuje kartę).
     komunikatScalenia: dodatki.komunikatScalenia ?? null,
     powrot: powrotKarty(req),
     adresPowrotu: adresPowrotuDoWiersza(powrotKarty(req), z.id, config.definicje),
@@ -741,7 +738,7 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     // (pierwsza wersja probowala tam siegnac i karta oddawala 500 „db is not defined").
     // Liczy sie tylko NAJNOWSZY wiersz kolejki — starsze sa historia po powtorkach.
     drukFaktury: z.faktura ? ostatniaPozycjaDlaFaktury(db, z.faktura.id) : null,
-    // PRZ-126.C05a: `{ podlaczone, stanowiska }` albo `null` (brak usługi, błąd) — wtedy „Drukuj” jak dziś, bez blokady.
+    // `{ podlaczone, stanowiska }` albo `null` (brak usługi, błąd) — wtedy „Drukuj” jak dziś, bez blokady.
     drukarkaFaktur: z.faktura || listaProform.length ? drukarkaFaktur() : null,
     z, status: wyliczStatus(z), etykiety: etykietyStatusow(db), mozliwaFaktura: Boolean(faktura),
     wystawienieFaktury: z.faktura ? null : wystawienieFaktury(z, {
@@ -753,18 +750,16 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
       nazwaOkresu: okresZamowienia ? `${MIESIACE[okresZamowienia.miesiac - 1] ?? `miesiąc ${okresZamowienia.miesiac}`} ${okresZamowienia.rok}` : null,
       zrodloProgramu: wyborProgramu?.zrodlo,
     }),
-    // „Dodaj z magazynu" (21.08.2026) — wyszukiwarka lustra katalogow przy dopisywaniu
+    // „Dodaj z magazynu" — wyszukiwarka lustra katalogow przy dopisywaniu
     // pozycji. `wyniki: null` znaczy „jeszcze nie szukano" i to CO INNEGO niz `[]`
     // („szukano, nie ma") — widok mowi wtedy dwie rozne rzeczy.
     magazyn: magazynDlaKarty(req, z),
-    // ⚠️ `potwierdzenieMozliwe`/`potwierdzenieZgoda` USUNIĘTE STĄD (recenzja 22.08.2026,
-    // Zadanie 10 — część B): liczyły się przy KAŻDYM otwarciu karty, a żaden szablon ich nie
-    // czytał — potwierdzenie ma od 22.08 własny przycisk w sekcji „Wiadomości" niżej, sterowany
-    // `wiadomosciSekcja`/`daneWiadomosci`. Stara trasa `GET/POST /zamowienia/:id/potwierdzenie`
-    // razem z ekranem `potwierdzenie-podglad.ejs` ZNIKŁA (sprzątanie po recenzji całości
-    // gałęzi): po przenosinach paska nie prowadził do niej ani jeden odnośnik w panelu, a
-    // wysyłkę i tak robi `services/potwierdzenie.js`, wołana przez `services/wiadomosci.js`.
-    // ——— SEKCJA „WIADOMOSCI" (22.08.2026) ————————————————————————————————————————————
+    // ⚠️ Nie liczymy tu `potwierdzenieMozliwe`/`potwierdzenieZgoda`: liczyłyby się przy KAŻDYM
+    // otwarciu karty, a żaden szablon ich nie czyta — potwierdzenie ma własny przycisk w sekcji
+    // „Wiadomości" niżej, sterowany `wiadomosciSekcja`/`daneWiadomosci`. Osobnej trasy
+    // `/zamowienia/:id/potwierdzenie` nie ma, a wysyłkę robi
+    // `moduly/wiadomosci/services/potwierdzenie.js`, wołana przez `moduly/wiadomosci/services/wiadomosci.js`.
+    // ——— SEKCJA „WIADOMOSCI" ————————————————————————————————————————————
     // ⚠️ STAN SIEDZI W ADRESIE (`?wiadomosc=`), nie w JavaScripcie — ten sam idiom, co
     // `?edytuj=` na tej karcie i `?nowy` na liscie klientow. „Wroc" w przegladarce
     // i odswiezenie robia wtedy to, czego czlowiek sie spodziewa, a karta w trybie odczytu
@@ -780,20 +775,20 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     // w trybie odczytu otwiera sie kilkadziesiat razy dziennie i nie ma powodu wozic z nia
     // biblioteki, ktorej nie uzyje.
     htmx: edytujWszystkiePozycje,
-    // Zadanie 7: sekcja proformy stoi NAD sekcja faktury VAT (patrz zamowienie.ejs).
+    // Sekcja proformy stoi NAD sekcja faktury VAT (patrz zamowienie.ejs).
     // `mozliwaProforma` z TEGO SAMEGO powodu co `mozliwaFaktura` wyzej — usluga moze
     // nie byc podpieta (np. w testach innych sekcji karty), a przycisk nie ma prawa
     // kusic akcja, ktora zaraz odda 503 bez wyjasnienia.
     mozliwaProforma: Boolean(proforma),
     proformy: listaProform,
     proformaAktualnaId: proformaAktualna?.id ?? null,
-    // PRZ-152.G10b1 (D1, D6, D7): dane sekcji „Faktura” — kwoty z dokumentów (napis albo `null`), krótka data.
-    // PRZ-152.G10p: bez „rozliczona fakturą” przy proformie (właściciel 05.11: „po prostu jest proforma”).
+    // Dane sekcji „Faktura” — kwoty z dokumentów (napis albo `null`), krótka data.
+    // Bez dopisku „rozliczona fakturą” przy proformie.
     kwotaFaktury: kwotaDokumentu(kwotaFakturyGr),
     kwotyKorekt,
     fmtDzien: fmtDzienKrotko, // `zlotowki` widok ma z defaultContext (core/web/pipeline.js)
     // `{ wolno, powod }` — gdy `wolno` jest falszywe, widok ma pokazac POWOD, nie sam
-    // brak przycisku (brief zadania 7). Za pobraniem `wolno` jest PRAWDZIWE: to jest
+    // brak przycisku. Za pobraniem `wolno` jest PRAWDZIWE: to jest
     // OSTRZEZENIE, nie blokada, wiec siedzi osobno, nizej.
     zgodaProforma: czyWolnoWystawic(z),
     // ⚠️ Ważna proforma na INNA kwote niz zamowienie — ostrzezenie, nie blokada. Migawka
@@ -802,18 +797,18 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     // na inna kwote, niz nam sie nalezy. Liczone TU, jak kazda inna decyzja domenowa karty.
     rozjazdProformy: rozjazdKwotyProformy(z, proformaAktualna),
     // Pasek „Do zalatwienia" — wszystkie sprawy zebrane W JEDNYM miejscu. Widok NIE liczy
-    // ich sam (domain/sprawy-karty.js): kazda z nich rzadzi juz czyms innym (lista robocza,
+    // ich sam (domena/sprawy-karty.js): kazda z nich rzadzi juz czyms innym (lista robocza,
     // bariera faktury, wyliczone `oplacone_at`), wiec druga kopia reguly rozjechalaby sie
     // przy pierwszej zmianie i pasek zaczalby klamac o tym, czy jest co robic.
     sprawy: [...sprawyKarty(z, Date.now(), { nazwa: nazwaProgramu, gdzie: gdzieProgramu }),
-      // PRZ-157.07e: `drogaErli` = null przy ręcznej zmianie metody — wtedy blokada drogi ERLI już nie obowiązuje.
+      // `drogaErli` = null przy ręcznej zmianie metody — wtedy blokada drogi ERLI już nie obowiązuje.
       ...(nadanieKanalu?.sprawa && drogaErli ? [{ klucz: 'nadanie-kanalu', waga: 'blokada', tekst: nadanieKanalu.sprawa, kotwica: '#szczegoly' }] : [])],
     nadanieKanalu,
     drogaErli,
     zgloszeniaZwrotowKanalu,
-    // PRZ-118.09: nazwa i ekran programu fakturowego w zdaniach karty (bez programu — inFakt, jak dotąd).
+    // Nazwa i ekran programu fakturowego w zdaniach karty (bez programu — inFakt, jak dotąd).
     nazwaProgramu, gdzieProgramu, ekranProgramu: ekranProgramu(programFaktur),
-    // PRZ-121.03b: zdanie „faktury wyłączone” przy jawnym „brak” (plik albo Ustawienia); w innym razie `null` i widok
+    // Zdanie „faktury wyłączone” przy jawnym „brak” (plik albo Ustawienia); w innym razie `null` i widok
     // renderuje dotychczasowe akapity znak w znak.
     zdanieBraku: zdanieBrakuProgramu(wyborProgramu),
     // ⚠️ Czy to KANAL, liczone TU i TA SAMA funkcja co wszedzie indziej (`czyKanalAllegro`).
@@ -823,7 +818,7 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     // „nie dojechal do Allegro"; bez tej flagi karta twierdzilaby OBOK, ze „Sklep nie przyjal
     // statusu" — czyli jedna karta wskazywalaby dwa rozne miejsca usterki naraz.
     kanalAllegro: czyKanalAllegro(z),
-    // PRZ-149.04: sklep podłączony kluczem „Odczyt” — karta mówi wprost, że status/notatkę zmienia się w sklepie.
+    // Sklep podłączony kluczem „Odczyt” — karta mówi wprost, że status/notatkę zmienia się w sklepie.
     sklepTylkoOdczyt: syncSklep?.tylkoOdczyt?.(z.sklep) === true ? TYLKO_ODCZYT : null,
     // ⚠️ CZY WOLNO WYSLAC FAKTURE NA KONTO KUPUJACEGO — liczone TU, jedna funkcja domenowa,
     // TA SAMA, ktora odmawia w usludze (services/faktura-allegro.js). Widok NIE ma prawa
@@ -836,7 +831,7 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     // wyjscia — operator nie wie, czego brakuje, wiec albo grzebie w bazie, albo wysyla
     // fakture reka z inFaktu, poza wiedza panelu.
     zgodaFakturaAllegro: wolnoWyslacDoAllegro(z),
-    // PRZ-126 C09e — znacznik D po zamianie faktury (zły NIP): karta mówi o POPRZEDNIEJ fakturze u kupującego.
+    // Znacznik D po zamianie faktury (zły NIP): karta mówi o POPRZEDNIEJ fakturze u kupującego.
     zdanieAllegroPoZamianieNip: zdanieKartyPoZamianieNip(z.faktura),
     // Czy usluga w ogole jest podpieta. Bez kanalu Allegro albo bez inFaktu przycisk
     // kusilby akcja konczaca sie 503 — ta sama zasada, co `mozliwaFaktura`/`mozliwyGus`.
@@ -846,7 +841,7 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     // sklada tego sam z `z.klient`/`z.dostawa`: dwie kopie tej samej reguly rozjechalyby
     // sie przy pierwszej zmianie i karta zaczelaby operatorowi klamac.
     dane: daneKarty(z),
-    // PRZ-126.F02: opcja firmy „faktura także bez prośby klienta” — TA SAMA funkcja, którą pyta wystawienie.
+    // Opcja firmy „faktura także bez prośby klienta” — TA SAMA funkcja, którą pyta wystawienie.
     fakturaDlaKazdego: czyFakturaDlaKazdego(db),
     // Czy w ogole wolno zaproponowac nadanie. Przy paczce w toku albo zawieszonej
     // odpowiedz brzmi „nie" — patrz mozliwaKolejnaPaczka. To DRUGA linia obrony:
@@ -863,11 +858,11 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     // Widok NIE liczy sam, czy rezerwacja jest osierocona — to decyzja domenowa i ma
     // brzmiec tak samo tutaj, na liscie roboczej i przy kolizji w bazie.
     stanFaktury: stanFaktury(z.faktura),
-    // PRZ-118.04: identyfikator dokumentu faktury i okresu dla widoku — przez domena/dokument-programu.js.
+    // Identyfikator dokumentu faktury i okresu dla widoku — przez domena/dokument-programu.js.
     idDokumentuFaktury: idDokumentu(z.faktura),
     idDokumentuOkresu: idDokumentu(okresZamowienia),
     fakturaWbudowana,
-    // PRZ-102.23: „Wyślij do KSeF” przy fakturze (`wysylkaZKarty`) na pewnych faktach z bazy: uuid, numer KSeF,
+    // „Wyślij do KSeF” przy fakturze (`wysylkaZKarty`) na pewnych faktach z bazy: uuid, numer KSeF,
     // rezerwacja. NIP karty (bieżące dane, edytowalne po wystawieniu) daje tylko dopisek przy przycisku —
     // o konsumenckiej rozstrzyga podgląd na dokumencie z inFaktu. Miesiąc listy z daty wystawienia,
     // którą czuwacz przeczytał z inFaktu (lustro luk), a bez niej z chwili wystawienia w panelu (czas Warszawy).
@@ -885,7 +880,7 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
         dzienWystawienia: dzienWystawieniaLuki(db, uuid) ?? (z.faktura.utworzona_at ? dzienWarszawa(z.faktura.utworzona_at) : null),
       });
     })(),
-    // PRZ-152.G15: pasek po 303 z trasy wysyłki (drugie zgłoszenie dokumentu, którego wysyłkę panel już zlecił) —
+    // Pasek po 303 z trasy wysyłki (drugie zgłoszenie dokumentu, którego wysyłkę panel już zlecił) —
     // tylko dla faktury albo korekty TEJ karty, która ma wiersz rezerwacji; obcy uuid w adresie = bez paska.
     odmowaKsef: (() => {
       const uuid = typeof req.query?.juz_w_ksef === 'string' ? req.query.juz_w_ksef : '';
@@ -894,10 +889,10 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
       const wiersz = rezerwacjaKsef(db, uuid);
       return wiersz?.zlecona_at ? zdanieJuzWyslano(wiersz.zlecona_at, programFaktur) : null;
     })(),
-    powodKorektyKsef: programFaktur?.opis?.wbudowany === true ? POWOD_KOREKTA_CZEKA : POWOD_KOREKTA, // C09: TwojeFaktury wysyła korekty
+    powodKorektyKsef: programFaktur?.opis?.wbudowany === true ? POWOD_KOREKTA_CZEKA : POWOD_KOREKTA, // TwojeFaktury wysyła korekty
     korektyBezCzekania,
     ksefKorektKarty,
-    // PRZ-147.03: „Wystaw korektę” w sekcji Faktura — mapa `id zwrotu -> stan` dla zwrotów bez numeru korekty przy
+    // „Wystaw korektę” w sekcji Faktura — mapa `id zwrotu -> stan` dla zwrotów bez numeru korekty przy
     // zamówieniu z fakturą. Blokada z TYCH SAMYCH reguł domeny co ekran zwrotu i usługa korekty; widok tylko czyta.
     korektaNaKarcie: z.faktura ? Object.fromEntries((z.zwroty ?? []).filter((w) => !w.korekta_numer).map((w) => [w.id, {
       zlecona: Boolean(w.korekta_zlecona_at),
@@ -905,7 +900,7 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
       programFaktur: Boolean(programFaktur),
       bezDostawy: powodOdmowyKorektyBezDostawy(w, fakturaKorekty, { nazwa: nazwaProgramu }),
     }])) : {},
-    // Zadanie 4: sekcja „Pozycje" — lp/nazwa/SKU/ilosc/netto/brutto/suma, wysylka jako
+    // Sekcja „Pozycje" — lp/nazwa/SKU/ilosc/netto/brutto/suma, wysylka jako
     // OSTATNI wiersz. Widok NIE liczy niczego sam — ta sama zasada, co przy stanie
     // przesylki wyzej: wiersze i podsumowanie (razem z ostrzezeniem o rozjezdzie z kwota
     // zamowienia) sa gotowe, zeby szablon tylko je wypisal.
@@ -914,14 +909,14 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     // i domena sama oddaje brak odnosnika.
     //
     // ⚠️ TRASA NIE WIE, KTORY TO KANAL, i tak ma zostac. `odnosnikPozycji`
-    // (domain/link-pozycji.js) dostaje CALE zamowienie i sama rozstrzyga, czy pozycja
+    // (domena/link-pozycji.js) dostaje CALE zamowienie i sama rozstrzyga, czy pozycja
     // prowadzi do produktu w sklepie, czy do oferty na Allegro — razem z podpisem
     // odnosnika. Dolozenie tu `if`-a po kanale odtworzyloby rozjazd, ktoremu tamten modul
     // ma zapobiec (uzasadnienie wyboru w calosci w jego naglowku).
-    // PRZ-101.04: główne grupy scalonej pokazuje pozycje CAŁEJ grupy (ta sama funkcja, co faktura
+    // Główne grupy scalonej pokazuje pozycje CAŁEJ grupy (ta sama funkcja, co faktura
     // i wydruki), z numerem zamówienia przy każdej. Tryb „Edytuj” całego panelu edytuje wyłącznie
     // pozycje głównego — formularz zapisuje je do jego wiersza, więc dostaje tylko je.
-    // PRZ-105: stawka każdej pozycji i podsumowanie netto/VAT/brutto — domyślna z Ustawień, ta sama co faktura.
+    // Stawka każdej pozycji i podsumowanie netto/VAT/brutto — domyślna z Ustawień, ta sama co faktura.
     pozycjeKarty: wierszePozycji(edytujWszystkiePozycje ? z : zKartyZGrupa(z), { stawkaDomyslna: czytajStawkeDomyslna(db, opcjeZw), ...opcjeZw, zwolniona }).map((w) => {
       const odnosnik = odnosnikPozycji(z, w, { baseUrl: config.sklepy?.[z.sklep]?.baseUrl ?? null });
       // cenaNetto pochodzi z nettoWiersza — formularz i plan zapisu porównują tę samą wartość.
@@ -937,9 +932,9 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     // Sekcja „Platnosci": suma wplat wobec kwoty zamowienia. Widok NIE liczy tego sam —
     // ta sama zasada, co przy podsumowaniu pozycji wyzej. Porownanie idzie na liczbach
     // calkowitych w groszach, TA SAMA funkcja co bariera arytmetyczna faktury.
-    // PRZ-101.11: przy zamówieniu scalonym — saldo grupy i wpłaty wszystkich jej zamówień.
+    // Przy zamówieniu scalonym — saldo grupy i wpłaty wszystkich jej zamówień.
     saldoWplat: saldoWplat(platnosci.doSalda),
-    // PRZ-152.G3a: plakietka „Status płatności” — stan liczy domena (pobranie do rozliczenia
+    // Plakietka „Status płatności” — stan liczy domena (pobranie do rozliczenia
     // przez kuriera, zwroty z oddanymi pieniędzmi, okres rozliczeniowy); widok drukuje klasę i napis.
     stanPlatnosciKarty: stan,
     ruchyPlatnosci: ruchyPlatnosci({ wplaty: platnosci.wplaty, zwroty: z.zwroty, pominieteWplaty: stan.pominieteWplaty, teraz: new Date() }),
@@ -955,46 +950,46 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
     // wpisywal drugi raz listy, ktorej pilnuje test slownika (metody-platnosci.test.js).
     metodyWplaty: METODY_WPLATY_RECZNEJ,
     dzisiaj: dzienWarszawa(new Date().toISOString()),
-    // Widok NIE liczy tego sam (przewodnik OMS, sekcja 3) — te sama funkcje czyta pasek
+    // Widok NIE liczy tego sam — te sama funkcje czyta pasek
     // spraw, wiec karta i pasek nie moga powiedziec czegos innego o tym samym zamowieniu.
     pobranie: platnoscPrzyOdbiorze(z),
     // Czy w ogole pokazywac przycisk „Pobierz z GUS". Bez klucza (GUS_KLUCZ) klienta nie
     // ma, wiec przycisk tylko kusilby akcja konczaca sie 503 bez wyjasnienia.
-    mozliwyGus: gusDostepny(gus), // PRZ-102.11: plik albo Ustawienia, przy kazdym widoku (bez restartu)
+    mozliwyGus: gusDostepny(gus), // Plik albo Ustawienia, przy kazdym widoku (bez restartu)
     // ⚠️ NIEZAPISANE dane z GUS-u i komunikat o wyniku pobrania. Widok wklada je do pol
     // formularza, ale w bazie ich JESZCZE NIE MA — zapisuje dopiero „Zapisz". Nazwa firmy
     // idzie na fakture, wiec czlowiek musi ja zobaczyc, zanim stanie sie faktem.
     daneZGus: dodatki.daneZGus ?? null,
     komunikatGus: dodatki.komunikatGus ?? null,
-    // PRZ-126.C02: odmowa wystawienia / zapisu danych przy polu; wpisane wartości wracają do formularzy.
+    // Odmowa wystawienia / zapisu danych przy polu; wpisane wartości wracają do formularzy.
     bladFaktury, bladFakturyWDanych, bladDanych, wartosciDanych,
     formularzWystawienia: dodatki.formularzWystawienia ?? null,
     // Stawka dla skryptu przeliczajacego netto/brutto w formularzu „Dodaj pozycje" (widok: data-vat)
     // — JEDNO zrodlo, widok nie ma prawa wpisac jej u siebie drugi raz.
-    // PRZ-105: to stawka DOMYŚLNA z Ustawień (zaznaczona w liście stawek formularza), a nie stawka
+    // To stawka DOMYŚLNA z Ustawień (zaznaczona w liście stawek formularza), a nie stawka
     // dokumentu — WDT jedzie osobno (`wdt` niżej, w widoku `data-wdt`), skrypt liczy wtedy stawką 0:
     // kwoty zamowienia WDT sa kwotami netto, wiec podpowiedz netto = brutto mowi prawde o dokumencie.
     stawkaVat: czytajStawkeDomyslna(db, opcjeZw),
     stawkiVat: stawkiProgramu,
     // Pas WDT na karcie — TA SAMA regula, ktora wybiera stawke pozycji faktury
-    // (domain/pozycje-faktury.js), wiec pas i dokument nie moga sie rozjechac.
+    // (domena/pozycje-faktury.js), wiec pas i dokument nie moga sie rozjechac.
     wdt: czyWdt(daneFaktury(z).nip, { zwolniona }),
-    // PRZ-122.B07f: firma zwolniona i nabywca z numerem VAT UE — pas „to nie jest WDT” (widok: B07g).
+    // Firma zwolniona i nabywca z numerem VAT UE — pas „to nie jest WDT” (widok: B07g).
     zwolnionaUe: zwolniona && czyNipUe(daneFaktury(z).nip),
-    // PRZ-122.B07g: firma zwolniona — formularz „Dodaj pozycję” niesie `data-zwolniona="1"` (podgląd bez WDT).
+    // Firma zwolniona — formularz „Dodaj pozycję” niesie `data-zwolniona="1"` (podgląd bez WDT).
     zwolniona,
     // Miniatura produktu przy pozycji — TA SAMA droga, co na liscie zamowien i na ekranie
     // nadania (miniaturyEkranu wyzej). Karta liczaca adres u siebie pokazywalaby z czasem
     // inny rozmiar niz lista, a przy okazji sciagalaby oryginal zamiast miniatury.
     miniatura: miniaturyEkranu(db, [z]),
     // ⚠️ Nazwy metod wysylki NIE JADA juz osobno do widoku: karta, lista i ekran nadania
-    // wolaja `etykietaWysylki` z domeny (wstrzykiwana w web/server.js jako defaultContext),
-    // bo od 2026-08-01 etykieta sklada sie z DWOCH wartosci — dostawy i pobrania. Do
-    // 2026-08-01 karta miala tu WLASNY lancuch `if`-ow i wlasnie w nim siedzial blad I5:
+    // wolaja `etykietaWysylki` z domeny (wstrzykiwana w core/web/pipeline.js jako defaultContext),
+    // bo etykieta sklada sie z DWOCH wartosci — dostawy i pobrania. Wczesniej
+    // karta miala tu WLASNY lancuch `if`-ow i wlasnie w nim siedzial blad:
     // kazda metoda poza pobraniem i „nieznana" drukowala sie jako „DPD", w tym odbior
     // osobisty, ktory nie ma zadnego kuriera.
     // Opcje terminu platnosci — Z DOMENY, zeby widok nie wpisywal drugi raz listy, ktorej
-    // serwer i tak jest jedynym sedzia (domain/termin-platnosci.js).
+    // serwer i tak jest jedynym sedzia (domena/termin-platnosci.js).
     terminy: { przyOdbiorze: PRZY_ODBIORZE, bezTerminu: BEZ_TERMINU, zaplacone: ZAPLACONE, dni: TERMINY_DNI },
     etykietyTerminu: ETYKIETY_TERMINU,
     rabatMax: RABAT_MAX,
@@ -1014,22 +1009,20 @@ async function renderujKarte(req, reply, z, dodatki = {}) {
       const k = rabatKontraktowy(db, daneFaktury(z).nip);
       return { decyzja: k.decyzja(z.rabat_procent), stawka: k.stawka };
     })(),
-    // Zadanie 6: propozycja daty sprzedazy na fakture — TYLKO propozycja, operator moze
+    // Propozycja daty sprzedazy na fakture — TYLKO propozycja, operator moze
     // ja poprawic w polu, tak samo jak dzis przy dacie wystawienia. Widok NIE liczy tego
-    // sam (domain/data-sprzedazy.js), ta sama zasada co reszta tej karty.
+    // sam (domena/data-sprzedazy.js), ta sama zasada co reszta tej karty.
     propozycjaSprzedazy,
     // Domyslny wybor terminu w formularzu ponizej. Widok NIE liczy tego sam.
     domyslnyTermin,
-    // Powiazanie dosylki z zamowieniem pierwotnym — widoczne z OBU stron (Zadanie 7).
+    // Powiazanie dosylki z zamowieniem pierwotnym — widoczne z OBU stron.
     // Widok nie liczy tego sam z tej samej przyczyny co reszta karty: dwie kopie tej samej
     // reguly rozjechalyby sie przy pierwszej zmianie.
     dosylka: powiazaniaDosylki(db, z.id),
-    // ⚠️ OKRES ROZLICZENIOWY — FAKT, KTOREGO KARTA DO 2026-08-03 NIE NIOSLA W OGOLE
-    // (`grep okres` po tym szablonie dawal ZERO trafien). Operator widzial zwykle zamowienie
+    // ⚠️ OKRES ROZLICZENIOWY — FAKT, KTOREGO KARTA WCZESNIEJ NIE NIOSLA W OGOLE. Operator widzial zwykle zamowienie
     // firmowe z NIP-em i przycisk „Wystaw fakturę", a to zamowienie rozlicza sie JEDNA
     // faktura zbiorcza za caly miesiac. Bez tej informacji karta nie dawala mu ani jednego
-    // sygnalu, ze cokolwiek jest inaczej — i wlasnie stad brala sie druga droga do dokumentu
-    // (recenzja koncowa galezi, K1).
+    // sygnalu, ze cokolwiek jest inaczej — i wlasnie stad brala sie druga droga do dokumentu.
     //
     // Idzie CALY wiersz okresu, nie samo id: widok ma nazwac miesiac po imieniu, a nie
     // pokazac „okres nr 1". `MIESIACE` z domeny (ta sama tablica, ktorej uzywa `opisOdmowy`
@@ -1080,26 +1073,26 @@ function renderujNowe(
       // wiec dwa otwarte formularze pokaza ten sam numer, a dostana rozne. Tak ma byc —
       // rezerwowanie numerow zostawialoby dziury po kazdym porzuconym formularzu.
       numerPodgladowy: nastepnyNumerReczny(db, new Date().getFullYear()),
-      // PRZ-104: granice pola „Data wysyłki” — te same, które sprawdza zapis (parsujDateWysylki).
+      // Granice pola „Data wysyłki” — te same, które sprawdza zapis (parsujDateWysylki).
       dzisWysylki: zakresDatyWysylki(dzienWarszawa(new Date().toISOString())),
       dostawy: DOSTAWY,
-      // PRZ-143.03: domyślna dostawa formularza — metoda domyślna rejestru kurierów, a gdy nie ma jej
+      // Domyślna dostawa formularza — metoda domyślna rejestru kurierów, a gdy nie ma jej
       // na liście DOSTAWY, pierwsza z listy. Widok nie zna żadnego klucza na sztywno.
       dostawaDomyslna: (METODA_DOMYSLNA in DOSTAWY) ? METODA_DOMYSLNA : Object.keys(DOSTAWY)[0],
       // ⚠️ MAPA, NIE JEDNA KWOTA — bo ekran musi umiec podmienic wartosc po zmianie metody
       // w liscie rozwijanej, a panel nie odpytuje serwera przy kazdym ruchu pola. Kwoty jada
-      // z JEDNEGO zrodla (domain/ustawienia-panelu.js: kwotyDostawy): druga kopia liczb
+      // z JEDNEGO zrodla (domena/ustawienia-panelu.js: kwotyDostawy): druga kopia liczb
       // w skrypcie rozjechalaby sie z ustawieniem przy pierwszej zmianie.
       kwotyDostawy: kwotyDostawy(wczytajUstawienia(db)),
       platnosci: PLATNOSCI,
       stawkaVat: czytajStawkeDomyslna(db, opcjeZw),
       stawkiVat: stawkiProgramu,
-      // PRZ-105: nabywca z UE po NIP-ie faktury z formularza — ta sama reguła co dokument; dalej na żywo
+      // Nabywca z UE po NIP-ie faktury z formularza — ta sama reguła co dokument; dalej na żywo
       // przestawia ją public/suma-podglad.js.
-      // PRZ-122.B07f: przy firmie zwolnionej numer UE to nie WDT; `zwolnionaUe` — do pasa i podglądu (B07g).
+      // Przy firmie zwolnionej numer UE to nie WDT; `zwolnionaUe` — do pasa i podglądu (B07g).
       wdtFormularza: wdtZFormularza(formularz, { zwolniona }),
       zwolnionaUe: zwolniona && wdtZFormularza(formularz),
-      // PRZ-122.B07g: `data-zwolniona="1"` — public/suma-podglad.js nie włącza WDT po wpisaniu numeru UE.
+      // `data-zwolniona="1"` — public/suma-podglad.js nie włącza WDT po wpisaniu numeru UE.
       zwolniona,
       gusDziala: gusDostepny(gus),
       // ⚠️ TYLKO AKTYWNI. Klient wygaszony zostaje w bazie (jego zamowienia sa migawka i maja
@@ -1109,7 +1102,7 @@ function renderujNowe(
       // wiedziec, ze „0.00" znaczy „wysylka gratis".
       opisWybranego: opisKlienta(klientWybrany, { zwolniona }),
       // Slownik terminow ten sam, co przy fakturze — bez wariantu „zaplacone", ktory nie jest
-      // uzgodnieniem, tylko stanem wynikajacym z wplat (domain/termin-platnosci.js).
+      // uzgodnieniem, tylko stanem wynikajacym z wplat (domena/termin-platnosci.js).
       terminy: { przyOdbiorze: PRZY_ODBIORZE, bezTerminu: BEZ_TERMINU, dni: TERMINY_DNI },
       etykietyTerminu: ETYKIETY_TERMINU,
       rabatMax: RABAT_MAX,
@@ -1120,8 +1113,8 @@ function renderujNowe(
         fraza: '', cennik: cennikiInstalacji.domyslny, kanaly: cennikiInstalacji.kanaly, nazwy: cennikiInstalacji.nazwy,
         odczyt: odczytKatalogu(db, cennikiInstalacji.domyslny), wyniki: null, dodano: null,
       },
-      // ⚠️ FORMULARZ ROSNIE (21.08.2026): szosta pozycja wstawiona z magazynu nie moze zniknac
-      // przez to, ze petla w widoku jest krotsza od tablicy. Od PRZ-103 (21.10) start = jeden wiersz,
+      // ⚠️ FORMULARZ ROSNIE: szosta pozycja wstawiona z magazynu nie moze zniknac
+      // przez to, ze petla w widoku jest krotsza od tablicy. Start = jeden wiersz,
       // kolejne doklada operator, a skasowane nie maja wracac po przycisku.
       liczbaWierszy: liczbaWierszyFormularza(formularz),
     });
@@ -1156,7 +1149,7 @@ function kopiujDaneFakturyDoWysylki(id, z, req) {
     // podstawienie „gdy nie ma firmy, weź imię i nazwisko", potrzebne WYŁĄCZNIE
     // dokumentowi (inFakt: `company_name` wymagane także dla osoby prywatnej). Przepisane
     // stąd do adresu wysyłki dawało przy każdej osobie prywatnej TRWAŁY wpis
-    // `{"company":"Jan Kowalski"}` w `dostawa_reczna_json` — czyli błąd zdjęty 05.08
+    // `{"company":"Jan Kowalski"}` w `dostawa_reczna_json` — czyli błąd zdjęty
     // z adres-odbiorcy.js, wracający jednym kliknięciem i blokujący prawdziwą nazwę firmy,
     // gdyby sklep kiedyś ją dosłał. Kopiujemy więc PRAWDZIWĄ firmę albo nic.
     const kandydat = {

@@ -25,7 +25,7 @@
           po polsku. To jest pole do POPRAWIENIA, a nie liczba do przeczytania: gdyby wracało
           „246,00 zł", operator odesłałby ten napis z powrotem i musiałby go rozbierać
           `naWierszReczny`. Bierzemy NETTO, bo to ono jest kosztem (netto = brutto przy
-          odwrotnym obciążeniu — patrz domain/koszt-reczny.js). %>
+          odwrotnym obciążeniu — patrz domena/koszt-reczny.js). %>
       <%- include('_koszt-reczny-pola.ejs', {
         firmy,
         w: { firma, dataWystawienia: wiersz.data_wystawienia, kwota: wiersz.netto },

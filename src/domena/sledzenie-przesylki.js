@@ -1,10 +1,10 @@
 import { OPISY_PRZEWOZNIKOW } from './przewoznicy.ts';
 
 // KOGO PYTAC O STATUS TEJ PACZKI — jedna czysta regula dla karty zamowienia i dla
-// czuwacza przesylek. Do 23.08 wybor byl prosty (`kurierzy[p.kurier]`), a WzA nosilo
-// `bezSledzenia: true` i 23 paczki byly slepe.
+// czuwacza przesylek. Kiedys wybor byl prosty (`kurierzy[p.kurier]`), a WzA nosilo
+// `bezSledzenia: true`, wiec takie paczki byly slepe.
 //
-// ZMIERZONE 23.08 sonda na zywym API zdarzen DPD: nasz kanal DPD_INFO odpowiada TAKZE
+// Sonda na zywym API zdarzen DPD pokazala: nasz kanal DPD_INFO odpowiada TAKZE
 // dla listow kupionych przez Allegro („Wysylam z Allegro") — wystarczy pytac numerem
 // PODWYKONAWCY (`carrierWaybill` z `odpowiedz_surowa`), nie allegrowym `waybill`.
 // DPD pozostaje na tej sprawdzonej sciezce. Pozostale WzA pytamy przez API sledzenia
@@ -12,8 +12,7 @@ import { OPISY_PRZEWOZNIKOW } from './przewoznicy.ts';
 //
 // ⚠️ `null` znaczy „tej paczki nie da sie sledzic" i jest STANEM POPRAWNYM, nie awaria:
 // wolajacy sprzata ewentualny osad bledu i wychodzi cicho (dokladnie to, co robila
-// galaz `bezSledzenia` w odswiezStatusKuriera — patrz zgloszenie wlasciciela 12.08
-// o czterech zamowieniach bez wyjscia).
+// galaz `bezSledzenia` w odswiezStatusKuriera).
 
 // Rekurencyjne szukanie PARY carrierId+carrierWaybill w zasobie Allegro. Pola bywaja
 // na roznych glebokosciach (tracking/carrierTrackingData), wiec schodzimy w glab — ale
@@ -53,7 +52,7 @@ export function sledzeniePrzesylki(p, kurierzy = {}) {
     const para = paraPrzewoznika(surowa);
     const kluczPodwykonawcy = para ? PODWYKONAWCY_WZA[para.carrierId] : null;
     const podwykonawca = kluczPodwykonawcy ? kurierzy?.[kluczPodwykonawcy] ?? null : null;
-    // PRZ-092: DPD z Ustawień bez kanału DPD Info deklaruje `bezSledzenia` — wtedy paczkę śledzi Allegro (niżej).
+    // DPD z Ustawień bez kanału DPD Info deklaruje `bezSledzenia` — wtedy paczkę śledzi Allegro (niżej).
     if (podwykonawca && !podwykonawca.bezSledzenia && para?.carrierWaybill) {
       return { klient: podwykonawca, numer: para.carrierWaybill, podwykonawca: para.carrierId };
     }
@@ -73,16 +72,16 @@ export function sledzeniePrzesylki(p, kurierzy = {}) {
   }
 
   // KANAL ALLEGRO — paczka nadana POZA panelem (Allegro Punkt, Allegro One, ogon
-  // `allegro_dpd` sprzed 11.08). Do 25.08.2026 `kurier = 'allegro'` nie mial klienta
-  // i kazda taka paczka byla slepa na zawsze; sonda na zywym API tego dnia pokazala,
+  // `allegro_dpd` z dawnego sposobu nadawania). Wczesniej `kurier = 'allegro'` nie mial
+  // klienta i kazda taka paczka byla slepa na zawsze; sonda na zywym API pokazala,
   // ze `GET /order/carriers/{carrierId}/tracking` oddaje ich pelna historie.
   //
   // ⚠️ ROZNICA WOBEC WzA: tam pare przewoznika wydlubujemy z `odpowiedz_surowa` przesylki,
   // ktora SAMI utworzylismy. Tutaj przesylki nie tworzylismy — `carrierId` przychodzi
   // z `GET /order/checkout-forms/{id}/shipments` i lezy w kolumnie `carrier_allegro`.
   //
-  // ⚠️ PUSTA KOLUMNA TO ODMOWA, NIE DOMYSLNE 'ALLEGRO'. Zmierzone 25.08 na wszystkich 74
-  // identyfikatorach z `GET /order/carriers`: zly przewoznik oddaje HTTP 200
+  // ⚠️ PUSTA KOLUMNA TO ODMOWA, NIE DOMYSLNE 'ALLEGRO'. Sonda na identyfikatorach
+  // z `GET /order/carriers` pokazala: zly przewoznik oddaje HTTP 200
   // z `trackingDetails: null` — odpowiedz NIEODROZNIALNA od paczki swiezo nadanej. Stala
   // dzialalaby na dzisiejszych danych i zamilkla przy pierwszej paczce z innym
   // przewoznikiem. To ta sama rodzina bledu, co „polowa pary" przy WzA wyzej.
@@ -93,7 +92,7 @@ export function sledzeniePrzesylki(p, kurierzy = {}) {
   }
 
   // Brak klienta w mapie (panel bez sekcji INPOST_*) to TRYB POPRAWNY — paczka po prostu
-  // nie jest odpytywana; ta sama zasada, co przy skladaniu mapy w bootstrap.js.
+  // nie jest odpytywana; ta sama zasada, co przy skladaniu mapy w `zbudujKurierow` (moduly/wysylka/kurierzy.ts).
   if (!klient || klient.bezSledzenia) return null;
   // Adapter platformy może odczytywać paczkę po ID zasobu zamiast numeru przewoźnika.
   if (klient.sledzeniePoId) return p?.id_przesylki_kuriera

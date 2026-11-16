@@ -1,9 +1,9 @@
 import type { Migracja } from '../../../core/kontrakty.ts';
 
 /**
- * PRZ-068: role edytowane przez administratora. Wyłącznie nowe tabele; dane zakłada synchronizacja.
+ * Role edytowane przez administratora. Wyłącznie nowe tabele; dane zakłada synchronizacja.
  * `osobista` = rola założona dla jednego konta (przejście albo stara trasa /uprawnienia) — tylko taką
- * stara trasa aktualizuje w miejscu (recenzja D8 r1; kolumna w migracji nr 1, bo gałąź nie była wydana).
+ * stara trasa aktualizuje w miejscu.
  */
 export const migracjaRol: Migracja = {
   numer: 1,

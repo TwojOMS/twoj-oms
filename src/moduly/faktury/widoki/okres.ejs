@@ -1,14 +1,14 @@
 <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: title}) %>
-<%# Karta MIESIECZNEGO OKRESU ROZLICZENIOWEGO klienta zbiorczego (spec 2026-08-01).
+<%# Karta MIESIECZNEGO OKRESU ROZLICZENIOWEGO klienta zbiorczego.
     Kolejnosc sekcji jest kalka karty zamowienia i nie zmienia sie: belka faktow →
     Zamówienia → Faktura → Wpłaty → Stan okresu.
 
-    ⚠️ Widok NIE LICZY NICZEGO SAM (przewodnik OMS, sekcja 3): kwota faktury, saldo, stan
-    faktury i kwota kazdego zamowienia sa policzone w trasie (web/routes/okresy.js). %>
+    ⚠️ Widok NIE LICZY NICZEGO SAM: kwota faktury, saldo, stan
+    faktury i kwota kazdego zamowienia sa policzone w trasie (moduly/faktury/trasy/okresy.js). %>
 <p class="wroc"><a href="/okresy">← Okresy</a></p>
 
 <%
-  // ⚠️ `MIESIACE` PRZYCHODZI Z TRASY, a pochodzi z domain/okres-rozliczeniowy.js — z tej
+  // ⚠️ `MIESIACE` PRZYCHODZI Z TRASY, a pochodzi z domena/okres-rozliczeniowy.js — z tej
   // samej tablicy, z ktorej `opisOdmowy` sklada komunikat „Okres lipiec 2026 jest już
   // rozliczony". Wlasna kopia w szablonie znaczylaby, ze odmowa i ekran moga kiedys nazwac
   // ten sam miesiac inaczej, a operator porownuje wlasnie te dwa napisy.
@@ -24,30 +24,30 @@
   const saldoOk = rozliczenie.stan === 'pokryte';
   const saldoZle = rozliczenie.stan === 'niedoplata' || rozliczenie.stan === 'blad';
 
-  // ⚠️ DOMKNIECIE 1 (recenzja Zadania 9, runda 2). `rozliczenie.kwotaFakturyZl` idzie
+  // ⚠️ SALDO WBREW FAKTURZE. `rozliczenie.kwotaFakturyZl` idzie
   // z AKTYWNYCH zamowien okresu LICZONYCH DZIS (sumaOczekiwanaOkresuGrosze) — a nie
   // z migawki tego, co NAPRAWDE poszlo do inFaktu (tej migawki panel jeszcze nie ma;
   // to osobna zmiana schematu). Dopoki faktury NIE MA, to jest jedyna prawda, jaka
   // istnieje. Ale gdy faktura JUZ ISTNIEJE (stanFaktury !== 'brak') i klient dropshippingowy
   // anulowal PO wystawieniu choc jedno zamowienie tego miesiaca — „dzis" nie jest juz
   // rowne temu, co widzial inFakt przy wystawianiu, a `rozliczenie.stan` klamie w OBIE
-  // STRONY: albo udaje „faktury jeszcze nie ma" (suma spadla do zera — zmierzone: faktura
-  // FV/7/2026 wyzej na tym samym ekranie, a blok salda pisal „zaliczka 100.00 zł — faktury
+  // STRONY: albo udaje „faktury jeszcze nie ma" (suma spadła do zera — faktura
+  // FV/7/2026 wyżej na tym samym ekranie, a blok salda pisałby „zaliczka 100.00 zł — faktury
   // za ten miesiąc jeszcze nie ma"), albo udaje nadplatę do zwrotu (suma spadla, wplata
   // zostala ta sama). W obu przypadkach prawdziwa odpowiedz brzmi „do wyjaśnienia,
   // prawdopodobnie korekta w inFakcie" — NIE „nie ma faktury" i NIE „oddaj pieniądze”.
   //
   // ⚠️ WARUNEK `anulowane.length > 0` ZAWEZA TE LATE I TRZEBA WIEDZIEC, DO CZEGO.
   //
-  // Do 2026-08-03 stalo tu zdanie „bez zadnego anulowanego zamowienia »dzis« == »przy
-  // wystawieniu«" — I TO BYLO NIEPRAWDA, w dwie strony:
+  // Nie jest prawdą, że bez żadnego anulowanego zamówienia »dziś« == »przy
+  // wystawieniu« — są dwa przypadki, w których suma liczona dziś jest WYŻSZA:
   //   • W GORE: zamowienie zapisane przez drugiego operatora w oknie `await` wewnatrz
-  //     wystawiania faktury wpadalo do miesiaca JUZ zafakturowanego (zmierzone: faktura na
+  //     wystawiania faktury wpadałoby do miesiąca JUŻ zafakturowanego (faktura na
   //     100,00 zl, ekran potem „Razem 140.00 zł" i „NIEDOPŁATA: brakuje 140.00 zł"). Ta dziura
-  //     zostala zamknieta u zrodla — `wystaw` w services/faktura-okresu.js czyta zbior
-  //     zamowien PONOWNIE po zamknieciu okresu i odmawia, gdy sie zmienil (recenzja koncowa
-  //     galezi, W2) — wiec ten mechanizm juz nie istnieje.
-  //   • W GORE, DALEJ OTWARTE: suma liczy sie z POZYCJI zamowien, a pozycje wolno poprawiac
+  //     jest zamknięta u źródła — `wystaw` w moduly/faktury/services/faktura-okresu.js czyta zbiór
+  //     zamówień PONOWNIE po zamknięciu okresu i odmawia, gdy się zmienił
+  //     — ten przypadek już nie zachodzi.
+  //   • DRUGI, DALEJ OTWARTY: suma liczy sie z POZYCJI zamowien, a pozycje wolno poprawiac
   //     i dopisywac takze po wystawieniu faktury. Podniesiona kwota zamowienia z zafakturowanego
   //     miesiaca da tu „NIEDOPŁATA", ktora jest prawdziwa co do pieniedzy (klient tyle nie
   //     zaplacil), ale NIE co do dokumentu (faktura opiewa na stara kwote — do korekty).
@@ -130,8 +130,8 @@
               <% } %>
             </td>
             <%# WYJSCIE Z POMYLKI: zamowienie trafia do miesiaca po NIP-ie przy zakladaniu,
-                wiec literowka wrzuca tu cudze zamowienie — a do 17.08.2026 jedynym ratunkiem
-                byla reczna operacja na bazie produkcyjnej. Ten sam idiom, co „Usuń" przy
+                wiec literowka wrzuca tu cudze zamowienie — a bez tego przycisku jedynym ratunkiem
+                byłaby ręczna operacja na bazie. Ten sam idiom, co „Usuń" przy
                 wplacie: wiersz + wlasny formularz + maly przycisk. %>
             <% if (wolnoOdpinac) { %>
               <td class="kol-akcje">
@@ -204,9 +204,9 @@
         KSeF: <%= okres.ksef_status || 'jeszcze nie wysłana' %>
       </p>
     <% } else if (mozliwaFaktura && zamowienia.length > 0) { %>
-      <%# Bariera arytmetyczna (services/faktura-okresu.js) sprawdza zamowienie po zamowieniu
+      <%# Bariera arytmetyczna (moduly/faktury/services/faktura-okresu.js) sprawdza zamowienie po zamowieniu
           i odmawia CALEJ faktury przy pierwszym rozjezdzie — to jest ostatnia rzecz przed
-          dokumentem, ktory po wieczornej wysylce poprawia sie juz tylko korekta. %>
+          dokumentem, który po wysyłce do KSeF poprawia się już tylko korektą. %>
       <form method="post" action="/okresy/<%= okres.id %>/wystaw-fakture">
         <button class="btn btn--glowny">Wystaw fakturę za <%= miesiac %> <%= okres.rok %></button>
       </form>
@@ -218,10 +218,10 @@
         nie dopisze się do niego samo. <% if (wbudowany) { %>Wysyłkę faktur sprzedaży obsługuje TwojeFaktury — <a href="/ustawienia/integracje/program-fakturowy/ksef">Wysyłka do KSeF</a>.<% } else { %>Wystawienie nie wysyła dokumentu do KSeF.<% } %>
       </p>
     <% } else if (mozliwaFaktura) { %>
-      <%# ⚠️ DOMKNIECIE 3 (recenzja Zadania 9, runda 2). Przycisk „Wystaw fakturę" na
-          okresie bez ANI JEDNEGO zamowienia do zafakturowania kusil do klikniecia, ktore
-          z gory nie ma jak sie udac — bariera arytmetyczna w services/faktura-okresu.js
-          i tak odmowi (zmierzone: `infakt.wystaw` nie jest wolany), ale operator dostawal
+      <%# ⚠️ PUSTY OKRES. Przycisk „Wystaw fakturę" na
+          okresie bez ANI JEDNEGO zamowienia do zafakturowania kusiłby do kliknięcia, ktore
+          z gory nie ma jak sie udac — bariera arytmetyczna w moduly/faktury/services/faktura-okresu.js
+          i tak odmówi (`infakt.wystaw` nie jest wtedy wołany), ale operator dostawałby
           zaproszenie do akcji, ktora jest z gory bezcelowa. Bariery NIE ruszamy — to ostatnia
           linia obrony przed drugim dokumentem za ten sam miesiac. Tu tylko nie zapraszamy
           do kliknieca i mowimy, dlaczego przycisku nie ma. %>
@@ -268,7 +268,7 @@
             <td><%= wart(w.uwaga) %></td>
             <td class="kol-akcje">
               <%# WYJSCIE dla wplaty wpisanej pomylkowo — bez niego jedynym ratunkiem byłby
-                  SQL na produkcji. Trasa sprawdza PARE (okres, wpłata). %>
+                  SQL na bazie. Trasa sprawdza PARE (okres, wpłata). %>
               <form method="post" action="/okresy/<%= okres.id %>/wplata/<%= w.id %>/usun">
                 <button class="btn btn--maly">Usuń</button>
               </form>
@@ -298,8 +298,8 @@
         <% } else if (rozliczenie.stan === 'pokryte') { %>rozliczone co do grosza
         <% } else if (rozliczenie.stan === 'niedoplata') { %>NIEDOPŁATA: brakuje <%= rozliczenie.saldoZl %> zł
         <% } else if (rozliczenie.stan === 'nadplata') { %>NADPŁATA <%= rozliczenie.saldoZl %> zł
-        <%# ⚠️ NADPLATA MA WLASNA, JAWNA GALAZ. Wczesniej byla galezia DOMYSLNA, wiec kazdy
-            stan, ktorego widok nie zna, malowal sie jako pieniadze do zwrotu — piaty stan
+        <%# ⚠️ NADPŁATA MA WŁASNĄ, JAWNĄ GAŁĄŹ. Jako gałąź DOMYŚLNA każdy
+            stan, którego widok nie zna, malowałby się jako pieniadze do zwrotu — piaty stan
             dodany kiedys w domenie zaczalby po cichu obiecywac klientowi zwrot kwoty, ktora
             z nadplata nie ma nic wspolnego. Nieznany stan ma sie przyznac do niewiedzy. %>
         <% } else { %>stan rozliczenia nierozpoznany (<%= rozliczenie.stan %>) — saldo <%= rozliczenie.saldoZl %> zł<% } %>
@@ -327,7 +327,7 @@
           zobaczylby „podaj kwotę" po tym, jak ja podal. Przecinek normalizuje `parsujWplate`. %>
       <input name="kwota" inputmode="decimal" required placeholder="kwota (zł), np. 5000,00">
       <input name="data" placeholder="data wpłaty (puste = dziś)">
-      <%# ⚠️ Metoda WYMAGANA (audyt 22.08) — te same opcje, co formularz wplaty na karcie
+      <%# ⚠️ Metoda WYMAGANA — te same opcje, co formularz wplaty na karcie
           (METODY_WPLATY_RECZNEJ z domeny), zeby wyciag bankowy uzgadnial sie po jednym
           slowniku takze przy rozliczeniach zbiorczych. %>
       <select name="metoda" required>

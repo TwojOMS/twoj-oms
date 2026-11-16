@@ -1,5 +1,5 @@
 import {createHash} from 'node:crypto';
-// Allegro public.v1, checked 2026-10-13: declaration size <= 5242880.
+// Allegro public.v1: declaration size <= 5242880.
 // Five files / 20 MiB total are explicit OMS limits, not claimed API limits.
 export const MAKS_PLIK = 5 * 1024 * 1024;
 export const MAKS_RAZEM = 20 * 1024 * 1024;

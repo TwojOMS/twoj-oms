@@ -1,4 +1,4 @@
-// PRZ-160 P3b.03 (punkt 19) — import produktów z JEDNEGO kanału: plan („Sprawdź") i wykonanie („Importuj").
+// Import produktów z JEDNEGO kanału: plan („Sprawdź") i wykonanie („Importuj").
 //
 // Plan liczy się z lustra `produkty_sklepowe` po odczycie katalogu tego kanału i NICZEGO nie zapisuje.
 // Wykonanie liczy plan jeszcze raz W TRANSAKCJI (lustro mogło się zmienić między kliknięciami) i robi tylko
@@ -66,7 +66,7 @@ export function planImportu(db, { kanal, typ, kanalyZrodlowe, allegro, tresc = [
     // Drugi wiersz z SKU, dla którego ten import zakłada kartę: wiąże się z nią (każdy typ, który tworzy — to nie
     // jest „istniejąca karta"). Wykonanie bierze jej id z mapy `nowychKart` (karta powstaje dopiero w wykonaniu).
     if (sku && nowychSku.has(sku)) { powiaz.push({ id: w.id, sku, zNowejKarty: true }); continue; }
-    // P4.03 (punkt 24): karta po `karty_produktow.sku` albo po powiązanym lustrze innego kanału — tylko jedna.
+    // Karta po `karty_produktow.sku` albo po powiązanym lustrze innego kanału — tylko jedna.
     const znaleziona = kartaDoImportu(sku);
     if (znaleziona?.kilka) { pominiete.push({ id: w.id, nazwa: w.nazwa, powod: POWOD_KILKA_KART }); continue; }
     const karta = znaleziona?.karta;
@@ -111,7 +111,7 @@ export function wykonajImport(db, { kanal, typ, kanalyZrodlowe, allegro, tresc =
     const nowychKart = new Map();
     for (const w of plan.utworz) {
       const sku = String(w.sku_sklepu ?? '').trim();
-      // P4.03: nowa karta dostaje SKU wiersza, jeśli żadna karta go nie ma — drugi kanał znajdzie ją po SKU.
+      // Nowa karta dostaje SKU wiersza, jeśli żadna karta go nie ma — drugi kanał znajdzie ją po SKU.
       const karta = kartaZProduktu(w);
       if (sku && !kartaZeSku(db, sku)) karta.sku = sku;
       const id = utworzKarte(db, karta, { at });

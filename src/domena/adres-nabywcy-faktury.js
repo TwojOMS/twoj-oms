@@ -1,4 +1,4 @@
-// PRZ-126.PT5: adres nabywcy na fakturze — JEDNA reguła dla odmowy serwera
+// Adres nabywcy na fakturze — JEDNA reguła dla odmowy serwera
 // (faktura-odmowa.js) i dla przycisku na karcie (wystawienie-faktury.js).
 //
 // Art. 106e ust. 1 pkt 3 ustawy o VAT wymaga adresu nabywcy na KAŻDEJ fakturze, także dla

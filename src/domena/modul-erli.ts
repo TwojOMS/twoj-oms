@@ -10,9 +10,9 @@ export const MODUL_ERLI = {
     odczytOfert: true, wystawOferte: true, zmienOferte: true, zmienIloscCene: true, stanOferty: true,
   },
   kluczeEnv: { sekrety: ['KLUCZ_API'], wymagane: ['KLUCZ_API', 'ADRES_API', 'OD'] },
-  // wysylkaPlatformy: false do zmian 07/08 (D4 mówi true), bo dziś ta umiejętność włącza ścieżki pisane pod Allegro
-  // (odmowa DPD i paczkomatu InPost, taryfa inpost_locker_allegro, teksty o Allegro) — recenzja 01b.
-  // Opis kroków; widoki i trasy powstaną w PRZ-157.11.
+  // wysylkaPlatformy: false, bo ta umiejętność włącza ścieżki pisane pod Allegro
+  // (odmowa DPD i paczkomatu InPost, taryfa inpost_locker_allegro, teksty o Allegro).
+  // Opis kroków konfiguratora.
   konfigurator: { sciezka: '/ustawienia/integracje/erli', nowy: 'nowe', dodaj: 'Dodaj konto', kroki: [
     { id: 'dane', numer: 1, tytul: 'Nazwa, środowisko, klucz', instrukcja: ['Podaj dane sklepu i domyślny czas wysyłki.'], widok: 'erli-dane' },
     { id: 'polaczenie', numer: 2, tytul: 'Sprawdź połączenie', instrukcja: ['Sprawdź nazwę i id sklepu w ERLI.'], widok: 'erli-polaczenie' },

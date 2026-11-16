@@ -4,9 +4,9 @@
 // na wszystko poza GET: czujka to skrypt sh z samym curl-em, bez poswiadczen. Odpowiedz
 // niesie wylacznie wiek zegarow, progi i stan kanalow po bialej liscie stanKanalu() —
 // zero danych klientow, zero sekretow (pilnuje tego test „nie zdradza sekretow").
-// Alarmy niosa liczby i odsylacze do ekranow, nie numery dokumentow (PRZ-119.12a).
+// Alarmy niosa liczby i odsylacze do ekranow, nie numery dokumentow.
 //
-// ⚠️ CALA OCENA SIEDZI W domain/zdrowie.js, a sklad wejscia w bootstrap.js — trasa jest
+// ⚠️ CALA OCENA SIEDZI W domena/zdrowie.js, a sklad wejscia w bootstrap.js — trasa jest
 // tylko gniazdkiem. Logika tutaj rozjechalaby sie z testami domeny przy pierwszej zmianie.
 
 export function registerZdrowieRoutes(app, { zdrowie }) {

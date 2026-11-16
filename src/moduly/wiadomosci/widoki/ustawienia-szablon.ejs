@@ -1,4 +1,4 @@
-<%# PRZ-101.03: edycja jednego szablonu wiadomości. Zwykły textarea, lista pól pod spodem, podgląd GET-em. %>
+<%# Edycja jednego szablonu wiadomości. Zwykły textarea, lista pól pod spodem, podgląd GET-em. %>
 <p class="szw-powrot"><a href="/ustawienia/szablony-wiadomosci">← Szablony wiadomości</a></p>
 <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: (s.nowy ? 'Nowy szablon' : s.nazwa)}) %>
 
@@ -34,7 +34,7 @@
   </form>
 
   <h3 class="szw-naglowek">Pola do wstawienia</h3>
-  <p>Wpisz nazwę pola w klamrach, np. <code>{imie}</code>.<% if (s.rodzaj === 'konto') { %> Link i jego ważność wstawia panel przy wysyłce z Ustawień → Zespół i dostęp → Użytkownicy.<% } else { %> Pole bez wartości w danym zamówieniu zostaje puste. Blok stoi sam w osobnej linii i wstawia całą sekcję — w mailu jako tabelę.<% } %></p>
+  <p>Wpisz nazwę pola w klamrach, np. <code>{imie}</code>.<% if (s.rodzaj === 'konto') { %> Link i jego ważność wstawia panel przy wysyłce<% if (admin) { %> z Ustawień → Zespół i dostęp → Użytkownicy.<% } else { %>. Poproś administratora o dodanie pracownika.<% } %><% } else { %> Pole bez wartości w danym zamówieniu zostaje puste. Blok stoi sam w osobnej linii i wstawia całą sekcję — w mailu jako tabelę.<% } %></p>
   <dl class="szw-pola">
     <% pola.forEach(function (p) { %>
       <dt><code>{<%= p.nazwa %>}</code><% if (p.blok) { %> <span class="szw-znacznik">blok</span><% } %><% if (p.wymagane) { %> <span class="szw-znacznik szw-znacznik--wymagane">obowiązkowe</span><% } %></dt>
@@ -63,7 +63,7 @@
   <% } %>
 
   <% if (['proforma', 'faktura', 'przypomnienie'].includes(s.rodzaj)) { %>
-    <%# PRZ-102.17: opisy {zamkniecie} i {dane_platnosci} odsyłają „niżej" — tu jest to miejsce. %>
+    <%# Opisy {zamkniecie} i {dane_platnosci} odsyłają „niżej" — tu jest to miejsce. %>
     <h3 class="szw-naglowek" id="zdania-platnosci">Zdania o płatności</h3>
     <p>Zdania wstawiane przez <code>{zamkniecie}</code> i <code>{dane_platnosci}</code> — np. „Należność pobierze kurier przy doręczeniu” przy pobraniu albo podziękowanie przy opłaconym zamówieniu — są wspólne dla proformy, faktury i przypomnienia. Zmienisz je na liście szablonów: <a href="/ustawienia/szablony-wiadomosci#zdania-platnosci">Szablony wiadomości → Zdania o płatności</a>. Podgląd tego maila (przycisk „Podgląd” wyżej) pokazuje je w brzmieniu zapisanym tam.</p>
   <% } %>
@@ -73,7 +73,7 @@
   <section class="ust-sekcja szw-sekcja" id="szw-podglad">
     <h2><%= s.rodzaj === 'konto' ? 'Podgląd na przykładowym koncie' : 'Podgląd na przykładowym zamówieniu' %></h2>
     <% if (s.rodzaj === 'konto') { %>
-      <p>Pracownica Anna, link zmyślony — prawdziwy, jednorazowy link panel wstawia dopiero przy wysyłce z Ustawień → Zespół i dostęp → Użytkownicy. Nic nie zostało zapisane.</p>
+      <p>Pracownica Anna, link zmyślony — prawdziwy, jednorazowy link panel wstawia dopiero przy wysyłce<% if (admin) { %> z Ustawień → Zespół i dostęp → Użytkownicy.<% } else { %>. Poproś administratora o dodanie pracownika.<% } %> Nic nie zostało zapisane.</p>
     <% } else if (s.rodzaj === 'wyslane') { %>
       <p>Zamówienie nr 1024 od Anny Nowak z jedną paczką DPD — dane i numer listu zmyślone. W prawdziwym mailu panel wstawia paczki zamówienia z karty. Nic nie zostało zapisane.</p>
     <% } else { %>

@@ -1,9 +1,8 @@
 
     /* ================================================================================= */
-    /* PALETA. Do 2026-08-01 kolory byly wpisane wprost w kazda regule (168 wystapien     */
-    /* trzydziestu osmiu barw) i drugi motyw nie mial jak powstac inaczej niz przez       */
-    /* przepisanie calego arkusza. Teraz kazda barwa ma NAZWE MOWIACA O ROLI, a motyw to  */
-    /* podmiana wartosci — regul nie rusza sie w ogole.                                   */
+    /* PALETA. Każda barwa ma NAZWĘ MÓWIĄCĄ O ROLI, a motyw to podmiana wartości —        */
+    /* reguł nie rusza się w ogóle. Gdy kolory były wpisane wprost w każdej regule, drugi  */
+    /* motyw nie miał jak powstać inaczej niż przez przepisanie całego arkusza.            */
     /*                                                                                    */
     /* ⚠️ Nowy kolor dopisujemy TUTAJ, w obu paletach naraz. Wartosc wpisana wprost       */
     /* w regule zadziala w jasnym motywie i zniknie w ciemnym — po cichu, bo nikt nie     */
@@ -11,7 +10,7 @@
     /* ================================================================================= */
     :root {
       color-scheme: light;
-      /* PRZ-094.17: kolory marek przewoźników i kanałów (plakietki listy zamówień). Celowo te same w obu
+      /* Kolory marek przewoźników i kanałów (plakietki listy zamówień). Celowo te same w obu
          motywach — to kolory cudzych marek, nie panelu; ciemny motyw ich nie nadpisuje, plakietka ma tam ramkę.
          Pary tło/tekst mają kontrast ≥4,5:1 (DHL: ciemniejsza czerwień zamiast #D40511, Allegro: ciemny tekst). */
       --marka-inpost-tlo: #FFCB04; --marka-inpost-tekst: #424143;
@@ -25,7 +24,7 @@
       --powierzchnia: #fff;
       --powierzchnia-2: #f1f3f5;
       --ramka: #e2e6ea;
-      --ramka-pola: #848d96; /* PRZ-155 próba: było #cbd2d9 (1,53 do tła, próg 3:1) */
+      --ramka-pola: #848d96; /* Wcześniej #cbd2d9: kontrast 1,53 do tła przy progu 3:1. */
       --tekst-przygaszony: #66707a;
       --marka: #3e5566;
       --marka-ciemniej: #34495a;
@@ -36,9 +35,9 @@
          ciemnym panelu przestaje byc czytelny, a numer zamowienia jest najczesciej klikana
          rzecza w calym panelu. */
       --link: #3e5566;
-      /* Podkreslenie odnosnika w ZDANIU (2026-08-29). Osobna barwa, bo pelne podkreslenie
-         w kolorze tekstu robi z akapitu kreske pod kazda druga fraza — to ma byc sygnal
-         „to jest klikalne", nie ozdoba. Na najechaniu wraca do koloru tekstu odnosnika. */
+      /* Podkreślenie odnośnika w ZDANIU. Osobna barwa, bo pełne podkreślenie
+         w kolorze tekstu robi z akapitu kreskę pod każdą drugą frazą — to ma być sygnał
+         „to jest klikalne", nie ozdoba. Na najechaniu wraca do koloru tekstu odnośnika. */
       --link-podkreslenie: #a7b6c0;
       /* Odnosnik POD KURSOREM — ciemniejszy od spoczynkowego, zeby najechanie bylo widac
          takze tam, gdzie podkreslenie stoi juz na stale (zdania) albo wcale (tabele). */
@@ -55,16 +54,16 @@
       --ok-tlo: #dfeee1;
       --ok-tekst: #2f6b3a;
       --ok-kropka: #3f8c4f;
-      /* PRZ-083: przyciemnienie pod nakladka „Trwa restart demo". */
+      /* Przyciemnienie pod nakładką „Trwa restart demo". */
       --zaslona: rgb(32 40 48 / .55);
       --st-zwrot-tlo: #ece0f2;
       --st-zwrot-tekst: #67397f;
       --st-zwrot-kropka: #8a5aa8;
-      /* Status Indywidualne (2026-08-07) - wlasna rodzina barw, bo status ma sie
-         rozpoznawac katem oka na liscie, a piec pozostalych zajmuje juz granat,
-         bursztyn, zielen, fiolet i szarosc. Kontrast ZMIERZONY, nie oszacowany:
-         6,33 w jasnym i 7,20 w ciemnym — w tym samym przedziale, co pozostale
-         statusy (6,7-7,4), wiec zaden nie odstaje czytelnoscia. */
+      /* Status Indywidualne — własna rodzina barw, bo status ma się
+         rozpoznawać kątem oka na liście, a pięć pozostałych zajmuje już granat,
+         bursztyn, zieleń, fiolet i szarość. Kontrast ZMIERZONY, nie oszacowany:
+         6,33 w jasnym i 7,20 w ciemnym — w tym samym przedziale, co pozostałe
+         statusy (6,7-7,4), więc żaden nie odstaje czytelnością. */
       --st-indyw-tlo: #d8ebe8;
       --st-indyw-tekst: #1f5b53;
       --st-indyw-kropka: #3d8b7f;
@@ -88,7 +87,7 @@
       --st-rozowy-tlo: #f4dfeb;
       --st-rozowy-tekst: #81305b;
       --st-rozowy-kropka: #ac5285;
-      /* Kupon rabatowy (kampania, 2026-08-25). MALINA jest tu jedyna wolna rodzina: kazda
+      /* Kupon rabatowy (kampania). MALINA jest tu jedyna wolna rodzina: kazda
          inna nalezy juz do STATUSU i staneloby to obok siebie na jednej karcie — niebieski
          „nowe", bursztyn „w realizacji", zielony „wyslane", morski „indywidualne", fiolet
          „zwrot", cegla „blad". Metka promocyjna ma sie roznic od stanu zamowienia. */
@@ -103,7 +102,7 @@
       --reczny-tekst: #9c6b17;
       --uwagi-klienta-tlo: #fdf6e3;
       --uwagi-klienta-ramka: #e8d9a8;
-      /* Komentarz wewnetrzny (PRZ-074): chlodny blekit — ma sie odrozniac od bursztynu uwag klienta. */
+      /* Komentarz wewnętrzny: chłodny błękit — ma się odróżniać od bursztynu uwag klienta. */
       --komentarz-tlo: #eaf2f8;
       --komentarz-ramka: #bcd3e4;
       --komentarz-kreska: #4a7ea6;
@@ -124,7 +123,7 @@
       --powierzchnia: #23272b;
       --powierzchnia-2: #2c3136;
       --ramka: #383e44;
-      --ramka-pola: #737c85; /* PRZ-155 próba: było #4a5158 (1,87) */
+      --ramka-pola: #737c85; /* Wcześniej #4a5158: kontrast 1,87 do tła. */
       /* Jasniejszy, niz podpowiadalby instynkt: ten sam odcien stoi TAKZE na tle naglowka
          panelu w trybie edycji (--edycja-glowa), gdzie przy #9aa2a9 kontrast spadal do 4,33
          — ponizej progu czytelnosci dla drobnego tekstu. Zmierzone, nie oszacowane. */
@@ -212,9 +211,9 @@
     html { scrollbar-gutter: stable; }
     body { font-family: system-ui, sans-serif; margin: 0; background: var(--tlo); color: var(--tekst); }
     /* ================================================================================= */
-    /* ODNOSNIKI (2026-08-29). Do dzis ZWYKLY <a> — numer zamowienia w Przesylkach        */
-    /* i Fakturach, nazwa klienta, temat watku, odnosnik w zdaniu — nie mial ani jednej   */
-    /* reguly. To NIE znaczylo „domyslny styl panelu", tylko styl PRZEGLADARKI:           */
+    /* ODNOŚNIKI. ZWYKŁY <a> — numer zamówienia w Przesyłkach        */
+    /* i Fakturach, nazwa klienta, temat wątku, odnośnik w zdaniu — nie miał ani jednej   */
+    /* reguły. To NIE znaczylo „domyslny styl panelu", tylko styl PRZEGLADARKI:           */
     /* jaskrawy niebieski, po pierwszym wejsciu FIOLETOWY, w obu motywach ten sam.        */
     /* Fiolet czytal sie przy tym jak stan zamowienia — panel ma cala rodzine barw na     */
     /* statusy i jedna z nich (--st-zwrot-*) jest wlasnie fioletowa.                      */
@@ -235,26 +234,26 @@
     /* skargi: odwiedzony numer zamowienia zmienial barwe na fioletowa i wygladal jak     */
     /* inny rodzaj wiersza. Tu stoi na pismie, ze odwiedzony ma wygladac tak samo.        */
     /* ⚠️⚠️ `:not(.btn)` TAK SAMO JAK PRZY `:hover` NIZEJ — i to TA regula byla prawdziwym
-       sprawca zgloszenia „w trybie jasnym nazwa panelu oraz ikonki sa niewidoczne".
+       sprawca usterki „w trybie jasnym nazwa panelu oraz ikonki sa niewidoczne".
        W motywie JASNYM `--link` i `--marka` to DOKLADNIE TEN SAM kolor, a `a:visited`
        (szczegolowosc 0,1,1) bije `.pas-marka` i `.btn--glowny` (0,1,0). Odnosnik JUZ
        ODWIEDZONY na tle marki dostawal wiec kolor rowny swojemu tlu — i znikal NA STALE,
        bez najezdzania mysza. W ciemnym motywie tego nie ma, bo tam `--link` jest jasny.
        ⚠️ TEGO NIE DA SIE ZMIERZYC SKRYPTEM W PRZEGLADARCE: `getComputedStyle` na `:visited`
        oddaje wartosci jak dla nieodwiedzonego (ochrona prywatnosci), a swiezo otwarta kopia
-       strony nie ma ANI JEDNEGO odwiedzonego odnosnika. Dlatego dwa wczesniejsze podejscia,
-       oparte na pomiarze `:hover`, tej usterki nie widzialy — widac ja wylacznie z REGUL. */
+       strony nie ma ANI JEDNEGO odwiedzonego odnosnika. Dlatego pomiar `:hover`
+       tej usterki nie wykrywa — widac ja wylacznie z REGUL. */
     a:not(.btn):visited { color: var(--link); }
-    /* ⚠️⚠️ `:not(.btn)` JEST TU CALA TRESCIA REGULY (zgloszenie właściciela 01.09.2026: „popraw
-       kolor hovera przycisku w trybie ciemnym" i „popraw w trybie jasnym przyciski, np.
-       dodaj zamowienie"). Przyciski BYWAJA ODNOSNIKAMI (`<a class="btn btn--glowny">`,
+    /* ⚠️⚠️ `:not(.btn)` JEST TU CALA TRESCIA REGULY (usterka: kolor hovera przycisku w trybie
+       ciemnym i jasnym, np. „+ Nowe zamówienie").
+       Przyciski BYWAJA ODNOSNIKAMI (`<a class="btn btn--glowny">`,
        `<a class="btn btn--groza">`), a ta regula ma szczegolowosc 0,1,1 i bila `.btn--glowny`
        (0,1,0) — wiec przy najechaniu tekst przycisku dostawal barwe ODNOSNIKA, podczas gdy
        tlo zostawalo barwa przycisku. Napis po prostu ZNIKAL, i to w obu motywach naraz:
          · ciemny, „Zarejestruj zwrot": `--link-mocny` (jasny blekit) na `--blad-tekst-mocny`
            (jasny los) — kontrast 1,10; po poprawce 9,24, przy 7,55 w spoczynku,
          · jasny, „+ Nowe zamowienie": `--link-mocny` (ciemny granat) na `--marka-ciemniej`.
-       Zmierzone w przegladarce na stronie z produkcji, nie oszacowane.
+       Zmierzone w przegladarce, nie oszacowane.
        ⚠️ Barwy opisane TU NAZWAMI ZMIENNYCH, nigdy wartoscia — arkusz nie ma prawa niesc
        koloru wpisanego wprost nawet w komentarzu (pilnuje tego tests/oms/motyw.test.js,
        ktory czyta caly arkusz, a nie same reguly).
@@ -263,7 +262,7 @@
        wariancie, ktory ktos doda jutro. Odnosnik tekstowy dalej mocnieje przy najechaniu. */
     a:not(.btn):hover { color: var(--link-mocny); text-decoration-color: currentColor; }
     /* ⚠️⚠️ TO SAMO DOTYCZY ODNOSNIKA NA WLASNYM TLE MARKI — i to jest DRUGA POLOWA tej samej
-       usterki, przeoczona przy pierwszym podejsciu (zgloszenie właściciela: „przyciski sa dalej
+       usterki (objaw: „przyciski sa dalej
        niewidoczne, nawet nazwa panelu w menu glownym"). `.btn` byl tylko jednym z dwunastu
        zmierzonych miejsc: pozostale to NAZWA PANELU i dziesiec IKON w gornym pasku oraz
        AKTYWNA pozycja menu bocznego. Wszystkie leza na tle `--marka` i maja jasny tekst
@@ -277,7 +276,7 @@
     /* ⚠️ TU `--na-marce`, A NIE `inherit` — i to jest roznica, ktora zlapal dopiero pomiar
        WSZYSTKICH stanow (kontrast 1,52). Aktywna pozycja menu ma wlasne tlo marki, ale jej
        rodzicem jest `<li>` ze zwyklym, CIEMNYM tekstem: `inherit` odziedziczylby wlasnie
-       jego i napis zgasl by na granacie tak samo, jak przed poprawka. */
+       jego i napis zgasl by na granacie. */
     .panel-statusow li.aktywna a:not(.btn):visited,
     .panel-statusow li.aktywna a:not(.btn):hover { color: var(--na-marce); }
     .pas-marka:hover { text-decoration: underline; }
@@ -308,13 +307,11 @@
     }
     .link-numer:hover { text-decoration: underline; text-decoration-color: currentColor; }
     .pas { background: var(--marka); color: var(--na-marce); padding: .75rem 1rem; display: flex; gap: .75rem; align-items: center; }
-    /* Pasek marki (Zadanie „strona glowna", punkt A): logo + nazwa panelu + znacznik */
-    /* „beta". Logo jedno, wspolne z panelem indywidualnym (patrz komentarz w server.js */
-    /* przy rejestracji @fastify/static) — TU tylko sciezka /public/, zero kopii pliku. */
+    /* Pasek marki: logo + nazwa panelu + znacznik „beta". */
     .pas-marka { display: flex; align-items: center; gap: .6rem; color: inherit; text-decoration: none; font-weight: 600; }
     .pas-logo { height: 1.9rem; width: 1.9rem; display: block; }
     /* Beta ma byc WYRAZNA — panel jest w uzyciu testowym i ma o tym przypominac na */
-    /* kazdym ekranie (brief zadania), nie zlewac sie z reszta paska jak zwykly znacznik. */
+    /* kazdym ekranie, nie zlewac sie z reszta paska jak zwykly znacznik. */
     .znacznik-beta {
       font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
       padding: .15rem .5rem; border-radius: .25rem; background: var(--beta-tlo); color: var(--beta-tekst);
@@ -354,20 +351,20 @@
     .znacznik--pomaranczowy, select.ust-kolor:has(option[value="pomaranczowy"]:checked) { background: var(--st-pomaranczowy-tlo); color: var(--st-pomaranczowy-tekst); }
     .znacznik--czerwony, select.ust-kolor:has(option[value="czerwony"]:checked) { background: var(--st-czerwony-tlo); color: var(--st-czerwony-tekst); }
     .znacznik--rozowy, select.ust-kolor:has(option[value="rozowy"]:checked) { background: var(--st-rozowy-tlo); color: var(--st-rozowy-tekst); }
-    /* Zegar wieku (spec 2026-08-23): kolor WYŁĄCZNIE po przekroczeniu terminu — wiersz
+    /* Zegar wieku: kolor WYŁĄCZNIE po przekroczeniu terminu — wiersz
        dostaje mleczne tło i lewą krawędź, tę samą gramatykę co pas awarii kanału. Krawędź
        na PIERWSZEJ komórce (zaznaczenie), bo inset na <tr> nie działa w każdym silniku. */
     .znacznik--ekspres { background: var(--uwaga-tlo); color: var(--uwaga-tekst); font-weight: 700; }
-    /* Kupon rabatowy (kampania WRZESIEN30): wlasna rodzina barw (patrz `--kupon-*` w OBU
+    /* Kupon rabatowy (kampania): wlasna rodzina barw (patrz `--kupon-*` w OBU
        paletach) — kod ma sie wylapac z karty katem oka, ale nie udawac statusu ani alarmu.
        Kolor sam NIE NIESIE znaczenia: obok stoi kod i kwota rabatu, wiec daltonista
        i czytnik ekranu traca skrot, nie tresc (ta sama zasada, co przy statusach). */
     .znacznik--kupon { background: var(--kupon-tlo); color: var(--kupon-tekst); border: 1px solid var(--kupon-ramka); font-weight: 600; }
     .kupony-karty { margin: .55rem 0 0; font-size: .88rem; }
-    /* Zakladka /kampania (Etap 0): kafle, wykres i tabele pozyczaja klasy raportow
-       (.kafelki/.kafel, .wykres-dni, .liczba) — ponizej WYLACZNIE to, czego tamte
-       ekrany nie maja. Ramka „dzis" na torze, nie na slupku: dzien bez uzyc tez jest
-       dzisiejszy, a slupka wtedy nie ma. */
+    /* Zakładka /kampania: kafle, wykres i tabele pożyczają klasy raportów
+       (.kafelki/.kafel, .wykres-dni, .liczba) — poniżej WYŁĄCZNIE to, czego tamte
+       ekrany nie mają. Ramka „dziś" na torze, nie na słupku: dzień bez użyć też jest
+       dzisiejszy, a słupka wtedy nie ma. */
     .kampania-kod { font-family: ui-monospace, Consolas, monospace; letter-spacing: .02em; }
     .kampania-okno, .kampania-wybor { margin: 0 0 .8rem; font-size: .92rem; }
     .wykres-dni--kampania { height: 130px; }
@@ -388,7 +385,7 @@
        układu 50/50 rozpychała sekcję z 180 na 386 px (zmierzone na renderze). */
     .metadane div.skad { display: block; }
     .metadane div.skad > span:first-child { display: block; font-size: .78rem; }
-    /* PRZ-104: „Termin wysyłki” — etykieta w jednej linii, data po prawej, objaśnienie i ocena pod nią. */
+    /* „Termin wysyłki” — etykieta w jednej linii, data po prawej, objaśnienie i ocena pod nią. */
     .metadane div.termin-wysylki > span:first-child { white-space: nowrap; }
     .metadane div.termin-wysylki > span:last-child { text-align: right; }
     .wiersz-szczegoly-inline { font-size: .8rem; color: var(--tekst-przygaszony); font-weight: 400; }
@@ -397,9 +394,9 @@
     .zegar--po-terminie { color: var(--blad-tekst); font-weight: 600; }
     .panel-statusow li.pozycja-po-terminie a { color: var(--blad-tekst); font-weight: 600; }
     /* Kolejność w arkuszu rozstrzyga remis szczegółowości z .aktywna a (obie 0,2,2): na AKTYWNEJ zakładce wygrywa marka, nie czerwień — zamierzone. */
-    /* Pastylka ETAPU przesylki (23.08) — karta zamowienia i zakladka /przesylki. Ta sama */
-    /* rodzina barw, co znaczniki statusu: droga = realizacja, doreczanie = uwaga (blisko */
-    /* konca, patrzec), doreczona = ok, zwrot = ta sama barwa, co status Zwrot. */
+    /* Pastylka ETAPU przesyłki — karta zamówienia i zakładka /przesylki. Ta sama */
+    /* rodzina barw, co znaczniki statusu: droga = realizacja, doręczanie = uwaga (blisko */
+    /* końca, patrzeć), doręczona = ok, zwrot = ta sama barwa, co status Zwrot. */
     .pastylka {
       display: inline-block; padding: .1rem .55rem; border-radius: 999px;
       font-size: .78rem; font-weight: 600; white-space: nowrap;
@@ -449,17 +446,16 @@
     .wiersz-razem td { background: var(--powierzchnia-2); font-weight: 600; }
     .uwaga { color: var(--blad-tekst); font-weight: 600; }
     /* Pas kanalu wolajacego o pomoc (lista.ejs). Osobny BLOK, nie przypis przy dacie */
-    /* synchronizacji: 14.08.2026 kanal byl martwy siedem godzin, a zdanie o tym stalo */
-    /* w akapicie obok i nikt go nie przeczytal. */
+    /* synchronizacji: zdanie o martwym kanale, wpisane w akapicie obok, bylo przeoczane. */
     .pas-awaria, .pas-uprzedzenie, .pas-demo {
       padding: .6rem .8rem; border-radius: 6px; border-left: 4px solid; margin: 0 0 .6rem;
     }
     .pas-awaria { background: var(--blad-tlo); color: var(--blad-tekst); border-color: var(--blad-tekst); }
     /* Uprzedzenie NIE jest awaria — kanal dziala. Paleta „recznego", nie bledu. */
     .pas-uprzedzenie { background: var(--uwaga-tlo); color: var(--reczny-tekst); border-color: var(--reczny-tekst); }
-    /* PRZ-082: informacja o trybie próby — zielona, bo to stan zamierzony, nie usterka. */
+    /* Informacja o trybie próby — zielona, bo to stan zamierzony, nie usterka. */
     .pas-demo { background: var(--ok-tlo); color: var(--ok-tekst); border-color: var(--ok-tekst); }
-    /* PRZ-083: pasek demo publicznego nad belka kazdej zakladki — licznik do resetu danych (oms-demo.js). */
+    /* Pasek demo publicznego nad belką każdej zakładki — licznik do resetu danych (oms-demo.js). */
     /* W ostatnich 2 minutach paleta bledu: gosc ma zdazyc przeczytac, ze jego zmiany znikna. */
     .pasek-demo {
       display: flex; flex-wrap: wrap; gap: .2rem .6rem; align-items: baseline; justify-content: center;
@@ -479,7 +475,7 @@
     }
     .nakladka-demo-okno h2 { margin: 0 0 .5rem; font-size: 1.15rem; }
     .nakladka-demo-okno p { margin: .4rem 0; }
-    /* Tabelka ostrzezen strony glownej (lista.ejs, spec 2026-08-29). Rodzina .pas wyzej:
+    /* Tabelka ostrzezen strony glownej (lista.ejs). Rodzina .pas wyzej:
        osobny, wyrazny blok pod pasami kanalow. Wiersz `integracja` w palecie bledu (od
        niego zalezy prawdziwosc reszty), pozostale typy w palecie uwagi. */
     .ostrzezenia { margin: 0 0 .6rem; border: 1px solid var(--ramka); border-radius: 6px; overflow: hidden; }
@@ -499,13 +495,12 @@
     .ostrzezenie-akcje form { display: inline-block; margin: 0 0 0 .35rem; }
     /* Panel boczny statusow (lista.ejs) — paleta z .pas wyzej, zeby aktywna pozycja */
     /* wygladala jak przedluzenie tego samego paska, a nie kolory pozyczone z Apilo. */
-    /* Decyzja właściciela 07.11, PRZ-154 E4.1: usunięto nieużywaną centrowaną ramę z limitem 1900 px. */
     /* Ekran deklaruje szerokość; wizualizacja Reklam zachowuje własny limit.
        Wszystkie bloki treści zaczynają się przy lewej krawędzi kolumny. */
     .szer-tabela > :not(style) { max-width: none; }
     .szer-karta > :not(.strona-kampania):not(style) { max-width: 1222px; }
     .szer-formularz > :not(style) { max-width: 760px; }
-    /* Zadanie Z3d (2026-08-05): „+ Nowe zamówienie" stoi POD panelem statusów w znaczniku — */
+    /* „+ Nowe zamówienie" stoi POD panelem statusów w znaczniku — */
     /* oba siedza we wspolnym wrapperze `.kolumna-boczna` (link musi isc zaraz PO </nav>, */
     /* wewnatrz tego samego diva — patrz lista.ejs). Dawniej przycisk byl PIERWSZYM dzieckiem */
     /* .uklad i mial `flex: 1 0 100%`, zeby udawac wlasny wiersz NAD dwiema kolumnami; ta */
@@ -515,8 +510,8 @@
     .nowe-zamowienie { margin: 0; }
     /* ⚠️ `box-sizing: border-box` jest tu OBOWIAZKOWE, bo arkusz NIE ma globalnego resetu */
     /* pudelka — domyslne `content-box` liczy `width: 100%` do wnetrza, a wysciolka i */
-    /* obramowanie `.btn` (.45rem/.9rem + 1 px) doklada sie NA ZEWNATRZ. Zmierzone */
-    /* 05.08.2026: przycisk 222,8 px w kolumnie 192 px, czyli 30,8 px poza nia — na */
+    /* obramowanie `.btn` (.45rem/.9rem + 1 px) doklada sie NA ZEWNATRZ. Zmierzone: */
+    /* przycisk 222,8 px w kolumnie 192 px, czyli 30,8 px poza nia — na */
     /* biurku wchodzil na obszar tabeli obok, na waskim ekranie rozpychal strone. */
     /* Dotyczy KAZDEJ szerokosci okna, nie tylko bloku @media nizej. */
     .nowe-zamowienie .btn { box-sizing: border-box; width: 100%; justify-content: center; }
@@ -536,21 +531,21 @@
       padding: .7rem .75rem .35rem; color: var(--tekst-przygaszony); font-size: .72rem;
       font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
     }
-    /* Ekran nadania (nadaj.ejs) — karta wlasciciela z Apilo: waga i trzy wymiary w */
+    /* Ekran nadania (nadaj.ejs): waga i trzy wymiary w */
     /* jednym rzedzie, nie jeden pod drugim. Zwykly flex, bez frameworka. */
     .rzad { display: flex; flex-wrap: wrap; gap: 1rem; margin: .5rem 0; }
     .rzad label { display: flex; flex-direction: column; gap: .25rem; }
     .rzad input { width: 6rem; }
-    /* Wybor gabarytu paczkomatu (Zadanie 7, nadaj.ejs) — RADIO, nie pole tekstowe: */
+    /* Wybor gabarytu paczkomatu (nadaj.ejs) — RADIO, nie pole tekstowe: */
     /* gabaryty sa skonczonym zbiorem (A/B/C), litera i wymiary OBOK SIEBIE w jednej */
     /* etykiecie, zeby operator nie musial pamietac, ktora litera to jaka skrytka. */
     .gabaryty { display: flex; flex-wrap: wrap; gap: .75rem; margin: .5rem 0; }
     .gabaryty label { display: flex; align-items: center; gap: .35rem; font-weight: normal; }
     /* .pole-pelne (dawne jednoliniowe pole pod wymiarami na ekranie nadania) skasowane */
-    /* 2026-08-05 razem z przebudowa tego ekranu — ostatni uzytkownik tej klasy odszedl. */
+    /* razem z przebudowa tego ekranu — ostatni uzytkownik tej klasy odszedl. */
 
     /* ================================================================================= */
-    /* EKRAN NADANIA — przebudowa na dwie kolumny (2026-08-05, makieta zatwierdzona).      */
+    /* EKRAN NADANIA — przebudowa na dwie kolumny.                               */
     /* Lewa kolumna: odbiorca (to, co pojedzie na etykiete). Prawa: fakty zamowienia +     */
     /* pola paczki. Pod spodem zawartosc paczki (tylko do odczytu) i stopka akcji.         */
     /* ================================================================================= */
@@ -581,7 +576,7 @@
     .fakty .k { color: var(--tekst-przygaszony); font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
     .fakty .w { font-weight: 600; text-align: right; }
     .fakty .w a { color: var(--link); }
-    /* Rozjazd stawki rabatu (23.08.2026): wiersz faktu, ktory ma sie rzucac w oczy, bo mowi
+    /* Rozjazd stawki rabatu: wiersz faktu, ktory ma sie rzucac w oczy, bo mowi
        o pieniadzach. Bez ani jednego koloru wpisanego wprost — te same zmienne, co przy
        `.pasek-uwaga`, wiec dziala w obu motywach. */
     .fakty > div.rabat-kontraktowy { background: var(--uwaga-tlo); color: var(--uwaga-tekst); border-left: .25rem solid var(--uwaga-kreska); border-radius: .25rem; padding: .5rem .6rem; }
@@ -604,13 +599,11 @@
     .paczkomat-nazwa { font-size: .92rem; margin: .4rem 0 0; }
     .paczkomat-cialo .podpowiedz { font-size: .78rem; color: var(--tekst-przygaszony); margin: .5rem 0 0; }
 
-    /* Pole kwoty pobrania (Z4) — WYROZNIONE, bo to jedyne pole na tym ekranie, ktore mowi
+    /* Pole kwoty pobrania — WYROZNIONE, bo to jedyne pole na tym ekranie, ktore mowi
        o pieniadzach inkasowanych od klienta przy drzwiach. Wieksza czcionka i ramka
        „uwagi" maja sprawic, ze operator na nia PATRZY, zanim zatwierdzi: gornego progu
-       nie ma (decyzja wlasciciela 04.08), wiec literowka „31033" zamiast „310,33"
+       nie ma, wiec literowka „31033" zamiast „310,33"
        pojedzie do kuriera taka, jaka jest.
-       Arkusz jest ladowany jako osobny plik CSS. Dawniej jego komentarze trafialy
-       do HTML-u kazdej strony i etykieta kwoty zlamala test karty zamowienia bez pobrania.
        ⚠️ ANI JEDEN NOWY KOLOR: wszystkie uzyte zmienne (--uwaga-tlo, --uwaga-tekst,
        --uwaga-kreska, --ramka-pola, --powierzchnia) sa juz zdefiniowane w OBU paletach
        wyzej. Wpisanie tu koloru wprost zadzialaloby w jasnym motywie i po cichu zniknelo
@@ -639,7 +632,7 @@
     .stopka-akcji { position: sticky; bottom: 0; margin-top: 1rem; background: var(--powierzchnia); border: 1px solid var(--ramka); border-radius: .4rem; padding: .75rem .9rem; display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; box-shadow: 0 -.4rem 1rem rgba(0, 0, 0, .08); }
     .stopka-akcji .rozpychacz { flex: 1 1 auto; }
     /* ================================================================================= */
-    /* KARTA ZAMOWIENIA — przebudowa 2026-07-31.                                          */
+    /* KARTA ZAMÓWIENIA.                                                                  */
     /* Karta jest stanowiskiem pracy: belka faktow, pasek spraw, dane klienta w trzech    */
     /* kolumnach, potem Pozycje → Przesylka → Faktura → Platnosci. Kolejnosc sekcji NIE    */
     /* zmienia sie nigdy — palce maja pamietac miejsca.                                   */
@@ -673,7 +666,7 @@
     .stan-ok { color: var(--ok-tekst); font-weight: 600; }
 
     /* Pasek spraw. Wszystkie osiem rozsypanych po karcie `.uwaga` zebrane w jedno miejsce */
-    /* — patrz domain/sprawy-karty.js. Renderuje sie WYLACZNIE, gdy cos wisi. */
+    /* — patrz domena/sprawy-karty.js. Renderuje sie WYLACZNIE, gdy cos wisi. */
     .sprawy { margin-top: .75rem; border: 1px solid var(--blad-ramka); border-radius: .4rem; overflow: hidden; }
     .sprawy-glowa {
       background: var(--blad-tlo); color: var(--blad-tekst); padding: .5rem .9rem;
@@ -735,7 +728,7 @@
     .wynik-filtra { color: var(--tekst-przygaszony); font-size: .82rem; }
 
     /* ================================================================================= */
-    /* AKCJE MASOWE — pasek NAD tabela (prosba wlasciciela, 01.08.2026).                  */
+    /* AKCJE MASOWE — pasek NAD tabela                                                     */
     /* Widoczny ZAWSZE, takze bez zaznaczen: bez JavaScriptu panel nie wie, ile wierszy   */
     /* jest zaznaczonych, a chowanie paska wymagaloby skryptu. Przy okazji tabela nie     */
     /* podskakuje przy pierwszym klknieciu, a o funkcji dowiaduje sie ten, kto o niej     */
@@ -792,7 +785,7 @@
        zeskakuje do nowej linii i komorka rozpycha wiersz tabeli. */
     .w-linii { display: inline-block; }
 
-    /* ——— PRZESYLKA | PLATNOSCI POL NA POL (przebudowa karty 2026-08-07) ———————————————
+    /* ——— PRZESYLKA | PLATNOSCI POL NA POL ———————————————
        Obie sekcje sa niskie i byly rozciagniete na cala szerokosc. `align-items: start`
        jest tu WARUNKIEM, nie ozdoba: bez niego siatka rozciaga niższy panel do wysokosci
        wyzszego i pod tabela wplat wisi pusta biala plama.
@@ -813,7 +806,7 @@
       border: 1px solid var(--ramka-pola); border-radius: .3rem; background: var(--powierzchnia); color: inherit; }
     .wplata-szybka input[name="kwota"] { width: 7.5rem; text-align: right; font-weight: 700; }
     .wplata-szybka input[name="data"] { width: 9.5rem; }
-    /* PRZ-074: lista metod wygladala jak systemowa szara kontrolka obok ostylowanych pol. */
+    /* Lista metod wygladala jak systemowa szara kontrolka obok ostylowanych pol. */
     .wplata-szybka select { font: inherit; font-size: .9rem; padding: .3rem .45rem; max-width: 9.5rem;
       border: 1px solid var(--ramka-pola); border-radius: .3rem; background: var(--powierzchnia); color: var(--tekst); }
     .wplata-tytul { margin: 0 0 .4rem; font-size: .85rem; font-weight: 600; color: var(--tekst); }
@@ -829,7 +822,7 @@
     .wiecej .rzad input { box-sizing: border-box; flex: 1 1 0; font: inherit; font-size: .9rem; padding: .3rem .45rem;
       border: 1px solid var(--ramka-pola); border-radius: .3rem; background: var(--powierzchnia); color: inherit; }
     .pozycja-tekst { min-width: 0; font-size: .88rem; line-height: 1.35; }
-    /* PRZ-163: pozycje od szóstej zwinięte na liście zamówień. `--link`, nie `--marka` (kontrast w ciemnym
+    /* Pozycje od szóstej zwinięte na liście zamówień. `--link`, nie `--marka` (kontrast w ciemnym
        motywie, patrz `.wiecej`). Napis zmienia się na „Zwiń”, gdy reszta jest rozwinięta. */
     .pozycje-reszta { margin-top: .3rem; }
     .pozycje-reszta > summary { cursor: pointer; color: var(--link); font-size: .84rem; width: fit-content; }
@@ -841,7 +834,7 @@
     .panel--groza { border-color: var(--blad-ramka); }
     .panel-glowa--groza { background: var(--blad-tlo); }
     .panel-glowa--groza h2 { color: var(--blad-tekst); }
-    /* ⚠️ `.btn--groza` STALO TUTAJ I NIE DZIALALO — zmierzone w przegladarce 06.08.2026:
+    /* ⚠️ `.btn--groza` STALO TUTAJ I NIE DZIALALO — zmierzone w przegladarce:
         przycisk akcji bez odwrotu renderowal sie jak KAZDY INNY (biale tlo, ramka
         `--ramka`, zwykly tekst) na wszystkich trzech ekranach, ktore go uzywaja. Powod jest
         ten sam, przed ktorym ostrzega komentarz przy `.stopka-akcji`: baza `.btn` z wlasnym
@@ -863,7 +856,7 @@
     .lista-wyniku .waga { min-width: 5.6rem; text-align: center; }
     .lista-wyniku .link-numer { color: var(--link); }
     .lista-wyniku form { margin-left: auto; }
-    /* PRZ-070: lista szablonów paczek niesie pełny opis („Karton 70×100 (110 × 75 × 1 cm, 1 kg)"), */
+    /* Lista szablonów paczek niesie pełny opis („Karton 70×100 (110 × 75 × 1 cm, 1 kg)"), */
     /* który bez sufitu rozpychał tabelę i chował kolumnę Pobranie za przewijaniem.        */
     .nadanie-hurtem select { max-width: 13rem; }
     .produkty-hurtem { list-style: none; margin: 0; padding: 0; font-size: .85rem; line-height: 1.35; }
@@ -903,12 +896,12 @@
     .btn:hover { background: var(--powierzchnia-2); }
     .btn--glowny { background: var(--marka); border-color: var(--marka); color: var(--na-marce); font-weight: 600; }
     .btn--glowny:hover { background: var(--marka-ciemniej); }
-    /* PRZ-152.G10e: nieaktywny przycisk w calym OMS — przygaszony, bez akcji pod kursorem. */
+    /* Nieaktywny przycisk w calym OMS — przygaszony, bez akcji pod kursorem. */
     .btn:disabled, .btn:disabled:hover { background: var(--powierzchnia-2); color: var(--tekst-przygaszony); border-color: var(--ramka); cursor: not-allowed; }
-    /* Stopka akcji ekranu nadania (Zadanie 3): drugi przycisk zatwierdzajacy i „Anuluj".
-       ⚠️ Zaden z dwoch przyciskow zatwierdzajacych nie jest „bezpieczniejszy" — obu sie NIE
-       DA cofnac (patrz przewodnik OMS, 4.3). „Nadaj i drukuj" dostaje wage DRUGIEGO
-       przycisku (obrys marki), nie cichego trzeciego, zeby wyglad tego nie sugerowal. */
+    /* Stopka akcji ekranu nadania: drugi przycisk zatwierdzający i „Anuluj".
+       ⚠️ Żaden z dwóch przycisków zatwierdzających nie jest „bezpieczniejszy" — obu się NIE
+       DA cofnąć. „Nadaj i drukuj" dostaje wagę DRUGIEGO przycisku (obrys marki), nie cichego
+       trzeciego, żeby wygląd tego nie sugerował. */
     /* Akcja, ktorej NIE DA SIE COFNAC (nadanie hurtem, wysylka do KSeF). Musi wygladac
        inaczej niz „Zapisz" — to jedyne ostrzezenie, ktore operator widzi katem oka.
        ⚠️ TA REGULA MUSI STAC PO `.btn` (patrz komentarz w sekcji ekranow akcji masowych). */
@@ -929,17 +922,17 @@
     /* Formularze — widoczne WYLACZNIE w trybie edycji danej sekcji. */
     .pola { display: flex; flex-direction: column; gap: .5rem; }
     .pola label { display: flex; flex-direction: column; gap: .2rem; font-size: .8rem; color: var(--tekst-przygaszony); }
-    /* ⚠️ `color: inherit` DOLOZONE 2026-08-07. Bez niego pola brały kolor tekstu od
+    /* ⚠️ `color: inherit` jest tu potrzebne. Bez niego pola brały kolor tekstu od
        przegladarki — w ciemnym motywie ratowal nas tylko `color-scheme: dark`, a wystarczylo
        jedno pole z wlasnym tlem, zeby wyszedl czarny tekst na ciemnym. */
-    /* ⚠️⚠️ `box-sizing: border-box` — ZMIERZONA PRZYCZYNA „ROZJECHANYCH" FORMULARZY (2026-08-07).
+    /* ⚠️⚠️ `box-sizing: border-box` — ZMIERZONA PRZYCZYNA „ROZJECHANYCH" FORMULARZY.
        Przegladarka daje `<select>` domyslnie `border-box`, a `<input>` `content-box`. Przy
        `width: 100%` w tej samej komorce siatki select miescil sie co do piksela, a pole daty
        WYSTAWALO poza nia o 18 px (2×8 px paddingu + 2×1 px ramki) — zmierzone: track 397 px,
        input 415 px. Stad wrazenie, ze pola sa rozne i nie trzymaja linii. Regula obowiazuje
        WSZYSTKIE `.pola` na karcie, nie tylko sekcje faktury, bo pulapka jest wszedzie ta sama. */
     .pola input, .pola select { box-sizing: border-box; font: inherit; font-size: .9rem; padding: .35rem .5rem; border: 1px solid var(--ramka-pola); border-radius: .3rem; background: var(--powierzchnia); color: inherit; }
-    /* ——— SIATKA POL W POZIOMIE (przebudowa sekcji „Faktura", 2026-08-07) ————————————————
+    /* ——— SIATKA POL W POZIOMIE (sekcja „Faktura") ————————————————
        ⚠️ MODYFIKATOR `.pola`, A NIE OSOBNA KLASA — i to jest cala rzecz. Formularz faktury
        stal wczesniej na `.rzad`, ktora NIE STYLUJE `select`-a w ogole i zweza inputy do 6rem:
        systemowa lista rozwijana obok scisnietego kalendarza, oba inne niz kazde inne pole na
@@ -1002,7 +995,7 @@
        proform i faktur, ktore maja INNE kolumny. */
     .tab-stala { table-layout: fixed; }
     .tab-stala td { overflow-wrap: anywhere; }
-    /* HISTORIA ZMIAN na dole karty (PRZ-094.18): zapis techniczny, wiec drobny druk i czcionka
+    /* HISTORIA ZMIAN na dole karty: zapis techniczny, wiec drobny druk i czcionka
        o stalej szerokosci tam, gdzie jest kod. Stały plan kolumn jak w tabeli pozycji — dluga
        odpowiedz API nie rozpycha ekranu; pelna tresc otwiera <details>. */
     .hist-tab { table-layout: fixed; }
@@ -1024,8 +1017,8 @@
     .hist-strony { display: flex; justify-content: space-between; align-items: center; margin-top: .7rem; font-size: .85rem; }
     .hist-strony a { color: var(--link); }
     .hist-numer { color: var(--tekst-przygaszony); font-size: .78rem; }
-    /* Netto zeszlo z wlasnej kolumny pod cene brutto (przebudowa karty 2026-08-07): szesc
-       kolumn nie miescilo sie czytelnie, a netto jest liczba pomocnicza — na fakture i tak
+    /* Netto zeszło z własnej kolumny pod cenę brutto: sześć
+       kolumn nie mieściło się czytelnie, a netto jest liczbą pomocniczą — na fakturę i tak
        idzie brutto. */
     .netto-cicho { display: block; font-size: .76rem; color: var(--tekst-przygaszony); font-weight: 400; }
     .tab-pozycje th { text-align: left; font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--tekst-przygaszony); padding: .3rem .5rem; border-bottom: 1px solid var(--ramka); }
@@ -1035,7 +1028,7 @@
     .kol-ilosc { width: 3.6rem; }
     .kol-cena { width: 8.5rem; }
     .kol-suma { width: 7.5rem; }
-    /* PRZ-105: stawka VAT pozycji i podsumowanie netto / VAT / brutto pod tabelą. */
+    /* Stawka VAT pozycji i podsumowanie netto / VAT / brutto pod tabelą. */
     .kol-vat { width: 5.6rem; }
     .kol-vat select { font: inherit; font-size: .9rem; padding: .3rem .2rem; border: 1px solid var(--ramka-pola); border-radius: .3rem; width: 100%; }
     .podsumowanie-vat { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: .5rem 2rem; margin: .75rem 0 0; padding: .6rem .5rem 0; border-top: 1px solid var(--ramka); font-variant-numeric: tabular-nums; }
@@ -1048,23 +1041,23 @@
     .pv-zero[hidden], .pv-wdt[hidden] { display: none; }
     .ilosc { font-size: 1.15rem; font-weight: 700; white-space: nowrap; }
     .pole-ilosc { text-align: center; font-weight: 700; }
-    /* PRZ-074: pole ilosci ma strzalki — w 3,6 rem cyfra chowala sie pod nimi. */
+    /* Pole ilosci ma strzalki — w 3,6 rem cyfra chowala sie pod nimi. */
     .panel--edycja .kol-ilosc { width: 5.2rem; }
     .pole-cena { text-align: right; }
     .kol-akcje { width: 10rem; }
-    /* PRZ-103: kolumna „×” przy wierszu pozycji na ekranie zakladania i przycisk „+ Dodaj wiersz”. */
+    /* Kolumna „×” przy wierszu pozycji na ekranie zakladania i przycisk „+ Dodaj wiersz”. */
     .tab-pozycje[data-wiersze-pozycji] .kol-sku { width: 6rem; }
     .tab-pozycje[data-wiersze-pozycji] .kol-cena { width: 6.5rem; }
     .tab-pozycje[data-wiersze-pozycji] .kol-suma { width: 6.5rem; }
     .tab-pozycje[data-wiersze-pozycji] .kol-vat { width: 6rem; }
     .kol-usun { width: 2.6rem; text-align: center; }
     .tab-pozycje[data-podglad-kwoty] .kol-ilosc { width: 5.2rem; }
-    /* PRZ-106: „+ Dodaj wiersz” w stopce tabeli, nad „Razem” — bez tła wiersza sumy. */
+    /* „+ Dodaj wiersz” w stopce tabeli, nad „Razem” — bez tła wiersza sumy. */
     .wiersz-dodaj td { padding-top: .5rem; padding-bottom: .5rem; }
     .wiersz-dodaj .wyjasnienie { margin-left: .75rem; }
-    /* `tabular-nums` — cyfry o STALEJ szerokosci (przebudowa karty 2026-08-07). Bez tego
-       „1" jest wezsza od „8" i kolumna kwot faluje z wiersza na wiersz, przez co suma nie
-       stoi pod skladnikami. Wlasnie to widac bylo jako „tabela sie rozjezdza" najmocniej. */
+    /* `tabular-nums` — cyfry o STAŁEJ szerokości. Bez tego
+       „1" jest węższa od „8" i kolumna kwot faluje z wiersza na wiersz, przez co suma nie
+       stoi pod składnikami. Właśnie to widać było jako „tabela się rozjeżdża" najmocniej. */
     .liczba { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
     .sku { font-size: .78rem; color: var(--tekst-przygaszony); }
 
@@ -1087,7 +1080,7 @@
     /* Notatka od klienta bywa instrukcja pakowania, wiec stoi nad pozycjami. */
     .pasek-uwagi-klienta { background: var(--uwagi-klienta-tlo); border: 1px solid var(--uwagi-klienta-ramka); border-left: .25rem solid var(--uwaga-kreska); border-radius: .35rem; padding: .6rem .9rem; margin-top: 1rem; font-size: .92rem; }
     .pasek-uwagi-klienta b { display: block; font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--uwaga-tekst); margin-bottom: .15rem; }
-    /* Komentarz wewnetrzny nad Pozycjami (PRZ-074) — ten sam ksztalt co uwagi klienta, inny kolor. */
+    /* Komentarz wewnetrzny nad Pozycjami — ten sam ksztalt co uwagi klienta, inny kolor. */
     .komentarz-wewnetrzny { background: var(--komentarz-tlo); border: 1px solid var(--komentarz-ramka); border-left: .25rem solid var(--komentarz-kreska); border-radius: .35rem; padding: .6rem .9rem; margin-top: 1rem; font-size: .92rem; }
     .komentarz-wewnetrzny > b { display: block; font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--komentarz-tekst); margin-bottom: .15rem; }
     .komentarz-wewnetrzny-tresc { white-space: pre-wrap; }
@@ -1097,7 +1090,7 @@
     .komentarz-wewnetrzny--pusty { background: transparent; border-color: transparent; padding: 0 .1rem; }
     .komentarz-wewnetrzny--pusty summary { margin-top: 0; }
     .komentarz-wewnetrzny details[open] summary { margin-bottom: .2rem; }
-    /* Menu „Wydruki” w belce karty (PRZ-074). `<details>` — bez skryptu. */
+    /* Menu „Wydruki” w belce karty. `<details>` — bez skryptu. */
     .wydruki { position: relative; margin-left: auto; }
     .wydruki summary { list-style: none; cursor: pointer; }
     .wydruki summary::-webkit-details-marker { display: none; }
@@ -1105,7 +1098,7 @@
     .wydruki-menu { position: absolute; right: 0; top: calc(100% + .3rem); z-index: 20; min-width: 13rem; display: flex; flex-direction: column; background: var(--powierzchnia); border: 1px solid var(--ramka); border-radius: .4rem; box-shadow: 0 6px 18px var(--oms-cien); padding: .3rem 0; }
     .wydruki-menu a { padding: .45rem .9rem; color: var(--tekst); text-decoration: none; font-size: .9rem; white-space: nowrap; }
     .wydruki-menu a:hover { background: var(--powierzchnia-2); }
-    /* To samo menu w belce akcji masowych listy (PRZ-084): pozycje sa przyciskami formularza
+    /* To samo menu w belce akcji masowych listy: pozycje sa przyciskami formularza
        (niosa zaznaczenie), wiec dostaja wyglad odnosnikow z karty. Menu otwiera sie W PRAWO —
        przycisk stoi w srodku paska, nie przy prawej krawedzi jak na karcie. */
     .wydruki--masowe { margin-left: 0; }
@@ -1114,7 +1107,7 @@
     .wydruki-menu button { font: inherit; font-size: .9rem; text-align: left; padding: .45rem .9rem; color: var(--tekst); background: none; border: 0; cursor: pointer; white-space: nowrap; }
     .wydruki-menu button:hover { background: var(--powierzchnia-2); }
 
-    /* „Dodaj z magazynu" (21.08.2026) — wyszukiwarka lustra katalogow przy dopisywaniu
+    /* „Dodaj z magazynu" — wyszukiwarka lustra katalogow przy dopisywaniu
        pozycji. Stoi na tej samej powierzchni, co formularz pozycji recznej obok, bo jest
        jego drugim wejsciem, a nie osobnym narzedziem. */
     .magazyn-szukaj { margin-top: .75rem; padding: .75rem .9rem; background: var(--powierzchnia-2); border: 1px solid var(--ramka); border-radius: .35rem; }
@@ -1129,10 +1122,10 @@
        wiec ma byc widoczny osobno, a nie zlany z nazwa. */
     .magazyn-rozmiar { margin-left: .4rem; padding: .05rem .35rem; border-radius: .25rem; background: var(--marka-jasna); color: var(--marka-ramka); font-size: .78rem; }
     .formularz-w-linii { display: flex; gap: .4rem; align-items: center; justify-content: flex-end; }
-    /* PRZ-103: ilosc przy wyniku ma strzalki (type=number) — w 3,2 rem cyfra chowala sie pod nimi (lekcja PRZ-074). */
+    /* Ilosc przy wyniku ma strzalki (type=number) — w 3,2 rem cyfra chowala sie pod nimi. */
     .formularz-w-linii .pole-ilosc { width: 4.6rem; }
 
-    /* Pasek „Staly klient" (21.08.2026). Ten sam ksztalt, co pasek magazynu — bo to ten sam
+    /* Pasek „Staly klient". Ten sam ksztalt, co pasek magazynu — bo to ten sam
        idiom: pole wyboru + przycisk, ktory NICZEGO nie zapisuje, tylko wypelnia formularz.
        Stoi jednak NAD trzema kolumnami, a nie przy pozycjach, bo dotyczy naglowka zamowienia
        i musi trafic pod reke ZANIM operator zacznie wpisywac dane recznie. */
@@ -1145,9 +1138,9 @@
        sprzedaz sie policzy — wiec bierze barwe marki, a nie czerwien ani zolc. */
     .znacznik--b2b { background: var(--marka-jasna); color: var(--marka-ramka); }
 
-    /* ⚠️ `.potwierdzenie-pasek` / `.potwierdzenie-stan` SKASOWANE 22.08.2026 razem z paskiem,
-       ktory malowaly (zamowienie.ejs, blok 4a). Potwierdzenie nie jest juz JEDYNA rzecza
-       wychodzaca z tej karty do klienta — od 22.08 stoi razem z proforma, faktura
+    /* ⚠️ `.potwierdzenie-pasek` / `.potwierdzenie-stan` SKASOWANE razem z paskiem,
+       ktory malowaly (zamowienie.ejs). Potwierdzenie nie jest juz JEDYNA rzecza
+       wychodzaca z tej karty do klienta — teraz stoi razem z proforma, faktura
        i przypomnieniem w sekcji „Wiadomosci" na dole (`_wiadomosci.ejs`), a slad po wysylce
        niesie lista wyslanych. Reguly zostawione „na wszelki wypadek" i tak nie mialy juz
        ani jednego elementu w zadnym widoku. */
@@ -1157,25 +1150,24 @@
     .magazyn-praca { display: none; margin-left: .5rem; font-size: .8rem; color: var(--tekst-przygaszony); }
     .htmx-request .magazyn-praca, .htmx-request.magazyn-praca { display: inline; }
 
-    /* Ramka z PRAWDZIWYM mailem (21.08.2026). Wysokosc na sztywno, bo `srcdoc` nie rosnie
+    /* Ramka z PRAWDZIWYM mailem. Wysokosc na sztywno, bo `srcdoc` nie rosnie
        do tresci bez JavaScriptu — a ten panel go nie ma. 900 px miesci cale potwierdzenie
        typowego zamowienia; dluzsze przewija sie wewnatrz ramki. */
     .podglad-maila-html { width: 100%; height: 900px; margin: .75rem 0 0; border: 1px solid var(--ramka); border-radius: .35rem; background: var(--powierzchnia-2); }
     /* Podglad tresci maila — TEKST, wiec lamany jak tekst, a nie jak kod. */
     .podglad-maila { white-space: pre-wrap; font-family: inherit; font-size: .92rem; line-height: 1.5; margin: .75rem 0 0; padding: .9rem 1rem; background: var(--powierzchnia-2); border: 1px solid var(--ramka); border-radius: .35rem; }
 
-    /* Komentarz wewnetrzny (21.08.2026, przeniesiony na dol karty 22.08.2026).
-       ⚠️ PUDELKO `.notatka` (zwiniety `<details>` z wlasnym tlem) SKASOWANE razem z blokiem
-       4b: notatka ma teraz WLASNY panel w sekcji „Wiadomosci", wiec ramke i tlo daje jej
-       `.panel`, a nie druga, konkurencyjna obwodka w srodku. Zostaje samo pole i stopka.
-       ⚠️ POLE MA WLASNA KLASE, a nie selektor po potomku — przestalo byc potomkiem
-       czegokolwiek, a bez ani jednej reguly wraca do wygladu systemowego przegladarki
+    /* Pole komentarza wewnętrznego (_komentarz-wewnetrzny.ejs, nad Pozycjami).
+       ⚠️ PUDEŁKO `.notatka` (zwinięty `<details>` z własnym tłem) SKASOWANE: ramkę i tło daje
+       `.komentarz-wewnetrzny`, a nie druga, konkurencyjna obwódka w środku. Zostaje samo pole i stopka.
+       ⚠️ POLE MA WŁASNĄ KLASĘ, a nie selektor po potomku — przestało być potomkiem `.notatka`,
+       a bez ani jednej reguły wraca do wyglądu systemowego przeglądarki
        (inna czcionka, inna ramka, brak `width: 100%`). */
     .notatka-pole { width: 100%; margin-top: .5rem; padding: .45rem .6rem; font: inherit; font-size: .92rem; line-height: 1.45; color: var(--tekst); background: var(--powierzchnia); border: 1px solid var(--ramka-pola); border-radius: .3rem; resize: vertical; box-sizing: border-box; }
     .notatka-stopka { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; margin-top: .5rem; }
     .notatka-uwaga { font-size: .78rem; color: var(--tekst-przygaszony); }
 
-    /* ——— SEKCJA „WIADOMOSCI" (22.08.2026) ————————————————————————————————————————
+    /* ——— SEKCJA „WIADOMOSCI" ————————————————————————————————————————
        Wiersz tematu na ekranie wyboru. Jest ODNOSNIKIEM na cala szerokosc, bo cel klikniecia
        ma byc duzy — operator wybiera temat jednym ruchem, nie celuje w napis.
        ⚠️ ANI JEDEN NOWY KOLOR: wszystkie uzyte zmienne sa juz zdefiniowane w OBU paletach.
@@ -1212,14 +1204,14 @@
     .metadane div { display: flex; justify-content: space-between; gap: .6rem; padding: .22rem 0; border-bottom: 1px dotted var(--ramka); }
     .metadane div:last-child { border-bottom: 0; }
     .metadane span:first-child { color: var(--tekst-przygaszony); }
-    /* PRZ-152.G14b: `.metadane span:first-child` szarzył napis każdej plakietki przewoźnika na karcie zamówienia. */
+    /* `.metadane span:first-child` szarzył napis każdej plakietki przewoźnika na karcie zamówienia. */
     .metadane .plakietka span:first-child { color: var(--plakietka-tekst, inherit); }
 
     .saldo { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: .5rem; padding: .5rem .6rem; border-radius: .3rem; background: var(--powierzchnia-2); font-size: .95rem; margin-top: .7rem; }
     .saldo--zle { background: var(--blad-tlo); color: var(--blad-tekst); }
     .saldo--ok { background: var(--ok-tlo); color: var(--ok-tekst); }
     .platnosci-liczby { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .5rem; }
-    /* D6: natywne details, pola i opcjonalna uwaga w jednym rzędzie. */
+    /* Natywne details, pola i opcjonalna uwaga w jednym rzędzie. */
     .wplata-formularz { display: inline-block; vertical-align: top; max-width: 100%; }
     .wplata-formularz > summary { display: inline-flex; list-style: none; cursor: pointer; }
     .wplata-formularz > summary::-webkit-details-marker { display: none; }
@@ -1240,7 +1232,7 @@
     .drobne form { margin-top: .5rem; }
 
     @media (max-width: 1000px) { .metryczka, .dwie-kolumny { grid-template-columns: 1fr; } }
-    /* Tabela zamowien (lista.ejs), Zadanie „strona glowna": kanal/data pod numerem, */
+    /* Tabela zamowien (lista.ejs): kanal/data pod numerem, */
     /* drobniejsze i przygaszone — numer i status maja rzucac sie w oczy jako pierwsze. */
     .wiersz-szczegoly { font-size: .8rem; color: var(--tekst-przygaszony); margin-top: .15rem; line-height: 1.45; }
     /* ⚠️ Komorka „Zamowienie" niesie TRZY rzeczy jedna pod druga (numer, zrodlo z data, */
@@ -1261,14 +1253,14 @@
     .numer-zamowienia { font-size: 1.05rem; font-weight: 600; text-decoration: none; color: var(--link); }
     .numer-zamowienia:hover { text-decoration: underline; }
     .komorka-zamowienie .wiersz-zrodlo { white-space: nowrap; }
-    /* ⚠️ DATA TEZ NIELAMLIWA, ale we WLASNEJ linii (21.08.2026). Data zlamana w polowie
+    /* ⚠️ DATA TEZ NIELAMLIWA, ale we WLASNEJ linii. Data zlamana w polowie
        („2026-08-21 / 21:44") jest nieczytelna, wiec `nowrap` zostaje; kluczowe jest to, ze
        nie stoi juz w jednej nielamliwej linii razem z kanalem i odznaka — bo taka linia byla
        twarda podloga szerokosci calej kolumny i wypychala tabele poza kontener. */
     .komorka-zamowienie .wiersz-data { white-space: nowrap; }
     .wiersz-stan { margin-top: .4rem; display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; }
     .komorka-klient { min-width: 8rem; }
-    /* KOLUMNA „KLIENT” (PRZ-094.19): imie i nazwisko (1rem, jak dotad) → firma (.9rem, ta sama miara co nazwa
+    /* KOLUMNA „KLIENT”: imię i nazwisko (1rem, jak dotąd) → firma (.9rem, ta sama miara co nazwa
        metody w „Dostawie”) → login Allegro (.85rem, przygaszony: najmniejszy drobny druk panelu, `.drobne`).
        ⚠️ PRZYCIECIE `line-clamp`, NIE `nowrap` + `ellipsis`: `nowrap` ustawialby twarda podloge szerokosci
        kolumny rowna najdluzszej nazwie (ta sama pulapka co przy dacie i kanale w „Zamowieniu”), a clamp
@@ -1286,7 +1278,7 @@
     .komorka-kwota { white-space: nowrap; }
     /* Pusta lista ma powiedziec, ze jest pusta — inaczej wyglada jak ekran, ktory sie nie wczytal. */
     .pusto { color: var(--tekst-przygaszony); font-style: italic; padding: 1.25rem .85rem; }
-    /* PRZ-109.02: odnosnik w pustej liscie ma byc widoczny jako odnosnik. `td a` wyzej zdejmuje podkreslenie, */
+    /* Odnosnik w pustej liscie ma byc widoczny jako odnosnik. `td a` wyzej zdejmuje podkreslenie, */
     /* a kolor --link jest bliski przygaszonemu tekstowi komorki — bez podkreslenia nie widac, ze to link. */
     td.pusto a, td.pusto a:visited { text-decoration: underline; text-decoration-color: currentColor; }
     /* Wyszukiwarka nad tabela. Etykieta jest DLA CZYTNIKA EKRANU, nie dla oka: pole ma */
@@ -1326,7 +1318,7 @@
       .pas { flex-wrap: wrap; }
       .menu-uzytkownika { margin-left: auto; }
       .nawigacja-kontekstowa--mobile { display: block; margin-top: .6rem; }
-      /* ⚠️ TRESC PIERWSZA, KOLUMNA POD NIA (17.08.2026). Kolumna stoi w DOM PRZED trescia */
+      /* ⚠️ TRESC PIERWSZA, KOLUMNA POD NIA. Kolumna stoi w DOM PRZED trescia */
       /* — tak ma byc na szerokim ekranie i dla czytnika ekranu — wiec po zlozeniu do */
       /* jednej kolumny ladowala NAD zamowieniem. Zmierzone przy 375 px: osiem statusow */
       /* zajmowalo pierwsze 470 px strony, a karta zaczynala sie dopiero pod nimi. */
@@ -1336,7 +1328,7 @@
       .kolumna-boczna { display: none; }
       /* ⚠️ `width: 100%` NIE jest tu ozdoba — bez niego `align-self: stretch` wyzej */
       /* rozciaga kolumne boczna do szerokosci TABELI, a nie do szerokosci `.uklad`. */
-      /* Mechanizm (zmierzony w przegladarce 05.08.2026, okno 600x900: `.uklad` 568 px, */
+      /* Mechanizm (zmierzony w przegladarce, okno 600x900: `.uklad` 568 px, */
       /* kolumna boczna 978 px): `.uklad` ma `flex-wrap: wrap`, wiec jest kontenerem */
       /* WIELOLINIOWYM — a takiemu rozmiar poprzeczny linii nie jest przycinany do */
       /* wnetrza kontenera (przycieciu podlegaja tylko kontenery jednoliniowe). Przy */
@@ -1360,10 +1352,10 @@
       .pole-filtra > .zakres { flex-direction: column; align-items: stretch; }
       .pole-filtra > .zakres .myslnik { display: none; }
     }
-    /* Cztery ikony (punkt C brief-u). KSZTALT niesie znaczenie razem z kolorem — */
-    /* sam kolor nie wystarcza (patrz komentarz w lista.ejs przy WYGLAD_IKONY). */
+    /* Cztery ikony. KSZTALT niesie znaczenie razem z kolorem — */
+    /* sam kolor nie wystarcza (patrz komentarz na początku lista.ejs, przy KLASA_IKONY i KSZTALTY_SVG). */
     /* ⚠️ KOLUMNA „DOSTAWA" — OGRANICZONA, ZEBY NIE KRADLA SZEROKOSCI „PRODUKTOM".
-       Od 25.08.2026 kolumna pokazuje PELNE nazwy uslug Allegro; najdluzsza realna ma
+       Kolumna pokazuje PELNE nazwy uslug Allegro; najdluzsza realna ma
        74 znaki. Przy `table-layout: auto` kolumna o duzej szerokosci maksymalnej dostaje
        wiekszy udzial w wolnej przestrzeni, wiec jedna taka nazwa przesuwala miejsce
        z kolumny czytanej przy KAZDYM zamowieniu do tej czytanej rzadko.
@@ -1378,15 +1370,14 @@
        („paczka bez ruchu", „brak etykiety") — te stoja obok i sa operacyjne.
        ⚠️ Bez `line-clamp` sama `max-width` PODNOSILA wiersz ze 158 na 170 px, bo nazwa
        lamala sie na siedem linii. Zmierzone, nie przewidziane. */
-    /* ⚠️ MINIMUM ZAKODOWANE Z POMIARU, nie z upodobania (prośba właściciela 25.08.2026:
-       „w statusie Wysłane zmniejsz kolumnę klienci tak, żeby Allegro Kurier DPD
-       wyświetlało się w jednej linii").
+    /* ⚠️ MINIMUM ZAKODOWANE Z POMIARU, nie z upodobania: nazwa
+       „Allegro Kurier DPD" w statusie Wysłane ma się wyświetlać w jednej linii.
 
        Zmierzone w przeglądarce: napis „Allegro Kurier DPD" ma 133 px, a wyściółka komórki
        27 px — czyli jedna linia wymaga 160 px. `11rem` (176 px) daje 16 px zapasu na
        różnice w renderowaniu czcionki między maszynami.
 
-       ⚠️ MINIMUM DOSTAWY, A NIE MAKSIMUM KLIENTA — mimo że prośba mówiła o kolumnie
+       ⚠️ MINIMUM DOSTAWY, A NIE MAKSIMUM KLIENTA — choć pierwotnie chodziło o kolumnę
        klienta. Zapisany jest tu WYMÓG („ta nazwa ma się mieścić"), a nie jego skutek
        uboczny; szerokość i tak schodzi z kolumny, w której jest luz. Zmierzone przy
        ciasnym układzie 1300 px: Dostawa 111 → 203, Klient 212 → 195, Produkty bez zmian,
@@ -1398,7 +1389,7 @@
        ~14,5rem zmieściłoby i je, ale kosztem „Produktów" — do decyzji, gdyby zaczęło
        przeszkadzać. */
     .komorka-dostawa { min-width: 11rem; max-width: 12rem; }
-    /* PRZ-094.17 (prosba właściciela): nazwa metody o stopien mniejsza niz tekst komorki (1rem → .9rem —
+    /* Nazwa metody o stopien mniejsza niz tekst komorki (1rem → .9rem —
        najczestszy rozmiar „tekstu pomocniczego” w tym pliku; panel nie ma na to tokenu). Dopisek
        „(pobranie)” jest czescia nazwy, wiec ma ten sam rozmiar, a .9rem jest NIE MNIEJSZE niz drobny
        druk panelu (`.drobne` .85rem, `.wiersz-szczegoly` .8rem). */
@@ -1406,14 +1397,14 @@
       display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3;
       -webkit-box-orient: vertical; overflow: hidden; font-size: .9rem;
     }
-    /* PLAKIETKI MAREK (PRZ-094.17) — przewoznik w kolumnie „Dostawa” i rodzaj kanalu (Allegro /
+    /* PLAKIETKI MAREK — przewoznik w kolumnie „Dostawa” i rodzaj kanalu (Allegro /
        WooCommerce) przy nazwie sklepu. JEDEN styl: kolor tla i tekstu idzie przez dwie zmienne,
        a kazda marka ustawia tylko je. Kolory MAREK sa stale w obu motywach (marka nie zmienia
        barw po ciemnym motywie), dlatego NIE sa tokenami palety panelu; w ciemnym motywie plakietke
        odcina od tla cienka ramka z tokena `--ramka-pola`, zeby zolty InPost nie „swiecil”.
        Kontrast tekstu na tle (WCAG, liczony skryptem, prog 4,5): InPost 6,67 · DPD 5,14 · DHL 4,74 ·
        ORLEN Paczka 4,55 · Packeta 6,47 · Allegro One 6,32 · Allegro (kanal) 5,40 · WooCommerce 5,04.
-       Zrodla kolorow i odstepstwo DHL (ciemniejsza czerwien tekstu): opis w commicie PRZ-094.17. */
+       Odstepstwo DHL: ciemniejsza czerwien tekstu zamiast koloru marki. */
     .plakietka {
       display: block; width: fit-content; max-width: 100%; box-sizing: border-box;
       padding: .08rem .45rem; border: 1px solid transparent; border-radius: .35rem;
@@ -1436,7 +1427,7 @@
       width: 1.15rem; height: 1.15rem; padding: 0; margin: -.15rem .35rem -.15rem 0; vertical-align: middle;
       border-radius: .3rem; font-size: .75rem; font-weight: 700; line-height: 1;
     }
-    /* PRZ-160.P3a.02: kanal, w ktorym oferta nie jest aktywna (np. ERLI w bledzie) — bez koloru marki,
+    /* Kanal, w ktorym oferta nie jest aktywna (np. ERLI w bledzie) — bez koloru marki,
        przerywana ramka; stan w title/aria-label. Kontrast tekstu (WCAG, skrypt): jasny 4,53 · ciemny 5,84;
        ramka do tla 3,37 / 3,54. */
     .plakietka--nieaktywna {
@@ -1509,7 +1500,7 @@
     .zaznacz-wszystkie:hover { text-decoration: underline; }
 
     /* ================================================================================= */
-    /* ZAKLADKA FAKTURY (faktury.ejs, spec 2026-08-06).                                   */
+    /* ZAKLADKA FAKTURY (faktury.ejs).                                   */
     /* ⚠️ ANI JEDNEGO NOWEGO KOLORU: wszystkie uzyte zmienne sa juz zdefiniowane w OBU     */
     /* paletach na gorze. Wartosc wpisana tu wprost zadzialalaby w jasnym motywie i po     */
     /* cichu zniknela w ciemnym — a to sa znaczniki mowiace o pieniadzach i o KSeF.        */
@@ -1539,22 +1530,20 @@
     .belka-masowa .cicho { color: var(--marka-jasna); font-size: .85rem; }
 
     /* ================================================================================= */
-    /* MAGAZYN (magazyn-lista.ejs, magazyn-pominiete.ejs, spec 2026-08-06).                */
+    /* MAGAZYN (magazyn-lista.ejs, magazyn-pominiete.ejs).                */
     /* ⚠️ ANI JEDNEGO NOWEGO KOLORU: obie reguly nizej siegaja po zmienne zdefiniowane      */
     /* w OBU paletach na gorze. Wartosc wpisana tu wprost zadzialalaby w motywie jasnym     */
     /* i po cichu zniknela w ciemnym — tak samo jak wszedzie indziej w tym arkuszu.         */
     /* ================================================================================= */
     /* Brak wartosci: kreska w kolumnie kanalu i trzeci stan przy paczkomacie. Ma byc       */
     /* czytelne, ale ciszej niz wartosc — bo brak to nie jest liczba.                       */
-    /* Arkusz jest osobnym plikiem CSS; dawniej komentarze w HTML-u zaklocaly testy        */
-    /* karty zamowienia i kolumny paczkomatu.                                             */
     .magazyn-brak { color: var(--tekst-przygaszony); }
     /* Cztery kolumny kanalow: ceny czyta sie kolumnowo, wiec cyfry musza miec rowna       */
     /* szerokosc (bez tego „1" jest wezsza od „8" i kolumna faluje z wiersza na wiersz),   */
-    /* a kwota nie ma prawa zlamac sie na dwie linie przy 1010 wierszach.                  */
+    /* a kwota nie ma prawa zlamac sie na dwie linie przy tysiacu wierszy.                  */
     .magazyn-kanal { white-space: nowrap; font-variant-numeric: tabular-nums; }
     /* Wymiar w jednej linii: „70 × 100 cm" ciete na dwie wyglada jak usterka w kazdym
-       wierszu (ogledziny na kopii produkcyjnej bazy, 25.08). Napis jest krotki, wiec
+       wierszu. Napis jest krotki, wiec
        nowrap nie rozpycha tabeli. */
     .kol-wymiary { white-space: nowrap; }
     .magazyn-kanal a { color: var(--link); }
@@ -1563,9 +1552,9 @@
     /* i wiersz rosnie. Tabela ma wlasny przewijak, wiec to niczego nie rozpycha.          */
     .komorka-karta { min-width: 18rem; }
     .magazyn-tabela th a { color: var(--link); }
-    /* Pasek nad tabela (przebudowa 2026-08-25, Zadanie 5): co zawęża liste z lewej,          */
-    /* przelacznik trybu kolumn z prawej. Stoi NAD `.przewijak-tabeli`, wiec nie jedzie       */
-    /* w bok razem z zawartoscia tabeli.                                                      */
+    /* Pasek nad tabelą: co zawęża listę z lewej,          */
+    /* przełącznik trybu kolumn z prawej. Stoi NAD `.przewijak-tabeli`, więc nie jedzie       */
+    /* w bok razem z zawartością tabeli.                                                      */
     .tabela-glowa {
       display: flex; justify-content: space-between; align-items: baseline;
       gap: 1rem; flex-wrap: wrap; margin: 0 0 .35rem;
@@ -1574,17 +1563,17 @@
     /* Przelacznik trybu kolumn to STEROWANIE tabela, nie zdanie — stoi w jednym rzedzie
        z „Co panel pomija i dlaczego →" i „Powiąż oferty Allegro →", ktore podkreslenia
        nie maja. Bez tej linii jako jedyny w calym rzedzie dostawal kreske spod reguly
-       ogolnej dla odnosnikow w zdaniu (2026-08-29). Podkreslenie wraca na najechaniu. */
+       ogolnej dla odnosnikow w zdaniu. Podkreslenie wraca na najechaniu. */
     .tabela-glowa .przelacznik a { text-decoration: none; }
     .tabela-glowa .przelacznik a:hover { text-decoration: underline; text-decoration-color: currentColor; }
     /* Kolumna „Stan" trybu porzadkow. Liczba brakow ma byc czytelna, ale CISZEJ niz tresc    */
     /* wiersza: to miara roboty do zrobienia, a nie dana karty — komplet mowi znacznikiem,    */
     /* tak samo jak „paczkomat: tak". Bez lamania na dwie linie przy ~1000 wierszach.         */
     .stan-braki { font-size: .8rem; color: var(--tekst-przygaszony); white-space: nowrap; }
-    /* PRZ-091 — stany magazynowe: liczba na minusie i pasek nad tabelą Magazynu. */
+    /* Stany magazynowe: liczba na minusie i pasek nad tabelą Magazynu. */
     .stan-minus { color: var(--blad-tekst); font-weight: 600; }
     .magazyn-stany { margin: .5rem 0; padding: .4rem .7rem; border: 1px solid var(--blad-ramka); border-radius: 6px; background: var(--blad-tlo-jasne); }
-    /* Kafle brakow (przebudowa 2026-08-25, spec w docs/superpowers/specs).                */
+    /* Kafle brakow.                */
     /* ⚠️ `.kafel` PONIZEJ CELOWO SCOPOWANY PRZEZ `.kafle` (naglowek nawigacji): gola klasa */
     /* `.kafel` jest juz ZAJETA przez kafle KPI raportow/finansow/klienta/zwrotu (patrz     */
     /* nizej w tym arkuszu, sekcja RAPORTY) — inny ksztalt (div, nie odnosnik) i inny cel.  */
@@ -1610,9 +1599,9 @@
     .pasek-zawezania { background: var(--powierzchnia); border: 1px solid var(--ramka);
       border-radius: .4rem; padding: .1rem .75rem .55rem; margin: 0 0 .8rem; }
     .pasek-zawezania .filtry, .pasek-zawezania .szukajka { border: 0; padding: .45rem 0 0; margin: 0; background: transparent; }
-    /* Pasek odczytu (PRZ-160 P3b.03b): na liscie WYLACZNIE przy trwaniu albo bledzie —      */
+    /* Pasek odczytu: na liscie WYLACZNIE przy trwaniu albo bledzie —      */
     /* trasa (`opisPrzebiegu`) rozstrzyga REGULA, bo cichy zly odczyt ma wygladac jak spokoj */
-    /* WYLACZNIE, gdy naprawde nic sie nie stalo (przewodnik, sekcja 9). Jedna linia, tlo/    */
+    /* WYLACZNIE, gdy naprawde nic sie nie stalo. Jedna linia, tlo/                        */
     /* ramka/promien jak `.panel`; przyciski odczytu sa na ekranie importu.                   */
     .pasek-odczytu { background: var(--powierzchnia); border: 1px solid var(--ramka); border-radius: .4rem;
       margin: 0 0 .8rem; padding: .45rem .75rem; color: var(--tekst-przygaszony);
@@ -1622,7 +1611,7 @@
     .pasek-odczytu__kanal { color: var(--tekst); }
     .pasek-odczytu > a { margin-left: auto; white-space: nowrap; }
 
-    /* Belka akcji magazynu (przebudowa 2026-08-25). Kalka wizualna paska akcji masowych     */
+    /* Belka akcji magazynu. Kalka wizualna paska akcji masowych     */
     /* z listy zamowien (te same tokeny), ale akcje maja POLA, wiec kazda otwiera sie         */
     /* `<details>` NA MIEJSCU — zaznaczenia w tabeli przezywaja otwieranie, bo nic sie nie    */
     /* przeladowuje. Wspolne `name` na czterech `<details>` robi z nich akordeon: otwarcie    */
@@ -1659,7 +1648,7 @@
     .akcja-cialo { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: .6rem 1rem;
       align-items: flex-end; background: var(--powierzchnia); color: var(--tekst);
       border-radius: .35rem; padding: .6rem .75rem; }
-    /* PRZ-160.E3.14: opcja konta bez zgody niesie powod — dluga; na telefonie lista nie moze rozpychac belki. */
+    /* Opcja konta bez zgody niesie powod — dluga; na telefonie lista nie moze rozpychac belki. */
     .akcja-cialo select { width: min(100%, 36rem); }
     .akcja-przyciski { display: flex; gap: .5rem; flex-wrap: wrap; margin-left: auto; }
     /* Jedno zdanie zasady akcji — wlasny wiersz pod przyciskami, ciszej niz one.              */
@@ -1668,7 +1657,7 @@
     /* ================================================================================= */
     /* POWIAZANIA OFERT ALLEGRO Z KARTAMI (magazyn-powiazania.ejs).                      */
     /* ⚠️ ANI JEDNEGO NOWEGO KOLORU — te same zmienne, co wyzej, zdefiniowane w OBU       */
-    /* paletach. Arkusz jest ladowany jako osobny plik CSS, poza HTML-em ekranow.       */
+    /* paletach.                                                                         */
     /* ================================================================================= */
     /* Nazwa oferty niesie DWIE rzeczy jedna pod druga (nazwa + konto), a nazwy z Allegro */
     /* sa dlugie — bez szerokosci lamia sie na piec linii i wiersz rosnie na pol ekranu.  */
@@ -1677,7 +1666,7 @@
     .powiazania-tabela th a { color: var(--link); }
     .powiazania-tabela .komorka-kandydaci { min-width: 24rem; }
     .powiazania-tabela .komorka-reczna { min-width: 14rem; }
-    /* Kandydat jest CALY klikalny — pole wyboru samo w sobie ma 13 px i przy 447         */
+    /* Kandydat jest CALY klikalny — pole wyboru samo w sobie ma 13 px i przy kilkuset     */
     /* wierszach trafienie w nie mysza jest praca, a nie decyzja. Etykieta obejmujaca     */
     /* pole zalatwia to bez ani jednej linii skryptu.                                     */
     .kandydat {
@@ -1735,14 +1724,14 @@
     .ust-kanal:first-of-type { border-top: 0; padding-top: 0; margin-top: 0; }
     .ust-sekcja h2 { margin: 0 0 .3rem; font-size: 1rem; color: var(--tekst); }
     .ust-sekcja p { margin: 0 0 .8rem; font-size: .88rem; color: var(--tekst-przygaszony); }
-    /* Stan integracji (PRZ-094.11): krotka plakietka „Podlaczony" / „Niepodlaczony". Instrukcja */
+    /* Stan integracji: krotka plakietka „Podlaczony" / „Niepodlaczony". Instrukcja */
     /* uzyskania dostepu to OSOBNY blok `.ust-instrukcja` pod kaflem stanu — status i poradnik */
     /* nie stoja juz w jednym akapicie. */
     .ust-sekcja .ust-stan { margin: 0 0 .3rem; }
     .ust-stan strong { display: inline-block; padding: .12rem .65rem; border-radius: .8rem; font-size: .85rem; font-weight: 600;
       background: var(--powierzchnia-2); color: var(--tekst-przygaszony); border: 1px solid var(--ramka); }
     .ust-stan.ust-stan-ok strong { background: var(--ok-tlo); color: var(--ok-tekst); border-color: transparent; }
-    /* PRZ-094.12: ekran reklam ma wiecej stanow niz „podlaczony / nie": „Blad" (test odczytu */
+    /* Ekran reklam ma wiecej stanow niz „podlaczony / nie": „Blad" (test odczytu */
     /* zwrocil kod bledu) i „Weryfikacja" (polaczenie zapisane, jeszcze bez udanego odczytu). */
     .ust-stan.ust-stan-blad strong { background: var(--blad-tlo); color: var(--blad-tekst); border-color: transparent; }
     .ust-stan.ust-stan-weryfikacja strong { background: var(--uwaga-tlo); color: var(--uwaga-tekst); border-color: transparent; }
@@ -1778,7 +1767,7 @@
     .ust-szablon { border-top: 1px solid var(--ramka); padding: .8rem 0; }
     .ust-szablon-dodatkowe { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .4rem; }
     .ust-szablon-dodatkowe form { margin: 0; }
-    /* PRZ-101.03: Ustawienia → Szablony wiadomości. Kafel szerszy niż reszta ustawień — tabela tematów */
+    /* Ustawienia → Szablony wiadomości. Kafel szerszy niż reszta ustawień — tabela tematów */
     /* i pole treści listu w 42rem łamałyby każdy temat na dwie linie. */
     .szw-sekcja { max-width: 60rem; }
     .szw-tabela td.szw-temat { color: var(--tekst-przygaszony); }
@@ -1801,9 +1790,9 @@
       color: var(--tekst-przygaszony); border: 1px solid var(--ramka); border-radius: .6rem; }
     .szw-znacznik--wymagane { color: var(--blad-tekst-mocny); border-color: var(--blad-ramka); }
     .szw-usun { padding-top: .8rem; border-top: 1px solid var(--ramka); }
-    /* PRZ-102.17: sekcja „Zdania o płatności" — jedno zdanie = opis „kiedy pada" nad polem, stan i „Przywróć" pod nim. */
+    /* Sekcja „Zdania o płatności" — jedno zdanie = opis „kiedy pada" nad polem, stan i „Przywróć" pod nim. */
     .szw-zdania .szw-zdanie { margin: 0 0 1rem; }
-    /* PRZ-102.19: druga część sekcji — „Etykiety i stałe teksty”: krótkie pola, wyraźny podział od zdań. */
+    /* Druga część sekcji — „Etykiety i stałe teksty”: krótkie pola, wyraźny podział od zdań. */
     .szw-czesc { margin: 2rem 0 .2rem; padding-top: 1rem; font-size: 1.05rem; border-top: 2px solid var(--ramka); }
     .szw-zdanie--krotkie input { max-width: 24rem; }
     .szw-zdanie > label { display: block; margin: 0 0 .25rem; font-size: .88rem; color: var(--tekst); }
@@ -1822,7 +1811,7 @@
       .szw-pola { grid-template-columns: minmax(0, 1fr); gap: .1rem; }
       .szw-pola dd { margin-bottom: .45rem; }
     }
-    /* PRZ-101.10: telefon (390 px) — ekrany nocy 18/19.10 zmierzone w headless Edge. */
+    /* Telefon (390 px). */
     @media (max-width: 40rem) {
       /* Karta: stale kolumny tabeli pozycji (3.2 + 3.6 + 8.5 + 7.5 rem) zjadaly 364 px z 364 —
          nazwa produktu dostawala zero i lamala sie po jednej literze w wierszu. */
@@ -1873,7 +1862,7 @@
       color: var(--tekst); background: var(--tlo); border: 1px solid var(--ramka-pola); border-radius: 4px; }
     .ust-pola .pole-przelacznik { display: block; font-size: .9rem; color: inherit; }
     .ust-pola .pole-przelacznik input { width: auto; margin: 0 .4rem 0 0; vertical-align: middle; }
-    /* PRZ-092: formularz integracji (kurier DPD) w układzie Apilo — etykieta po lewej, pole z podpowiedzią */
+    /* Formularz integracji (kurier DPD) w układzie Apilo — etykieta po lewej, pole z podpowiedzią */
     /* po prawej; poniżej 40rem jedna kolumna. Paleta pól jak `.ust-pola` (pole wewnątrz kafla). */
     .ust-formularz { display: grid; grid-template-columns: minmax(9rem, 14rem) minmax(0, 1fr); gap: .8rem 1.1rem; align-items: start; }
     .ust-formularz > label { padding-top: .4rem; text-align: right; font-size: .88rem; color: var(--tekst); }
@@ -1883,11 +1872,11 @@
       color: var(--tekst); background: var(--tlo); border: 1px solid var(--ramka-pola); border-radius: 4px; }
     .ust-formularz .ust-pomoc { margin: .25rem 0 0; font-size: .78rem; color: var(--tekst-przygaszony); }
     .ust-formularz .ust-wartosc { padding-top: .4rem; font-size: .9rem; color: var(--tekst); }
-    /* PRZ-108.11: wartość tylko do odczytu (z pliku konfiguracji) + plakietka „wkrótce” w jednej linii. */
+    /* Wartość tylko do odczytu (z pliku konfiguracji) + plakietka „wkrótce” w jednej linii. */
     .ust-formularz .ust-wartosc-wiersz { display: flex; align-items: center; gap: .6rem; padding-top: .4rem; }
     .ust-formularz .ust-wartosc-wiersz .ust-wartosc { padding-top: 0; font-weight: 600; overflow-wrap: anywhere; }
     .ust-wymagane { color: var(--blad-tekst-mocny); }
-    /* PRZ-161: stan połączenia integracji — krótka lista „etykieta: wartość”. */
+    /* Stan połączenia integracji — krótka lista „etykieta: wartość”. */
     .ust-dane { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .25rem 1rem; margin: .5rem 0 .9rem; font-size: .9rem; }
     .ust-dane dt { color: var(--tekst-przygaszony); }
     .ust-dane dd { margin: 0; color: var(--tekst); overflow-wrap: anywhere; }
@@ -1895,7 +1884,7 @@
     .ust-sekcja .ust-akcje form { margin: 0; }
     .ust-sekcja > .ust-formularz { margin: .2rem 0 1rem; padding-top: .6rem; border-top: 1px solid var(--ramka); }
     .ust-akcje-polaczenia + .ust-pomoc { margin-top: .5rem; font-size: .8rem; }
-    /* PRZ-108.03b + PRZ-160 P3a.04b: strefa przeciągania plików (public/strefa-pliku.js; logo przez */
+    /* Strefa przeciągania plików (public/strefa-pliku.js; logo przez */
     /* public/logo-przeciaganie.js zostaje przy klasach .logo-strefa*). Obejmuje zwykłe pole pliku, więc bez skryptu */
     /* wygląda jak ramka z napisem; skrypt dokłada tylko podświetlenie, nazwy plików i podgląd. */
     .strefa-pliku, .logo-strefa { box-sizing: border-box; padding: .8rem .9rem; border: 2px dashed var(--ramka-pola); border-radius: 8px; background: var(--powierzchnia-2); }
@@ -1939,7 +1928,7 @@
     .kafel-delta--wzrost { color: var(--ok-tekst); }
     .kafel-delta--spadek { color: var(--blad-tekst); }
 
-    /* Stany kafli „nieznany/nieświeży” (wspólne kafle, w tym dawne Cele — usunięte w PRZ-167). */
+    /* Stany kafli „nieznany/nieświeży” (wspólne kafle). */
     /* ⚠️⚠️ TRZY STANY MUSZA SIE ROZNIC NA EKRANIE, nie tylko w danych. „0 / 5" i „— / 5"  */
     /* wygladajace tak samo znacza, ze zepsuty miernik jest nieodrozialny od czlowieka,    */
     /* ktory nic nie zrobil — a na tej podstawie zapada rozmowa z czlowiekiem. Stan        */
@@ -1958,13 +1947,13 @@
     /* z zewnatrz). Szerokosc wypelnienia liczy sie wzgledem NAJWYZSZEGO slupka, wiec cala */
     /* seria stoi na jednej skali; kwota obok slupka jest ta sama, co w reszcie ekranu.    */
     .slupki { display: flex; flex-direction: column; gap: .4rem; }
-    /* Paski udzialu faktura/paragon (raporty, 17.08.2026). Pytanie brzmi „ile z tego idzie */
+    /* Paski udzialu faktura/paragon (raporty). Pytanie brzmi „ile z tego idzie */
     /* na fakture", wiec liczy sie PROPORCJA, a nie dwie liczby obok siebie.                */
     /*                                                                                      */
     /* ⚠️ KOLORY TO ODWROCONA PARA Z PALETY STATUSOW (`--ok-*`, `--st-zwrot-*`): tlo bierze */
     /* kolor TEKSTU, a tekst kolor TLA. Dzieki temu pasek jest nasycony, a kontrast jest    */
     /* gwarantowany w OBU motywach bez dobierania nowych barw — te pary sa juz zmierzone.   */
-    /* ZMIERZONE (17.08.2026): faktura 5,31 jasny / 7,26 ciemny; paragon 6,69 / 6,89.      */
+    /* ZMIERZONE: faktura 5,31 jasny / 7,26 ciemny; paragon 6,69 / 6,89.      */
     .udzial + .udzial { margin-top: .85rem; }
     .udzial-tytul { font-size: .76rem; text-transform: uppercase; letter-spacing: .05em;
       color: var(--tekst-przygaszony); margin-bottom: .35rem; }
@@ -1982,9 +1971,9 @@
     .slupek { display: grid; grid-template-columns: 4.6rem minmax(4rem, 1fr) auto; gap: .7rem; align-items: center; font-size: .88rem; }
     .slupek-nazwa { color: var(--tekst-przygaszony); font-variant-numeric: tabular-nums; }
     .slupek-tor { background: var(--powierzchnia-2); border-radius: .2rem; height: .95rem; overflow: hidden; }
-    /* ⚠️ `min-width` — sprzedaz NIEZEROWA ma byc WIDOCZNA. Zmierzone na prawdziwych danych */
-    /* (rok 2025): kanal Prestashop mial 68,68 zl, czyli 0,03% udzialu, i jego slupek wychodzil */
-    /* na 0 px — pusty tor wyglada dokladnie jak brak sprzedazy. Wartosc ZEROWA nie rysuje */
+    /* ⚠️ `min-width` — sprzedaz NIEZEROWA ma byc WIDOCZNA. Zmierzone na prawdziwych danych: */
+    /* kanal z ulamkiem procenta udzialu mial slupek o szerokosci 0 px — pusty tor wyglada */
+    /* dokladnie jak brak sprzedazy. Wartosc ZEROWA nie rysuje */
     /* wypelnienia w ogole (warunek w raporty.ejs), wiec ten prog niczego nie zmysla. */
     .slupek-wypelnienie { height: 100%; min-width: 2px; background: var(--marka); border-radius: .2rem; }
     .slupek-kwota { white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -1996,19 +1985,19 @@
     /* i jest jej ilustracja, a nie osobnym wykresem.                                      */
     .slupek-tor--drobny { height: .4rem; margin-top: .25rem; }
 
-    /* Ekran „Łączność" (17.08.2026): wynik sprawdzenia usług. Zieleń i czerwień z palety   */
+    /* Ekran „Łączność": wynik sprawdzenia usług. Zieleń i czerwień z palety   */
     /* statusów — te pary maja ZMIERZONY kontrast w obu motywach, wiec nie dobieramy nowych. */
     .lacznosc-ok { color: var(--ok-tekst); font-weight: 600; }
     .lacznosc-zle { color: var(--blad-tekst); font-weight: 600; }
 
-    /* ——— PRZEBUDOWA RAPORTOW (17.08.2026) — komponenty z zatwierdzonej makiety ——————— */
+    /* ——— PRZEBUDOWA RAPORTOW — komponenty ——————— */
     /* Kompaktowy pasek zakresu: skroty i pola dat w jednym wierszu, metodologia w <details>. */
     /* ⚠️⚠️ WYSCIOLKA PANELU JEST TUTAJ, BO `.panel--zakres` NIE MA W SRODKU `.panel-cialo`.  */
     /* Wysciolke panelu niesie w tym arkuszu WYLACZNIE `.panel-cialo` (.9rem), a pasek       */
-    /* zakresu wstawia `.zakres-rzad` wprost do `.panel` — do 21.08.2026 jego tresc stala    */
+    /* zakresu wstawia `.zakres-rzad` wprost do `.panel` — bez wysciolki jego tresc stala    */
     /* wiec DOKLADNIE na ramce, w odroznieniu od kazdego innego panelu na ekranie (zmierzone */
-    /* w przegladarce: `padding: 0px 0px 9.6px`, dziecko przy samej krawedzi). Zgloszenie    */
-    /* właściciela „zakladka z filtrami nie ma marginesow". Pionowo ciasniej niz .panel-cialo, bo  */
+    /* w przegladarce: `padding: 0px 0px 9.6px`, dziecko przy samej krawedzi).              */
+    /* Pionowo ciasniej niz .panel-cialo, bo                                                 */
     /* pasek ma zostac kompaktowy — poziomo ROWNO, zeby stal w jednej linii z panelami nizej.*/
     .panel--zakres { padding: .55rem .9rem .6rem; }
     .panel--zakres .panel-cialo { padding-bottom: .6rem; }
@@ -2048,13 +2037,13 @@
        motywy dostaja go za darmo (patrz ostrzezenie przy palecie na gorze pliku). */
     .dzien-slupek { width: 100%; background: linear-gradient(180deg, var(--marka-ciemniej), var(--marka)); border-radius: 4px 4px 0 0; min-height: 2px; }
     .dzien:hover .dzien-slupek { filter: brightness(1.12); }
-    /* OKIENKO DNIA (2026-08-28, prosba właściciela): karta z data, kwota i liczba zamowien,
+    /* OKIENKO DNIA: karta z data, kwota i liczba zamowien,
        pokazywana na :hover — CZYSTY CSS, zero JS (regula panelu stoi; wyjatek JS ma
        wylacznie /kampania). Czytnik ekranu dostaje ten sam podpis w aria-label kolumny.
        Karta stoi u GORY WEWNATRZ wykresu, bo .panel ma overflow:hidden i wszystko ponad
        krawedzia zostaloby sciete; krawedzie lewa/prawa zalatwia nth-child — klasy kolumny
        NIE WOLNO dotykac (testy licza slupki splitem po dokladnym `<div class="dzien"`). */
-    /* WYGLAD KARTY JEST WSPOLNY dla wykresu dnia i dla slupkow kanalow (31.08.2026) —
+    /* WYGLAD KARTY JEST WSPOLNY dla wykresu dnia i dla slupkow kanalow —
        dwie kopie tych samych deklaracji rozjechalyby sie przy pierwszej zmianie cienia
        albo ramki, a obie karty maja byc tym samym elementem panelu. Rozne jest wylacznie
        KOTWICZENIE (nizej): kolumna dnia trzyma karte u gory wykresu, wiersz kanalu — pod
@@ -2085,13 +2074,13 @@
     .kanal-nazwa { font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .kanal-wiersz .slupek-tor { height: .9rem; }
     .kanal-wiersz .liczba, .kanal-naglowek .liczba { text-align: right; font-variant-numeric: tabular-nums; font-size: .9rem; }
-    /* PRZ-102.05: podpis „vs 2026-09-01 – 2026-09-20” nie mieści się w kolumnie 6,5 rem, a globalne
+    /* Podpis „vs 2026-09-01 – 2026-09-20” nie mieści się w kolumnie 6,5 rem, a globalne
        `.liczba { white-space: nowrap }` wypychało go za prawy brzeg — /raporty przewijało się w bok
        o 50 px przy oknie 1280 (dokument 1315 px przy 1265 px). Nagłówek zawija się do dwóch linii. */
     .kanal-naglowek .liczba { white-space: normal; }
     .kanal-drobne { color: var(--tekst-przygaszony); font-size: .82rem; }
     .kanal-delta { justify-self: end; white-space: nowrap; margin-top: 0; }
-    /* Karta kanalu na :hover (31.08.2026) — czysty CSS, zero JS (regula panelu stoi;
+    /* Karta kanalu na :hover — czysty CSS, zero JS (regula panelu stoi;
        wyjatek JS ma wylacznie /kampania). Wyglad jest wspolny z karta dnia, tutaj zostaje
        samo kotwiczenie: POD wierszem, przy poczatku slupka (11,5 rem kolumny nazwy + 0,8 rem
        przerwy), zeby nie zaslaniac nazwy kanalu, na ktora sie patrzy.
@@ -2119,13 +2108,13 @@
     /* Prawa kolumna dwoch kart (faktura/paragon + klienci) jedna nad druga.                */
     .kolumna-kart { display: grid; align-content: start; }
 
-    /* ——— FINANSE (przebudowa 17.08.2026) —————————————————————————————————————— */
+    /* ——— FINANSE —————————————————————————————————————— */
     /* Kaskada „od przychodu do zostaje": WSZYSTKIE tory na jednej skali (100% = przychod),  */
     /* a pomniejszenia to segmenty zdjete z prawej strony — dlatego czesc jest pozycjonowana */
     /* absolutnie wzgledem toru, a nie plynie od lewej.                                      */
     .kaskada { display: grid; gap: .5rem; }
     .kaskada-wiersz { display: grid; grid-template-columns: 14rem minmax(10rem, 1fr) 8.5rem; gap: .8rem; align-items: center; }
-    /* Wariant wybrany 17.08: kwota PO LEWEJ stronie paska — oko idzie nazwa → kwota →       */
+    /* Kwota PO LEWEJ stronie paska — oko idzie nazwa → kwota →       */
     /* dlugosc paska, bez przeskoku na drugi koniec ekranu.                                  */
     .kaskada--kwoty-lewo .kaskada-wiersz { grid-template-columns: 14rem 8.5rem minmax(10rem, 1fr); }
     .kaskada-nazwa { font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -2164,7 +2153,7 @@
       .kaskada-tor { grid-column: 1 / -1; }
       .kategoria-wiersz { grid-template-columns: minmax(7rem, 1fr) 7rem; }
       /* Waski ekran: naglowek kolumn bez sensu przy zawijaniu — wiersz kanalu sklada sie   */
-      /* do nazwy, slupka i kwoty; udzial i licznik niesie od 31.08.2026 karta :hover      */
+      /* do nazwy, slupka i kwoty; udzial i licznik niesie karta :hover      */
       /* i `aria-label` wiersza (delta zostaje wylacznie na szerokim ekranie).             */
       .kanal-naglowek { display: none; }
       .kanal-wiersz { grid-template-columns: minmax(7rem, 1fr) 6.5rem; }
@@ -2193,17 +2182,15 @@
       .panel, .kafel, .slupek { break-inside: avoid; }
       .przewijak-tabeli { overflow-x: visible; }
     }
-    /* PRZ-152.G12b: odnosnik w sciezce (okruszki) — kolor tekstu sciezki, podkreslenie przy najechaniu. */
+    /* Odnosnik w sciezce (okruszki) — kolor tekstu sciezki, podkreslenie przy najechaniu. */
     .oms-breadcrumb strong a.oms-breadcrumb-link{color:inherit;text-decoration:none}
     .oms-breadcrumb strong a.oms-breadcrumb-link:hover,.oms-breadcrumb strong a.oms-breadcrumb-link:focus-visible{text-decoration:underline}
 
-/* PRZ-160.07d */
 #stan-karty .ruchy-przewijanie { overflow-x: auto; max-inline-size: 100%; }
 #stan-karty .ruchy-przewijanie table { min-inline-size: 38rem; }
 #stan-karty .ruchy-przewijanie td:last-child { white-space: normal; overflow-wrap: anywhere; overflow: visible; text-overflow: clip; }
 #dane-karty .zrodlo-pola { display: inline-block; font-weight: normal; color: var(--tekst-przygaszony); margin-inline-start: .35rem; }
 #produkty-karty .magazyn-brak { overflow-wrap: anywhere; }
-/* PRZ-160 07a */
 #opis-karty fieldset { min-inline-size: 0; margin-block: 1rem; padding: 1rem; border: 1px solid var(--ramka-pola); border-radius: .3rem; }
 #opis-karty .pola { margin-block-end: 1rem; }
 #opis-karty .pola p { margin-block: 0 .5rem; color: var(--tekst-przygaszony); font-size: .85rem; }
@@ -2213,7 +2200,6 @@
 #opis-karty .opis-sekcja { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); gap: 1rem; margin-block: 1rem; }
 #opis-karty .opis-element { min-inline-size: 0; overflow-wrap: anywhere; }
 #opis-karty .opis-element img { max-inline-size: 100%; block-size: auto; }
-/* PRZ-160 07b */
 .karta-galeria { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 1rem; list-style: none; padding: 0; }
 .karta-galeria > li { min-width: 0; }
 .karta-galeria img, .karta-galeria > li > .magazyn-brak { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: contain; }
@@ -2229,7 +2215,7 @@
 .karta-galeria-wybor input[type="checkbox"] { flex: 0 0 auto; inline-size: 1.25rem; block-size: 1.25rem; }
 .karta-galeria-wybor input:disabled + label { cursor: not-allowed; opacity: .65; }
 .karta-galeria-ai button { min-block-size: 3rem; }
-/* PRZ-160 P3b.01 — słowniki Magazynu (Kategorie, Marki) */
+/* Słowniki Magazynu (Kategorie, Marki) */
 .slownik-narzedzia { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem 2rem; margin-block: 1rem; }
 .slownik-dodaj, .slownik-zmien { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 .slownik-dodaj label { flex-basis: 100%; font-weight: 600; }
@@ -2244,8 +2230,8 @@
 .slownik-plakietka { display: inline-block; margin-inline-start: .35rem; font-size: .8rem; }
 .slownik-tabela .slownik-bez th[scope="row"] { font-weight: normal; font-style: italic; }
 
-/* PRZ-160 P3b.03 — ekran importu (`/magazyn/import`, magazyn-import.ejs). Kafle liczb pożycza z `.kafelki/.kafel`;
-   tu tylko wybór (radio z etykietą obok), uwaga D3 i odnośniki. Kolory wyłącznie z palety obu motywów. */
+/* Ekran importu (`/magazyn/import`, magazyn-import.ejs). Kafle liczb pożycza z `.kafelki/.kafel`;
+   tu tylko wybór (radio z etykietą obok), uwaga i odnośniki. Kolory wyłącznie z palety obu motywów. */
 .import-wybor { border: 1px solid var(--ramka); border-radius: .4rem; padding: .6rem .9rem .8rem; margin: 0 0 1rem; }
 .import-wybor legend { font-weight: 600; padding: 0 .3rem; }
 .import-opcja { display: flex; align-items: flex-start; gap: .55rem; padding: .35rem 0; }
@@ -2260,7 +2246,7 @@
 .import-akcje { display: flex; flex-wrap: wrap; align-items: center; gap: .8rem; margin-top: 1rem; }
 .import-odnosniki { display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; margin-top: 1rem; }
 .import-erli { margin: 0 0 1rem; }
-/* PRZ-167 — ANALITYKA: „Więcej analiz” jako kafle-odnośniki z ikoną (ekran /analityka). */
+/* ANALITYKA: „Więcej analiz” jako kafle-odnośniki z ikoną (ekran /analityka). */
 .analityka-sekcja { margin: 1.6rem 0 .7rem; font-size: .8rem; font-weight: 600; letter-spacing: .04em;
   text-transform: uppercase; color: var(--tekst-przygaszony); }
 .analityka-podstrony { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); gap: .75rem; }

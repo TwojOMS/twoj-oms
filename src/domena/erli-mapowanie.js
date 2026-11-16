@@ -1,4 +1,4 @@
-// PRZ-157.04 — zamówienie ERLI (Shop API, `Order`) → model panelu (te same klucze, co `mapujZamowienieAllegro`).
+// Zamówienie ERLI (Shop API, `Order`) → model panelu (te same klucze, co `mapujZamowienieAllegro`).
 //
 // Kwoty w ERLI są w GROSZACH, liczbami całkowitymi (12345 = 123,45 zł). Rynek i waluta (D3): zamówienie spoza
 // rynku PL albo w walucie innej niż PLN dostaje sprawę do ręcznej obsługi — kursów NIE przeliczamy.

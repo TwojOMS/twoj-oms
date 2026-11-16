@@ -16,7 +16,7 @@ const aplikacjaOk = (a:unknown):a is AplikacjaKanalu => a===null || a==='device'
 const adresOk = (a:unknown):a is string => typeof a==='string' && a.trim().length>0 && a.trim().length<=500;
 const konflikt=()=>bladAllegro('konflikt','Połączenie zostało zmienione. Odśwież ekran.');
 const adresZajety=()=>bladAllegro('konflikt','Ten adres sklepu jest już zapisany w OMS.');
-// Bez migracji 0003 (bazy testów z samym 0001) kolumn typ/aplikacja nie ma — wiersz jest wtedy Allegro sprzed PRZ-132.
+// Bez migracji 0003 (bazy testów z samym 0001) kolumn typ/aplikacja nie ma — wiersz jest wtedy Allegro sprzed dodania tych kolumn.
 const typWiersza=(r:any):string=>r.typ??'allegro';
 function dto(r:any):PolaczenieKanalu {
  return {klucz:r.klucz,typ:typWiersza(r) as TypKanaluZnany,aplikacja:r.aplikacja??null,nazwa:r.nazwa,srodowisko:r.srodowisko,zrodlo:r.zrodlo,kontoId:r.konto_id,login:r.login,raport:r.raport,
@@ -49,7 +49,7 @@ export function createRepozytoriumKanalow(o: {db:DatabaseSync; definicjeEnv:read
   return Boolean(r && ((d && (r.zrodlo!=='env'||r.srodowisko!==env(d).srodowisko)) || (!d&&r.zrodlo==='env')));
  }
  const pobierz=(klucz:string)=>lista().find(k=>k.klucz===klucz)??null;
- // PRZ-157.00 (D9): typ połączenia dla modułu zamówienia — definicja env (każdy typ), potem wiersz panelu; nigdy prefiks.
+ // Typ połączenia dla modułu zamówienia — definicja env (każdy typ), potem wiersz panelu; nigdy prefiks.
  // Zamknięta baza (stara kompozycja w testach) = klucz nieznany, domena zostaje przy dawnym wyborze.
  const typyEnv=new Map<string,string>(o.definicjeEnv.map(d=>[d.klucz,d.typ]));
  // Trafienia z bazy w pamięci: typ klucza po wstawieniu się nie zmienia, a wołają nas pętle list i raportów.
@@ -174,7 +174,7 @@ export function createRepozytoriumKanalow(o: {db:DatabaseSync; definicjeEnv:read
  }
  const niejednoznaczne=(klucz:string)=>db.prepare("SELECT id,metoda,sciezka,stan FROM kanaly_operacje_niejednoznaczne WHERE kanal=? AND stan='do_sprawdzenia' ORDER BY id").all(klucz) as {id:string;metoda:string;sciezka:string;stan:string}[];
  const operacjaZablokowana=(klucz:string,metoda:string,sciezka:string)=>Boolean(db.prepare("SELECT 1 FROM kanaly_operacje_niejednoznaczne WHERE kanal=? AND metoda=? AND sciezka=? AND stan IN ('do_sprawdzenia','zablokowana') LIMIT 1").get(klucz,metoda,sciezka));
- /** PRZ-160.E3.04 (D39): pętla ofert ustaliła wynik odczytem (po `external.id` albo odczycie oferty) — operacja
+ /** Pętla ofert ustaliła wynik odczytem (po `external.id` albo odczycie oferty) — operacja
   * „do sprawdzenia” tego zasobu przestaje blokować. Blokady zostawionej przez operatora w przeglądzie nie zdejmuje.
   * Zwraca liczbę zwolnionych wierszy. Wzór stanu: przeglad-zapisow-allegro.ts (`zwolniona`). */
  function zwolnijOperacje(klucz:string,metoda:string,zasob:string):number{

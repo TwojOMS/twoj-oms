@@ -2,7 +2,7 @@ import { bladOperatora } from '../../domena/bledy.js';
 import { GABARYTY_PACZKOMATU } from '../../domena/paczka.js';
 import { groszeZKwoty } from '../../domena/kwota.js';
 
-// PRZ-157.08: kurier „Przesyłki Erli” — przewóz kupiony przez ERLI (`POST /shipping/parcels/`).
+// Kurier „Przesyłki Erli” — przewóz kupiony przez ERLI (`POST /shipping/parcels/`).
 //
 // Ten sam kontrakt co kurierzy/allegro-wza.js: `nadaj` zakłada paczkę, a ERLI tworzy ją
 // ASYNCHRONICZNIE — etykieta i numer śledzenia są dopiero wtedy, gdy `_search` odda

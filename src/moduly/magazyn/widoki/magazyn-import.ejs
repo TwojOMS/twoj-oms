@@ -1,10 +1,10 @@
-<%# MAGAZYN — „Importuj produkty" (PRZ-160 P3b.03, punkt 19). Jeden ekran, cztery kroki (`krok`):
+<%# MAGAZYN — „Importuj produkty”. Jeden ekran, cztery kroki (`krok`):
     wybor   — połączenie + typ, przycisk „Sprawdź";
     trwa    — odczyt katalogu wybranego kanału w tle (odśwież stronę);
     podglad — liczby z planu (nic jeszcze nie zapisane do kart), przycisk „Importuj";
     wynik   — te same liczby po wykonaniu.
-    Liczby liczy services/import-kanalu.js; widok tylko rysuje. Formularze bez ukrytego pola z tokenem:
-    ochrona CSRF (src/core/bezpieczenstwo/csrf.js) stoi na nagłówku Origin. %>
+    Liczby liczy moduly/magazyn/services/import-kanalu.js; widok tylko rysuje. Formularze bez ukrytego pola z tokenem:
+    ochrona CSRF (core/bezpieczenstwo/csrf.js) stoi na sprawdzaniu nagłówka Origin. %>
 <%_ const ZDANIE_D3 = 'Allegro zabrania używania treści pobranych z ofert w innych serwisach sprzedażowych — decyzja należy do Ciebie'; _%>
 <%_ const plakietka = (k) => k.rodzaj ? `<span class="plakietka plakietka--kanal plakietka--${k.rodzaj.klucz}" role="img" aria-label="${k.rodzaj.nazwa}" title="${k.rodzaj.nazwa}">${k.rodzaj.znak}</span> ` : ''; _%>
 <%_ const NAPISY = {

@@ -1,12 +1,12 @@
-// PRZ-108.08 (zmiana C1 planu automatyzacji, sekcja 2a): zdarzenie „Status zamówienia zmienił się na X”.
+// Zdarzenie „Status zamówienia zmienił się na X”.
 //
 // Status widoczny na liście jest WYLICZANY z faktów (domena/status.js), bez historii zmian — więc zdarzenie czytamy
 // ze znacznika czasu faktu, a nie z dziennika `log` (to tekst dla człowieka):
 //  • X = Wysłane       → `zamowienia.wyslane_at`  (karta, zmiana masowa, API panelu, ręczna rejestracja paczki,
 //                         przeniesienie na dołączone). Cofnięcie do „W realizacji” zeruje datę, ponowne ustawienie daje nową;
-//  • X = W realizacji  → `zamowienia.w_realizacji_at` (zostaje po cofnięciu z „Wysłane” — znana luka (a), plan 2a);
+//  • X = W realizacji  → `zamowienia.w_realizacji_at` (zostaje po cofnięciu z „Wysłane” — znana luka);
 //  • X = status własny → `zamowienia_status_wlasny.ustawione_at` (nadpisywane przy każdym ustawieniu).
-// Nowe, Anulowane i Zwrot nie mają dziś znacznika chwili zmiany — jako ZDARZENIE niedostępne (zmiana D), jako WARUNEK
+// Nowe, Anulowane i Zwrot nie mają dziś znacznika chwili zmiany — jako ZDARZENIE niedostępne („Nowe” ma osobne zdarzenie „Nowe zamówienie”), jako WARUNEK
 // („status jest …”) działają wszystkie, bo warunek czyta `wyliczStatus` w chwili wykonania.
 //
 // Granica = chwila włączenia reguły (`granica.at`): data faktu sprzed niej nie istnieje dla reguły. `od` (kursor − 5 min)
@@ -38,7 +38,7 @@ export function sqlKandydatow(db, klucz, od, { kanaly = null, limit = null, male
   const q = zapytanie(db, klucz);
   if (!q) return null;
   // `+z.sklep`: jednoargumentowy plus wyłącza indeks (sklep, zrodlo_id) dla tego warunku — bez niego planista SQLite
-  // wybierał indeks kanału i czytał wszystkie zamówienia sklepu (recenzja 08, usterka 4), zamiast zakresu po dacie
+  // wybierał indeks kanału i czytał wszystkie zamówienia sklepu, zamiast zakresu po dacie
   // (indeksy z migracji automatyzacje/0002). Kanał i tak filtruje się na wąskim zakresie dat.
   const filtrKanalu = Array.isArray(kanaly) ? ` AND +z.sklep IN (${znaki(kanaly.length)})` : '';
   // Kontynuacja po obciętej liście: ŚCIŚLE po (zdarzenie_at, id) ostatniego kandydata (kontrakt w zdarzenia/index.js).

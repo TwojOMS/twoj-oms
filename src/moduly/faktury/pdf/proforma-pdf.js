@@ -3,13 +3,12 @@ import { fileURLToPath } from 'node:url';
 import PDFDocument from 'pdfkit';
 import { zl } from '../../../domena/suma-pozycji.js';
 
-// Generator PDF-a faktury proforma. Układ jest KALKĄ dokumentu, który właściciel wysyła dziś
-// klientom z Apilo (wzór: PRO_1_08_2026-4131.pdf, obejrzany 2026-08-04) — ta sama kolejność
-// sekcji, te same kolumny, ten sam charakter. Klient dostanie oba dokumenty w tym samym roku,
-// więc nie mają wyglądać jak z dwóch różnych firm.
+// Generator PDF-a faktury proforma. Układ jest KALKĄ proformy z Apilo (dalej „wzór”) — ta sama
+// kolejność sekcji, te same kolumny, ten sam charakter. Klient, który dostaje proformy także
+// stamtąd, nie ma widzieć dokumentów jak z dwóch różnych firm.
 //
-// ⚠️ TEN MODUŁ TYLKO RYSUJE. Nie liczy VAT-u (domain/podsumowanie-vat.js), nie odmienia kwoty
-// słownie (domain/kwota-slownie.js) i nie składa pozycji (domain/pozycje-faktury.js) — dostaje
+// ⚠️ TEN MODUŁ TYLKO RYSUJE. Nie liczy VAT-u (domena/podsumowanie-vat.js), nie odmienia kwoty
+// słownie (domena/kwota-slownie.js) i nie składa pozycji (domena/pozycje-faktury.js) — dostaje
 // wszystko gotowe od serwisu. Powód jest prosty: arytmetyka dokumentu ma być testowalna bez
 // czytania PDF-a, a to, że coś trzeba wydrukować, nigdy nie jest powodem, żeby policzyć to
 // drugi raz obok.
@@ -54,7 +53,7 @@ const KOLUMNY = {
   ilosc: { x: 304, w: 42, align: 'right' },
   cena: { x: 350, w: 72, align: 'right' },
   // „Stawka VAT" (56 pkt) świadomie NIE mieści się w 48 i łamie się na dwie linie — dokładnie
-  // tak, jak w nagłówku wzoru z Apilo. Dotyczy TYLKO nagłówka; wartość to zawsze „23%".
+  // tak, jak w nagłówku wzoru z Apilo. Dotyczy TYLKO nagłówka; wartość („23%", „zw”) mieści się w jednej linii.
   stawka: { x: 426, w: 48, align: 'right' },
   wartosc: { x: 477, w: R - 477, align: 'right' },
 };
@@ -73,7 +72,7 @@ const KOLUMNY_VAT = {
 };
 
 // Lewa krawędź bloku „PODSUMOWANIE" — WSPÓLNA z tabelą VAT, żeby oba prawe bloki stały w jednej
-// osi. Prawa kolumna ma wtedy 177 pkt, czyli mieści 26-cyfrowy numer rachunku (149 pkt) BEZ
+// osi. Prawa kolumna ma wtedy 182 pkt, czyli mieści 26-cyfrowy numer rachunku (149 pkt) BEZ
 // ZAWIJANIA: numer konta przełamany w połowie to numer, który klient przepisze z błędem.
 const PODSUMOWANIE_X = KOLUMNY_VAT.stawka.x;
 
@@ -189,7 +188,7 @@ function naglowekTabeli(doc, y) {
  * kwestia gustu, tylko jedyny układ, który nie kłamie o kwocie do zapłaty.
  *
  * `gross_price` pozycji to SUMA LINII (tak jak wszędzie w tym repo, patrz nagłówek
- * domain/pozycje-faktury.js), a wzór z Apilo ma kolumnę „Cena brutto" — cenę ZA SZTUKĘ.
+ * domena/pozycje-faktury.js), a wzór z Apilo ma kolumnę „Cena brutto" — cenę ZA SZTUKĘ.
  * Trzeba ją więc wyliczyć dzieleniem, a dzielenie przy rabacie NIE ODWRACA SIĘ mnożeniem:
  *   3 szt., linia 100,00 zł (rabat 10%) → 33,33 zł/szt → 33,33 × 3 = 99,99 zł ≠ 100,00 zł.
  * To dokładnie ten grosz, o który panel rozbijał się na barierze arytmetycznej faktury.
@@ -228,7 +227,7 @@ function wierszPozycji(doc, y, pozycja, lp) {
   return y + wys;
 }
 
-// PRZ-122.B07b (uwaga (3) z odbioru B07a): „zw” to nie procent — drukowane „zw”, nie „zw%”. Liczbowe jak dotąd.
+// „zw” to nie procent — drukowane „zw”, nie „zw%”. Stawki liczbowe z „%”.
 function etykietaStawki(s) {
   const t = String(s ?? '').trim();
   return t === 'zw' ? 'zw' : `${String(s ?? '')}%`;
@@ -269,8 +268,7 @@ function blokPodsumowania(doc, y, dane) {
   const prawa = { x: x + 105, w: R - (x + 105), align: 'right' }; // 182 pkt na wartości
   let biezace = naglowekSekcji(doc, x, y, 'Podsumowanie');
 
-  // „Do zapłaty", nie „Do dopłaty" jak we wzorze z Apilo (świadoma zmiana, plan → „Wzór
-  // dokumentu"): „dopłata" mówi klientowi, że część pieniędzy już wpłynęła, a proforma
+  // „Do zapłaty", nie „Do dopłaty" jak we wzorze z Apilo (świadoma zmiana): „dopłata" mówi klientowi, że część pieniędzy już wpłynęła, a proforma
   // poprzedza zwykle CAŁĄ płatność.
   gruby(doc, 10).text('Do zapłaty', x, biezace + 6, { lineBreak: false });
   gruby(doc, 18);
@@ -335,9 +333,9 @@ function bajty(doc) {
  * Wejście (wszystko policzone WYŻEJ, ten moduł tylko rysuje):
  *   `numer`, `dataWystawienia` (RRRR-MM-DD), `sposobZaplaty`,
  *   `sprzedawca`/`nabywca` — `{ nazwa, ulica, kod, miasto, kraj, nip }`,
- *   `pozycje` — `services` z `domain/pozycje-faktury.js`: `{ name, quantity, gross_price, tax_symbol }`,
+ *   `pozycje` — `services` z `domena/pozycje-faktury.js`: `{ name, quantity, gross_price, tax_symbol }`,
  *      gdzie `gross_price` to WARTOŚĆ CAŁEJ LINII w groszach,
- *   `podsumowanieVat` — wynik `domain/podsumowanie-vat.js` (wiersz sumy poznaje się po `suma`),
+ *   `podsumowanieVat` — wynik `domena/podsumowanie-vat.js` (wiersz sumy poznaje się po `suma`),
  *   `doZaplatyGr`, `slownie`, `rachunek`, `bank`.
  */
 export function zbudujProformePdf(dane = {}) {

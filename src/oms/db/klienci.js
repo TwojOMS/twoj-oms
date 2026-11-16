@@ -3,7 +3,7 @@ import { normalizujNip, parsujKlientowZbiorczych } from '../../domena/klient-zbi
 import { kluczZNazwy } from '../../domena/klient-staly.js';
 
 // BAZA STAŁYCH KLIENTÓW — warstwa bazy. Reguły (co wpis znaczy, jak zamienia się w pola
-// formularza) mieszkają w domain/klient-staly.js; tutaj jest wyłącznie SQL.
+// formularza) mieszkają w domena/klient-staly.js; tutaj jest wyłącznie SQL.
 //
 // ⚠️ WIERSZ WYCHODZI STĄD JUŻ Z ROZPAKOWANYMI BLOKAMI (`faktura`, `wysylka`), tak samo jak
 // zamówienie wychodzi z `klient` i `dostawa` (db/zamowienia.js: zLinii). Gdyby JSON-y
@@ -61,7 +61,7 @@ export function klientPoNip(db, nip) {
 const POLA = [
   'klucz', 'nazwa', 'nip', 'b2b', 'rabat_procent', 'chce_fakture', 'metoda_wysylki',
   'koszt_dostawy_brutto', 'platnosc', 'termin_platnosci', 'komentarz', 'aktywny',
-  // Warunki umowy zbiorczej (2026-08-24). ⚠️ `?? null` w `wartosci` nizej jest tu ISTOTNE:
+  // Warunki umowy zbiorczej. ⚠️ `?? null` w `wartosci` nizej jest tu ISTOTNE:
   // niewypelniona kwota ma trafic do bazy jako NULL, czyli „nikt tego nie ustawil", a nie
   // jako 0 („wysylka za darmo od zera zlotych").
   'rozliczenie_zbiorcze', 'prog_darmowej_dostawy_gr', 'oplata_obslugi_gr', 'oplata_kurierska_gr',
@@ -69,8 +69,8 @@ const POLA = [
 
 // ⚠️ FLAGI `NOT NULL` MUSZA MIEC TU WARTOSC ZASTEPCZA, bo `?? null` ponizej trafialby
 // na nie surowym „NOT NULL constraint failed" — komunikatem, ktory nie mowi ani ktore pole,
-// ani co z tym zrobic. Zlapane 24.08.2026 przy dokladaniu `rozliczenie_zbiorcze`: wolajacy,
-// ktory buduje `dane` recznie (a nie przez `znormalizujKlienta`), wywracal caly zapis.
+// ani co z tym zrobić. Wołający, który buduje `dane` ręcznie (a nie przez
+// `znormalizujKlienta`), wywracałby cały zapis.
 //
 // ⚠️ `0` jest tu ZDANIEM PRAWDZIWYM, a nie wygodna domyslka: „nikt nie powiedzial, ze ten
 // klient jest rozliczany zbiorczo". Trzy KWOTY umowy takiej zastepczej wartosci NIE MAJA
@@ -121,11 +121,10 @@ export function zapiszKlienta(db, id, dane, kiedy = teraz()) {
 /**
  * Kolizja unikalności przetłumaczona na zdanie, które mówi, CO ZROBIĆ.
  *
- * ⚠️⚠️ PRZYCZYNY SZUKAMY W BAZIE, A NIE W TREŚCI KOMUNIKATU — i to jest poprawka po pomiarze
- * (21.08.2026, złapane testem). Pierwsza wersja rozpoznawała kolizję NIP-u po nazwie indeksu
- * (`klienci_nip`) w komunikacie SQLite. Zmierzone na node:sqlite: komunikat nazwy indeksu
- * NIE ZAWIERA, więc kolizja NIP-u wpadała do gałęzi zapasowej i panel mówił „Klucz jest już
- * zajęty" — obwiniając pole, które było w porządku, i wskazując operatorowi poprawkę, po
+ * ⚠️⚠️ PRZYCZYNY SZUKAMY W BAZIE, A NIE W TREŚCI KOMUNIKATU. Zmierzone na node:sqlite: komunikat
+ * kolizji NIE ZAWIERA nazwy indeksu (`klienci_nip`), więc rozpoznanie kolizji NIP-u po komunikacie
+ * wrzucałoby ją do gałęzi zapasowej i panel mówiłby „Klucz jest już zajęty" — obwiniając pole,
+ * które było w porządku, i wskazując operatorowi poprawkę, po
  * której odbiłby się drugi raz. Komunikaty silnika to tekst, który wolno pokazać, a nie
  * dana, na której wolno oprzeć regułę.
  *
@@ -133,12 +132,12 @@ export function zapiszKlienta(db, id, dane, kiedy = teraz()) {
  * klucz z definicji „już są w bazie" i nie są kolizją.
  */
 // ⚠️⚠️ MIGRACJA JEDNORAZOWA, ZE ZNACZNIKIEM — wzorzec `wgrajDaneStartowe` (db/dane-miesieczne.js).
-// Migracje chodza przy KAZDYM starcie kontenera; bez znacznika najblizsze wdrozenie po cichu
-// skasowaloby stawke poprawiona reka czlowieka na karcie.
+// Bez znacznika każde kolejne uruchomienie tej migracji po cichu skasowałoby stawkę
+// poprawioną ręką człowieka na karcie.
 const MIGRACJA_UMOWY = 'klienci/umowa-zbiorcza-z-env';
 
 /**
- * Przenosi warunki umowy zbiorczej z `OMS_KLIENCI_ZBIORCZY` na karty klientow (2026-08-24).
+ * Przenosi warunki umowy zbiorczej z `OMS_KLIENCI_ZBIORCZY` na karty klientów.
  *
  * ⚠️ DOPASOWANIE PO NIP-IE, nie po kluczu — tak samo jak cala reszta tej tabeli. Klucz
  * w `.env` bywal literowka, NIP jest wlasciwoscia podmiotu.
@@ -148,8 +147,8 @@ const MIGRACJA_UMOWY = 'klienci/umowa-zbiorcza-z-env';
  * i nie da sie z niego wystawic dokumentu. Taki wpis idzie do logu startowego i czeka
  * na czlowieka.
  *
- * ⚠️ NIE RUSZA `rabat_procent`. Baza jest zrodlem stawki rabatu od 2026-08-23
- * (przewodnik 4.52), a liczba w `.env` bywa nieaktualna — przenosimy WYLACZNIE to,
+ * ⚠️ NIE RUSZA `rabat_procent`. Baza jest źródłem stawki rabatu
+ * (reguła: rabat umowny po NIP-ie), a liczba w `.env` bywa nieaktualna — przenosimy WYLACZNIE to,
  * czego baza jeszcze nie ma.
  */
 export function wgrajUmowyZbiorczeZKonfiguracji(db, env = process.env, log = () => {}) {

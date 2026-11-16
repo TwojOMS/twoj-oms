@@ -1,13 +1,13 @@
 import { czyPozycjaPlaceholdera } from './indywidualne.js';
 import { czyPozycjaNieTowar } from './pozycje-niesprzedazowe.js';
 
-// „Lista produktów" (PRZ-074) — kartka do kompletowania paczki: SAME produkty z iloscia.
+// „Lista produktów" — kartka do kompletowania paczki: SAME produkty z iloscia.
 // Bez danych klienta, bez cen, bez kwot i bez wysylki. Ten modul celowo NIE ZNA zadnej kwoty:
 // wiersz wynikowy ma trzy pola, wiec widok nie ma skad wydrukowac ceny nawet przez pomylke.
 //
 // Pozycje wchodza tu JUZ EFEKTYWNE — nadpisania reczne i pozycje dopisane na karcie naklada
 // warstwa odczytu (`zLinii` w db/zamowienia.js), dokladnie jak dla tabeli pozycji karty
-// (domain/tabela-pozycji.js) i specyfikacji (domain/specyfikacja.js). Lista pakowania i karta
+// (domena/tabela-pozycji.js) i specyfikacji (domena/specyfikacja.js). Lista pakowania i karta
 // widza wiec te same ilosci.
 //
 // Wysylka z kolumny zamowienia nie jest pozycja, wiec nie trafia tu wcale (specyfikacja
@@ -41,7 +41,7 @@ export function listaProduktow(z) {
 const kluczScalania = (p) => (p.sku ? `s:${p.sku.trim()}` : `n:${p.nazwa.trim()}`);
 
 /**
- * „Lista produktów" ZBIORCZA (PRZ-084) — jedna kartka do kompletowania kilku zamowien naraz.
+ * „Lista produktów" ZBIORCZA — jedna kartka do kompletowania kilku zamowien naraz.
  * Ta sama regula pozycji co `listaProduktow` (bez wysylki, bez SKU zaslepki), wiec lista
  * zbiorcza i lista jednego zamowienia nie moga sie rozjechac. Bez kwot i bez danych klienta:
  * numer zamowienia to jedyny identyfikator, jaki tu stoi.

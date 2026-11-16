@@ -23,7 +23,7 @@ export function allegroWymagaOdpytania(db, zamowienieId, terazMs = Date.now()) {
 }
 export function miniaturyEkranu(db, zamowienia) {
   const lustro = miniaturyLustra(db, paryPozycji(zamowienia));
-  // PRZ-159: pozycje bez zdjęcia (ERLI) — miniatura z lustra magazynu po SKU; widok podaje `sku` czwartym argumentem.
+  // Pozycje bez zdjęcia (ERLI) — miniatura z lustra magazynu po SKU; widok podaje `sku` czwartym argumentem.
   const lustroSku = miniaturySku(db, skuPozycji(zamowienia, czyPozycjaPlaceholdera));
   return (kanal, produktId, zdjecie, sku = null) => miniaturaPozycji(lustro, kanal, produktId, zdjecie, sku, lustroSku);
 }
@@ -38,14 +38,14 @@ export function sprzedawcaSpecyfikacji(config) {
   return {
     nazwa: a.nazwa,
     adres: [a.ulica, [a.kod, a.miasto].filter(Boolean).join(' ')].filter(Boolean).join(', '),
-    // PRZ-108.10: NIP i BDO z pliku albo Ustawień → Firma (każde pole osobno); bez NIP-u odmowa, bez BDO — bez BDO.
+    // NIP i BDO z pliku albo Ustawień → Firma (każde pole osobno); bez NIP-u odmowa, bez BDO — bez BDO.
     nip: nipSprzedawcy(config),
     bdo: bdoSprzedawcy(config),
   };
 }
 export function daneKarty(z) {
-  // ⚠️ ZAMÓWIENIE RĘCZNE NIE DOSTAJE ŻADNYCH OZNACZEŃ „zmienione ręcznie" (07.08.2026,
-  // prośba właściciela). Znacznik odpowiada na pytanie „czy ta wartość odbiega od tego, co
+  // ⚠️ ZAMÓWIENIE RĘCZNE NIE DOSTAJE ŻADNYCH OZNACZEŃ „zmienione ręcznie".
+  // Znacznik odpowiada na pytanie „czy ta wartość odbiega od tego, co
   // podał SKLEP" — a przy zamówieniu telefonicznym sklepu nie ma i każda wartość jest nasza.
   // Oznaczone było więc wszystko, co ktokolwiek poprawił, i nie znaczyło NIC poza „ktoś tu
   // był". To ten sam powód, dla którego `saNadpisania` niżej jest tam wyłączone od dawna.
@@ -67,24 +67,22 @@ export function daneKarty(z) {
     // z KOLUMN, nie z listy roznic: nadpisanie rowne wartosci ze sklepu nie jest juz
     // oznaczane na karcie, ale dalej lezy w bazie i dalej wypada je umiec skasowac.
     //
-    // ⚠️ I6 (recenzja calej galezi): dla zamowienia RECZNEGO ten przycisk ma NIE ISTNIEC,
+    // ⚠️ Dla zamowienia RECZNEGO ten przycisk ma NIE ISTNIEC,
     // niezaleznie od tego, co lezy w kolumnach — bo NIE MA SKLEPU, do ktorego mozna by
     // wrocic. „Dane ze sklepu" dla zamowienia recznego to po prostu to, co ktos wpisal
     // w formularzu zalozenia, a „przywrocenie" znaczyloby skasowanie pozniejszych poprawek
     // do stanu, ktory nie jest zadnym zewnetrznym zrodlem prawdy — tylko starsza wersja
     // tej samej reki.
     //
-    // ⚠️ 2026-08-01 uzasadnienie tego warunku SIE ZMIENILO, sam warunek nie. Wczesniej
-    // stalo tu, ze formularz zakladania „nie zbiera adresu ani NIP-u" — od przebudowy
-    // ekranu zbiera jedno i drugie, wiec zdanie przestalo byc prawda. Przycisk zostaje
-    // ukryty z powodu powyzej.
+    // ⚠️ Powodem ukrycia przycisku NIE jest brak adresu ani NIP-u w formularzu zakladania
+    // (formularz zbiera jedno i drugie) — tylko brak sklepu, do ktorego mozna wrocic.
     saNadpisania: z.sklep !== 'reczne'
       && (Boolean(z.dostawa_reczna_json || z.klient_reczny_json) || z.chce_fakture_reczne != null),
-    // Kupony sklepu (kampania WRZESIEN30) — gotowa lista dla widoku, parsowanie kolumny
+    // Kupony sklepu — gotowa lista dla widoku, parsowanie kolumny
     // robi domena (kuponyZWiersza), nie szablon. Informacja OPISOWA pod tabela pozycji:
     // ceny pozycji sa juz PO rabacie, wiec karta niczego z tego nie liczy.
     kupony: kuponyZWiersza(z.kupony_json),
-    // Skad przyszlo zamowienie (Etap 3). Widok dostaje GOTOWY opis — etykiete, szczegol
+    // Skad przyszlo zamowienie. Widok dostaje GOTOWY opis — etykiete, szczegol
     // i wskazowke — a nie surowe pola do sklejania. `atrybucja` zostaje obok, bo karta
     // pokazuje tez strone wejscia, urzadzenie i wielkosc sesji.
     //
@@ -98,7 +96,7 @@ export function daneKarty(z) {
     // `przesylki.adres_uzyty`) i zadna poprawka na karcie go nie zawroci. Ta sama flaga
     // sluzy ostrzezeniu przy metodzie wysylki — zmiana metody tez nie zawraca paczki.
     jestNadanaPaczka: (z.przesylki ?? []).some((p) => p.status === 'nadana'),
-    // PRZ-142.01: „panelu InPost" / „panelu kuriera" dla komunikatów o przesyłce (widok woła z `p.kurier`).
+    // „panelu InPost" / „panelu kuriera" dla komunikatów o przesyłce (widok woła z `p.kurier`).
     panelKuriera,
     // To samo dla zdań o paczkach JUŻ NADANYCH ogółem: panele wszystkich kurierów, którzy je nadali
     // („panelu DPD / InPost"); bez nadanej albo przy nieznanym kurierze — „panelu kuriera".
@@ -118,13 +116,13 @@ export function daneKarty(z) {
     // Metoda wysylki: oznaczenie liczone z ROZNICY wobec sklepu, przycisk przywracania
     // z OBECNOSCI nadpisania — dokladnie ta sama para zasad, co przy danych klienta.
     //
-    // ⚠️ I6 (recenzja calej galezi) sprawdzone TUTAJ tez: „Przywroc metode ze sklepu"
+    // ⚠️ Sprawdzone TUTAJ tez: „Przywroc metode ze sklepu"
     // NIE dostaje tej samej poprawki co saNadpisania wyzej, bo NIE cierpi na ta sama
     // pulapke. Kolumna metoda_wysylki (ta „ze sklepu" dla zamowienia recznego) zawsze
     // dostaje realna wartosc z METODY_WYSYLKI juz przy zakladaniu zamowienia
-    // (utworzZamowienieReczne: `dane.metoda_wysylki ?? 'dpd'`; od 2026-08-01 sklada ja
-    // `metodaWysylkiZWyboru` z wyboru dostawy i platnosci, a ta oddaje WYLACZNIE wartosci
-    // z METODY_WYSYLKI albo rzuca) — nigdy nie jest pusta ani NULL. Przywrocenie wraca
+    // (utworzZamowienieReczne: `dane.metoda_wysylki ?? METODA_DOMYSLNA`; formularz sklada ja
+    // przez `metodaWysylkiZWyboru` z wyboru dostawy i platnosci, a ta oddaje WYLACZNIE klucz
+    // ze slownika DOSTAWY albo rzuca) — nigdy nie jest pusta ani NULL. Przywrocenie wraca
     // wiec do metody faktycznie wybranej przy zakladaniu, a nie do pustki, ktorej nikt
     // nigdy nie ustawil.
     // ⚠️ Ten sam powód, co przy `wysylkaReczne` wyżej: przy zamówieniu ręcznym „zmienione
@@ -135,8 +133,8 @@ export function daneKarty(z) {
     saNadpisanieWysylki: saNadpisanieWysylki(z),
     metodaZeSklepu: metodaZeSklepu(z),
     metodyWysylki: METODY_WYSYLKI,
-    // `null` przy braku zwrotow — widok nie rysuje wtedy ani jednego elementu (wymog
-    // wlasciciela: karta ma nie urosnac ani o piksel przy 99% zamowien bez zwrotu).
+    // `null` przy braku zwrotow — widok nie rysuje wtedy ani jednego elementu (karta
+    // ma nie urosnac ani o piksel przy zamowieniach bez zwrotu).
     zwroty: podsumowanieZwrotow(z),
   };
 }

@@ -3,8 +3,8 @@ import { ktoKlikal } from '../../zamowienia/lista.js';
 import { stronaOdmowy } from '../../../core/web/odmowa.js';
 import { nazwaKuriera, opisTerminu } from '../../../domena/podjazdy.js';
 
-// PRZ-152.G13: odmowy tras podjazdów w układzie OMS (status i tekst bez zmian).
-// PRZ-160 P4.02: nazwa kuriera (ALLEGRO_ONE_KURIER → „Allegro One Kurier”) i termin bez godzin w widokach.
+// Odmowy tras podjazdów w układzie OMS (status i tekst bez zmian).
+// Nazwa kuriera (ALLEGRO_ONE_KURIER → „Allegro One Kurier”) i termin bez godzin w widokach.
 const POMOCNICY = { nazwaKuriera, opisTerminu };
 const LISTA = { wroc: '/przesylki', napisWroc: 'Wróć do listy przesyłek' };
 const bezKont = (reply) => stronaOdmowy(reply, 503, 'Konta Allegro są niedostępne.', { tytul: 'Podjazdy Allegro są niedostępne', ...LISTA });

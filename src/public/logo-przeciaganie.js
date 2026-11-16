@@ -1,4 +1,4 @@
-// PRZECIĄGANIE PLIKU w sekcji „Logo” (Ustawienia → Firma, PRZ-108.03b).
+// PRZECIĄGANIE PLIKU w sekcji „Logo” (Ustawienia → Firma).
 //
 // Strefa (`[data-logo-strefa]`) obejmuje zwykłe pole `<input type="file" name="logo">`. Upuszczony plik trafia do
 // TEGO SAMEGO pola (przez DataTransfer), więc formularz wysyła go dokładnie tak jak plik wybrany z dysku — zapis
@@ -8,9 +8,9 @@
 // tylko mówi o błędzie OD RAZU: wskazanie złego pliku nie wymaga wysyłki i powrotu na ekran z odmową.
 // Przeglądarka widzi typ z nazwy pliku, nie z jego bajtów — to kontrola dla wygody, nie dla bezpieczeństwa.
 //
-// PRZ-160 P3a.04b: mechanika strefy jest wspólna (strefa-pliku.js, też dla zdjęć karty); tu zostają parametry logo.
+// Mechanika strefy jest wspólna (strefa-pliku.js, też dla zdjęć karty); tu zostają parametry logo.
 
-// PRZ-100: wspólny moduł idzie z TĄ SAMĄ wersją (`?v=`) co ten skrypt (widok daje go przez zasob()). Statyczny import
+// Wspólny moduł idzie z TĄ SAMĄ wersją (`?v=`) co ten skrypt (widok daje go przez zasob()). Statyczny import
 // './strefa-pliku.js' szedłby bez wersji i pośrednik (Cloudflare, max-age=14400) po wydaniu dałby stary moduł.
 export const adresStrefy = (adresSkryptu) => new URL(`strefa-pliku.js${new URL(adresSkryptu).search}`, adresSkryptu).href;
 const { podlaczStrefePliku, sprawdzPlik: sprawdzPlikStrefy } = await import(adresStrefy(import.meta.url));

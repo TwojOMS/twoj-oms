@@ -1,8 +1,8 @@
 import { odczytajNadpisania, obiektAlboPusty, tekst } from './dane-reczne.js';
-// ⚠️ Z `kwoty.js`, NIE z `suma-pozycji.js` (07.08.2026) — mimo że tamten moduł dalej obie
+// ⚠️ Z `kwoty.js`, NIE z `suma-pozycji.js` — mimo że tamten moduł dalej obie
 // funkcje re-eksportuje. Od chwili, gdy suma zaczęła pytać o efektywną kwotę wysyłki,
 // import stamtąd zamykał cykl `suma-pozycji → wysylka-kwota → pozycje-reczne → suma-pozycji`.
-// Powód w całości opisany w nagłówku domain/kwoty.js.
+// Powód w całości opisany w nagłówku domena/kwoty.js.
 import { grosze, zl } from './kwoty.js';
 import { bladOperatora } from './bledy.js';
 import { bruttoZNetto, czyStawkaVat, STAWKA_VAT, STAWKI_VAT } from './vat.js';
@@ -12,19 +12,19 @@ import { bruttoZNetto, czyStawkaVat, STAWKA_VAT, STAWKI_VAT } from './vat.js';
 // Do tego operator musi móc poprawić pozycję, którą sklep już przysłał (uzgodniona inna
 // ilość, inna cena, czytelniejsza nazwa na fakturze).
 //
-// Obie te rzeczy rozbijają się o ten sam mur: poller synchronizuje sklep CO DWIE MINUTY,
-// a `zapiszPozycje` w db/zamowienia.js kasuje pozycje i wstawia je od nowa (przewodnik OMS,
-// 4.7). Dlatego:
+// Obie te rzeczy rozbijają się o ten sam mur: poller synchronizuje sklep CO KILKA MINUT
+// (domyślnie co dwie, OMS_POLLER_MS), a `zapiszPozycje` w db/zamowienia.js kasuje pozycje i wstawia
+// je od nowa (reguła: dane ręczne obok danych sklepu). Dlatego:
 //
 //  1. POZYCJA RĘCZNA to wiersz w tabeli `pozycje` o `zrodlo = 'reczna'` — dokładnie tak samo,
 //     jak wpłata ręczna w tabeli `platnosci`. Synchronizacja operuje WYŁĄCZNIE na wierszach
 //     źródła 'sklep' i to jest cała ochrona tej pozycji.
 //  2. POPRAWKA POZYCJI SKLEPOWEJ to NADPISANIE PER POLE w `zamowienia.pozycje_reczne_json` —
 //     kolumnie, której synchronizacja nie dotyka. Wpisana wprost w wiersz sklepowy zniknęłaby
-//     w dwie minuty razem z całym wierszem.
+//     przy następnej synchronizacji razem z całym wierszem.
 //
 // ⚠️ NADPISANIE JEST POLOWE, NIE WIERSZOWE — z tego samego powodu, co przy danych klienta
-// (domain/dane-reczne.js): gdyby w kolumnie leżała kopia całego wiersza, zmiana samej ilości
+// (domena/dane-reczne.js): gdyby w kolumnie leżała kopia całego wiersza, zmiana samej ilości
 // ZAMRAŻAŁABY nazwę i cenę na zawsze i poprawka ceny w sklepie nigdy by już nie doszła.
 // W środku leży `{"s4321": {"ilosc": 3}}`, czyli wyłącznie to, co faktycznie odbiega.
 
@@ -44,7 +44,7 @@ const POLA_KWOTOWE = ['ilosc', 'cena_brutto'];
  * nadpisanie.
  *
  * ⚠️ NASZE `pozycje.id` SIĘ DO TEGO NIE NADAJE. Poller kasuje i wstawia pozycje sklepowe
- * przy każdej synchronizacji, więc ich `id` zmienia się co dwie minuty: formularz otwarty
+ * przy każdej synchronizacji, więc ich `id` zmienia się co kilka minut: formularz otwarty
  * minutę wcześniej celowałby w nieistniejący wiersz, a nadpisanie zapisane pod starym `id`
  * osierociałoby się samo. Dlatego dla pozycji ze sklepu bierzemy identyfikator linii
  * U ŹRÓDŁA (`line_items[].id` z Woo) — jedyną wartość, którą synchronizacja odtwarza
@@ -71,7 +71,7 @@ export function kluczPozycji(p, index) {
 // nie estetyczny: cała ta warstwa liczy na liczbach CAŁKOWITYCH w groszach, a 0,01 zł × 1,5
 // szt. to półtora grosza — czyli dokładnie ten rodzaj rozjazdu, przed którym broni bariera
 // arytmetyczna faktury. Kolumna `pozycje.ilosc` jest zresztą INTEGER-em.
-// Eksportowana od 07.08.2026, bo edycja wysyłki (domain/wysylka-kwota.js) przyjmuje ilość
+// Eksportowana, bo edycja wysyłki (domena/wysylka-kwota.js) przyjmuje ilość
 // TYMI SAMYMI regułami — łącznie z odmową ułamka. Druga kopia oznaczałaby, że „1,5 paczki"
 // przechodzi tam, gdzie „1,5 szt." się odbija.
 export function parsujIlosc(surowa) {
@@ -94,7 +94,7 @@ const sklepMaZero = (cena) => cena != null && String(cena).trim() !== '' && Numb
 // Cena brutto za sztukę. Wartości ujemne odrzucamy WPROST: po cichu zmniejszałyby kwotę
 // oczekiwaną od klienta i mogły zdjąć z zamówienia niedopłatę.
 //
-// ⚠️ ZERO ROZSTRZYGA SIĘ WOBEC SKLEPU, a nie w próżni (20.08.2026, usterka zam. 1192).
+// ⚠️ ZERO ROZSTRZYGA SIĘ WOBEC SKLEPU, a nie w próżni.
 // Reguła pieniężna zostaje dokładnie ta sama, co była: wpisanie zera tam, gdzie sklep
 // policzył pieniądze, ZDEJMUJE klientowi koszt — to decyzja o pieniądzach i dalej jest
 // odmową. Nowa jest wyłącznie druga strona tej samej reguły: zero tam, gdzie sklep TEŻ ma
@@ -133,22 +133,22 @@ function parsujNazwe(surowa) {
  *
  * Netto CELOWO nie powstaje jako druga wartość do zapisania: przy pozycji ręcznej wartością
  * źródłową jest brutto, a netto jest wyłącznie wygodniejszym sposobem JEGO PODANIA (patrz
- * bruttoZNetto w domain/vat.js) albo tym, co karta pokazuje po zapisie. Zapisane do bazy
+ * bruttoZNetto w domena/vat.js) albo tym, co karta pokazuje po zapisie. Zapisane do bazy
  * zaczęłoby z czasem wyglądać jak dana źródłowa i ktoś wysłałby je na fakturę.
  */
 //
-// PRZ-105: pozycja niesie STAWKĘ VAT (`vat`, lista 23/8/5/0 — domain/vat.js). Puste pole = stawka domyślna
-// z Ustawień (`stawkaDomyslna` podaje wołający, moduly/faktury/db/stawka-vat.js); wartość spoza listy to
+// Pozycja niesie STAWKĘ VAT (`vat`, lista 23/8/5/0 — domena/vat.js). Puste pole = stawka domyślna
+// z Ustawień (`stawkaDomyslna` podaje wołający — z czytajStawkeDomyslna, moduly/faktury/db/stawka-vat.js); wartość spoza listy to
 // odmowa — pole jest listą, więc obca wartość przyszła spreparowana, a cicha domyślna zmieniłaby fakturę.
 // Netto przelicza się stawką wiersza, a przy nabywcy z UE (`wdt`) stawką 0 — tak jak policzy to dokument.
 // Zapisana zostaje stawka WYBRANA: poprawiony później NIP na krajowy ma dać fakturę z tą stawką, nie z 0.
-// PRZ-122.B07a: `zw: true` (program wbudowany) dopuszcza stawkę „zw” — netto = brutto; bez flagi „zw” to odmowa.
+// `zw: true` (program wbudowany) dopuszcza stawkę „zw” — netto = brutto; bez flagi „zw” to odmowa.
 export function parsujNowaPozycje(body, { stawkaDomyslna = STAWKA_VAT, wdt = false, zw = false } = {}) {
   const nazwa = parsujNazwe(body?.nazwa);
   const ilosc = parsujIlosc(body?.ilosc);
   const vat = parsujStawke(body?.vat, stawkaDomyslna, { zw });
   // Brutto wygrywa, gdy podane: to ono jest wartoscia PRZECHOWYWANA, a netto tylko
-  // wygodniejszym sposobem jej podania (domain/vat.js: bruttoZNetto).
+  // wygodniejszym sposobem jej podania (domena/vat.js: bruttoZNetto).
   const cenaBrutto = cenaBruttoZPol(body, vat, { wdt, zw });
   return {
     nazwa,
@@ -182,8 +182,8 @@ export function wybierzZrodloCeny(wiersz, { bruttoTeraz, nettoTeraz }) {
 }
 
 /**
- * Stawka z pola formularza: pusta → domyślna; spoza listy → odmowa dla operatora (PRZ-105).
- * `{ zw: true }` (PRZ-122.B07a) dopuszcza „zw”; zdanie odmowy wymienia ją wtedy obok stawek liczbowych.
+ * Stawka z pola formularza: pusta → domyślna; spoza listy → odmowa dla operatora.
+ * `{ zw: true }` dopuszcza „zw”; zdanie odmowy wymienia ją wtedy obok stawek liczbowych.
  */
 export function parsujStawke(surowa, stawkaDomyslna = STAWKA_VAT, { zw = false } = {}) {
   const s = String(surowa ?? '').trim();
@@ -213,8 +213,8 @@ export function parsujEdycjePozycji(body, sklep) {
  * porównanie „2" z 2 albo „61.5" z „61.50" pokazywałoby zmianę tam, gdzie jej nie ma,
  * i zamrażało pole na zawsze.
  *
- * Wydzielone z `sklepowoZnormalizowane` 07.08.2026, bo WYSYŁKA porównuje się dokładnie tymi
- * samymi dwiema regułami (domain/wysylka-kwota.js), a nazwy nie ma — druga kopia rozjechałaby
+ * Wydzielone z `sklepowoZnormalizowane`, bo WYSYŁKA porównuje się dokładnie tymi
+ * samymi dwiema regułami (domena/wysylka-kwota.js), a nazwy nie ma — druga kopia rozjechałaby
  * się z tą przy pierwszej zmianie sposobu zaokrąglania.
  */
 export function znormalizujKwotowe(p) {
@@ -230,7 +230,7 @@ function sklepowoZnormalizowane(p) {
 
 /**
  * Co zapisać po wysłaniu formularza edycji: WYŁĄCZNIE pola odbiegające od sklepu. Ta sama
- * zasada i ten sam powód, co przy roznice() w domain/dane-reczne.js — przeglądarka odsyła
+ * zasada i ten sam powód, co przy roznice() w domena/dane-reczne.js — przeglądarka odsyła
  * komplet pól, więc zapis całości zamrażałby dane, których nikt nie tknął.
  */
 export function roznicePozycji(zeSklepu, zFormularza) {
@@ -282,7 +282,7 @@ export function ustawWMapie(mapa, klucz, nadpisania) {
 const POLA_HURTU = ['klucz', ...POLA_POZYCJI];
 
 // Przegladarka przysyla powtorzone pole jako tablice, a JEDNO wystapienie jako sam napis.
-// Eksportowane, bo formularz zakladania zamowienia (domain/nowe-zamowienie.js) zszywa
+// Eksportowane, bo formularz zakladania zamowienia (domena/nowe-zamowienie.js) zszywa
 // swoje wiersze dokladnie tak samo — jedna regula czytania rownoleglych tablic, nie dwie.
 export const jakoTablica = (v) => (v === undefined ? [] : (Array.isArray(v) ? v : [v]));
 
@@ -309,7 +309,7 @@ export function parsujHurtPozycji(body) {
       'Formularz pozycji przyszedł niekompletny — każdy wiersz musi nieść tyle samo pól. Odśwież kartę i spróbuj jeszcze raz.',
     );
   }
-  // PRZ-105: `vat` jest OPCJONALNY — formularz otwarty przed wydaniem go nie niesie (wtedy stawki się nie
+  // `vat` jest OPCJONALNY — formularz otwarty przed wydaniem go nie niesie (wtedy stawki się nie
   // zmienia). Gdy jest, musi mieć tyle wartości, co reszta — z tego samego powodu, co pozostałe kolumny.
   const opcjonalne = ['vat', 'sku', 'cena_netto'].filter((p) => body?.[p] !== undefined);
   for (const pole of opcjonalne) {
@@ -328,21 +328,21 @@ export function parsujHurtPozycji(body) {
 
 /**
  * ⚠️ TU I TYLKO TU ręczne poprawki nakładają się na pozycje — dokładnie tak, jak `anulowane`
- * i `metoda_wysylki` nakładają się w warstwie odczytu (zLinii w db/zamowienia.js), i z tego
+ * i `metoda_wysylki` nakładają się w warstwie odczytu (zLinii w src/oms/db/zamowienia.js), i z tego
  * samego powodu: wartości pozycji czyta NARAZ tabela na karcie, suma pod nią, saldo wpłat,
- * bariera arytmetyczna faktury i pozycje wysyłane do inFaktu. Nakładanie u każdego czytelnika
+ * bariera arytmetyczna faktury i pozycje wysyłane do programu faktur. Nakładanie u każdego czytelnika
  * osobno znaczyłoby, że jedno pominięte wywołanie wysyła na fakturę cenę, której panel nie
  * pokazuje.
  *
  * Wartości SKLEPOWE nie giną — leżą obok, w `sklep`, bo karta musi umieć pokazać „zmienione
  * ręcznie" i zaproponować przywrócenie, a kwota oczekiwana od klienta liczy się z RÓŻNICY
- * między jednym a drugim (patrz kwotaOczekiwanaGrosze w domain/suma-pozycji.js).
+ * między jednym a drugim (patrz kwotaOczekiwanaGrosze w domena/suma-pozycji.js).
  */
-// ⚠️ `obiektAlboPusty` PRZENIESIONE DO dane-reczne.js (07.08.2026) — czyta je teraz także
+// ⚠️ `obiektAlboPusty` PRZENIESIONE DO dane-reczne.js — czyta je teraz także
 // moduł nadpisań wysyłki. Ta sama ostrożność, co przy `odczytajNadpisania`, i tam też mieszka.
 
-// PRZ-152.G2 — usunięcie pozycji SKLEPOWEJ to znacznik w tej samej mapie poprawek:
-// `mapa[klucz] = { usunieta: true }` i nic więcej pod tym kluczem (plan PRZ-152-G2, rozdz. 3.1).
+// Usunięcie pozycji SKLEPOWEJ to znacznik w tej samej mapie poprawek:
+// `mapa[klucz] = { usunieta: true }` i nic więcej pod tym kluczem.
 // Wiersz w `pozycje` zostaje (poller i tak by go wstawił od nowa), znika dopiero w nakładce.
 // Pozycja ręczna nigdy nie jest „usunięta znacznikiem" — ją kasuje się wprost z tabeli.
 export const ZNACZNIK_USUNIECIA = 'usunieta';
@@ -405,8 +405,8 @@ export function nalozNadpisaniaPozycji(pozycje, surowyJson) {
     // już nie pokazuje. Przeliczamy w groszach: cena efektywna × ilość efektywna.
     //
     // Netto ze sklepu zeruje się razem z nią i to jest świadome: `netto_linii` jest wartością
-    // ŹRÓDŁOWĄ z Woo (przewodnik 4.5) i po przecenieniu linii po prostu do niej nie pasuje.
-    // Kolumnę netto liczy wtedy widok, ze stawki VAT (domain/vat.js) — jawnie i tylko do
+    // ŹRÓDŁOWĄ z Woo (reguła: netto ze źródła) i po przecenieniu linii po prostu do niej nie pasuje.
+    // Kolumnę netto liczy wtedy widok, ze stawki VAT (domena/vat.js) — jawnie i tylko do
     // pokazania. Zmiana samej NAZWY kwot nie dotyka, więc rabat linii ze sklepu się nie gubi.
     if (efektywna.polaZmienione.some((pole) => POLA_KWOTOWE.includes(pole))) {
       efektywna.brutto_linii = zl(grosze(efektywna.cena_brutto, `pozycja "${efektywna.nazwa}"`) * Number(efektywna.ilosc));

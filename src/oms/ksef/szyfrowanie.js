@@ -17,9 +17,9 @@ export function kluczZCertyfikatu(base64Cert) {
 // ladunek zlym kluczem i MF odrzucilby go komunikatem, z ktorego nic nie wynika.
 // Oddaje certyfikat (base64), nie klucz — klucz robi z niego `kluczZCertyfikatu`.
 //
-// Waznosc (PRZ-123 C05): gdy certyfikat ma `validFrom`/`validTo`, bierzemy tylko wazny na `teraz`
-// (MF wymienia klucze z zakladka — na liscie bywa stary i nowy). Brak pola = brak ograniczenia z tej
-// strony, wiec odpowiedz bez tych pol dziala jak dotad. Data, ktorej nie da sie odczytac = niewazny.
+// Ważność: gdy certyfikat ma `validFrom`/`validTo`, bierzemy tylko ważny na `teraz`
+// (MF wymienia klucze z zakładką — na liście bywa stary i nowy). Brak pola = brak ograniczenia z tej
+// strony, więc odpowiedź bez tych pól działa bez ograniczenia. Data, której nie da się odczytać = nieważny.
 // Pusta lista (albo nie-lista) to czytelna odmowa, a nie TypeError dalej w `kluczZCertyfikatu`.
 export function kluczMf(certy, usage, teraz = new Date()) {
   const lista = (Array.isArray(certy) ? certy : []).filter((c) => c && typeof c === 'object');

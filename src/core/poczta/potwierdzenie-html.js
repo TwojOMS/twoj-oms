@@ -1,11 +1,10 @@
 import { KOLOR, FONT, esc, kopertaMaila, naglowekSekcji as naglowek } from './mail-html.js';
 import { tekstyModelu } from '../../domena/zdania-platnosci.js';
 
-// POTWIERDZENIE PRZYJĘCIA ZAMÓWIENIA — postać HTML (21.08.2026, zgłoszenie właściciela:
-// „popraw maila, wygląda słabo: pozycje jako tabela, dodaj nagłówki, FAKTURA: tak + dane").
+// POTWIERDZENIE PRZYJĘCIA ZAMÓWIENIA — postać HTML: pozycje jako tabela, nagłówki sekcji, dane do faktury.
 //
 // ⚠️ TEN PLIK NIC NIE LICZY. Dostaje MODEL złożony raz przez domenę
-// (oms/domain/potwierdzenie-zamowienia.js: `modelPotwierdzenia`) i wyłącznie go układa.
+// (src/domena/potwierdzenie-zamowienia.js: `modelPotwierdzenia`) i wyłącznie go układa.
 // Kwoty, etykiety i decyzje o tym, co pokazać, zapadły tam — bo dokładnie te same wartości
 // idą do zapasowej wersji tekstowej TEJ SAMEJ wiadomości. Mail multipart, w którym tabela
 // pokazuje co innego niż tekst, byłby gorszy niż brak tabeli.
@@ -22,9 +21,8 @@ import { tekstyModelu } from '../../domena/zdania-platnosci.js';
 const kom = (extra = '') => `padding:8px 4px;border-bottom:1px solid ${KOLOR.linia};`
   + `font-family:${FONT};font-size:14px;color:${KOLOR.tekst};${extra}`;
 
-// ⚠️ NAGŁÓWEK SEKCJI IMPORTOWANY Z `mail-html.js` pod nazwą `naglowek` (sprzątanie po recenzji
-// całości gałęzi, 22.08.2026). Do tego dnia stał tu przepisany znak w znak — a drugą, taką
-// samą kopię miał wiadomosc-html.js. Krój jest BLISKI, ale nie identyczny z nagłówkiem
+// ⚠️ NAGŁÓWEK SEKCJI IMPORTOWANY Z `mail-html.js` pod nazwą `naglowek`, nie przepisany
+// tutaj (drugą, taką samą kopię miałby wiadomosc-html.js). Krój jest BLISKI, ale nie identyczny z nagłówkiem
 // w mailach z wyceną (`renderMailHtml`): tamten ma rozstrzelenie 2px i obcina dwukropek,
 // bo rozpoznaje nagłówek we wpisanym przez człowieka tekście. Uzasadnienie przy funkcji.
 
@@ -47,7 +45,7 @@ const linieDrobne = (lista) => `<p style="margin:0 0 4px;font-family:${FONT};fon
  * ⚠️ Wiersz „Razem" jest częścią TEJ SAMEJ tabeli, a nie osobnym akapitem pod nią: inaczej
  * przy wąskiej szerokości suma odjeżdża od kolumny, w której klient jej szuka.
  *
- * PRZ-102.19: nazwy kolumn, „Razem" i dopisek „brutto" z Ustawień → Szablony wiadomości (`t`), escapowane.
+ * Nazwy kolumn, „Razem" i dopisek „brutto" z Ustawień → Szablony wiadomości (`t`), escapowane.
  */
 function tabelaPozycji(m, t) {
   const naglowki = [t.kolumna_pozycja, t.kolumna_ilosc, t.kolumna_cena, t.kolumna_wartosc];
@@ -75,8 +73,8 @@ const akapit = (tekst, extra = '') => `<p style="margin:0 0 14px;font-family:${F
   + `line-height:1.6;color:${KOLOR.tekst};${extra}">${esc(tekst)}</p>`;
 
 /**
- * Sekcje potwierdzenia jako BLOKI szablonu (PRZ-101.03) — te same kawałki HTML, które składa
- * `renderPotwierdzenieHtml` niżej (od PRZ-102.19 ta funkcja je stąd bierze, zamiast trzymać drugą kopię).
+ * Sekcje potwierdzenia jako BLOKI szablonu — te same kawałki HTML, które składa
+ * `renderPotwierdzenieHtml` niżej (ta funkcja bierze je stąd, zamiast trzymać drugą kopię).
  * Zgodność pilnują tests/moduly/wiadomosci/szablony-rownosc.test.js i wzorzec bajt w bajt
  * (zdania-platnosci-rownosc-prz102-17.test.js).
  */

@@ -12,8 +12,8 @@ import { odczytajNadpisania, zastosuj, polaZmienione, sklejUlice } from './dane-
 // jeden adres, a do kuriera pojechalby inny. To jedyny powod istnienia tego ekranu, wiec
 // rozjazd unicestwiaby cala jego wartosc.
 //
-// ⚠️ Od Zadania „edytowalne dane klienta" ta funkcja nakłada na dane ze sklepu RĘCZNE
-// POPRAWKI operatora (kolumna `dostawa_reczna_json`, patrz domain/dane-reczne.js) — i to
+// ⚠️ Ta funkcja nakłada na dane ze sklepu RĘCZNE
+// POPRAWKI operatora (kolumna `dostawa_reczna_json`, patrz domena/dane-reczne.js) — i to
 // jest cały powód, dla którego robi to WŁAŚNIE ona, a nie osobny kawałek kodu przy karcie:
 // karta, ekran nadania i klient DPD mają widzieć jeden i ten sam adres. Gdyby poprawkę
 // nakładała tylko karta, operator poprawiłby kod pocztowy, zobaczyłby go na ekranie
@@ -46,8 +46,7 @@ function tenSamAdres(d, k) {
  * prostu nie kopiuje się między blokami. Panel pokazywał wtedy jako „Firma" IMIĘ I NAZWISKO
  * (ostateczny fallback dla DPD, dziś zdjęty stąd na granicę kuriera — patrz komentarz nad
  * adresZeSklepu()) i paczka jechała do firmy bez jej nazwy na etykiecie. Zmierzone na
- * prawdziwym zamówieniu 1277: `shipping.company` puste,
- * `billing.company` = „Gammatech Spółka Sp. z o.o. Sp. K".
+ * prawdziwym zamówieniu: `shipping.company` puste, `billing.company` wypełnione.
  *
  * ⚠️ Ta reguła ZOSTAJE nietknięta po zdjęciu fallbacku: to dana ze sklepu, nie podstawienie.
  *
@@ -88,23 +87,23 @@ function surowyAdres(zamowienie) {
   };
 }
 
-// ⚠️ FALLBACK FIRMY NA IMIĘ I NAZWISKO STAŁ TUTAJ I ZOSTAŁ STĄD ZDJĘTY (2026-08-05).
+// ⚠️ FALLBACK FIRMY NA IMIĘ I NAZWISKO STAŁ TUTAJ I ZOSTAŁ STĄD ZDJĘTY.
 // DPD wymaga niepustego <company> na etykiecie i podstawienie nazwiska jest dalej
 // potrzebne — ale NIE we wspólnym źródle dla karty, ekranu nadania i klienta kuriera.
 // Stąd wychodziło ono na EKRAN: pole „Firma" pokazywało imię i nazwisko przy każdym
-// zamówieniu od osoby prywatnej (zgłoszenie właściciela ze zrzutu, 2026-08-04).
+// zamówieniu od osoby prywatnej.
 //
 // To nie była kosmetyka. Operator, który wykasował nazwisko z pola „Firma", widział, że
 // pole WRACA do tej samej wartości i NIE dostaje znacznika „zmienione ręcznie" — czyli
 // kliknięcie wyglądało na bezskuteczne. A w bazie leżało już `{"company": null}`, które
 // od tej chwili BLOKOWAŁO prawdziwą nazwę firmy, gdyby ta kiedyś przyszła ze sklepu:
-// zamówienie z `shipping.company = "Gammatech Sp. z o.o."` oddawało z powrotem nazwisko
+// zamówienie z `shipping.company = "Pracownia Półcień Sp. z o.o."` oddawało z powrotem nazwisko
 // i paczka jechała do firmy bez jej nazwy na etykiecie.
 //
 // Fallback mieszka teraz na DWÓCH GRANICACH, każda z własnym testem:
 //   • kurierzy/dpd.js — `a.company ?? a.nazwa` (ścieżka do etykiety, także HURTEM, gdzie
 //     formularza w ogóle nie ma: trasa masowa woła nadanie.nadaj z `adres: adresOdbiorcy(z)`);
-//   • domain/adres-formularza.js — `tekst(dane?.company) || nazwa` (pole zostawione puste
+//   • domena/adres-formularza.js — `tekst(dane?.company) || nazwa` (pole zostawione puste
 //     na ekranie nadania).
 // Warunek `company && company !== nazwa` w kurierzy/inpost.js ZOSTAJE: broni już nie tej
 // funkcji, tylko ścieżki formularzowej, gdzie fallback nakłada adres-formularza.js.

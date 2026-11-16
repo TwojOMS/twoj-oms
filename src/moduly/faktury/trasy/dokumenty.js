@@ -60,7 +60,7 @@ const adresPowrotuNaKarte = (req, id, opcje = {}) => adresKartyZamowienia(id, {
 
 const powrotKarty = (req) => bezpiecznyPowrotNaListe(req.query?.powrot ?? req.body?.powrot, config.definicje);
 
-// PRZ-126.F02: podgląd i wykonanie hurtu pytają regułę z TYMI SAMYMI opcjami; „faktura także bez
+// Podgląd i wykonanie hurtu pytają regułę z TYMI SAMYMI opcjami; „faktura także bez
 // prośby klienta” czytana z bazy przy każdym żądaniu (wyłączenie działa od następnego kliknięcia).
 const opcjeOdmowy = (reply) => ({ okresyWlaczone: reply.locals.modulWlaczony('okresy'), dlaKazdego: czyFakturaDlaKazdego(db) });
 
@@ -71,19 +71,19 @@ app.post('/zamowienia/faktury-hurtem/podglad', async (req, reply) => {
     return reply.view('faktury-hurtem-podglad.ejs', {
       doWystawienia: doWystawienia.map((z) => ({
         id: z.id, numer: z.numer, klient: adresOdbiorcy(z).nazwa, kwota: z.kwotaOczekiwanaZl,
-        // PRZ-070: od pobrania wariant bywa „przy odbiorze" — ekran mówi to PRZY KAŻDYM
+        // Od pobrania wariant bywa „przy odbiorze" — ekran mówi to PRZY KAŻDYM
         // dokumencie, bo to jest różnica na papierze, którego się nie poprawia.
         wariant: ETYKIETA_WARIANTU[wariantFakturyHurtem(z).termin] ?? '',
       })),
       pominiete,
       zaDuzo,
       wystawianieDziala: Boolean(fakturaHurtem),
-      // PRZ-121.03a: zdanie „faktury wyłączone” (tylko przy jawnym „brak”); `null` = widok zostaje przy starym akapicie.
+      // Zdanie „faktury wyłączone” (tylko przy jawnym „brak”); `null` = widok zostaje przy starym akapicie.
       zdanieBraku: zdanieBrakuProgramu(wyborProgramu),
-      // PRZ-118.09: nazwa i ekran programu fakturowego (usługa programu w module faktur — klient albo program).
+      // Nazwa i ekran programu fakturowego (usługa programu w module faktur — klient albo program).
       nazwaProgramu: odmianaNazwyProgramu(programFaktur), ekranProgramu: ekranProgramu(programFaktur),
       // Adres powrotu jedzie DALEJ ukrytym polem formularza zatwierdzenia — tak samo, jak
-      // przy nadaniu zbiorczym (4.13d). Bez tego ekran podgladu zjadalby zawezenie po drodze.
+      // przy nadaniu zbiorczym (reguła: powrót na zawężony widok). Bez tego ekran podgladu zjadalby zawezenie po drodze.
       powrot: bezpiecznyPowrotNaListe(req.body?.powrot, config.definicje),
     });
   });
@@ -93,11 +93,11 @@ app.post('/zamowienia/faktury-hurtem', async (req, reply) => {
     // uslugi (services/faktura-hurtem.js) ma obejmowac takze te sekundy, bo mierzy CZEKANIE
     // CZLOWIEKA — a czlowiek czeka od chwili klikniecia, nie od pierwszej faktury.
     //
-    // ⚠️ SPROSTOWANIE 12.08.2026: stalo tu, ze „60 s kurka HTTP liczy sie wlasnie stad".
-    // Zadnego kurka nie ma — `web/server.js` ustawia `requestTimeout: 0` JAWNIE, bo nadanie
-    // do paczkomatu trwa okolo 150 s w jednym zadaniu. 60 s w tym module to `LIMIT_ZADANIA_MS`
-    // z infakt/client.js, czyli limit WYCHODZACY na pojedyncze wywolanie do inFaktu. Pelne
-    // wyjasnienie stoi przy `BUDZET_HURTU_MS` w services/faktura-hurtem.js.
+    // ⚠️ To NIE jest start żadnego kurka HTTP po stronie serwera. Takiego kurka nie ma —
+    // core/aplikacja.ts ustawia `requestTimeout: 0` JAWNIE, bo nadanie do paczkomatu trwa
+    // w jednym żądaniu ponad dwie minuty. 60 s w tym module to `LIMIT_ZADANIA_MS`
+    // z oms/infakt/client.js, czyli limit WYCHODZĄCY na pojedyncze wywołanie do inFaktu. Pełne
+    // wyjaśnienie stoi przy `BUDZET_HURTU_MS` w services/faktura-hurtem.js.
     //
     // Podajemy LICZBE milisekund — `null` albo napis daja tam cicha awarie (patrz docblock
     // `wystawWiele`).
@@ -115,7 +115,7 @@ app.post('/zamowienia/faktury-hurtem', async (req, reply) => {
     // pelnoprawnym wyjsciem z tej akcji i tez musi umiec odeslac tam, skad przyszlo
     // zaznaczenie. Osobny odczyt w kazdej galezi kusi, zeby o jednej zapomniec.
     const powrot = bezpiecznyPowrotNaListe(req.body?.powrot, config.definicje);
-    // Prośba właściciela 14.10 (PRZ-070): z wyniku ma się dać wejść w zamówienie — przy błędzie od
+    // Z wyniku ma się dać wejść w zamówienie — przy błędzie od
     // razu w edycję danych do faktury (np. NIP z przedrostkiem z Allegro). Adres z TEJ SAMEJ
     // funkcji, co karta, z powrotem na zawężoną listę.
     const adresKarty = (id, stan = null, kotwica = null) => adresKartyZamowienia(id, { powrot, stan, kotwica }, config.definicje);
@@ -135,7 +135,7 @@ app.post('/zamowienia/faktury-hurtem', async (req, reply) => {
     // ⚠️ LOG PRZY KAZDYM ZAMOWIENIU — takze przy nieudanym. To najgrozniejsza akcja
     // w panelu: ekran wyniku oglada sie raz, a pytanie „czy panel w ogole probowal"
     // wraca tygodniami. `zapiszLubOdpusc`, bo awaria zapisu logu nie ma prawa schowac
-    // ekranu z numerami faktur, ktore JUZ POWSTALY w inFakcie.
+    // ekranu z numerami faktur, które JUŻ POWSTAŁY w programie fakturowym.
     for (const w of wynik.wystawione) {
       zapiszLubOdpusc(() => dopiszLog(db, w.id, {
         akcja: 'faktura.masowa',
@@ -159,7 +159,7 @@ app.get('/zamowienia/:id/potwierdzenie-wywozu.pdf', async (req, reply) => {
     let bajty;
     try {
       // Adres sprzedawcy TA SAMA regula, co proforma i specyfikacja (adresSprzedawcy);
-      // NIP — PRZ-108.10: plik albo Ustawienia → Firma, bez NIP-u odmowa (nipSprzedawcy); prefiks PL doklada model.
+      // NIP — plik albo Ustawienia → Firma, bez NIP-u odmowa (nipSprzedawcy); prefiks PL doklada model.
       const sprzedawca = { ...adresSprzedawcy(config), nip: nipSprzedawcy(config) };
       bajty = zbudujOswiadczenieWywozuPdf(modelOswiadczenia(z, {
         sprzedawca, dzis: dzienWarszawa(new Date().toISOString()),
@@ -209,7 +209,7 @@ app.post('/zamowienia/:id/proforma', async (req, reply) => {
     if (!pobierzZamowienie(db, id)) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
     if (!proforma) return ekranOdmowyKarty(reply, 'Proformy nie są skonfigurowane.', adresPowrotuNaKarte(req, id), 503);
     try {
-      // PRZ-122.B07c: stawka „zw” tylko przy programie wbudowanym (opis programu; surowy klient opisu nie ma).
+      // Stawka „zw” tylko przy programie wbudowanym (opis programu; surowy klient opisu nie ma).
       proforma.wystaw(id, opcjeZwProgramu(programFaktur?.opis));
     } catch (e) {
       // Slad w logu z osobna akcja („proforma.http"), tak jak przy fakturze VAT
@@ -239,7 +239,7 @@ app.get('/proformy/:id/pdf', async (req, reply) => {
       .send(wynik.bajty);
   });
 
-// PRZ-126.C02: odmowa wystawienia wraca jako KARTA zamówienia z błędem przy polu (`pole` z domeny,
+// Odmowa wystawienia wraca jako KARTA zamówienia z błędem przy polu (`pole` z domeny,
 // np. 'nip'), a wpisane w formularzu termin i daty zostają. Bez usługi karty (moduł zamówień nie
 // złożony) — strona odmowy w układzie panelu z powrotem na kartę, nigdy goły tekst.
 const odmowaWystawienia = (req, reply, id, kod, tekst, pole = null) => {
@@ -259,17 +259,17 @@ app.post('/zamowienia/:id/faktura', async (req, reply) => {
     if (!pobierzZamowienie(db, id)) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
     if (!faktura) return ekranOdmowyKarty(reply, zdanieBrakuProgramu(wyborProgramu) ?? `inFakt nie jest skonfigurowany. ${GDZIE_KLUCZ_INFAKTU}`, adresPowrotuNaKarte(req, id), 503);
     try {
-      // Termin i data wystawienia Z FORMULARZA (domain/termin-platnosci.js). Nierozpoznana
+      // Termin i data wystawienia Z FORMULARZA (domena/termin-platnosci.js). Nierozpoznana
       // wartosc dostaje odmowe TAM, w domenie — tutaj przekazujemy surowo, zeby nie istnialy
       // dwa miejsca decydujace o tym samym.
       //
-      // ⚠️ ZADANIE BEZ POLA `termin` idzie STARA DROGA, czyli bez zadnych dat w payloadzie —
-      // dokladnie tak, jak panel dzialal do 2026-08-01. To nie jest uprzejmosc dla starych
-      // testow: podstawienie tu domyslnego terminu znaczyloby, ze zadanie, ktore o terminie
-      // nic nie mowi, po cichu ustawia klientowi date zaplaty.
+      // ⚠️ ŻĄDANIE BEZ POLA `termin` idzie STARĄ DROGĄ, czyli bez żadnych dat w payloadzie —
+      // dokładnie tak, jak panel działał, zanim formularz dostał termin. To nie jest uprzejmość
+      // dla starych testów: podstawienie tu domyślnego terminu znaczyłoby, że żądanie, które
+      // o terminie nic nie mówi, po cichu ustawia klientowi datę zapłaty.
       // `dataSprzedazy` SUROWO z formularza (`data_sprzedazy`) — walidacja i propozycja
       // siedza w domenie (data-sprzedazy.js, termin-platnosci.js), zeby nie istnialy dwa
-      // miejsca decydujace o tym samym (Zadanie 6).
+      // miejsca decydujace o tym samym.
       await faktura.wystaw(id, req.body?.termin === undefined ? null : {
         dataWystawienia: req.body?.data_wystawienia,
         dataSprzedazy: req.body?.data_sprzedazy,
@@ -277,7 +277,7 @@ app.post('/zamowienia/:id/faktura', async (req, reply) => {
       });
     } catch (e) {
       // Nieudana proba wystawienia MUSI zostawic slad: to najgrozniejsza akcja w panelu,
-      // a bez wpisu w logu awaria sieci po stronie inFaktu wygladalaby jak "nic sie nie stalo".
+      // a bez wpisu w logu awaria sieci po stronie programu fakturowego wyglądałaby jak "nic sie nie stalo".
       dopiszLog(db, id, { akcja: 'faktura.http', wynik: `BŁĄD: ${e.message}` });
       return odmowaWystawienia(req, reply, id, 400, `Nie udało się wystawić faktury: ${komunikatDlaOperatora(e)}`, e?.pole ?? null);
     }
@@ -323,7 +323,7 @@ app.post('/zamowienia/:id/faktura/skasowana', async (req, reply) => {
         + `(UUID ${idDokumentu(f) ?? 'brak'}) skasowana ręcznie w inFakcie — panel niczego tam nie kasował, `
         + 'tylko odnotował fakt i zwolnił zamówienie do ponownego wystawienia.',
     });
-    // ⚠️ POWROT TAM, SKAD KLIKNIETO (01.09.2026). Od przeniesienia tej akcji na zakladke
+    // ⚠️ POWRÓT TAM, SKĄD KLIKNIĘTO. Od przeniesienia tej akcji na zakladke
     // FAKTURY wolajacy bywa DWOJAKI, a odeslanie na karte zamowienia wyrzucaloby operatora
     // na ekran, ktorego nie ogladal. ⚠️ WYLACZNIE SCIEZKA WZGLEDNA — parametr z zadania jest
     // danymi od uzytkownika, a `//host` w `Location` to przekierowanie na obcy serwer.

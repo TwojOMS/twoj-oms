@@ -1,5 +1,5 @@
-// PRZ-099: Ustawienia → Aktualizacje — tylko informacja: bieżąca wersja instalacji i najnowsze wydanie na GitHubie.
-// Instalacji z panelu jeszcze nie ma (plan docs/plany/PRZ-095-099-aktualizacje.md) — ekran mówi to wprost.
+// Ustawienia → Aktualizacje — tylko informacja: bieżąca wersja instalacji i najnowsze wydanie na GitHubie.
+// Instalacji z panelu jeszcze nie ma — ekran mówi to wprost.
 //
 // Tylko administrator (flaga admin, nie ptaszek Ustawień), jak Role. Gość demo ogląda (GET); jego POST „Sprawdź teraz”
 // zatrzymuje wcześniej hak core/bezpieczenstwo/podglad-demo.js, więc demo nigdy nie pyta GitHuba.

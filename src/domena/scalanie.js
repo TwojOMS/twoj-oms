@@ -1,4 +1,4 @@
-// Scalanie zamówień (PRZ-101.04, decyzje właściciela 18.10.2026).
+// Scalanie zamówień.
 //
 // ⚠️ SCALENIE JEST LOGICZNE. Dołączone zamówienie zostaje w bazie pełnym zamówieniem (pozycje,
 // wpłaty, kanał, poller) i dostaje tylko `scalone_do = id głównego`; główne niesie decyzję
@@ -42,13 +42,13 @@ export function decyzjaScalenia(z) {
 export const idsDolaczonych = (z) => decyzjaScalenia(z)?.dolaczone ?? [];
 
 /**
- * Początek `sync_woo_blad` GŁÓWNEGO, gdy nie dojechał status DOŁĄCZONEGO (services/sync-sklep.js).
+ * Początek `sync_woo_blad` GŁÓWNEGO, gdy nie dojechał status DOŁĄCZONEGO (moduly/zamowienia/services/sync-sklep.js).
  * Po nim „Rozdziel” poznaje ślad, który do głównego nie należy, i go zdejmuje.
  */
 export const PREFIKS_BLEDU_DOLACZONYCH = 'dołączone ';
 
 /**
- * Odmowa POBRANIA na zamówieniu scalonym (recenzja, W2) — `null`, gdy zamówienie nie jest w grupie.
+ * Odmowa POBRANIA na zamówieniu scalonym — `null`, gdy zamówienie nie jest w grupie.
  * Ta sama decyzja, co odmowa scalenia zamówień za pobraniem: kwota pobrania obejmowałaby jedno
  * zamówienie, a paczka jedzie za całą grupę. Wołają ją: zmiana metody na karcie, „Przywróć metodę
  * ze sklepu” i gotowość nadania (obrona w głębi — stan sprzed tej poprawki, ręczna zmiana bazy).
@@ -86,7 +86,7 @@ export function powodyOdmowyScalenia(zamowienia, { glowneId } = {}) {
   for (const z of lista) {
     const n = `Zamówienie ${z.numer}`;
     const glowne = z.id === Number(glowneId);
-    // ⚠️ Decyzja właściciela 18.10: „Zamówień z Allegro raczej się nie scala”. Allegro ma własną fakturę
+    // ⚠️ Zamówień z Allegro nie scalamy. Allegro ma własną fakturę
     // do checkout-formu i status SENT na każdym zamówieniu — jedna faktura grupy tego nie obsłuży.
     // Możliwość scalenia określa opis modułu kanału.
     if (!umiejetnosciZamowienia(z).scalanie) powody.push(`${n} jest z Allegro — zamówień z Allegro nie scalamy (tylko sklep i ręczne).`);
@@ -95,23 +95,23 @@ export function powodyOdmowyScalenia(zamowienia, { glowneId } = {}) {
     if (z.wyslane_at) powody.push(`${n} jest już wysłane.`);
     if ((z.przesylki ?? []).length) powody.push(`${n} ma już nadaną przesyłkę — paczka nie obejmie pozycji pozostałych zamówień.`);
     // Status, który nie dojechał do sklepu, trzyma zamówienie na „Do zrobienia” (doZrobienia).
-    // Dołączone zniknęłoby z listy razem z tą sprawą (recenzja, W4) — najpierw ją zamknąć.
+    // Dołączone zniknęłoby z listy razem z tą sprawą — najpierw ją zamknąć.
     if (z.sync_woo_blad) {
       powody.push(`${n} ma status nieodesłany do sklepu („${String(z.sync_woo_blad).slice(0, 120)}”) — `
         + 'najpierw „Wyślij ponownie” na jego karcie, potem scal.');
     }
     if (z.scalone_do) powody.push(`${n} jest już dołączone do innego zamówienia.`);
     if (idsDolaczonych(z).length) powody.push(`${n} jest już zamówieniem głównym innej grupy.`);
-    // Okres rozliczeniowy ma jedną fakturę ZBIORCZĄ za miesiąc (faktura-odmowa.js) — druga droga
+    // Okres rozliczeniowy ma jedną fakturę ZBIORCZĄ za miesiąc (domena/faktura-odmowa.js) — druga droga
     // fakturowania tych samych pozycji (faktura grupy) byłaby drugim dokumentem.
     if (z.okres_rozliczeniowy_id) powody.push(`${n} należy do miesięcznego okresu rozliczeniowego (faktura zbiorcza).`);
-    // Pobranie w KAŻDYM członku grupy (także w głównym) — decyzja kierownika 18.10: kwota pobrania
+    // Pobranie w KAŻDYM członku grupy (także w głównym) odmawia scalenia: kwota pobrania
     // obejmowałaby tylko jedno zamówienie. Rzadka funkcja: prostota ponad wygodę.
     if (z.pobranie) {
       powody.push(`${n}: zamówień za pobraniem nie scalamy — kwota pobrania obejmowałaby tylko jedno zamówienie.`);
     }
     // ⚠️ Dołączane z fakturą = dwie faktury na jedno zamówienie, czyli dokładnie to, czego scalenie
-    // ma uniknąć (właściciel: „nie chcemy mieć dwóch faktur”). Główne z fakturą — tylko ostrzeżenie.
+    // ma uniknąć. Główne z fakturą — tylko ostrzeżenie.
     if (!glowne && z.faktura) {
       powody.push(`${n} ma już fakturę${z.faktura.numer ? ` ${z.faktura.numer}` : ''} — po scaleniu byłyby dwie faktury. Dołączać można tylko zamówienia bez faktury.`);
     }
@@ -183,9 +183,9 @@ export function roznicaKupujacego(zamowienia) {
 const oplacone = (z) => brakujacaKwotaGrosze(z) <= 0;
 
 /**
- * Wysyłki, które wchodzą na fakturę grupy — KAŻDA osobną pozycją (PRZ-101.11, właściciel 19.10:
- * „kupujący zapłacił za dwie wysyłki — druga wysyłka wchodzi jako osobna pozycja. Kwoty
- * zgadzają się”). Wysyłka głównego wchodzi zawsze. Dołączonego:
+ * Wysyłki, które wchodzą na fakturę grupy — KAŻDA osobną pozycją: kupujący, który zapłacił
+ * za dwie wysyłki, widzi drugą jako osobną pozycję i kwoty się zgadzają. Wysyłka głównego
+ * wchodzi zawsze. Dołączonego:
  *  - „suma wysyłek” — zawsze;
  *  - „z zamówienia głównego” — tylko gdy dołączone jest OPŁACONE (kupujący za nią zapłacił,
  *    więc bez niej faktura byłaby niższa niż wpłaty); nieopłaconego wypada.
@@ -241,7 +241,7 @@ export function kwotaGrupyGrosze(glowne, dolaczone, decyzja) {
  * `pozycjeDokumentu`, `sprawdzSumeDokumentu`, `kwotaOczekiwanaGrosze` i bariera „zapłacone”
  * liczą dokładnie tak, jak dla pojedynczego zamówienia.
  *
- * ⚠️ JAK TO DZIAŁA (dla recenzenta):
+ * ⚠️ JAK TO DZIAŁA:
  *  - nabywca, adres, NIP, pobranie, faktura i przesyłki — z GŁÓWNEGO (spread);
  *  - pozycje — efektywne pozycje wszystkich członków (główne pierwsze), SPŁASZCZONE: `brutto_linii`
  *    = wartość linii po nakładkach, `zrodlo = 'grupa'`, bez `sklep` — więc człon różnicowy
@@ -275,7 +275,7 @@ export function zamowienieGrupy(glowne, dolaczone) {
   return {
     ...glowne,
     pozycje,
-    // PRZ-152.G2 — usunięte członków są już odjęte w `kwotaGrupyGrosze` (przez kwotę oczekiwaną
+    // Usunięte członków są już odjęte w `kwotaGrupyGrosze` (przez kwotę oczekiwaną
     // każdego członka). Przeniesione z `...glowne` odjęłyby się w kwocie grupy DRUGI RAZ.
     pozycje_usuniete: [],
     pozycje_reczne_json: null,
@@ -303,7 +303,7 @@ export function sprawdzCzlonkowGrupy(glowne, dolaczone) {
   }
   for (const c of [glowne, ...dolaczone]) {
     try {
-      // Stawka nie wplywa na bariere (porownuje brutto) — wbudowana wystarcza (PRZ-105).
+      // Stawka nie wplywa na bariere (porownuje brutto) — wbudowana wystarcza.
       sprawdzSumeDokumentu(pozycjeDokumentu(c, { stawkaDomyslna: STAWKA_VAT }), c);
     } catch (e) {
       throw bladOperatora(`Zamówienie ${c.numer} (w grupie): ${e.message}`);

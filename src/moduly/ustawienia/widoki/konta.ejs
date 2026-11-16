@@ -1,20 +1,20 @@
 <%#
-  Konta i uprawnienia — Zadanie 6 (spec 2026-09-12). Do tego dnia konto dalo sie zalozyc
-  WYLACZNIE zapytaniem SQL; ten ekran jest pierwszym kontaktem wlasciciela (takze kogos, kto
-  kupil ten kod) z zakladaniem kont — patrz test „konto serwisowe na pustej tabeli" w
-  tests/oms/web-konta.test.js.
+  Konta i uprawnienia. Ten ekran jest pierwszym miejscem (także dla kogoś, kto wdraża ten kod
+  u siebie), w którym zakłada się konta; bez niego byłoby to możliwe tylko zapytaniem SQL.
+  Pierwsze konto powstaje przy pustej tabeli, gdy na ekran wchodzi konto serwisowe z `.env`
+  (tests/moduly/ustawienia/web-konta.test.js, „konto serwisowe na pustej tabeli").
 
-  ⚠️ UKLAD WSPOLNY Z podstronami Ustawień (`ust-sekcja`/`ust-pola`/`ust-akcje`/`btn`) —
-  ta sama paleta, jasna i ciemna, zero nowych kolorow wpisanych z palca.
+  ⚠️ UKŁAD WSPÓLNY Z podstronami Ustawień (`ust-sekcja`/`ust-pola`/`ust-akcje`/`btn`) —
+  ta sama paleta, jasna i ciemna, zero nowych kolorów wpisanych z palca.
 
-  ⚠️ FORMULARZE NIE NIOSA TOKENU CSRF. Ochrona jest oparta na naglowku Origin
-  (src/security/csrf.js), nie na tokenie w formularzu — jeden mechanizm dla WSZYSTKICH tras,
-  takze tych dopisanych pozniej, wiec ten ekran nie doklada niczego wlasnego.
+  ⚠️ FORMULARZE NIE NOSZĄ TOKENU CSRF. Ochrona sprawdza źródło żądania (nagłówek Origin, a gdy
+  go brak — Referer; core/bezpieczenstwo/csrf.js), nie token w formularzu — jeden mechanizm dla
+  WSZYSTKICH tras, także tych dopisanych później, więc ten ekran nie dokłada niczego własnego.
 
-  ⚠️ FORMULARZ „NOWE KONTO" NIE MA PTASZKOW EKRANOW: `POST /ustawienia/konta/nowe`
-  (routes/konta.js) czyta wylacznie `login`/`imie`/`email`/`rola`/`sposob` (PRZ-069: bez hasla) — uprawnienia zaklada preset
-  roli (`ekranyRoli`). Ptaszek tutaj, ktorego trasa i tak by zignorowala, wygladalby jak
-  dzialajace pole i nie byłby — uprawnienia poprawia sie PO zalozeniu, w sekcji konta ponizej.
+  ⚠️ FORMULARZ „NOWE KONTO" NIE MA PTASZKÓW EKRANÓW: `POST /ustawienia/konta/nowe`
+  (moduly/ustawienia/trasy/konta.js) czyta `login`/`imie`/`email`/`rola`/`sposob` (przy braku `sposob`
+  także `haslo`, dla testów i skryptów); konto dostaje ekrany wybranej roli zapisane w bazie. Ptaszek tutaj, którego
+  trasa i tak by zignorowała, wyglądałby jak działające pole — uprawnienia poprawia się PO założeniu, w sekcji konta poniżej.
 %>
 <% const tylkoLogowania = nawigacja?.kontekst?.aktywnaZakladka === 'logowania'; %>
 <% if (!tylkoLogowania) { %>
@@ -84,7 +84,7 @@
         </select>
       </label>
     </div>
-    <%# PRZ-069: konto powstaje BEZ hasła — pracownik ustawia je sam z jednorazowego linku (48 h). %>
+    <%# Konto powstaje BEZ hasła — pracownik ustawia je sam z jednorazowego linku (48 h). %>
     <div class="ust-pola" style="flex-direction:column;align-items:flex-start">
       <label class="pole-przelacznik"><input type="radio" name="sposob" value="pokaz" checked> Pokaż link do skopiowania</label>
       <label class="pole-przelacznik"><input type="radio" name="sposob" value="mail"> Wyślij zaproszenie mailem (wymaga e-maila i ustawionej poczty — <a href="/ustawienia/integracje/poczta">Ustawienia → Integracje → Poczta wychodząca</a>; bez wpisanego tam adresu panelu link prowadzi pod adres, z którego teraz korzystasz)</label>
@@ -96,11 +96,11 @@
 <%# ——— PER KONTO: uprawnienia, haslo, przelacznik czynne ——————————————————————————————— %>
 <% konta.forEach(function (k) { %>
   <%
-    // Dwa NIEZALEZNE powody, dla ktorych ten formularz ma zablokowana mozliwosc odebrania
-    // admina/wylaczenia — patrz komentarze przy bezpiecznikach w routes/konta.js:
-    //   1) TO KONTO, na ktorym akurat jestesmy zalogowani (nie zamykaj sie sam),
-    //   2) TO JEDYNY czynny administrator w calym panelu (brama degradacji zamknelaby sie
-    //      na zawias — hasło z .env znowu stalby sie pelnym adminem).
+    // Dwa NIEZALEŻNE powody, dla których ten formularz ma zablokowaną możliwość odebrania
+    // admina/wyłączenia — patrz komentarze przy bezpiecznikach w moduly/ustawienia/trasy/konta.js:
+    //   1) TO KONTO, na którym akurat jesteśmy zalogowani (nie zamykaj się sam),
+    //   2) TO JEDYNY czynny administrator w całym panelu (brama degradacji zamknęłaby się
+    //      na zawias — hasło z .env znowu stałoby się pełnym adminem).
     const toJa = k.id === wlasneId;
     const zablokowany = toJa || k.ostatniAdmin;
   %>
@@ -119,7 +119,7 @@
       </p>
     <% } %>
 
-    <%# PRZ-068: dostęp konta wynika z ROLI (ptaszki ról: Ustawienia → Role i uprawnienia). %>
+    <%# Dostęp konta wynika z ROLI (ptaszki ról: Ustawienia → Role i uprawnienia). %>
     <form method="post" action="/ustawienia/konta/<%= k.id %>/rola">
       <div class="ust-pola">
         <label>Rola
@@ -134,8 +134,8 @@
       <div class="ust-akcje"><button class="btn btn--glowny" type="submit">Zmień rolę</button></div>
     </form>
 
-    <%# PRZ-068 (plan O4): formularz ptaszków per konto wraca WYŁĄCZNIE w odpowiedzi 400 starej trasy %>
-    <%# /uprawnienia — żeby odmowa pokazała, co operator wybrał. Zapis i tak idzie przez rolę osobistą. %>
+    <%# Formularz ptaszków per konto wraca WYŁĄCZNIE w odpowiedzi 400 trasy POST /ustawienia/konta/:id/uprawnienia %>
+    <%# — żeby odmowa pokazała, co operator wybrał. Zapis i tak idzie przez rolę osobistą. %>
     <% if (k.edycja) { %>
     <form method="post" action="/ustawienia/konta/<%= k.id %>/uprawnienia">
       <div class="ust-pola" style="flex-direction:column;align-items:flex-start">
@@ -146,7 +146,7 @@
           </label>
         <% }); %>
         <%# ⚠️ `api` NIE JEST W `EKRANY` — to klucz oddzielny: dostęp maszynowy do adresów /api/* %>
-        <%# dla zewnętrznej aplikacji, patrz ekranDlaAdresu w domena/ekrany.js i filtr w trasy/konta.js. %>
+        <%# dla zewnętrznej aplikacji, patrz ekranDlaAdresu w domena/ekrany.js i filtr w moduly/ustawienia/trasy/konta.js. %>
         <label class="pole-przelacznik">
           <input type="checkbox" name="ekran" value="api" <%= k.ekrany.has('api') ? 'checked' : '' %>>
           Dostęp przez API (zewnętrzna aplikacja)
@@ -154,9 +154,9 @@
       </div>
       <label class="pole-przelacznik">
         <% if (zablokowany) { %>
-          <%# ⚠️ CELOWO BEZ `disabled`: pole WYLACZONE nie wysylaloby WCALE wartosci `admin`, %>
-          <%# co serwer odczytalby jako proba zdjecia admina — dokladnie to, co blokujemy. %>
-          <%# Ukryte pole gwarantuje `admin=1` niezaleznie od tego, co operator kliknie tutaj. %>
+          <%# ⚠️ CELOWO BEZ `disabled`: pole WYŁĄCZONE nie wysyłałoby WCALE wartości `admin`, %>
+          <%# co serwer odczytałby jako próbę zdjęcia admina — dokładnie to, co blokujemy. %>
+          <%# Ukryte pole gwarantuje `admin=1` niezależnie od tego, co operator kliknie tutaj. %>
           <input type="checkbox" checked onclick="return false" aria-disabled="true">
           <input type="hidden" name="admin" value="1">
         <% } else { %>
@@ -168,7 +168,7 @@
     </form>
     <% } %>
 
-    <%# PRZ-069 (plan O7): admin nie wpisuje cudzego hasła — wysyła link do jego ustawienia ze strony konta. %>
+    <%# Admin nie wpisuje cudzego hasła — wysyła link do jego ustawienia ze strony konta. %>
     <p><a href="/ustawienia/konta/<%= k.id %>">Szczegóły i link do hasła</a></p>
 
     <% if (!zablokowany) { %>
@@ -187,8 +187,8 @@
 <% } %>
 <% if (tylkoLogowania) { %>
 <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Historia logowań"}) %>
-<%# ——— DZIENNIK LOGOWAN — NA TYM SAMYM EKRANIE (nie osobno): administrator, ktory podejrzewa %>
-<%# wlamanie, ma zobaczyc naraz, kto ma dostep (tabela wyzej) i kto probowal go zdobyc. %>
+<%# ——— DZIENNIK LOGOWAŃ — zakładka „Historia logowań” (/ustawienia/zespol/logowania): administrator, który podejrzewa %>
+<%# włamanie, ma zobaczyć, kto próbował wejść, obok zakładki z listą kont, czyli tych, którzy mają dostęp. %>
 <div class="ust-sekcja">
   <h2>Ostatnie logowania</h2>
   <% if (!logowania.length) { %>
@@ -196,8 +196,8 @@
   <% } else { %>
     <div class="przewijak-tabeli" tabindex="0" role="region" aria-label="Historia logowań">
     <table class="tab-pozycje">
-      <%# D2: kolumna IP — ostatnieLogowania() (db/konta.js) juz ja pobiera, tylko widok jej %>
-      <%# nie pokazywal. Przy „podejrzewam wlamanie" to najwazniejsza kolumna na ekranie. %>
+      <%# Kolumna IP — ostatnieLogowania() (core/bezpieczenstwo/konta.js) ją pobiera i widok %>
+      <%# ją pokazuje. Przy „podejrzewam włamanie" to najważniejsza kolumna na ekranie. %>
       <thead><tr><th>Kiedy</th><th>Login</th><th>IP</th><th>Wynik</th><th>Usługa</th></tr></thead>
       <tbody>
         <% logowania.forEach(function (l) { %>
@@ -205,8 +205,8 @@
             <td><%= fmtDataCzas(l.at) %></td>
             <td><%= l.login %></td>
             <td><%= l.ip ?? '—' %></td>
-            <%# D1: `l.opisWyniku` (routes/konta.js) — tekst dla czlowieka, z ogonkami; %>
-            <%# surowy identyfikator `l.wynik` zostaje wylacznie w bazie i w kodzie. %>
+            <%# `l.opisWyniku` (moduly/ustawienia/trasy/konta.js) — tekst dla człowieka, z ogonkami; %>
+            <%# surowy identyfikator `l.wynik` zostaje wyłącznie w bazie i w kodzie. %>
             <td><%= l.opisWyniku %></td>
             <td><%= l.usluga %></td>
           </tr>

@@ -1,21 +1,21 @@
 import type { Migracja } from '../../../core/kontrakty.ts';
 
-// PRZ-160 E2.01 — oferty wystawiane z OMS-u na kanał (plan PRZ-160, rozdz. 4).
-// Moduł `magazyn` (D22): dwie nowe tabele, odwołanie do `karty_produktow` bez jej zmiany. Wyłącznie dokładanie,
+// Oferty wystawiane z OMS-u na kanał.
+// Moduł `magazyn`: dwie nowe tabele, odwołanie do `karty_produktow` bez jej zmiany. Wyłącznie dokładanie,
 // odporna na ponowienie (`IF NOT EXISTS`).
 //
-// `oferty_kanalow` — rejestr ofert (D8): jedna oferta OMS na kartę i konto kanału (indeks częściowy), kolejne wiersze
-// tylko przez przejęcie (`pochodzenie = 'przejeta'`); unikalna para (konto kanału, id zewnętrzne). Tryb D23:
-// przejęta → `obserwowana`, z OMS → `zarzadzana`. Ostatnio wysłane pola, skrót treści, ilość i cena (D9, D14) oraz
+// `oferty_kanalow` — rejestr ofert: jedna oferta OMS na kartę i konto kanału (indeks częściowy), kolejne wiersze
+// tylko przez przejęcie (`pochodzenie = 'przejeta'`); unikalna para (konto kanału, id zewnętrzne). Tryb:
+// przejęta → `obserwowana`, z OMS → `zarzadzana`. Ostatnio wysłane pola, skrót treści, ilość i cena oraz
 // ostatni odczyt z kanału (stan, ilość, cena, zamrożone pola) służą porównaniom pętli; cena czekająca na
-// potwierdzenie — D13a. Wiersz kartę wskazuje bez kaskady: oferta nie znika po cichu (wycofana karta → D25).
-// Kwoty w groszach.
+// potwierdzenie ma własną kolumnę. Wiersz kartę wskazuje bez kaskady: oferta nie znika po cichu, a przy wycofanej
+// karcie pętla ofert zdejmuje ją z kanału. Kwoty w groszach.
 //
 // `oferty_ustawienia_kont` — ustawienia ofert konta kanału, wiersz per klucz konta. Bez klucza obcego, bo konta
-// z env nie mają wiersza w `kanaly_sprzedazy`; brak wiersza = wartości domyślne. D24: oferty wstrzymane
-// (`oferty_czynne = 0`) dla każdego konta, istniejącego i nowego. D14: stała ilość bez wartości domyślnej
-// (NULL = nieustawiona). D13: narzut w punktach bazowych (1250 = 12,5%), D13a: próg potwierdzenia ceny 20%.
-// D15: czas wysyłki, cennik dostaw, VAT domyślny. D28: producent i osoba odpowiedzialna.
+// z env nie mają wiersza w `kanaly_sprzedazy`; brak wiersza = wartości domyślne. Oferty są domyślnie wstrzymane
+// (`oferty_czynne = 0`) dla każdego konta, istniejącego i nowego. Stała ilość nie ma wartości domyślnej
+// (NULL = nieustawiona). Narzut w punktach bazowych (1250 = 12,5%), próg potwierdzenia ceny 20%.
+// Dalej: czas wysyłki, cennik dostaw, VAT domyślny, producent i osoba odpowiedzialna.
 const OFERTY = `CREATE TABLE IF NOT EXISTS oferty_kanalow (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   karta_id INTEGER NOT NULL REFERENCES karty_produktow(id),

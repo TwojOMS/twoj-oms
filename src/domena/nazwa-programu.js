@@ -1,9 +1,11 @@
-// PRZ-118.09 — nazwa programu fakturowego w zdaniach dla człowieka (ekrany, komunikaty domeny).
+// Nazwa programu fakturowego w zdaniach dla człowieka (ekrany, komunikaty domeny).
 //
 // Zdanie bierze odmianę z `program.opis.nazwa` (mianownik / dopelniacz / miejscownik / narzednik), a odnośnik do
 // ekranu programu z `program.opis.ekran`. Obiekt bez opisu (surowy klient inFaktu, mock w teście) i brak programu
-// dają nazwę i ekran inFaktu — W PRZ-118 JEDYNEGO programu, więc tekst bez programu zostaje znak w znak ten sam co
-// przed zmianą („inFakt nie jest skonfigurowany …”). Zdania o braku programu zmieni dopiero wybór programu (etap A).
+// dają nazwę i ekran inFaktu — programu, który `wybierzProgram` (domena/wybor-programu.js) bierze bez jawnego wyboru,
+// gdy jest skonfigurowany — więc tekst bez programu zostaje znak w znak ten sam co przed dojściem innych programów
+// („inFakt nie jest skonfigurowany …”). Zdanie o fakturach wyłączonych jawnym „Brak” składa `zdanieBrakuProgramu`
+// w domena/wybor-programu.js.
 //
 // ≠ `nazwaProgramu` z moduly/faktury/services/wdt-faktury.js (zapas „program fakturowy”): tamte komunikaty powstają
 // wyłącznie przy wystawianiu, gdzie program jest zawsze; te stoją także na ekranach panelu bez programu.

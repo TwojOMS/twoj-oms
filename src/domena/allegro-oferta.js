@@ -1,16 +1,15 @@
 // Oferta Allegro → wiersz lustra magazynu (`produkty_sklepowe`).
 //
-// Regula CZYSTA i mieszkajaca w `domain/` celowo: styk z Allegro zachowal sie w tym
+// Regula CZYSTA i mieszkajaca w `domena/` celowo: styk z Allegro zachowal sie w tym
 // projekcie juz dwa razy inaczej niz dokumentacja, wiec to, CO zapisujemy, ma dac sie
 // sprawdzic bez sieci i bez tokenu.
 //
-// ⚠️ KSZTALT WEJSCIA JEST ZMIERZONY, NIE WZIETY Z DOKUMENTACJI (notatka
-// `docs/superpowers/notatki/2026-08-06-magazyn-rozpoznanie.md`, 40 ofert z obu kont):
+// ⚠️ KSZTAŁT WEJŚCIA JEST ZMIERZONY, NIE WZIĘTY Z DOKUMENTACJI (na ofertach z obu kont):
 //   { id, name, sellingMode: { price: { amount, currency } }, primaryImage: { url },
 //     publication: { status }, external, stock, stats, … }
 // Z tego bierzemy PIEC pol, a do tego `stock.available` jako LUSTRO ilosci kanalu
-// (PRZ-160 E4 D60): lustro niesie ilosc kanalu z chwili odczytu; stan magazynu liczy
-// wylacznie `stanyKart` (niezmiennik 8). Reszta pol jest swiadomie pomijana.
+// — niesie ilość kanału z chwili odczytu; stan magazynu liczy
+// wyłącznie `stanyKart`. Reszta pól jest świadomie pomijana.
 
 import { groszeZKwoty } from './kwota.js';
 import { wymagajListyKanalow } from './lista-kanalow.js';
@@ -27,19 +26,19 @@ import { adresMiniatury } from './miniatury.js';
 // z magazynu wejsc na oferte, ktora wlasnie sie oglada.
 const ADRES_OFERTY = 'https://allegro.pl/oferta/';
 
-// Ten sam warunek, co w domain/miniatury.js i z tego samego powodu: adres laduje wprost
+// Ten sam warunek, co w domena/miniatury.js i z tego samego powodu: adres laduje wprost
 // w atrybucie `src` naszego HTML-a.
 const ADRES_HTTP = /^https?:\/\//i;
 
 // ⚠️ JEDYNA WALUTA, KTORA LUSTRO UMIE ZAPISAC. `produkty_sklepowe.cena_gr` to goły `INTEGER`
-// i kolumny waluty NIE MA (schema.sql) — Etap 1 jej nie dokłada, bo oba konta stoją na
+// i kolumny waluty NIE MA — nie dokładamy jej, bo konta stoją na
 // allegro.pl i sprzedają w złotówkach.
 //
 // ⚠️⚠️ NIE ODRZUCAMY EUR DLATEGO, ZE JEST ZLE, TYLKO DLATEGO, ZE KOLUMNA NIE NIESIE WALUTY —
-// zapis byłby wtedy KLAMSTWEM. Zmierzone przy recenzji: oferta z `currency: 'EUR'` i kwotą
+// zapis byłby wtedy KLAMSTWEM. Zmierzone: oferta z `currency: 'EUR'` i kwotą
 // „89.00" wpadała do lustra jako 8900 groszy, czyli wyglądała na ~4× tańszą od tego samego
-// produktu w sklepie, i to CICHO. Konto Allegro B sprzedaje na pięć rynków (`allegro-cz`, `-sk`,
-// `-hu`), więc to nie jest przypadek teoretyczny — dziś `sellingMode.price` oddaje cenę rynku
+// produktu w sklepie, i to CICHO. Allegro działa na kilku rynkach (np. allegro.cz), więc to nie
+// jest przypadek teoretyczny — dziś `sellingMode.price` oddaje cenę rynku
 // bazowego, ale wystarczy jedna zmiana po stronie Allegro.
 //
 // ⚠️ GDYBY KIEDYS DOSZLA KOLUMNA WALUTY, TO JEST PIERWSZE MIEJSCE DO ZMIANY: strażnik
@@ -49,12 +48,12 @@ const WALUTA_LUSTRA = 'PLN';
 /**
  * Cena z oferty Allegro (`sellingMode.price`) → GROSZE jako `INTEGER`.
  *
- * Samo przeliczenie kwoty siedzi w `domain/kwota.js` — TA SAMA regula obowiazuje ceny
+ * Samo przeliczenie kwoty siedzi w `domena/kwota.js` — TA SAMA regula obowiazuje ceny
  * ze sklepow (`services/magazyn-sync.js`), bo obie lada w tej samej kolumnie. Tutaj zostaje
  * to, co jest WYLACZNIE allegrowe: waluta.
  *
  * ⚠️ TRZY STANY, NIE DWA. Brak kwoty (`undefined`/`null`, brak `sellingMode`) to `null` —
- * stan normalny. Kwota, ktorej NIE UMIEMY przeliczyc, RZUCA (patrz `domain/kwota.js`).
+ * stan normalny. Kwota, ktorej NIE UMIEMY przeliczyc, RZUCA (patrz `domena/kwota.js`).
  */
 export function groszeZCeny(cena, opisOferty) {
   const kwota = cena?.amount;
@@ -73,7 +72,7 @@ export function groszeZCeny(cena, opisOferty) {
     );
   }
 
-  // Prefiks „Allegro:" doklejamy TUTAJ, a nie w `domain/kwota.js`: ten sam komunikat
+  // Prefiks „Allegro:" doklejamy TUTAJ, a nie w `domena/kwota.js`: ten sam komunikat
   // powstaje takze dla sklepow i musi wtedy nazywac sklep, a nie Allegro.
   try {
     return groszeZKwoty(kwota, `oferta ${opisOferty}`);
@@ -96,7 +95,7 @@ function zdjeciaJson(oferta) {
   const adres = adresZdjecia(oferta);
   if (!adres) return null;
   // ⚠️ JEDEN ELEMENT I TO WYSTARCZA. Lista ofert niesie wylacznie `primaryImage`; pelna
-  // galeria kosztowalaby 447 osobnych wywolan `/sale/product-offers/{id}`, a zdjecia do
+  // galeria kosztowalaby setki osobnych wywolan `/sale/product-offers/{id}`, a zdjecia do
   // karty produktu i tak bierzemy ze SKLEPU, gdzie Woo oddaje komplet za darmo.
   // Tablica, a nie goly adres — kolumna jest wspolna z produktami sklepowymi.
   return JSON.stringify([adres]);
@@ -127,9 +126,9 @@ export function ofertaNaProdukt(oferta, kanal, dozwoloneKanaly) {
     );
   }
 
-  // Nazwa oferty jest JEDYNA rzecza, po ktorej czlowiek wiaze oferte z produktem — SKU nie ma,
-  // bo `external` jest puste na wszystkich ofertach. Kolumna jest przy tym NOT NULL, wiec
-  // bez tego straznika brak nazwy wychodzilby dopiero na bazie, w polowie 447 ofert.
+  // Nazwa oferty jest JEDYNĄ rzeczą, po której człowiek wiąże ofertę z produktem — SKU zwykle nie ma,
+  // bo `external` oferty bywa puste (sprzedawca nie musi go wypełniać). Kolumna jest przy tym NOT NULL, wiec
+  // bez tego straznika brak nazwy wychodzilby dopiero na bazie, w połowie odczytu całego katalogu.
   const nazwa = oferta?.name;
   if (typeof nazwa !== 'string' || !nazwa.trim()) {
     throw new Error(`ofertaNaProdukt: oferta ${produktId} nie ma nazwy`);
@@ -142,35 +141,35 @@ export function ofertaNaProdukt(oferta, kanal, dozwoloneKanaly) {
     // wzajemnie ROZNE — przy `null` ta sama oferta wpadalaby do tabeli przy KAZDYM odczycie.
     wariant_id: '',
     nazwa,
-    // ⚠️ Zmierzone: `external` jest `null` na WSZYSTKICH ofertach obu kont (0/40). Powiazanie
+    // ⚠️ Zmierzone: `external` jest `null` na WSZYSTKICH zbadanych ofertach. Powiazanie
     // produktu z oferta jest przez to reczne — ale odczyt ma to przezyc, a nie sie wywrocic.
     sku_sklepu: oferta?.external?.id ?? null,
     cena_gr: groszeZCeny(oferta?.sellingMode?.price, produktId),
     zdjecia_json: zdjeciaJson(oferta),
     // ⚠️⚠️ JEDYNY KANAL, W KTORYM ADRES MINIATURY NADAL WYPROWADZAMY — i to jest decyzja,
     // a nie przeoczenie. Sklepy WooCommerce oddaja gotowy adres w Store API (patrz
-    // `domain/miniatury.js: miniaturyZeStoreApi`), wiec od 2026-08-12 magazyn ich nie zgaduje.
+    // `domena/miniatury.js: miniaturyZeStoreApi`), wiec magazyn ich nie zgaduje.
     // Allegro odpowiednika nie ma: przy ofercie przychodzi wylacznie `primaryImage.url`.
     //
     // Regula Allegro to jednak NIE JEST ta sama klasa zgadywania, ktora wlasnie wyrzucilismy.
     // Tamta doklejala rozmiar do NAZWY PLIKU i zakladala, ze WordPress wygenerowal akurat
-    // 150x150 — na sklepie A nieprawda w 608 z 684 przypadkow. Ta PODMIENIA SEGMENT SCIEZKI
-    // (`/original/` → `/s150/`) i jest ZMIERZONA na zywym zdjeciu (05.08.2026): wszystkie
+    // 150x150 — a na jednym ze sklepów to nieprawda w większości przypadków. Ta PODMIENIA SEGMENT SCIEZKI
+    // (`/original/` → `/s150/`) i jest ZMIERZONA na zywym zdjeciu: wszystkie
     // warianty odpowiadaja 200, `s150` wazy 7,9 kB.
     //
     // ⚠️ ZAPISUJEMY, a nie liczymy w widoku, bo lista magazynu czyta juz WYLACZNIE kolumne
     // `miniatura`. Osobna sciezka „sklep tak, Allegro inaczej" w szablonie bylaby dokladnie
-    // ta kopia reguly, ktorej zakazuje niezmiennik 4.13c. Cena: gdyby Allegro zmienilo schemat
-    // adresow, poprawka wymaga ponownego odczytu ofert, a nie samej zmiany widoku.
+    // ta kopia reguly, której unikamy: jedna funkcja miniatur dla obu kanałów, bez `if` po kanale w widokach.
+    // Cena: gdyby Allegro zmienilo schemat adresow, poprawka wymaga ponownego odczytu ofert, a nie samej zmiany widoku.
     miniatura: adresMiniatury(adresZdjecia(oferta)),
     adres: `${ADRES_OFERTY}${encodeURIComponent(produktId)}`,
-    // Rozmiar jest w nazwie tylko w ~40% ofert i `wymiaryZTekstu` NIGDY nie zgaduje —
+    // Rozmiar jest w nazwie tylko w części ofert i `wymiaryZTekstu` NIGDY nie zgaduje —
     // do lustra idzie caly tekst zrodlowy, wyprowadzenie milimetrow to osobna regula.
     rozmiar_tekst: nazwa,
     // ⚠️ Bez tego oferta zakonczona udaje zywa: wchodzi na liste „do powiazania" i do
     // generatora SKU na rowni ze sprzedawana.
     status_publikacji: oferta?.publication?.status ?? null,
-    // E4.05 (D60): tylko informacja o ilosci kanalu; bez ograniczen, moze byc < 0.
+    // Tylko informacja o ilosci kanalu; bez ograniczen, moze byc < 0.
     ilosc_kanalu: Number.isInteger(oferta?.stock?.available) ? oferta.stock.available : null,
     stan_prowadzony: 'tak',
   };

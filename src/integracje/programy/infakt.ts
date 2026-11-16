@@ -1,11 +1,11 @@
-// PRZ-118 — inFakt za kontraktem ProgramFakturowy (core/kontrakty.ts). Adapter jest CIENKI i PRZEZROCZYSTY:
+// inFakt za kontraktem ProgramFakturowy (core/kontrakty.ts). Adapter jest CIENKI i PRZEZROCZYSTY:
 // owija każdy z czterech obiektów „inFakt” o 14 metodach (createInfaktClient, pośrednik z Ustawień
 // moduly/faktury/infakt-ustawien.ts, atrapę piaskownicy, odmowę próby) i przekazuje te same argumenty, ten sam
 // wynik (tożsamość — Buffer z PDF, tablica z listy) i ten sam obiekt błędu. Złoty zapis żądań
 // (tests/moduly/faktury/zapis-zadan-infaktu-prz118.test.js) rozstrzyga, że do inFaktu idzie bajt w bajt to samo.
 //
 // Zdolność obecna ⇔ owijany obiekt ma metodę W CHWILI OWIJANIA (mock bez `oznaczZaplacona` = program bez tej
-// zdolności, jak dziś moduly/wysylka/services/oznaczanie-pobran.js). Metoda brakująca u owijanego obiektu nie
+// zdolności, jak w moduly/wysylka/services/oznaczanie-pobran.js). Metoda brakująca u owijanego obiektu nie
 // pojawia się w programie — także obowiązkowa: wtedy sprawdzProgramFakturowy odmówi z jej nazwą.
 //
 // Kartoteka nabywców (`znajdzKlientaPoNip`, `zalozKlienta`) to model inFaktu — schowana za `przygotujNabywce`.
@@ -23,7 +23,7 @@ import { czyNipUe, rozbijNipUe } from '../../domena/wdt.js';
 type KlientInfaktu = Readonly<Record<string, unknown>>;
 type Metoda = (...a: unknown[]) => unknown;
 
-/** Programy zbudowane tutaj — owinięcie programu oddaje go bez drugiej warstwy (alias `infakt` = program w 05–08). */
+/** Programy zbudowane tutaj — owinięcie programu oddaje go bez drugiej warstwy (program podany pod starą nazwą `infakt`). */
 const zbudowane = new WeakSet<object>();
 
 /**
@@ -58,7 +58,7 @@ export function programInfakt(
     regulaVat: 'wierszami',
     zdolnosci: Object.freeze(zdolnosci),
     wystawienieWysylaDoKsef: false,
-    // Limity z eksportów klienta — jedno źródło z transportem i strażnikiem client.js:59.
+    // Limity z eksportów klienta — jedno źródło z transportem i ze strażnikiem przy wczytaniu src/oms/infakt/client.js.
     limity: Object.freeze({
       zadanieMs: LIMIT_ZADANIA_MS, najdluzszaListaMs: NAJDLUZSZA_LISTA_MS, stronaListy: STRONA_INFAKTU,
       sufitStron: SUFIT_STRON, rownolegleStron: ROWNOLEGLE_STRON,
@@ -68,8 +68,8 @@ export function programInfakt(
   });
 
   /**
-   * Nabywca w kartotece inFaktu — logika przeniesiona DOSŁOWNIE z moduly/faktury/services/faktura.js (faza
-   * przygotowania) i faktura-okresu.js (samo wyszukanie). Bez NIP-u nie szukamy (dopasowanie po nazwie podpięłoby
+   * Nabywca w kartotece inFaktu — wołają go moduly/faktury/services/faktura.js (przygotowanie wystawienia, z
+   * zakładaniem wpisu) i faktura-okresu.js (samo wyszukanie). Bez NIP-u nie szukamy (dopasowanie po nazwie podpięłoby
    * fakturę pod cudzy wpis). `null` = nie ma i nie założono — komunikat odmowy zostaje w usłudze.
    */
   async function przygotujNabywce(
@@ -79,7 +79,7 @@ export function programInfakt(
       const d = nabywca;
       let clientId = d.nip ? await (klient.znajdzKlientaPoNip as Metoda)(d.nip) : null;
       if (!clientId && zalozGdyBrak) {
-        // Rozpoznanie WDT po TYM SAMYM numerze, który idzie do kartoteki (jak `czyNipUe(d.nip)` w faktura.js).
+        // Rozpoznanie WDT po TYM SAMYM numerze, który idzie do kartoteki.
         const wdt = czyNipUe(d.nip);
         clientId = await (klient.zalozKlienta as Metoda)({
           // company_name jest WYMAGANE także dla osoby prywatnej (422 "Proszę podać nazwę firmy").

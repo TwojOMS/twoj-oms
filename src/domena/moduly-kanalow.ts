@@ -34,7 +34,7 @@ export type TypPolaczeniaKanalu = (klucz: string) => string | null | undefined;
 let typPolaczenia: TypPolaczeniaKanalu | null = null;
 let modulyZamowien: Readonly<Record<string, OpisKanalu>> = MODULY_KANALOW;
 const nieznaneKanaly = new Set<string>();
-/** PRZ-157.00: kompozycja kanałów podaje raz przy starcie odczyt rejestru połączeń (domena nie otwiera bazy).
+/** Kompozycja kanałów podaje raz przy starcie odczyt rejestru połączeń (domena nie otwiera bazy).
  * `moduly` — rejestr modułów; inny niż MODULY_KANALOW tylko w testach (wpis testowy nowego typu). */
 export function ustawRejestrKanalow(typKanalu: TypPolaczeniaKanalu | null, moduly: Readonly<Record<string, OpisKanalu>> = MODULY_KANALOW) {
   typPolaczenia = typKanalu; modulyZamowien = moduly; nieznaneKanaly.clear();
@@ -42,7 +42,7 @@ export function ustawRejestrKanalow(typKanalu: TypPolaczeniaKanalu | null, modul
 /** Klucze z zamówień, których nie ma w rejestrze (albo ich typ nie ma modułu) — do diagnostyki kanałów. */
 export const nieznaneKanalyZamowien = () => [...nieznaneKanaly];
 
-/** D9: typ kanału z rejestru połączeń (poza Allegro i Woo); bez rejestru (testy domeny, skrypty) i dla nieznanego klucza — jak dotąd
+/** Typ kanału z rejestru połączeń (poza Allegro i Woo); bez rejestru (testy domeny, skrypty) i dla nieznanego klucza — jak dotąd
  * (Allegro po predykacie, reszta do modułu sklepu). */
 export function modulZamowienia(z: ZrodloZamowienia): OpisKanalu {
   const dawny = czyKanalAllegro(z) ? MODUL_ALLEGRO : MODUL_WOO;
@@ -50,7 +50,7 @@ export function modulZamowienia(z: ZrodloZamowienia): OpisKanalu {
   if (typPolaczenia && sklep && !KANALY_OMS.includes(sklep)) {
     const typ = typPolaczenia(sklep);
     // Typy wbudowane (MODULY_KANALOW) zostają przy predykacie — tym samym, którym dzieli je SQL KSeF
-    // (ksef-oczekiwanie.js); rejestr decyduje tylko o pozostałych typach (recenzja PRZ-157.00).
+    // (ksef-oczekiwanie.js); rejestr decyduje tylko o pozostałych typach.
     if (typeof typ === 'string' && TYPY_PREDYKATU.has(typ)) return dawny;
     if (typeof typ === 'string' && Object.hasOwn(modulyZamowien, typ)) return modulyZamowien[typ];
     nieznaneKanaly.add(sklep);
@@ -60,7 +60,7 @@ export function modulZamowienia(z: ZrodloZamowienia): OpisKanalu {
 export function umiejetnosciZamowienia(z: ZrodloZamowienia): UmiejetnosciKanalu {
   return modulZamowienia(z).umiejetnosci;
 }
-/** PRZ-157.12b: klient z mapy `klienciKanalow` obsługuje wiadomości Allegro? Odrzuca tylko typy z rejestru, których
+/** Klient z mapy `klienciKanalow` obsługuje wiadomości Allegro? Odrzuca tylko typy z rejestru, których
  * moduł ich nie ma (ERLI). Klucz poza rejestrem albo typu wbudowanego przechodzi — predykat nazw zamieniłby
  * nieznany klucz Allegro w Woo i odciął mu wiadomości. */
 export function kanalZWiadomosciami(klucz: string): boolean {

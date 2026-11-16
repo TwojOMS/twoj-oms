@@ -1,13 +1,12 @@
-// CZWARTY ZEGAR — SLEDZENIE PACZEK W DRODZE (audyt 22.08; zgoda właściciela 23.08: „przy paczce
-// status w drodze / w doreczeniu / doreczona" + ostrzezenie bez ruchu >3 dni robocze).
+// CZWARTY ZEGAR — ŚLEDZENIE PACZEK W DRODZE: przy paczce status „w drodze / w doręczeniu /
+// doręczona" + ostrzeżenie bez ruchu > 3 dni robocze.
 //
 // Raz na godzine odpytuje statusy przesylek NADANYCH z ostatnich OKNO_SLEDZENIA_DNI dni —
 // TA SAMA sciezka, co odswiezanie przy otwarciu karty (services/status-kuriera.js): wspolny
 // dlawik godzinowy per paczka (karta i zegar dziela jeden licznik, zero podwojnego ruchu
-// do kuriera), wspolny wybor „kogo pytac" (domain/sledzenie-przesylki.js: podwykonawca
+// do kuriera), wspolny wybor „kogo pytac" (domena/sledzenie-przesylki.js: podwykonawca
 // DPD albo Allegro dla One/ORLEN/DHL WzA). Po „Wyslane" proces przestaje byc slepy: doreczenie,
-// zwrot i paczka bez ruchu wychodza SAME, nie dopiero gdy klient napisze (status_kuriera
-// byl NULL dla 37 z 64 produkcyjnych przesylek).
+// zwrot i paczka bez ruchu wychodza SAME, nie dopiero gdy klient napisze.
 //
 // ⚠️ Paczki DORECZONE i ZWROCONE wypadaja z odpytywania (etap z ostatniego statusu) —
 // DPD w kolko oddaje to samo koncowe zdarzenie, wiec pytanie o nie to czysty ruch bez
@@ -27,7 +26,7 @@ import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
 export const OKNO_SLEDZENIA_DNI = 14;
 
-// PRZ-118.08: rozliczenie pobrań idzie PROGRAMEM FAKTUROWYM (`{ program }` albo stary `{ infakt }` przez `zProgramu`).
+// Rozliczenie pobrań idzie PROGRAMEM FAKTUROWYM (`{ program }` albo stary `{ infakt }` przez `zProgramu`).
 export function createCzuwaczPrzesylek({
   db, kurierzy = {}, program: programPodany = null, infakt = null, teraz = () => new Date(), klienci = {}, klienciKanalow = {},
 }) {
@@ -49,11 +48,10 @@ export function createCzuwaczPrzesylek({
       let pominiete = 0;
       for (const p of kandydaci) {
         // eslint-disable-next-line no-await-in-loop -- kurierzy sekwencyjnie, jak poller po sklepach
-        // ⚠️ `sklep` OBOK `id`, a nie sama atrapa `{ id }` (regresja 31.08.2026). Klient
-        // sledzenia kanalu Allegro wybiera KONTO po kanale zamowienia — atrapa dawala mu
-        // `kanal: null`, wiec oddawal `null` i zegar przez szesc dni udawal, ze pyta:
-        // zapisu nie bylo, bledu nie bylo, znacznik proby rosl. Karta dziala od poczatku,
-        // bo tam leci prawdziwy wiersz zamowienia — i wlasnie to ukrylo usterke.
+        // ⚠️ `sklep` OBOK `id`, a nie sama atrapa `{ id }`. Klient śledzenia kanału Allegro
+        // wybiera KONTO po kanale zamówienia — atrapa dawałaby mu `kanal: null`, więc
+        // oddawałby `null` i zegar tylko udawałby, że pyta: zapisu nie ma, błędu nie ma,
+        // znacznik próby rośnie. Karta tego nie pokaże, bo tam leci prawdziwy wiersz zamówienia.
         // Kanal przynosi `przesylkiDoSledzenia` (LEFT JOIN po zamowieniu).
         const w = await odswiezStatusKuriera(
           db, kurierzy, { id: p.zamowienie_id, sklep: p.sklep ?? null }, p, { terazMs: chwila.getTime() },
@@ -92,7 +90,7 @@ export function createCzuwaczPrzesylek({
         };
       }
 
-      // PRZ-117: notatki z numerem listu, które nie doszły do sklepu — co przebieg (raz na godzinę) przez 48 h.
+      // Notatki z numerem listu, które nie doszły do sklepu — co przebieg (raz na godzinę) przez 48 h.
       // Własny `try` z tego samego powodu co pobrania: awaria sklepu nie jest awarią śledzenia paczek.
       let notatki = { kandydatow: 0, wyslane: 0, bledy: 0 };
       if (Object.keys(klienci).length || Object.keys(klienciKanalow).length) {

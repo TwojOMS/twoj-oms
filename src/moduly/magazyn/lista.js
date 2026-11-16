@@ -1,4 +1,3 @@
-// Port frozen 5b9cd765: 890–1074.
 import { stanyKart } from '../../oms/db/stany-magazynowe.js';
 import { fmtDataCzas } from '../../domena/format-daty.js';
 import { STANY_PO_POLSKU } from './oferty.js';
@@ -8,13 +7,13 @@ import { BRAK_ZGODY_OFERT } from '../kanaly/services/oferty-allegro-ustawienia.t
 import { liczbaOfertDoDecyzji } from '../../oms/db/oferty-kanalow.ts';
 
 /**
- * PRZ-160.P3a.02: plakietki kolumny „Kanały” jednej karty — po jednej na polaczenie, w ktorym
+ * Plakietki kolumny „Kanały” jednej karty — po jednej na polaczenie, w ktorym
  * karta jest dostepna (dwa konta Allegro = dwie plakietki). Rodzaj i litera z `typ` definicji
  * kanalu (`rodzajKanalu`, ta sama plakietka co na liscie zamowien), opis = etykieta polaczenia.
  * Lustro (`obecne`) daje Allegro/Woo; ERLI wylacznie z rejestru ofert: `aktywna` = zwykla
  * plakietka, kazdy inny stan = wyszarzona ze stanem (i bledem) w opisie. Kanal spoza definicji
  * (bez rodzaju) nie dostaje plakietki. Kolejnosc stala: po typie, potem po nazwie.
- * PRZ-160.E3.14: oferta z rejestru na koncie innym niz ERLI (np. szkic Allegro, „do wysłania”) tez
+ * Oferta z rejestru na koncie innym niz ERLI (np. szkic Allegro, „do wysłania”) tez
  * dostaje plakietke ze stanem — chyba ze lustro juz pokazuje to konto jako dostepne.
  */
 function plakietkiKanalow(obecne, oferty, definicje) {
@@ -47,7 +46,7 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, definicje = /*
 
     // ⚠️ BIALA LISTA, nie `SORTOWANIE[x] ?? domyslne`. Ta druga postac oddaje funkcje
     // z `Object.prototype` przy `?sort=constructor` i konczy sie pieciusetka na glownym
-    // ekranie — zlapane przy Zadaniu 4. Klucze zapytania pomijają usunięte kolumny,
+    // ekranie. Klucze zapytania pomijają usunięte kolumny,
     // a `Set.has` nie zaglada do prototypu.
     const dozwolone = new Set(SORTOWANIE_KART.filter(klucz => !['paczkomat', 'braki'].includes(klucz)));
     const sort = dozwolone.has(req.query.sort) ? req.query.sort : 'nazwa';
@@ -83,7 +82,7 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, definicje = /*
 
     // Sortowanie i tryb kolumn NIE SA filtrami, ale jada tymi samymi formularzami: bez tych
     // pol klikniecie „Filtruj" na liscie ulozonej po wymiarze wracaloby do kolejnosci
-    // domyslnej, a w trybie katalogowym — takze do kolumn porzadkow (niezmiennik 4.13b).
+    // domyslnej, a w trybie katalogowym — takze do kolumn porzadkow (reguła: filtry nie kasują frazy).
     // ⚠️ Tryb domyslny NIE jedzie ukrytym polem, tak samo jak nie wchodzi do adresu:
     // „/magazyn" i „/magazyn?widok=porzadki" maja zostac jednym adresem jednej rzeczy.
     const stanUkryty = [
@@ -93,14 +92,14 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, definicje = /*
 
     // ⚠️ JEDEN ODCZYT NA CALY EKRAN. Liczba „pasujacych do zawezenia" w pasku hurtu MUSI byc
     // liczona TYM SAMYM zapytaniem, co lista — druga droga do tej liczby rozjechalaby sie
-    // z pierwsza po cichu i czlowiek klikalby „ustaw 645", dotykajac innego zbioru.
+    // z pierwsza po cichu i czlowiek klikalby „ustaw N", dotykajac innego zbioru.
     const znalezione = kartyZKanalami(db, { fraza: filtry.fraza, filtry, sort, kier });
-    // PRZ-160.E3.14: „Wystaw na…” — konta obu typów; konto Allegro bez zgody na oferty (D21) zostaje na liście, wyszarzone.
+    // „Wystaw na…” — konta obu typów; konto Allegro bez zgody na oferty zostaje na liście, wyszarzone.
     const kontaOfert = [
       ...kontaErli().map(k => ({ klucz: k.klucz, etykieta: `ERLI · ${k.klucz}`, allegro: false, zgoda: true })),
       ...kontaAllegro().map(k => ({ klucz: k.klucz, etykieta: `Allegro · ${k.klucz}${k.srodowisko === 'sandbox' ? ' (sandbox)' : ''}`, allegro: true, zgoda: k.zgoda !== false })),
     ];
-    // PRZ-160.P3a.02: kolumna „Kanały” (dawniej „Oferty”) — zawsze, gdy firma ma choc jeden kanal.
+    // Kolumna „Kanały” — zawsze, gdy firma ma choc jeden kanal.
     const pokazOferty = definicje.length > 0;
     const obecnosc = new Map();
     if (pokazOferty) {
@@ -112,21 +111,21 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, definicje = /*
       }
     }
 
-    // Adres TEJ listy (Zadanie 6) — to on jedzie dalej jako `wroc` przy KAZDEJ karcie, ktora
+    // Adres TEJ listy — to on jedzie dalej jako `wroc` przy KAZDEJ karcie, ktora
     // z niej linkuje, zeby „Wróć do magazynu" trafil tu, a nie na zawsze goly „/magazyn".
     // ⚠️ BEZ `zaznacz`: stan pol wyboru nie ma sensu jako miejsce powrotu (checkbox jest
     // stanem PRZEGLADARKI po zaladowaniu strony, nie czyms, co adres ma odtwarzac).
     const adresPowrotuListy = adresMagazynu(filtry, { sort, kier, widok });
 
-    // PRZ-091: stany magazynowe — wylacznie przy wlaczonym przelaczniku (Ustawienia → Magazyn). Wylaczone:
-    // `stany.wlaczone === false`, kolumny i paska nie ma, ekran jak przed PRZ-091.
+    // Stany magazynowe — wylacznie przy wlaczonym przelaczniku (Ustawienia → Magazyn). Wylaczone:
+    // `stany.wlaczone === false`, kolumny i paska nie ma, ekran wygląda jak bez tej funkcji.
     const stany = stanyKart(db);
     const naStanie = (id) => (stany.wlaczone ? (stany.stany.get(Number(id))?.stan ?? 0) : null);
     const naMinusie = stany.wlaczone ? [...stany.stany.values()].filter((s) => s.stan < 0).length : 0;
 
     return reply.view('magazyn-lista.ejs', { szerokosc: 'tabela',
       title: 'Magazyn',
-      // D63: ekrany stanów w kanałach tylko dla admina — link też.
+      // Ekrany stanów w kanałach tylko dla admina — link też.
       adminStanowKanalow: req.konto?.admin === true,
       kontaOfert: req.konto?.admin ? kontaOfert : [],
       liczbaProblemowOfert: req.konto?.admin ? liczbaOfertDoDecyzji(db) : 0,
@@ -144,7 +143,7 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, definicje = /*
       // bo widok w tym module niczego nie rozstrzyga.
       sortowanie: linkiSortowania(sort, kier, filtry, zaznaczWszystkie, widok),
       przebieg: opisPrzebiegu(magazyn.stan()),
-      // PRZ-160.04b: przycisk treści ofert tylko przy połączonym koncie Allegro (`null` = bez przycisku).
+      // Przycisk treści ofert tylko przy połączonym koncie Allegro (`null` = bez przycisku).
       trescAllegro: opisPrzebieguTresci(trescAllegro && trescAllegro.gotowy?.() !== false ? trescAllegro.stan() : null),
 
       // Tryb porzadkow pomija ceny kanalow; katalog je pokazuje.
@@ -156,7 +155,7 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, definicje = /*
       // mocniejszego: naglowek zmienia KOLEJNOSC, a przelacznik nie zmienia nawet jej,
       // wylacznie ZESTAW KOLUMN. Zbior wierszy jest po obu stronach ten sam, wiec zgubienie
       // `zaznacz` odhaczaloby cala liste w polowie roboty — a droga typowa wyglada tak:
-      // zawez do 277 do przejecia, zaznacz wszystkie, zajrzyj w ceny kanalow „na kontrole".
+      // zawez do kart do przejecia, zaznacz wszystkie, zajrzyj w ceny kanalow „na kontrole".
       adresPrzelacznika: adresMagazynu(filtry, {
         sort, kier, zaznacz: zaznaczWszystkie, widok: widok === 'katalog' ? 'porzadki' : 'katalog',
       }),
@@ -164,7 +163,7 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, definicje = /*
       // ⚠️ SZEROKOSC KOMUNIKATU PUSTEJ TABELI liczy sie z ZESTAWU KOLUMN, wiec zalezy od
       // trybu — policzona w widoku rozjechalaby sie po cichu przy pierwszej zmianie kolumn,
       // a komunikat przestalby siegac konca tabeli i wygladalby jak polamany render.
-      // PRZ-160.P3b.02: + kolumna Marka
+      // + kolumna Marka
       kolumnPustej: (widok === 'katalog' ? 6 + NAGLOWKI_KANALOW.length : 6) + (stany.wlaczone ? 1 : 0) + (pokazOferty ? 1 : 0),
       // Co dzis zawęża liste — zdanie nad tabela, POLICZONE (widok niczego nie liczy).
       opisZawezenia: opisZawezenia(filtry, znalezione.length),
@@ -179,7 +178,7 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, definicje = /*
       // Oba adresy skladane TU, z zachowaniem zawezenia I kolejnosci — inaczej „zaznacz
       // wszystkie" zdejmowaloby filtr i czlowiek zaznaczylby karty, ktorych nie widzial.
       // ⚠️ To NIE JEST teoretyczne: przy przejeciu numerow zaznaczenie prowadzi do zapisu
-      // nieodwracalnego z panelu, a katalog ma ~1000 pozycji przy 277 do przejecia.
+      // nieodwracalnego z panelu, a do przejecia bywa tylko czesc katalogu — „zaznacz wszystkie" bez zawezenia objeloby tez reszte.
       // ⚠️ TRYB KOLUMN JEDZIE Z NIMI. Stan pol wyboru pamieta przegladarka, ale sam odnosnik
       // PRZELADOWUJE strone — bez trybu „zaznacz wszystkie" przerzucaloby czlowieka
       // z katalogu do porzadkow w polowie zaznaczania.
@@ -193,10 +192,10 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, definicje = /*
       wartosci: wartosciPol(filtry),
       // ⚠️ CZY COKOLWIEK ZAWEZA LISTE. Od tego zalezy, CO MOWI PUSTA TABELA: „nie ma tu
       // jeszcze ani jednej karty produktu" przy aktywnym filtrze jest NIEPRAWDA i wyglada jak utrata
-      // danych — katalog ma ~1000 pozycji, a ekran twierdzi, ze jest pusty.
+      // danych — katalog ma karty, a ekran twierdzi, ze jest pusty.
       filtrowane: saJakiesFiltry(filtry),
       // Oba formularze GET niosa nawzajem swoje wartosci ukrytymi polami — inaczej klikniecie
-      // „Filtruj" gubiloby fraze, a wpisanie frazy gubiloby filtry (niezmiennik 4.13b).
+      // „Filtruj" gubiloby fraze, a wpisanie frazy gubiloby filtry (reguła: filtry nie kasują frazy).
       ukryteWFiltrach: [
         ...parametryUkryte(filtry, { pomin: POLA_FORMULARZA_FILTROW }), ...stanUkryty,
       ],
@@ -217,7 +216,7 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, definicje = /*
 
       // ——— PASEK EDYCJI HURTEM ———
       // ⚠️ LICZBA PASUJACYCH JEST TU CALA UCZCIWOSCIA OPCJI „wszystkie pasujace". Czlowiek
-      // ma wiedziec, ze dotyka 645 kart, a nie 20, ktore widzi na ekranie — i musi to
+      // ma wiedziec, ze dotyka setek kart, a nie 20, ktore widzi na ekranie — i musi to
       // byc TA SAMA liczba, co dlugosc listy nizej, bo obie biora sie z jednego odczytu.
       ilePasujacych: znalezione.length,
       // ⚠️ ZAWEZENIE JEDNYM POLEM, nie siedmioma osobnymi: formularz hurtowy ma WLASNE pole
@@ -233,7 +232,7 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, definicje = /*
       zawezenieHurtu: adresMagazynu(filtry).split('?')[1] ?? '',
       // Pozycje pola wyboru kategorii w pasku hurtu — ta sama lista, co w filtrze.
       // ⚠️ POLE WYBORU, NIE TEKSTOWE: wpisana z pamieci literowka ustawilaby hurtem
-      // kategorie, ktorej nie ma w zadnym sklepie, i to od razu sześciuset kartom.
+      // kategorie, ktorej nie ma w zadnym sklepie, i to od razu setkom kart.
       paczkomatDoHurtu: PACZKOMAT_DO_FILTRA.map(
         (klucz) => ({ klucz, etykieta: PACZKOMAT_ETYKIETY[klucz] }),
       ),

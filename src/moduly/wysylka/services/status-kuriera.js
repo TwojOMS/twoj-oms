@@ -1,17 +1,17 @@
 // ODSWIEZENIE STATUSU PRZESYLKI U KURIERA — jedna sciezka dla karty zamowienia i dla
-// czuwacza przesylek (zegar #4, audyt 22.08). Do 23.08 funkcja mieszkala w routes/
-// zamowienia.js; przeprowadzka wyjela ja z warstwy web, zeby zegar nie importowal tras.
+// czuwacza przesyłek (czwarty zegar). Mieszka w usługach, a nie w trasach, żeby zegar
+// nie importował tras.
 //
 // Cala funkcja jest „bezpieczna z zalozenia": awaria kuriera (siec, timeout,
 // INCORRECT_LOGIN_OR_PASSWORD po zmianie hasla, wygasly token InPostu, regresja
 // programistyczna) ANI awaria zapisu do bazy NIE MOZE wywalic ani zawiesic wolajacego.
 // Karta pokazuje wtedy nieodswiezony stan; zegar idzie do nastepnej paczki.
 //
-// ⚠️ KOGO PYTAC rozstrzyga domain/sledzenie-przesylki.js — take dla paczek „Wysylam
+// ⚠️ KOGO PYTAC rozstrzyga domena/sledzenie-przesylki.js — take dla paczek „Wysylam
 // z Allegro": DPD pytamy podwykonawca numerem carrierWaybill, a One/ORLEN/DHL przez
 // klienta Allegro para carrier/waybill z zasobu WzA. `null` znaczy „tej paczki nie da sie sledzic" i jest
-// stanem POPRAWNYM: sprzatamy ewentualny osad bledu (zgloszenie wlasciciela 12.08 —
-// cztery zamowienia z odznaka bez wyjscia) i wychodzimy cicho, bez wpisu do logu
+// stanem POPRAWNYM: sprzątamy ewentualny osad błędu (inaczej zamówienie zostałoby
+// z odznaką bez wyjścia) i wychodzimy cicho, bez wpisu do logu
 // (wpis przy kazdym otwarciu karty utopilby prawdziwe awarie).
 
 import {
@@ -45,7 +45,7 @@ export function probaStarszaNizGodzina(probaAt, terazMs = Date.now()) {
   return terazMs - czas > GODZINA_MS;
 }
 
-/** PRZ-117: paczka nadana mniej niż dobę temu — kurier może jeszcze nie mieć jej śledzenia. */
+/** Paczka nadana mniej niż dobę temu — kurier może jeszcze nie mieć jej śledzenia. */
 export function swiezoNadana(p, terazMs = Date.now()) {
   const utworzona = Date.parse(p?.utworzona_at ?? '');
   return Number.isFinite(utworzona) && terazMs - utworzona < DOBA_MS;
@@ -85,7 +85,7 @@ export async function odswiezStatusKuriera(db, kurierzy, z, p, { terazMs = Date.
 
   const cel = sledzeniePrzesylki(p, kurierzy);
   if (!cel) {
-    // ⚠️ WYCHODZAC, SPRZATAMY PO SOBIE (12.08.2026): jedyna inna droga skasowania
+    // ⚠️ WYCHODZAC, SPRZATAMY PO SOBIE: jedyna inna droga skasowania
     // `status_kuriera_blad` to „najblizsze UDANE odswiezenie", ktore u paczki bez
     // sledzenia nie nastapi nigdy. Zapis idzie TYLKO gdy naprawde jest co kasowac
     // (warunek w SQL), wiec zwykle otwarcie karty niczego nie pisze.
@@ -97,7 +97,7 @@ export async function odswiezStatusKuriera(db, kurierzy, z, p, { terazMs = Date.
   let blad = null;
   let wynik = null;
   try {
-    // Drugi argument to KONTEKST wyboru (`domain/sledzenie-przesylki.js`) — dzis niesie
+    // Drugi argument to KONTEKST wyboru (`domena/sledzenie-przesylki.js`) — dzis niesie
     // `carrier` dla kanalu Allegro. Pozostale klienty go ignoruja, wiec dolozenie go tutaj
     // niczego u nich nie zmienia.
     //
@@ -107,8 +107,8 @@ export async function odswiezStatusKuriera(db, kurierzy, z, p, { terazMs = Date.
     // kanalu dostawalaby `trackingDetails: null`, nie do odroznienia od swiezo nadanej.
     wynik = await cel.klient.statusPrzesylki(cel.numer, { ...cel.kontekst, kanal: z?.sklep ?? null });
   } catch (e) {
-    // PRZ-117: „śledzenia jeszcze nie ma” (InPost 404) przy paczce młodszej niż doba to „brak zdarzeń”, nie
-    // awaria — tak wyglądała paczka 1493 sekundę po nadaniu, a godzinę później miała już historię. Po dobie 404
+    // „śledzenia jeszcze nie ma” (InPost 404) przy paczce młodszej niż doba to „brak zdarzeń”, nie
+    // awaria — tak wygląda paczka sekundę po nadaniu, a godzinę później ma już historię. Po dobie 404
     // znaczy coś innego (zły numer) i znów jest błędem widocznym na karcie.
     if (e?.brakSledzenia && swiezoNadana(p, terazMs)) {
       blad = null;
@@ -141,14 +141,14 @@ export async function odswiezStatusKuriera(db, kurierzy, z, p, { terazMs = Date.
       }
     });
   }
-  // PRZ-108.09 (zdarzenie automatyzacji „Kurier odebrał paczkę”): PIERWSZY dowód odbioru z białej listy — stan zapisany
+  // Zdarzenie automatyzacji „Kurier odebrał paczkę”: PIERWSZY dowód odbioru z białej listy — stan zapisany
   // wyżej (pola w pamięci są już po zapisie), przejęcie WzA albo historia tej odpowiedzi — daje chwilę odbioru (nasz
   // zegar, w chwili zapisu) raz na paczkę. Osłonięte jak każdy zapis tutaj: awaria nie może zepsuć karty ani zegara.
   if (!p.odebrana_at) {
     const historia = wynik?.historia ?? null;
     const dowod = dowodOdbioru(p, { historia });
     if (dowod) zapiszLubOdpusc(() => {
-      // Recenzja 09, usterka 1: także chwila odbioru U KURIERA — reguła pominie dowód spóźniony o ponad 48 h.
+      // Także chwila odbioru U KURIERA — reguła pominie dowód spóźniony o ponad 48 h.
       const kurierAt = chwilaDowoduUKuriera(p, { historia });
       const at = zapiszOdbiorPrzesylki(db, p.id, { at: teraz(), dowod, kurierAt });
       if (at) { p.odebrana_at = at; p.odebrana_dowod = dowod; p.odebrana_kurier_at = kurierAt; }

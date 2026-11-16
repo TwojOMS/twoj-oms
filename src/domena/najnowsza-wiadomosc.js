@@ -1,22 +1,21 @@
 // KTORA WIADOMOSC WATKU JEST NAJNOWSZA — po DACIE, nigdy po pozycji w tablicy.
 //
-// ⚠️⚠️ ZMIERZONE NA PRODUKCJI 29.08.2026: `GET /messaging/messages` ODDAJE OD NAJNOWSZEJ.
+// ⚠️⚠️ ZMIERZONE NA PRODUKCJI: `GET /messaging/messages` ODDAJE OD NAJNOWSZEJ.
 // Poller bral `wiadomosci[wiadomosci.length - 1]` w przekonaniu, ze Allegro oddaje watek
 // chronologicznie — czyli bral NAJSTARSZA wiadomosc, prawie zawsze pytanie kupujacego.
-// Prawdziwy watek z sondy (bez tresci):
+// Przykladowy watek z sondy (bez tresci):
 //     [0] 2026-08-07T07:14:04.265Z  isInterlocutor=false   <- NASZA odpowiedz
 //     [1] 2026-08-06T18:22:05.982Z  isInterlocutor=true    <- pytanie kupujacego
 // `lastMessageDateTime` watku wskazywalo na element ZEROWY.
 //
-// SKUTEK: wszystkie 18 watkow kanalu sklepu A mialo `ostatnia_od_kupujacego = 1` i NIGDY BY
-// NIE ZGASLO, mimo ze wlasciciel odpisal na kazdy jeszcze 7 sierpnia. Dokladnie ta „lampka
+// SKUTEK: wszystkie watki kanalu mialy `ostatnia_od_kupujacego = 1` i NIGDY BY
+// NIE ZGASLO, mimo ze sprzedawca odpisal na kazdy. Dokladnie ta „lampka
 // na zawsze", przed ktora ostrzega komentarz w `czyj-ruch-watku.js`.
 //
-// ⚠️ GROZNIEJSZE NIZ ZLY KOLOR NA EKRANIE: `services/czuwacz-formulki.js` wysyla formulke
-// DOKLADNIE do watkow z `ostatnia_od_kupujacego`. Przy tej usterce kwalifikowalo sie
-// wszystkie 18 — wlaczenie autorespondera wyslaloby formulke osiemnastu osobom, ktore
-// pytaly trzy tygodnie temu i JUZ dostaly odpowiedz. Nie wystrzelilo wylacznie dlatego,
-// ze autoresponder nie byl jeszcze wlaczony.
+// ⚠️ GROZNIEJSZE NIZ ZLY KOLOR NA EKRANIE: `moduly/wiadomosci/services/czuwacz-formulki.js` wysyla formulke
+// DOKLADNIE do watkow z `ostatnia_od_kupujacego`. Przy tej usterce kwalifikowalyby sie
+// wszystkie — wlaczenie autorespondera wyslaloby formulke osobom, ktore pytaly dawno
+// temu i JUZ dostaly odpowiedz.
 //
 // ⚠️ ZADNYCH ZALOZEN O KOLEJNOSCI. Allegro nie obiecuje jej ani przy `GET /messaging/threads`
 // (poller wie o tym od poczatku i dlatego nie przerywa na pierwszym znanym watku), ani przy

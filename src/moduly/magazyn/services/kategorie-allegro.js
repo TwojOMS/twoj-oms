@@ -1,15 +1,15 @@
-// PRZ-160.04a (E1.04 cz. 1) — opis kategorii Allegro z pamięci podręcznej `kanaly_kategorie` (migracja 0012).
+// Opis kategorii Allegro z pamięci podręcznej `kanaly_kategorie` (migracja 0012).
 //
 // Oferta niesie tylko `category.id`; ścieżkę i opisy parametrów (typ, jednostka, `describesProduct`) doczytujemy
 // RAZ na kategorię i połączenie, potem już tylko z bazy. Słowniki ponad PROG_SLOWNIKA wartości przycina
-// `opisKategorii`, zanim wiersz powstanie (słownik marek to 95–99% z ok. 1 MB odpowiedzi, pomiar P8).
+// `opisKategorii`, zanim wiersz powstanie (słownik marek to 95–99% z ok. 1 MB odpowiedzi).
 //
 // Odmowa z braku zakresu (401/403) NIE wywraca przebiegu: kategoria nieczytelna → null, parametry nieczytelne →
 // sama ścieżka. W obu przypadkach nic nie zapisujemy — po nadaniu zakresu kolejny odczyt weźmie pełny opis.
-// Inne błędy (5xx, sieć, limit czasu) lecą dalej: o ponowieniu decyduje przebieg (04b).
+// Inne błędy (5xx, sieć, limit czasu) lecą dalej: o ponowieniu decyduje przebieg.
 //
-// PRZ-160.E3.05 — opis w wersji 2 (wymagalność parametrów, liść, tworzenie produktu). W `parametry_json` leży
-// obiekt `{wersja, lisc, tworzenieProduktu, parametry}`; wiersz sprzed E3.05 (sama tablica) albo starszy niż
+// Opis w wersji 2 (wymagalność parametrów, liść, tworzenie produktu). W `parametry_json` leży
+// obiekt `{wersja, lisc, tworzenieProduktu, parametry}`; wiersz w starym zapisie (sama tablica) albo starszy niż
 // 30 dni jest pobierany ponownie przy następnym użyciu — bez migracji. Gdy odświeżenie się nie uda (odmowa, 5xx),
 // zostaje stary wiersz: pamięć podręczna nie może zepsuć importu, który do dziś z niej korzystał.
 import { opisKategorii, WERSJA_OPISU_KATEGORII } from '../../../domena/tresc-oferty-allegro.js';
@@ -19,9 +19,9 @@ const MAKS_POZIOMOW = 10;
 /** Po tylu dniach opis kategorii jest pobierany ponownie (Allegro zmienia parametry kategorii bez zapowiedzi). */
 export const WAZNOSC_OPISU_DNI = 30;
 const WAZNOSC_OPISU_MS = WAZNOSC_OPISU_DNI * 86_400_000;
-/** Najwięcej trafień wyszukiwarki słownika (D36). */
+/** Najwięcej trafień wyszukiwarki słownika. */
 export const LIMIT_TRAFIEN_SLOWNIKA = 20;
-/** Zgoda, bez której konto nie czyta opisu kategorii dla mapy (D33). */
+/** Zgoda, bez której konto nie czyta opisu kategorii dla mapy. */
 export const ZGODA_ODCZYTU = 'allegro:api:sale:offers:read';
 const odmowa = e => e?.status === 401 || e?.status === 403;
 
@@ -89,7 +89,7 @@ export async function opisKategoriiAllegro({ db, klient, polaczenie, kategoriaId
 }
 
 /**
- * D33: konto, przez które czytamy opis kategorii i podpowiedzi dla środowiska (pamięć `kanaly_kategorie` ma klucz
+ * Konto, przez które czytamy opis kategorii i podpowiedzi dla środowiska (pamięć `kanaly_kategorie` ma klucz
  * konta, a mapa jest na środowisko). Pierwsze w kolejności kluczy połączone konto tego środowiska ze zgodą
  * na odczyt ofert; brak → null (ekran mówi „połącz konto Allegro w środowisku X”).
  * @param {Array<{klucz: string, srodowisko: string, autoryzacja: string, uprawnienia?: string[]}>|null|undefined} konta
@@ -105,7 +105,7 @@ export function kontoOpisuSrodowiska(konta, srodowisko) {
 const doPorownania = v => String(v ?? '').trim().toLocaleLowerCase('pl');
 
 /**
- * D36: wyszukanie w słowniku parametru (np. marek, do 16 374 wartości — P9) na żądanie. Pobiera opis parametrów
+ * Wyszukanie w słowniku parametru (np. marek, kilkanaście tysięcy wartości) na żądanie. Pobiera opis parametrów
  * kategorii z Allegro, NICZEGO nie zapisuje (słownik nie trafia do bazy) i oddaje najwyżej
  * LIMIT_TRAFIEN_SLOWNIKA wartości zawierających tekst (bez wielkości liter i spacji brzegowych), w kolejności słownika.
  * Błędy klienta lecą dalej — o komunikacie decyduje ekran.

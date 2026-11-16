@@ -1,7 +1,7 @@
 import { bladOperatora } from './bledy.js';
 import { dzienWarszawa } from './format-daty.js';
 import { NAZWA_ZAPASOWA } from './nazwa-programu.js';
-// Arytmetyka dat mieszka w `domain/kalendarz.js` — TA SAMA, której używa lista faktur.
+// Arytmetyka dat mieszka w `domena/kalendarz.js` — TA SAMA, której używa lista faktur.
 // Nie kopiować jej z powrotem tutaj: dwie kopie rozjadą się przy pierwszej poprawce.
 import {
   zNumeruDnia, sklejDate as sklej, numerDniaZNapisu,
@@ -11,9 +11,8 @@ import {
 // inFakt.
 //
 // Nazwy pól nie są zgadywane. Dwa pierwsze pochodzą z dokumentacji API v3 („Definicja
-// faktury VAT"), dwa kolejne ZMIERZONO na żywym API 2026-08-04 (osiem faktur wystawionych
-// na koncie produkcyjnym, odczytanych z dokumentu i skasowanych — notatka
-// `docs/superpowers/notatki/2026-08-04-infakt-daty-i-oplacenie-rozpoznanie.md`):
+// faktury VAT"), dwa kolejne ZMIERZONO na żywym API (faktury próbne wystawione, odczytane
+// z dokumentu i skasowane):
 //   `invoice_date` — „Data wystawienia (RRRR-MM-DD)"     [dokumentacja]
 //   `payment_date` — „Termin zapłaty"                    [dokumentacja]
 //   `sale_date`    — data sprzedaży; POMINIĘTE daje `sale_date = invoice_date`  [pomiar]
@@ -21,13 +20,13 @@ import {
 //
 // ⚠️ `sale_date` to nie ozdobnik: data sprzedaży jest obowiązkowym elementem faktury
 // (art. 106e ust. 1 pkt 6), a dla zamówienia opłaconego przed dostawą obowiązek podatkowy
-// powstaje w dniu zapłaty (art. 19a ust. 8) — czyli zwykle NIE w dniu wystawienia. Dopóki
-// panel tego pola nie wysyłał, każda taka faktura wychodziła z datą sprzedaży podstawioną
-// przez inFakt i wymagała ręcznej poprawki.
+// powstaje w dniu zapłaty (art. 19a ust. 8) — czyli zwykle NIE w dniu wystawienia. Bez tego
+// pola każda taka faktura wychodzi z datą sprzedaży podstawioną przez inFakt i wymaga
+// ręcznej poprawki.
 //
-// Panel wysyłał dotąd sam `client_id` i `services`, więc dokument dostawał termin z USTAWIEŃ
-// KONTA inFakt — ten sam dla wszystkich, niezależnie od tego, co uzgodniono z klientem.
-// To sklep B2B: termin jest tam elementem umowy, a nie kosmetyką dokumentu.
+// Bez własnego terminu dokument dostaje termin z USTAWIEŃ KONTA inFakt — ten sam dla
+// wszystkich, niezależnie od tego, co uzgodniono z klientem. W sprzedaży B2B termin jest
+// elementem umowy, a nie kosmetyką dokumentu.
 
 /** „Przy odbiorze" = termin ZERO dni: płatne w dniu wystawienia. */
 export const PRZY_ODBIORZE = 'przy_odbiorze';
@@ -36,12 +35,12 @@ export const PRZY_ODBIORZE = 'przy_odbiorze';
  * „Bez terminu" = zwykła faktura NIEOPŁACONA, do której panel nie dokłada własnego terminu.
  *
  * ⚠️ NAZWA OBIECUJE WIĘCEJ, NIŻ TEN WARIANT ROBI — i to jest pomiar, nie przypuszczenie.
- * Do 2026-08-04 stało tu, że pominięcie `payment_date` daje dokument bez terminu płatności.
- * Rozpoznanie na żywym API pokazało coś innego: inFakt podstawia wtedy `payment_date`
- * = `invoice_date` i na dokumencie DRUKUJE „Termin płatności: <data wystawienia>".
+ * Pominięcie `payment_date` NIE daje dokumentu bez terminu płatności (sprawdzone na żywym
+ * API): inFakt podstawia wtedy `payment_date` = `invoice_date` i na dokumencie DRUKUJE
+ * „Termin płatności: <data wystawienia>".
  * **Dokumentu bez terminu płatności tą drogą uzyskać się nie da w ogóle** — a termin
  * nie jest obowiązkowym elementem faktury (nie ma go w katalogu z art. 106e ust. 1), więc
- * nic tu nie jest złamane; złamany był opis. Praktycznie ten wariant znaczy „płatne od razu",
+ * nic tu nie jest złamane. Praktycznie ten wariant znaczy „płatne od razu",
  * czyli na papierze wychodzi na to samo, co „przy odbiorze".
  *
  * Rozróżnienie mimo to ZOSTAJE i nie wolno go skleić, bo różnią się tym, co wysyłamy:
@@ -61,11 +60,9 @@ export const BEZ_TERMINU = 'bez_terminu';
 /**
  * „Zapłacone" = zamówienie opłacone z góry; dokument ma mówić, że klient nic nie jest winien.
  *
- * ⚠️ SPROSTOWANIE DO POPRZEDNIEJ WERSJI TEGO PLIKU. Stało tu, że „`paid_price` w dokumentacji
- * v3 NIE ISTNIEJE" i że opłacenie wymaga osobnego wywołania
- * (POST /v3/async/invoices/{uuid}/paid.json). Ostrożność, z której to wyrosło — „nie wysyłamy
- * do dokumentu księgowego pól o zgadniętej nazwie" — była i jest słuszna. Wniosek był błędny.
- * Pomiar na żywym API 2026-08-04 rozstrzygnął oba zdania, w obie strony:
+ * ⚠️ OPŁACENIE IDZIE POLEM `paid_price`, A NIE OSOBNYM WYWOŁANIEM
+ * (POST /v3/async/invoices/{uuid}/paid.json). Zasada „nie wysyłamy do dokumentu księgowego
+ * pól o zgadniętej nazwie" obowiązuje — dlatego obie drogi sprawdzono pomiarem na żywym API:
  *
  *   - `paid_price` ISTNIEJE: przyjmowane w payloadzie przy tworzeniu, zwracane w odpowiedzi,
  *     daje `left_to_pay: 0`, a na dokumencie „Zapłacono: 123,00 / Pozostało do zapłaty: 0,00".
@@ -104,7 +101,7 @@ const OPLACONE = new Set([ZAPLACONE, 'oplacone']);
 export const czyZaplacone = (termin) => OPLACONE.has(typeof termin === 'string' ? termin.trim() : termin);
 
 // „Dzisiaj" liczone W CZASIE WARSZAWSKIM, tą samą funkcją, którą panel drukuje daty na karcie
-// (domain/format-daty.js). Kontener chodzi z TZ=UTC, więc gołe `new Date()` między północą
+// (domena/format-daty.js). Kontener chodzi z TZ=UTC, więc gołe `new Date()` między północą
 // a drugą w nocy oddawałoby DZIEŃ POPRZEDNI — czyli fakturę z wczorajszą datą wystawienia,
 // a pierwszego dnia miesiąca fakturę wpadającą w poprzedni miesiąc rozliczeniowy.
 const dzisiajWarszawa = () => dzienWarszawa(new Date().toISOString());
@@ -125,9 +122,9 @@ function dniZWyboru(termin) {
  *     niczego nie zmienia, wystawia dzisiejszą datą i nie ma powodu go za to karać;
  *   - `dataSprzedazy`: `RRRR-MM-DD`; PUSTA znaczy „nie wysyłamy pola", a NIE „dzisiaj" —
  *     inaczej niż data wystawienia, i to jest celowe. Reguła prawna, która tę datę proponuje,
- *     siedzi w `domain/data-sprzedazy.js` i wchodzi tu przez FORMULARZ: na dokument idzie
- *     to, co operator widzi w polu. Gdy pola nie podano, payload zostaje bajt w bajt taki,
- *     jaki panel wysyłał dotąd (inFakt podstawi wtedy `sale_date = invoice_date`);
+ *     siedzi w `domena/data-sprzedazy.js` i wchodzi tu przez FORMULARZ: na dokument idzie
+ *     to, co operator widzi w polu. Gdy pola nie podano, payload nie ma `sale_date`
+ *     (inFakt podstawi wtedy `sale_date = invoice_date`);
  *   - `termin`: liczba dni (całkowita, nieujemna), `PRZY_ODBIORZE`, `BEZ_TERMINU`
  *     albo `ZAPLACONE`.
  *
@@ -152,7 +149,7 @@ export function datyFaktury(
   { dataWystawienia, dataSprzedazy, termin } = {},
   kwotaGrosze = null,
   dzis = dzisiajWarszawa(),
-  // PRZ-118.09: odmiana nazwy programu fakturowego do komunikatu (domyślnie inFakt — domena/nazwa-programu.js).
+  // Odmiana nazwy programu fakturowego do komunikatu (domyślnie inFakt — domena/nazwa-programu.js).
   { nazwa = NAZWA_ZAPASOWA } = {},
 ) {
   const napisDaty = String(dataWystawienia ?? '').trim() || dzis;
@@ -219,16 +216,15 @@ export function datyFaktury(
 }
 
 // ---------------------------------------------------------------------------------
-// TERMIN UZGODNIONY Z KLIENTEM — zapisany PRZY ZAMÓWIENIU (21.08.2026, scenariusz
-// właściciela: „formy płatności, w tym przypadku FV przelew 14 dni").
+// TERMIN UZGODNIONY Z KLIENTEM — zapisany PRZY ZAMÓWIENIU (np. „FV przelew 14 dni").
 //
-// ⚠️ PO CO TO ISTNIEJE, skoro formularz faktury i tak proponuje 14 dni. Bo do dziś termin
-// żył WYŁĄCZNIE w tamtym formularzu, a więc:
-//   • potwierdzenie przyjęcia zamówienia pisało samo „PŁATNOŚĆ: Przelew" — bez terminu,
-//     który przed chwilą uzgodniliście przez telefon;
-//   • uzgodnienie nie zostawiało ŻADNEGO śladu do chwili wystawienia faktury, a ta bywa
+// ⚠️ PO CO TO ISTNIEJE, skoro formularz faktury i tak proponuje 14 dni. Gdyby termin
+// żył WYŁĄCZNIE w tamtym formularzu:
+//   • potwierdzenie przyjęcia zamówienia pisałoby samo „PŁATNOŚĆ: Przelew" — bez terminu
+//     uzgodnionego z klientem;
+//   • uzgodnienie nie zostawiałoby ŻADNEGO śladu do chwili wystawienia faktury, a ta bywa
 //     wystawiana tydzień później i przez kogoś innego.
-// To sklep B2B: termin jest tam elementem umowy, a nie kosmetyką dokumentu (patrz nagłówek
+// W sprzedaży B2B termin jest elementem umowy, a nie kosmetyką dokumentu (patrz nagłówek
 // tego pliku) — więc należy do zamówienia, nie do jednego ekranu.
 //
 // ⚠️⚠️ `ZAPLACONE` NIE NALEŻY DO TEGO SŁOWNIKA i to jest decyzja, nie przeoczenie.
@@ -274,9 +270,8 @@ export function parsujTerminZamowienia(surowy) {
 /**
  * Termin, którym ma wystartować formularz faktury.
  *
- * ⚠️ KOLEJNOŚĆ JEST ISTOTNA I NIE ZMIENIA SIĘ WZGLĘDEM TEGO, CO BYŁO. Uzgodnienie zapisane
- * przy zamówieniu zastępuje WYŁĄCZNIE zapasowe „14 dni" — nigdy dwóch faktów, które są od
- * niego mocniejsze:
+ * ⚠️ KOLEJNOŚĆ JEST ISTOTNA. Uzgodnienie zapisane przy zamówieniu zastępuje WYŁĄCZNIE
+ * zapasowe „14 dni" — nigdy dwóch faktów, które są od niego mocniejsze:
  *   1. zamówienie z pełnym pokryciem wpłat → „zapłacone" (klient już zapłacił, więc dokument
  *      ma to mówić, a nie proponować termin do zapłaty, której nie ma);
  *   2. zamówienie za pobraniem → „przy odbiorze" (kwotę inkasuje kurier).

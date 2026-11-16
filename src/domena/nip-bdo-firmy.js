@@ -1,6 +1,6 @@
-// PRZ-108.10 — NIP i numer BDO sprzedawcy wpisane w Ustawieniach → Firma, dla instalacji bez OMS_SPRZEDAWCA_NIP /
-// OMS_SPRZEDAWCA_BDO w pliku. Decyzja właściciela (21.10): „NIP i BDO w panelu”. Wzór: rachunek firmy (PRZ-102.20,
-// domena/rachunek-firmy.js) — zapisuje tylko administrator, plik wygrywa, czytane przy każdym użyciu, bez migracji.
+// NIP i numer BDO sprzedawcy wpisane w Ustawieniach → Firma, dla instalacji bez OMS_SPRZEDAWCA_NIP /
+// OMS_SPRZEDAWCA_BDO w pliku. Wzór: rachunek firmy
+// (domena/rachunek-firmy.js) — zapisuje tylko administrator, plik wygrywa, czytane przy każdym użyciu, bez migracji.
 //
 // Różnica wobec rachunku: KAŻDE POLE OSOBNO. NIP i BDO to dwie niezależne dane (firma bez BDO jest normalna), więc
 // plik wygrywa dla SWOJEGO pola: NIP w pliku + BDO w panelu (i odwrotnie) jest dozwolone. Dwa wiersze w

@@ -4,12 +4,12 @@ import { liczbaDodatnia } from './paczka.js';
 import { PACZKA_DOMYSLNA, odczytajSzablony } from './szablony-paczek.js';
 export { PACZKA_DOMYSLNA } from './szablony-paczek.js';
 
-// USTAWIENIA PANELU — czysta reguła (2026-08-17). Bez bazy i bez zegara: `zapis` to zwykły
-// obiekt klucz → tekst, wczytany przez db/ustawienia.js.
+// USTAWIENIA PANELU — czysta reguła. Bez bazy i bez zegara: `zapis` to zwykły
+// obiekt klucz → tekst, wczytany przez `oms/db/ustawienia.js`.
 //
 // ⚠️⚠️ BRAK WIERSZA ZNACZY DZISIEJSZĄ WARTOŚĆ, NIGDY ZERO. Fallbacki poniżej są jedynym
-// powodem, dla którego wdrożenie tej zmiany NICZEGO nie zmienia: baza po wdrożeniu jest pusta,
-// więc każda wartość idzie stąd. „Brak → 0 zł" i „brak → paczka 0×0×0" to nie są warianty
+// powodem, dla którego świeża, pusta baza zachowuje się jak dotychczas: każda wartość idzie stąd.
+// „Brak → 0 zł" i „brak → paczka 0×0×0" to nie są warianty
 // domyślne, tylko ciche błędy o pieniądze i o przesyłki.
 //
 // ⚠️ FALLBACK DZIAŁA PER POLE, nie per formularz. Jeden zepsuty wiersz (ręczny UPDATE,
@@ -19,18 +19,18 @@ export { PACZKA_DOMYSLNA } from './szablony-paczek.js';
  * Waga i wymiary, którymi startuje formularz nadania.
  *
  * ⚠️ TO NIE SĄ WYMIARY KARTONU. Gabaryt startowy jest dla PŁASKIEJ paczki wielkoformatowej,
- * więc 110 × 75 × 1 cm jest poprawnym gabarytem, mimo że wygląda nietypowo. Stała mieszkała
- * do 2026-08-17 w services/nadanie.js i jest stamtąd re-eksportowana — kilkanaście miejsc
+ * więc 110 × 75 × 1 cm jest poprawnym gabarytem, mimo że wygląda nietypowo. Definicja jest
+ * w `szablony-paczek.js`; stała jest re-eksportowana stąd i z `moduly/wysylka/services/nadanie.js`, bo część miejsc
  * (w tym testy) czyta ją tamtą drogą.
  */
 
 /**
  * Koszt dostawy, którym startuje ekran zakładania zamówienia — w groszach.
  *
- * ⚠️ TA SAMA WARTOŚĆ DLA KAŻDEJ METODY i to jest świadome. Do 2026-08-17 widok wpisywał
- * `19,00` niezależnie od metody, także przy paczkomacie (który w sklepie kosztuje 13 zł) —
- * i właśnie po to powstała ta zakładka. Ale fallback ma ODTWARZAĆ dzisiejsze zachowanie,
- * nie poprawiać go po cichu: 13 zł przy paczkomacie wpisuje człowiek, raz, i widzi, że wpisał.
+ * ⚠️ TA SAMA WARTOŚĆ DLA KAŻDEJ METODY i to jest świadome. Wcześniej widok wpisywał
+ * `19,00` niezależnie od metody, także przy paczkomacie (który w sklepie bywa tańszy) —
+ * i właśnie po to powstała ta zakładka. Ale fallback ma ODTWARZAĆ dotychczasowe zachowanie,
+ * nie poprawiać go po cichu: niższą kwotę przy paczkomacie wpisuje człowiek, raz, i widzi, że wpisał.
  */
 export const KOSZT_DOSTAWY_DOMYSLNY_GR = 1900;
 
@@ -102,7 +102,7 @@ export function sprawdzPaczke(formularz = {}) {
  * Formularz „Koszty dostawy" → { wartosci, bledy }. Kwoty schodzą do groszy.
  *
  * ⚠️ PUSTE POLE TO ODMOWA, NIE ZERO — i to jest INNA zasada niż przy kwocie pojedynczego
- * zamówienia (domain/koszt-dostawy.js: puste znaczy zero). Tam człowiek wpisuje kwotę JEDNEGO
+ * zamówienia (domena/koszt-dostawy.js: puste znaczy zero). Tam człowiek wpisuje kwotę JEDNEGO
  * zamówienia i widzi ją na ekranie; tutaj ustawia wartość startową dla wszystkich następnych,
  * więc przypadkowo wyczyszczone pole robiłoby dostawę darmową na miesiące, po cichu.
  *

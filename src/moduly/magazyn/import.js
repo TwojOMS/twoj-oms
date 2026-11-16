@@ -1,4 +1,4 @@
-// PRZ-160 P3b.03 (punkt 19) — ekran „Importuj produkty" (`/magazyn/import`): jedno połączenie, pięć typów,
+// Ekran „Importuj produkty" (`/magazyn/import`): jedno połączenie, pięć typów,
 // „Sprawdź" (odczyt katalogu TYLKO tego kanału + podgląd liczb) i „Importuj" (wykonanie, ekran wyniku).
 //
 // ⚠️ „Sprawdź" czyta kanał istniejącym przebiegiem (`magazyn.start`) z `trescKart: false`: odczyt zapisuje

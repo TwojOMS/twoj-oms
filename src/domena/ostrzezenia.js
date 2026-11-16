@@ -1,13 +1,13 @@
-// src/oms/domain/ostrzezenia.js
+// src/domena/ostrzezenia.js
 //
-// Tabelka ostrzeżeń na stronie głównej (spec 2026-08-29). Czyste reguły: budowa
-// wierszy czterech typów, klucze odrzuceń, filtr odrzuconych z wygasaniem, kolejność.
+// Tabelka ostrzeżeń na stronie głównej. Czyste reguły: budowa
+// wierszy wszystkich typów, klucze odrzuceń, filtr odrzuconych z wygasaniem, kolejność.
 //
 // ⚠️ NIC tu nie jest liczone od nowa — ta sama zasada, co w sprawyKarty. Każdy typ woła
 // funkcję, która już rządzi swoją zakładką: paczki `bezRuchu`/`przesylkaUkryta`
 // (pastylka, karta, /przesylki?pokaz=bez_ruchu), wiadomości `czyjRuch` (kolejki
 // /wiadomosci), integracje strukturalny wynik `ocenZdrowie` (/health — model liczy się
-// raz, renderują go dwa renderery, wzorzec 4.43), a luki KSeF przychodzą z lustra
+// raz, renderują go dwa renderery, reguła: model raz, dwa renderery), a luki KSeF przychodzą z lustra
 // pisanego przez czuwacza barierą `coWolnoWyslac` (pola wyboru na /faktury).
 //
 // ⚠️ ŻADEN TYP NIE RZUCA. Uszkodzony wiersz ma zniknąć z tabelki, a nie zabrać listy
@@ -44,7 +44,7 @@ export const WYGASANIE_INTEGRACJI_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Biała lista kluczy dla trasy POST /ostrzezenia/odrzuc — jedyne miejsce znające
- * komplet prefiksów (schema.sql celowo nie ma CHECK-a: listy w SQLite nie da się
+ * komplet prefiksów (tabela `ostrzezenia_odrzucone` celowo nie ma CHECK-a: listy w SQLite nie da się
  * rozszerzyć bez przebudowy tabeli, a typy mają rosnąć).
  */
 export function kluczDozwolony(klucz) {
@@ -55,7 +55,7 @@ export function kluczDozwolony(klucz) {
 
 /**
  * Dokumenty do wysłania do KSeF, wystawione PRZED dzisiejszym dniem. Dokument
- * z dzisiejszą datą milczy — wieczorna zbiorcza wysyłka to normalny tryb właściciela,
+ * z dzisiejszą datą milczy — zbiorcza wysyłka raz dziennie to normalny tryb pracy,
  * ostrzeżenie ma łapać to, co z niej wypadło.
  *
  * ⚠️ Luka bez daty wystawienia NIE znika po cichu: to dziwo w lustrze, a ostrzeżenie
@@ -83,7 +83,7 @@ export function ostrzezeniaFaktur({ luki = [], dzis } = {}) {
 }
 
 /**
- * PRZ-123 C09cb: wysyłka TwojeFaktury do KSeF niepewna dłużej niż doba (`niepewneKsefPonadDobe`, lustro tf_ksef).
+ * Wysyłka TwojeFaktury do KSeF niepewna dłużej niż doba (`niepewneKsefPonadDobe`, lustro tf_ksef).
  * Czuwacz nadal próbuje sam; człowiek ma sprawdzić fakturę w KSeF, ZANIM wyśle ją ponownie (dubel). Bez ponowienia
  * i bez zmiany stanu — wiersz znika sam, gdy czuwacz rozstrzygnie wysyłkę. Klucz z wersją: nowa wersja = nowy wiersz.
  */
@@ -106,13 +106,13 @@ export function ostrzezeniaNiepewnychKsef({ wysylki = [] } = {}) {
 }
 
 /**
- * PRZ-102.12: wynik ostatniego przebiegu automatu KSeF (`ksef.automat.wynik`, services/ksef-automat.js).
+ * Wynik ostatniego przebiegu automatu KSeF (`ksef.automat.wynik`, moduly/faktury/services/ksef-automat.js).
  * Wiersz tylko wtedy, gdy człowiek ma coś zrobić: błąd (automat stanął), przebieg przerwany restartem,
  * dokumenty „nie wiadomo” albo pominięte przy wysyłce. Udany przebieg milczy — szczegóły są pod przyciskiem.
  * Klucz niesie dzień przebiegu: odrzucony wiersz wraca przy następnym kłopocie, nie przy tym samym.
  */
 export function ostrzezeniaAutomatuKsef({ wynik = null, wstrzymane = [], nazwa = NAZWA_ZAPASOWA, gdzie = `w ${nazwa.miejscownik}`, tryb = null } = {}) {
-  // C09b: dokument odrzucony przez KSeF, który już jest wśród wstrzymanych, ma swój wiersz — bez dubla w wyniku.
+  // Dokument odrzucony przez KSeF, który już jest wśród wstrzymanych, ma swój wiersz — bez dubla w wyniku.
   const juzWstrzymane = new Set((Array.isArray(wstrzymane) ? wstrzymane : []).map((w) => w?.uuid).filter(Boolean));
   const bezDubla = wynik?.tryb && Array.isArray(wynik.odrzucone)
     ? { ...wynik, odrzucone: wynik.odrzucone.filter((d) => !juzWstrzymane.has(d?.uuid)) } : wynik;
@@ -121,22 +121,22 @@ export function ostrzezeniaAutomatuKsef({ wynik = null, wstrzymane = [], nazwa =
 
 /**
  * Zdanie o fakturze wstrzymanej — jedno dla ostrzeżenia i ekranu wyniku (ksef-wynik.ejs).
- * PRZ-118.09: `nazwa` = odmiana nazwy programu (`opis.nazwa`; domyślnie inFakt — domena/nazwa-programu.js).
- * ZDROWIE-RECZNIE: `tryb` automatu — w trybie „reczna” poprawionej wersji nikt sam nie wyśle, więc krok mówi „ręcznie”.
+ * `nazwa` = odmiana nazwy programu (`opis.nazwa`; domyślnie inFakt — domena/nazwa-programu.js).
+ * `tryb` automatu — w trybie „reczna” poprawionej wersji nikt sam nie wyśle, więc krok mówi „ręcznie”.
  */
 export function zdanieWstrzymanej(w, nazwa = NAZWA_ZAPASOWA, gdzie = `w ${nazwa.miejscownik}`, tryb = null) {
-  // PRZ-123 C09: korekta TwojeFaktury, której pierwotną zmieniono po odrzuceniu przez KSeF (409 z adaptera).
+  // Korekta TwojeFaktury, której pierwotną zmieniono po odrzuceniu przez KSeF (409 z adaptera).
   if (w?.kod === 'korekta-nieaktualna') {
     return `Korekta ${w?.numer ?? '(bez numeru)'} nie poszła do KSeF — faktura pierwotna zmieniła się po wystawieniu `
       + 'korekty, więc automat KSeF jej nie wyśle. Następny krok: wystaw nową korektę do aktualnej wersji faktury pierwotnej.';
   }
-  // PRZ-123 K440c: KSeF zgłosił duplikat (440), a panel 3 razy nie pobrał oryginału — zdanie „co dalej” składa czuwacz
+  // KSeF zgłosił duplikat (440), a panel 3 razy nie pobrał oryginału — zdanie „co dalej” składa czuwacz
   // (`opisNiesprawdzonegoDuplikatu` w module faktur; domena go nie importuje), tu tylko zapas na pusty powód.
   if (w?.kod === 'duplikat-niesprawdzony') {
     return w?.powod || `Faktura ${w?.numer ?? '(bez numeru)'}: KSeF zgłosił duplikat, a panel nie sprawdził oryginału. `
       + 'Następny krok: kliknij „Sprawdź ponownie” na ekranie wyniku automatu KSeF.';
   }
-  // PRZ-123 C09b: automat TwojeFaktury nie ponawia tych samych bajtów — wpis trwa do nowej wersji albo numeru KSeF.
+  // Automat TwojeFaktury nie ponawia tych samych bajtów — wpis trwa do nowej wersji albo numeru KSeF.
   const numer = w?.numer ?? '(bez numeru)';
   const powod = w?.powod ? ` (${w.powod})` : '';
   if (w?.kod === 'odrzucona') {
@@ -152,7 +152,7 @@ export function zdanieWstrzymanej(w, nazwa = NAZWA_ZAPASOWA, gdzie = `w ${nazwa.
     + `${w?.powod ? `: ${w.powod}` : ''}). Następny krok: popraw ${gdzie} i wyślij ręcznie albo zwolnij.`;
 }
 
-// Poprawka po recenzji PRZ-102.12 (WAŻNE 1): faktura odrzucona przez inFakt przy wysyłce z automatu jest pomijana
+// Faktura odrzucona przez inFakt przy wysyłce z automatu jest pomijana
 // w kolejnych przebiegach — wiersz trwa, dopóki człowiek jej nie wyśle albo nie zwolni (klucz = uuid).
 function wierszeWstrzymanych(wstrzymane, nazwa, gdzie, tryb) {
   const wiersze = [];
@@ -184,7 +184,7 @@ const faktur = (n) => {
 };
 
 /**
- * PRZ-123 C09: wynik automatu programu z własną wysyłką (TwojeFaktury; `wynik.tryb`). Automat sam ponawia (co 5 minut
+ * Wynik automatu programu z własną wysyłką (TwojeFaktury; `wynik.tryb`). Automat sam ponawia (co 5 minut
  * albo jutro o godzinie), więc zdanie mówi, ile czeka i od kiedy, a nie „automat niczego nie ponawia”.
  */
 function wierszWynikuTrybu(wynik) {
@@ -201,12 +201,12 @@ function wierszWynikuTrybu(wynik) {
     const ponowi = wynik.tryb === 'o_godzinie' ? `jutro o ${wynik.godzina ?? 'ustawionej godzinie'}` : 'sam co 5 minut';
     const blad = String(awaria.blad ?? 'błąd wysyłki').trim();
     const od = dzienIGodzina(awaria.od);
-    // ZDROWIE-RECZNIE: „od” to start serii awarii (licznik czekających); „zatrzymał się (HH:MM)” mówi o godzinie
+    // „od” to start serii awarii (licznik czekających); „zatrzymał się (HH:MM)” mówi o godzinie
     // przebiegu, który się zatrzymał — `koniecAt` tego wyniku (starszy zapis bez niej: start przebiegu, potem „od”).
     const stanal = dzienIGodzina(wynik.koniecAt ?? wynik.startAt ?? awaria.od);
     const czekaja = `${awaria.czeka} ${faktur(awaria.czeka)} na wysłanie do KSeF od ${od}`;
-    // C09b: „ponowi” tylko o dokumentach, które automat weźmie (`czeka` = kandydaci po przebiegu, bez wstrzymanych).
-    // C09cb: błąd należy do faktury `numer`; jeśli automat jej nie weźmie (`ponawia: false` — wstrzymana albo
+    // „ponowi” tylko o dokumentach, które automat weźmie (`czeka` = kandydaci po przebiegu, bez wstrzymanych).
+    // Błąd należy do faktury `numer`; jeśli automat jej nie weźmie (`ponawia: false` — wstrzymana albo
     // niepewna), zdanie mówi to wprost, a licznik pozostałych idzie osobno.
     if (awaria.numer && !awaria.ponawia) {
       czesci.push(`przebieg zatrzymał się na fakturze ${awaria.numer} (${stanal}): ${blad.replace(/[.!?]$/u, '')} — tej faktury `
@@ -301,12 +301,10 @@ export function ostrzezeniaPrzesylek({ przesylki = [], zamowienia = new Map(), t
   return wiersze;
 }
 
-// „Nowa wiadomość" znaczy Z OSTATNICH 7 DNI. ⚠️ Zmierzone na produkcji 29.08.2026,
-// godzinę po pierwszym wdrożeniu: bez okna tabelka pokazała 18 wierszy z kwietnia–
-// 7 sierpnia. SPROSTOWANIE z tego samego dnia: pierwotna diagnoza („klient miał
-// ostatnie słowo «dziękuję»") była błędna — prawdziwą przyczyną był poller biorący
-// z odpowiedzi Allegro NAJSTARSZĄ wiadomość zamiast najnowszej (naprawione w b9a14a3,
-// po naprawie zostały 2 prawdziwie czekające wątki). Okno ZOSTAJE mimo naprawy:
+// „Nowa wiadomość" znaczy Z OSTATNICH 7 DNI. ⚠️ Zmierzone na produkcji: bez okna tabelka
+// pokazała kilkanaście wątków sprzed miesięcy. Przyczyną był poller biorący z odpowiedzi
+// Allegro NAJSTARSZĄ wiadomość zamiast najnowszej (naprawione; po naprawie zostały
+// pojedyncze prawdziwie czekające wątki). Okno ZOSTAJE mimo naprawy:
 // definiuje, co znaczy „nowa" — wątek czekający od miesięcy żyje na /wiadomosci,
 // a tabelka jest szturchnięciem o ŚWIEŻE (i drugą linią obrony, gdyby lustro wątków
 // znów zestarzało się niepostrzeżenie).
@@ -387,8 +385,8 @@ export function ostrzezeniaTerminow({ poTerminie = [] } = {}) {
 
 /**
  * Zwroty czekające na korektę w inFakcie — wiersze z `zwrotyBezKorekty`
- * (db/ostrzezenia.js; granica „ma fakturę → korekta należna" ta sama, co
- * `zwrotRozliczony` w domain/zwrot.js). Zwrot zarejestrowany DZISIAJ milczy —
+ * (oms/db/ostrzezenia.js; granica „ma fakturę → korekta należna" ta sama, co
+ * `zwrotRozliczony` w domena/zwrot.js). Zwrot zarejestrowany DZISIAJ milczy —
  * korekta zaraz po rejestracji to normalny tryb, ostrzeżenie łapie to, co zaległo
  * (ten sam próg, co przy typie `faktura-ksef`).
  */
@@ -411,7 +409,7 @@ export function ostrzezeniaZwrotow({ zwroty = [], dzis } = {}) {
 }
 
 /**
- * PRZ-108.08 (automatyzacje, C1): reguła wstrzymana bezpiecznikiem (>50 zamówień naraz) i maile, o których nie wiadomo,
+ * Reguła automatyzacji wstrzymana bezpiecznikiem (>50 zamówień naraz) i maile, o których nie wiadomo,
  * czy wyszły (`niepewne` — zerwanie w trakcie wysyłki, restart) albo które padły (`blad`). Tylko dla admina — filtr
  * robi wołający (zamowienia/kontekst.js), bo przycisk prowadzi do Ustawień, które edytuje wyłącznie administrator.
  * Klucz wstrzymania niesie chwilę ostatniej zmiany reguły (ponowne wstrzymanie po decyzji = nowy wiersz); klucz
@@ -451,7 +449,7 @@ export function ostrzezeniaAutomatyzacji({ reguly = [] } = {}) {
  * PACZKA Z POBRANIEM WRÓCIŁA, A FAKTURA ZOSTAŁA — drugi biegun czuwacza pobrań.
  *
  * ⚠️⚠️ ISTNIEJE, BO PĘTLA PIENIĘDZY BYŁA DOMKNIĘTA TYLKO W JEDNĄ STRONĘ. Doręczenie
- * uruchamia oznaczenie faktury jako zapłaconej (services/oznaczanie-pobran.js); zwrot
+ * uruchamia oznaczenie faktury jako zapłaconej (moduly/wysylka/services/oznaczanie-pobran.js); zwrot
  * nie uruchamiał NICZEGO. Faktura zostawała w KSeF jako dokument dostawy, do której nie
  * doszło — a fakturę z nadanym numerem KSeF można już tylko SKORYGOWAĆ, nigdy anulować
  * (not korygujących nie ma od 1.02.2026, art. 106k uchylony). Bez tego wiersza panel
@@ -472,7 +470,7 @@ export function ostrzezeniaAutomatyzacji({ reguly = [] } = {}) {
  * nie trafiło. Ta sama zasada, co w `czyPobranieRozliczone`.
  *
  * ⚠️ ZAKRES ROZDZIELONY ZE `zwrot-korekta`, a nie nałożony na niego: kandydaci przychodzą
- * z `pobraniaBezGotowki` (db/ostrzezenia.js), które odsiewa zamówienia z ZAREJESTROWANYM
+ * z `pobraniaBezGotowki` (oms/db/ostrzezenia.js), które odsiewa zamówienia z ZAREJESTROWANYM
  * zwrotem. Od chwili rejestracji o korektę upomina się tamten typ — dwa wiersze o tej
  * samej fakturze byłyby szumem, nie dwoma sprawami.
  *
@@ -507,14 +505,14 @@ const ZEGARY = [
   ['czuwaczKosztow', 'czuwacz-kosztow', 'Pobieranie kosztów z KSeF'],
 ];
 
-// ⚠️ BLAD NIEAKTUALNY NIE MA PRAWA TLUMACZYC POSTOJU (zgloszenie wlasciciela 10.09.2026).
-// `blad` w wyniku ocenZdrowie bywa PAMIATKA: puls czuwacza trzyma ostatni slad bledu takze
-// wtedy, gdy pozniejszy przebieg sie udal (`bladSwiezszy: false`). Zdanie „Czuwacz X nie
-// działa: <blad sprzed doby>" wskazywalo wtedy przyczyne, ktorej JUZ NIE MA, i przemilczalo
-// prawdziwa — ze zegar po prostu stoi. Czlowiek szukal awarii tam, gdzie jej nie bylo.
+// ⚠️ BŁĄD NIEAKTUALNY NIE MA PRAWA TŁUMACZYĆ POSTOJU.
+// `blad` w wyniku ocenZdrowie bywa PAMIĄTKĄ: puls czuwacza trzyma ostatni ślad błędu także
+// wtedy, gdy późniejszy przebieg się udał (`bladSwiezszy: false`). Zdanie „Czuwacz X nie
+// działa: <błąd sprzed doby>" wskazywało wtedy przyczynę, której JUŻ NIE MA, i przemilczało
+// prawdziwą — że zegar po prostu stoi. Człowiek szukał awarii tam, gdzie jej nie było.
 //
-// ⚠️ BRAK POLA (obiekt zlozony recznie, wynik sprzed tej zmiany) POKAZUJE blad — na braku
-// wiedzy nie chowamy, tak samo jak przy nieparsowalnej dacie odrzucenia nizej.
+// ⚠️ BRAK POLA (obiekt złożony ręcznie, starszy zapis wyniku) POKAZUJE błąd — na braku
+// wiedzy nie chowamy, tak samo jak przy nieparsowalnej dacie odrzucenia niżej.
 const bladAktualny = (z) => Boolean(z?.blad) && z?.bladSwiezszy !== false;
 
 const zdanieZegara = (nazwa, z) => (bladAktualny(z)
@@ -523,10 +521,10 @@ const zdanieZegara = (nazwa, z) => (bladAktualny(z)
 
 /**
  * Niedziałające integracje — ze STRUKTURALNEGO wyniku `ocenZdrowie` (reguła zdrowia
- * liczy się w domain/zdrowie.js; tu tylko drugi renderer tego samego modelu).
+ * liczy się w domena/zdrowie.js; tu tylko drugi renderer tego samego modelu).
  *
  * ⚠️ KANAŁY ALLEGRO CELOWO POZA tym typem: mają na tej samej stronie własny pas
- * z wyjściem (wiązanie, 4.37) — drugi wiersz o tym samym uczyłby ignorowania obu.
+ * z wyjściem (wiązanie, reguła: martwy kanał widoczny) — drugi wiersz o tym samym uczyłby ignorowania obu.
  */
 export function ostrzezeniaIntegracji({ zdrowie } = {}) {
   if (!zdrowie) return [];
@@ -563,14 +561,14 @@ export function ostrzezeniaIntegracji({ zdrowie } = {}) {
 }
 
 /**
- * PRZ-122.B16a: próg uwagi o starej kopii bazy — 26 h to próg „kopia potrzebna” w deploy/klient/kopia.mjs,
+ * Próg uwagi o starej kopii bazy — 26 h to próg „kopia potrzebna” w deploy/klient/kopia.mjs,
  * więc starsza kopia znaczy, że ostatni przebieg oms-kopia się nie udał. Jedno źródło dla /health
- * (moduły/zdrowie/kopie.ts) i tabelki; alarm (budzi czujkę) zostaje przy 48 h.
+ * (moduly/zdrowie/kopie.ts) i tabelki; alarm (budzi czujkę) zostaje przy 48 h.
  */
 export const PROG_UWAGI_KOPII_H = 26;
 
 /**
- * PRZ-122.B16a: stan kopii bazy (usługa `zdrowie.kopie`) jako wiersze tabelki. Tylko obserwacja —
+ * Stan kopii bazy (usługa `zdrowie.kopie`) jako wiersze tabelki. Tylko obserwacja —
  * mechanizm kopii (oms-kopia) bez zmian. Klucz starej kopii niesie datę z nazwy pliku: nowa (też stara)
  * kopia to nowe zdarzenie, więc wyciszenie 24 h poprzedniej go nie chowa.
  */
@@ -603,7 +601,7 @@ export function ostrzezeniaKopii({ kopie } = {}) {
 }
 
 /**
- * PRZ-102.04: wiersz widzi tylko konto, które ma prawo do ekranu za jego przyciskiem.
+ * Wiersz widzi tylko konto, które ma prawo do ekranu za jego przyciskiem.
  * Zgłoszenie: rola Produkcja dostawała „Nowa wiadomość z Allegro…” z przyciskiem
  * „Wiadomości”, a klik kończył się 403. Ta sama reguła prawa, co strażnik i menu
  * (`ekranDlaAdresu` + `maDostepDoEkranu`), więc tabelka nie obiecuje drzwi, których

@@ -1,4 +1,4 @@
-// PRZ-093.08 — adres firmy z Ustawień: wiersz „firma” w tabeli konfiguracja_integracji (migracja rdzenia 6,
+// Adres firmy z Ustawień: wiersz „firma” w tabeli konfiguracja_integracji (migracja rdzenia 6,
 // bez nowej migracji). Jawne ustawienia, puste sekrety — adres firmy nie jest poświadczeniem.
 import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji, usunKonfiguracjeIntegracji }
   from './konfiguracja-integracji.js';

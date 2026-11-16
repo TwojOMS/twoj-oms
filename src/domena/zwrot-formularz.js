@@ -10,18 +10,17 @@ import {
   sumaZwrotowGrosze, wierszeFormularzaZwrotu,
 } from './zwrot.js';
 
-// ⚠️⚠️ PO CO TEN MODUL ISTNIEJE (prosba wlasciciela, 2026-08-15): „Teraz nie widać kwot jakie
-// mam wpisać — powinno być gdzieś podsumowanie zamówienia przed zwrotem. Kwota zwrotu
-// (pozycje) — czy to liczy się samo?".
+// ⚠️⚠️ PO CO TEN MODUŁ ISTNIEJE: ekran zwrotu ma pokazać podsumowanie zamówienia przed zwrotem
+// i sam policzyć kwotę zwrotu za pozycje.
 //
-// Do tego dnia NIE liczylo sie samo: operator przepisywal z palca kwote przy KAZDEJ pozycji
-// i kwote laczna, a ekran nie pokazywal mu ani ceny z zamowienia, ani wartosci zamowienia.
+// Dawniej operator przepisywał z palca kwotę przy KAŻDEJ pozycji i kwotę łączną, a ekran nie
+// pokazywał mu ani ceny z zamówienia, ani wartości zamówienia.
 // Panel te liczby zna. Ten modul jest miejscem, w ktorym je liczy — RAZ, dla widoku i dla
 // zapisu, zeby ekran i bariery nie mogly kiedys odpowiedziec inaczej.
 //
 // ⚠️ Modul jest CZYSTY: dostaje zamowienie (i ewentualnie to, co operator juz wpisal) i oddaje
-// gotowy ksztalt do wyrenderowania. Bazy nie dotyka, a trasa (web/routes/zwroty.js) niczego
-// tu nie liczy u siebie — ta sama zasada, co w domain/zwrot.js.
+// gotowy ksztalt do wyrenderowania. Bazy nie dotyka, a trasy (moduly/zwroty/trasy/) niczego
+// tu nie liczą u siebie — ta sama zasada, co w domena/zwrot.js.
 //
 // ⚠️ ZERO JAVASCRIPTU W PRZEGLADARCE. Ekran ma dwa kroki WLASNIE dlatego, ze panel nie ma
 // (i nie ma miec) skryptu przeliczajacego sume na zywo: krok 1 zbiera liczby, krok 2 pokazuje
@@ -46,16 +45,16 @@ import {
  * trzy razy po 33,33 zl to 99,99 zl, ale ostatni zwrot bierze RESZTE (33,34 zl), bo liczy sie
  * z pozostalej wartosci, a nie z iloczynu.
  *
- * ⚠️ PODLOGA ZERA (drobiazg 1, recenzja 2026-08-15). Allegro potrafi oddac kupujacemu WIECEJ,
+ * ⚠️ PODLOGA ZERA. Allegro potrafi oddac kupujacemu WIECEJ,
  * niz warta byla linia (gest, wyrownanie kosztu odeslania) — a taki zwrot da sie w panelu
- * zapisac. Po nim `pozostalaWartoscGr` schodzi ponizej zera i pole kwoty wypelnialo sie
- * napisem `−50.00`. Liczba ujemna nie znaczy tu NIC, co panel umialby zapisac (`parsujZwrot`
+ * zapisac. Po nim `pozostalaWartoscGr` schodzi ponizej zera i bez podłogi pole kwoty
+ * wypełniłoby się napisem `−50.00`. Liczba ujemna nie znaczy tu NIC, co panel umialby zapisac (`parsujZwrot`
  * odmawia kwocie ujemnej), wiec ekran nie ma prawa jej proponowac.
  *
- * ⚠️ STRAZNIK ZERA STOI PRZED ODCZYTEM CENY (drobiazg I2, recenzja kontrolna 2026-08-15) — i to
+ * ⚠️ STRAZNIK ZERA STOI PRZED ODCZYTEM CENY — i to
  * nie jest kosmetyka kolejnosci. `wartoscPozycjiGrosze` RZUCA przy pozycji bez ceny, wiec przy
- * odwrotnej kolejnosci wiersz, ktory NIE WRACA (zero sztuk), wywracal cale liczenie, mimo ze
- * odpowiedz i tak brzmiala „zero", a cena nie byla do niczego potrzebna. Ta warstwa ma NIGDY
+ * odwrotnej kolejności wiersz, który NIE WRACA (zero sztuk), wywracałby całe liczenie, mimo że
+ * odpowiedź i tak brzmi „zero”, a cena nie jest do niczego potrzebna. Ta warstwa ma NIGDY
  * nie rzucac tam, gdzie umie odpowiedziec. Gdy sztuki naprawde wracaja, wyjatek zostaje — bo
  * kwoty zwrotu bez ceny policzyc sie NIE DA — i lapie go trasa, zamieniajac na zdanie po polsku.
  */
@@ -111,10 +110,9 @@ export function razemZwrotuZl({ kwota, kwotaDostawy = null }) {
 }
 
 /**
- * ⚠️⚠️ ILE KOSZTU DOSTAWY MOZE JESZCZE WROCIC — RESZTA, a nie „wszystko albo nic" (drobiazg M1,
- * recenzja kontrolna 2026-08-15).
+ * ⚠️⚠️ ILE KOSZTU DOSTAWY MOZE JESZCZE WROCIC — RESZTA, a nie „wszystko albo nic".
  *
- * Do tego dnia ekran pytal „czy zwrocono COKOLWIEK z dostawy" i przy odpowiedzi twierdzacej
+ * Dawniej ekran pytal „czy zwrocono COKOLWIEK z dostawy" i przy odpowiedzi twierdzacej
  * zostawial puste pole ze zdaniem „Koszt dostawy wrócił już przy wcześniejszym zwrocie — drugi
  * raz nie wraca". Bariera przy zapisie (`parsujZwrot`) liczy tymczasem RESZTE i slusznie
  * pozwala oddac brakujace 10,00 zl z 19,00 zl — jest na to test „czesciowy zwrot dostawy
@@ -135,7 +133,7 @@ function dostawaZostalaGrosze(z) {
  *
  * ⚠️ TRZY STANY, NIE DWA: nic nie wrocilo (cisza), wrocila CZESC (ekran proponuje reszte i mowi
  * skad ona sie wziela), wrocila CALOSC (drugi raz nie wraca). Sklejenie dwoch ostatnich w jedno
- * bylo cala trescia drobiazgu M1.
+ * było dawną wadą.
  */
 function uwagaODostawie(oddanaGr, zostalaGr) {
   if (oddanaGr <= 0) return null;
@@ -162,7 +160,7 @@ function wpisaneWiersze(wpisane) {
 
 // Cena jednostkowa jest tu WYLACZNIE do pokazania — do zadnej arytmetyki nie wchodzi (patrz
 // `kwotaZaSztukiGrosze`). Uszkodzona cena ma dac pusta komorke, a nie wywalic ekran: ta sama
-// zasada, co w `sumaLiniiBrutto` na karcie zamowienia (domain/tabela-pozycji.js).
+// zasada, co w `sumaLiniiBrutto` na karcie zamowienia (domena/tabela-pozycji.js).
 function cenaJednostkowaZl(p) {
   try {
     return zl(grosze(normalizujKwote(p?.cena_brutto), 'cena jednostkowa'));
@@ -197,7 +195,7 @@ export function formularzZwrotu(z, { dzis, wpisane = null } = {}) {
     const surowaIlosc = wpisany ? Number(wpisany.ilosc) : doZwrotu;
     const ilosc = Number.isFinite(surowaIlosc) ? surowaIlosc : 0;
     // ⚠️⚠️ KWOTA, KTORA PANEL PROPONUJE DLA POKAZANEJ LICZBY SZTUK — i to jest sedno naprawy
-    // wady krytycznej (recenzja 2026-08-15). Krok 2 niesie ja w polu ukrytym i po niej poznaje,
+    // wady krytycznej (patrz `przeliczoneWiersze`). Krok 2 niesie ja w polu ukrytym i po niej poznaje,
     // czy operator kwoty DOTKNAL: rowna propozycji znaczy „nie tknal", wiec kwota ma sie
     // przeliczyc dla liczby sztuk, ktora wpisal (patrz `przygotujKrok2` nizej).
     //
@@ -228,7 +226,7 @@ export function formularzZwrotu(z, { dzis, wpisane = null } = {}) {
   // zeby ponowne zaznaczenie nie kazalo operatorowi szukac kosztu dostawy na karcie. O tym,
   // czy dostawa wraca, decyduje WYLACZNIE checkbox (patrz `przygotujKrok2` nizej).
   const dostawaWpisana = String(wpisane?.kwota_dostawy ?? '').trim();
-  // ⚠️ PODPOWIADAMY RESZTE (drobiazg M1) — patrz `dostawaZostalaGrosze` wyzej. Pusty napis
+  // ⚠️ PODPOWIADAMY RESZTE — patrz `dostawaZostalaGrosze` wyzej. Pusty napis
   // znaczy „nie ma czego proponowac", a nie „dostawa istnieje, ale ekran o niej milczy".
   const dostawaPodpowiedz = dostawaZostalaGr <= 0 ? '' : zl(dostawaZostalaGr);
   const dostawa = {
@@ -241,9 +239,9 @@ export function formularzZwrotu(z, { dzis, wpisane = null } = {}) {
     uwaga: uwagaODostawie(oddanaGr, dostawaZostalaGr),
   };
 
-  // ⚠️ PODLOGA ZERA (drobiazg 1, recenzja 2026-08-15) — dokladnie z tego samego powodu, co przy
-  // `kwotaZaSztukiGrosze`: po zwrocie, w ktorym oddano wiecej niz wartosc zamowienia (Allegro
-  // to potrafi), kafel pokazywal „Zostało do zwrotu −11,00 zł". Ujemna kwota „do zwrotu" nie
+  // ⚠️ PODLOGA ZERA — dokladnie z tego samego powodu, co przy
+  // `kwotaZaSztukiGrosze`: po zwrocie, w którym oddano więcej niż wartość zamówienia (Allegro
+  // to potrafi), kafel bez podłogi pokazałby „Zostało do zwrotu −11,00 zł”. Ujemna kwota „do zwrotu" nie
   // opisuje niczego — zostalo zero.
   const zamowienieGr = kwotaOczekiwanaGrosze(z);
   const zostaloGr = Math.max(zamowienieGr - zwroconoGr, 0);
@@ -257,7 +255,7 @@ export function formularzZwrotu(z, { dzis, wpisane = null } = {}) {
     },
     pozycje,
     dostawa,
-    // ⚠️⚠️ WADA WAZNA Z RECENZJI: PROPOZYCJA BYWALA ODBIJANA PRZEZ WLASNA BARIERE PANELU —
+    // ⚠️⚠️ WADA WAZNA: PROPOZYCJA BYWALA ODBIJANA PRZEZ WLASNA BARIERE PANELU —
     // patrz `ostrzezenieOSumiePropozycji` nizej.
     ostrzezenieSumy: ostrzezenieOSumiePropozycji(pozycje, dostawa, zostaloGr),
     data: String(wpisane?.data ?? dzis ?? ''),
@@ -267,27 +265,27 @@ export function formularzZwrotu(z, { dzis, wpisane = null } = {}) {
 
 /**
  * ⚠️⚠️ „EKRAN NIE MA PROPONOWAC CZEGOS, CO SIE NIE UDA" — ta sama zasada, ktora rzadzi juz
- * dostawa oddana wczesniej, rozciagnieta na POZYCJE (wada wazna, recenzja 2026-08-15).
+ * dostawa oddana wczesniej, rozciagnieta na POZYCJE.
  *
  * Propozycja sumuje WARTOSCI LINII (`wartoscPozycjiGrosze`) plus dostawe, a bariera przy zapisie
  * mierzy `kwotaOczekiwanaGrosze`. Te dwie liczby zwykle sa rowne — ale nie musza: zamowienie,
  * w ktorym linie i dostawa nie sumuja sie do kwoty zamowienia, istnieje i panel ma dla niego
- * OSOBNA odmowe przy fakturze (bariera arytmetyczna, services/faktura.js).
+ * OSOBNA odmowe przy fakturze (bariera arytmetyczna `sprawdzSumeDokumentu`, domena/pozycje-faktury.js).
  *
- * Zmierzone: pozycje 198,00 + 100,90 + dostawa 19,00 przy `kwota_brutto = '317.00'`. Kafel
- * mowil „Zostało do zwrotu 317,00 zł", pola wypelnialy sie na 317,90 zl, a zapis odbijal sie
- * komunikatem „Suma zwrotów (317,90 zł) przekracza kwotę zamówienia (317,00 zł)" — czyli
- * operator dostawal ODMOWE ZA LICZBY, KTORYCH NIE WPISAL, i nie mial jak zgadnac, ktora pozycje
- * sciac o 90 groszy.
+ * Przykład: pozycje 198,00 + 100,90 + dostawa 19,00 przy `kwota_brutto = '317.00'`. Kafel
+ * mówi „Zostało do zwrotu 317,00 zł”, pola wypełniają się na 317,90 zł, a zapis odbija się
+ * komunikatem „Suma zwrotów (317,90 zł) przekracza kwotę zamówienia (317,00 zł)”. Bez
+ * ostrzeżenia operator dostaje ODMOWĘ ZA LICZBY, KTÓRYCH NIE WPISAŁ, i nie ma jak zgadnąć,
+ * którą pozycję ściąć o 90 groszy.
  *
  * ⚠️ MOWIMY, A NIE PRZYCINAMY — i to jest decyzja, nie wygoda. Przyciecie musialoby wybrac,
  * KTORA linie zaniza o 90 groszy, a te kwoty ida WPROST na fakture korygujaca: 99,10 zl przy
  * pozycji wartej 100,00 zl to liczba, ktorej nikt (ani ksiegowa, ani organ) nie umie
  * wytlumaczyc. To jest rozstrzygniecie dla czlowieka, nie dla panelu.
  *
- * ⚠️⚠️ KOMUNIKAT NIE ZGADUJE PRZYCZYNY (drobiazg M2, recenzja kontrolna 2026-08-15). Do tego
- * dnia zdanie mialo zaszyta diagnoze — „To zamówienie nie sumuje się samo ze sobą: jego pozycje
- * i dostawa dają więcej niż kwota, na którą opiewa" — i BYWALO NIEPRAWDZIWE. Zmierzone:
+ * ⚠️⚠️ KOMUNIKAT NIE ZGADUJE PRZYCZYNY. Dawniej
+ * zdanie mialo zaszyta diagnoze — „To zamówienie nie sumuje się samo ze sobą: jego pozycje
+ * i dostawa dają więcej niż kwota, na którą opiewa" — i BYWALO NIEPRAWDZIWE. Przykład:
  * zamowienie sumujace sie CO DO GROSZA (198,00 + 100,00 + 19,00 = 317,00), w ktorym rozjazd
  * zrobil WCZESNIEJSZY ZWROT: Allegro oddalo za pozycje 248,00 zl przy wartosci 198,00 zl (gest),
  * wiec zostaje 69,00 zl, a podpowiedzi daja 119,00 zl. Panel oskarzal zamowienie o wade, ktorej
@@ -323,43 +321,39 @@ function ostrzezenieOSumiePropozycji(pozycje, dostawa, zostaloGr) {
 }
 
 /**
- * ⚠️⚠️⚠️ KWOTA PODAZA ZA ILOSCIA — NAPRAWA WADY KRYTYCZNEJ (recenzja 2026-08-15).
+ * ⚠️⚠️⚠️ KWOTA PODĄŻA ZA ILOŚCIĄ — NAPRAWA WADY KRYTYCZNEJ.
  *
- * Do tego dnia krok 1 wypelnial kwote wartoscia CALEJ pozostalej linii i na tym sie konczylo:
- * operator zmienial „Wraca (szt.)", kwoty nie ruszal — bo i po co, stoi tam wiarygodna liczba,
- * a zdanie pod tabela do niej przekonuje — a krok 2 „niczego nie liczyl od nowa". Zmierzone:
- * pozycja 3 szt. z rabatem (`brutto_linii` 100,00 przy cenie 35,00), operator ustawia „wraca 1"
- * → zapisywal sie ZWROT 100,00 ZL ZA 1 Z 3 SZTUK. Przechodzil WSZYSTKIE bariery, bo suma
- * zgadzala sie sama ze soba.
+ * Krok 1 wypełnia kwotę wartością CAŁEJ pozostałej linii. Operator zmienia „Wraca (szt.)”,
+ * a kwoty nie rusza — stoi tam wiarygodna liczba, której przy rabacie (33,33 zł) nie da się
+ * sprawdzić w głowie. Przykład bez przeliczenia: pozycja 3 szt. z rabatem (`brutto_linii`
+ * 100,00 przy cenie 35,00), operator ustawia „wraca 1” → zapisuje się ZWROT 100,00 ZŁ ZA 1 Z 3
+ * SZTUK i przechodzi WSZYSTKIE bariery, bo suma zgadza się sama ze sobą.
  *
- * Skutki byly poza panelem i nieodwracalne: `zwrotyWOkresie` (domain/agregacja-sprzedazy.js)
- * zdejmowalo z przychodu 100,00 zl zamiast 33,33 — wprost w podstawie podatku — a `paryKorekty`
- * (domain/korekta-pozycje.js) skladalo korekte mowiaca „z 3 szt. / 100,00 zl na 2 szt. /
- * 0,00 zl", czyli dokument u organu. Kolejnego zwrotu tej pozycji panel odmawial sam sobie, bo
- * zostawala mu wartosc 0.
- *
- * ⚠️ TO BYLA REGRESJA PRZEBUDOWY NA DWA KROKI. Wczesniej pola startowaly na zerze i operator
- * wpisywal liczbe, ktora sam wybral; teraz panel wstawia liczbe wiarygodna. Przy rabacie
- * 33,33 zl nie da sie policzyc w glowie — nie bylo wiec jak zauwazyc pomylki.
+ * ⚠️ Skutki są poza panelem i nieodwracalne: `zwrotyWOkresie` (domena/sprzedaz-okresu.js)
+ * zdejmuje z przychodu 100,00 zł zamiast 33,33 — wprost w podstawie podatku — a `paryKorekty`
+ * (domena/korekta-pozycje.js) składa korektę mówiącą „z 3 szt. / 100,00 zł na 2 szt. /
+ * 0,00 zł”, czyli dokument u organu. Kolejnego zwrotu tej pozycji panel odmawia sam sobie, bo
+ * zostaje mu wartość 0.
  *
  * REGULA, po dwoch stronach:
  *   • kwota RÓWNA propozycji z kroku 1 (pole ukryte `pozycja_kwota_propozycja`) znaczy, ze
- *     operator jej NIE DOTKNAL → panel przelicza ja dla wpisanej liczby sztuk. To jest „liczy
- *     sie samo" z prosby wlasciciela;
- *   • kwota ZMIENIONA wygrywa — decyzja wlasciciela brzmi „kwotę przepisujesz z Allegro i to
- *     ONA jest prawdą" — ale gdy rozni sie od tego, co panel policzylby dla tej liczby sztuk,
+ *     operator jej NIE DOTKNĄŁ → panel przelicza ją dla wpisanej liczby sztuk (kwota „liczy
+ *     się sama”);
+ *   • kwota ZMIENIONA wygrywa — „kwotę przepisujesz z Allegro i to ONA jest prawdą”
+ *     — ale gdy rozni sie od tego, co panel policzylby dla tej liczby sztuk,
  *     krok 2 MA TO POKAZAC. Ostrzezenie, nie odmowa.
  *
- * ⚠️⚠️ PRZELICZENIE NIE MA BYC CICHE (wada wazna I1, recenzja kontrolna 2026-08-15). Rozpoznanie
+ * ⚠️⚠️ PRZELICZENIE NIE MA BYC CICHE. Rozpoznanie
  * „operator nie dotknal kwoty" to POROWNANIE LICZB, a liczby da sie zrownac przypadkiem —
- * w druga strone niz naprawiona wyzej wada krytyczna. Zmierzone: pozycja 3 szt. / `brutto_linii`
+ * w druga strone niz naprawiona wyzej wada krytyczna. Przykład: pozycja 3 szt. / `brutto_linii`
  * 100,00 zl (rabat), Allegro oddalo kupujacemu 100,00 zl przy zwrocie 1 szt. (gest, wyrownanie
  * kosztu odeslania). Operator ustawia „wraca 1" i ZOSTAWIA 100,00 zl, BO TYLE NAPRAWDE WYSZLO —
- * a panel, widzac kwote rowna swojej propozycji, uznawal ja za nietknieta i po cichu zapisywal
- * 33,33 zl. Do podstawy podatku wchodzilo 33,33 zamiast 100,00, a korekta byla o 66,67 za mala.
+ * a panel, widząc kwotę równą swojej propozycji, uznaje ją za nietkniętą i przelicza na
+ * 33,33 zł. Gdyby robił to po cichu, do podstawy podatku weszłoby 33,33 zamiast 100,00,
+ * a korekta byłaby o 66,67 za mała.
  *
- * REGULA ZOSTAJE BEZ ZMIAN (kwota nietknieta dalej sie przelicza, zmieniona dalej wygrywa) —
- * zmienia sie jedno: gdy sciezka „nietkniete" FAKTYCZNIE ZMIENIA LICZBE, krok 2 mowi to zdaniem
+ * Obie strony REGUŁY zostają (kwota nietknięta się przelicza, zmieniona wygrywa), a do tego:
+ * gdy sciezka „nietkniete" FAKTYCZNIE ZMIENIA LICZBE, krok 2 mowi to zdaniem
  * z obiema kwotami. Gdy przeliczenie niczego nie zmienia (zwrot calosci, czyli przypadek
  * najczestszy), ekran milczy — zdanie o niczym uczyloby tylko tego, zeby zdan nie czytac.
  *
@@ -399,7 +393,7 @@ function przeliczoneWiersze(z, body) {
     const pozostale = Math.max(Number(p?.ilosc ?? 0) - byle.ilosc, 0);
     const propozycjaGr = dopasowane ? groszeAlboNull(dopasowane[i]) : null;
     // ⚠️⚠️ SCIEZKA „OPERATOR KWOTY NIE TKNAL" — i to ona przelicza kwote. Zdanie powstaje
-    // WYLACZNIE wtedy, gdy przeliczenie faktycznie podmienilo liczbe (wada wazna I1 wyzej).
+    // WYLACZNIE wtedy, gdy przeliczenie faktycznie podmienilo liczbe (patrz wyżej).
     if (propozycjaGr !== null && propozycjaGr === wpisanaGr) {
       const przeliczone = panelGr !== wpisanaGr;
       return {

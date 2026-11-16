@@ -1,6 +1,6 @@
 import type { Migracja } from '../../../core/kontrakty.ts';
 
-/** PRZ-069: e-mail konta i jednorazowe linki do hasła. Wyłącznie nowe tabele (plan O2). */
+/** E-mail konta i jednorazowe linki do hasła. Wyłącznie nowe tabele (plan O2). */
 export const migracjaEmailILinkow: Migracja = {
   numer: 2,
   nazwa: 'e-mail kont i linki do hasła',

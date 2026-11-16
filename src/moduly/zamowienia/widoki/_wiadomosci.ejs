@@ -1,10 +1,9 @@
 <%#
-  SEKCJA „WIADOMOŚCI" NA DOLE KARTY (22.08.2026, makieta zatwierdzona:
-  docs/superpowers/specs/2026-08-22-oms-maile-do-klienta-makieta.html).
+  SEKCJA „WIADOMOŚCI" NA DOLE KARTY.
 
   TRZY STANY jednej sekcji, przełączane ADRESEM (`?wiadomosc=`):
     spoczynek → przycisk „Wyślij nową wiadomość" + lista wysłanych
-    wybór     → cztery tematy ze stanem; zablokowany jest WYGASZONY, nie schowany
+    wybór     → tematy ze stanem; zablokowany jest WYGASZONY, nie schowany
     podgląd   → adres, temat, załącznik i mail w ramce; wysyła dopiero przycisk pod spodem
 
   ⚠️ ZERO JAVASCRIPTU. Wybór tematu to zwykły ODNOŚNIK (GET), więc niczego nie wysyła —
@@ -13,10 +12,10 @@
   zakładania zamówienia).
 
   ⚠️⚠️ `w` BYWA `null` I TO NIE JEST BŁĄD: panel bez skonfigurowanej poczty nie pokazuje
-  sekcji wiadomości w ogóle. KOMENTARZ WEWNĘTRZNY na dole tego pliku renderuje się WTEDY
-  TAK SAMO — notatka operatora nie ma nic wspólnego z pocztą, a pole, którego nie ma,
-  to notatka, której nie da się założyć (pilnują tego tests/oms/web-komentarz.test.js
-  i „bez usługi wiadomości…" w tests/oms/web-wiadomosci.test.js).
+  sekcji wiadomości w ogóle. KOMENTARZ WEWNĘTRZNY (osobny partial `_komentarz-wewnetrzny.ejs`,
+  dołączany z karty) renderuje się WTEDY TAK SAMO — notatka operatora nie ma nic wspólnego
+  z pocztą, a pole, którego nie ma, to notatka, której nie da się założyć (pilnuje tego
+  „bez usługi wiadomości…" w tests/moduly/wiadomosci/web-wiadomosci.test.js).
 %>
 <div class="<%= w ? 'dwie-kolumny' : '' %>">
   <% if (w) { %>
@@ -24,10 +23,10 @@
     <div class="panel-glowa">
       <%# ⚠️ „Wybierz temat" WIELKĄ LITERĄ celowo: `.panel-glowa h2` i tak drukuje nagłówek %>
       <%# wersalikami, więc dla oka to bez różnicy, a w HTML-u jest to napis, po którym %>
-      <%# poznaje się ekran wyboru (asercja w tests/oms/web-wiadomosci.test.js — obie strony: %>
+      <%# poznaje się ekran wyboru (asercja w tests/moduly/wiadomosci/web-wiadomosci.test.js — obie strony: %>
       <%# że na ekranie wyboru JEST i że w spoczynku GO NIE MA). %>
       <h2>Wiadomości<% if (w.stan === 'wybor') { %> — Wybierz temat<% } %><% if (w.stan === 'podglad' && w.wybrany) { %> — <%= nazwyTematow[w.wybrany] %><% } %></h2>
-      <%# ⚠️ WARUNEK NA `w.podglad`, NIE NA `w.stan === 'podglad'` (recenzja 22.08.2026). Stan %>
+      <%# ⚠️ WARUNEK NA `w.podglad`, NIE NA `w.stan === 'podglad'`. Stan %>
       <%# „podglad" bierze sie z SAMEGO adresu (`?wiadomosc=cokolwiek`) i obejmuje TAKZE odmowe %>
       <%# — np. `?wiadomosc=faktura` bez wystawionej faktury. Po staremu operator czytal wtedy %>
       <%# „to zobaczy klient" nad czerwonym „Najpierw wystaw fakture", czyli nad tekstem, %>
@@ -45,8 +44,8 @@
             <% w.lista.forEach(function (p) { %>
               <%# ⚠️ `fmtDataCzasKrotko`, NIGDY `.slice(0,16).replace('T',' ')`. Znacznik jest %>
               <%# zapisany w UTC, a kontener chodzi z TZ=UTC — obcięcie napisu pokazałoby %>
-              <%# operatorowi godzinę o dwie wcześniejszą niż reszta dat na tej samej karcie. %>
-              <%# Funkcja jest w `defaultContext` (web/server.js), więc jest tu bez importu. %>
+              <%# operatorowi godzinę (lub dwie) wcześniejszą niż reszta dat na tej samej karcie. %>
+              <%# Funkcja jest w `defaultContext` (core/web/pipeline.js), więc jest tu bez importu. %>
               <tr>
                 <td><%= fmtDataCzasKrotko(p.wyslana_at) %></td>
                 <td><%= nazwyTematow[p.temat_id] || (String(p.temat_id).startsWith('wlasny-') ? 'Szablon usunięty: ' + p.temat : p.temat_id) %></td>
@@ -60,7 +59,7 @@
 
       <% } else if (w.stan === 'wybor') { %>
         <% w.tematy.forEach(function (t, i) { %>
-          <%# PRZ-101.03: szablony własne z Ustawień → Szablony wiadomości, pod czterema wbudowanymi. %>
+          <%# Szablony własne z Ustawień → Szablony wiadomości, pod wbudowanymi. %>
           <% if (t.wlasny && !(w.tematy[i - 1] || {}).wlasny) { %>
             <p class="etykieta-bloku">Szablony własne</p>
           <% } %>
@@ -70,7 +69,7 @@
               <span class="temat-stan"><%= t.stan %></span>
             </a>
           <% } else { %>
-            <%# ⚠️ WYGASZONY Z POWODEM, nie schowany (niezmiennik 4.9): operator ma wiedzieć, %>
+            <%# ⚠️ WYGASZONY Z POWODEM, nie schowany (reguła: odmowa ma powód): operator ma wiedzieć, %>
             <%# czego brakuje i gdzie to naprawić. Nie jest odnośnikiem — klikanie w coś, %>
             <%# co odmówi, jest gorsze niż brak przycisku. %>
             <span class="temat temat--wygaszony">
@@ -84,7 +83,7 @@
           <span class="wyjasnienie">Wybór tematu jeszcze niczego nie wysyła — najpierw zobaczysz podgląd.</span>
         </div>
 
-      <%# ⚠️ WARUNEK NA `w.podglad`, NIE `else` PO `w.blad` (odstępstwo od briefu, świadome): %>
+      <%# ⚠️ WARUNEK NA `w.podglad`, NIE `else` PO `w.blad` (świadomie): %>
       <%# stan „podgląd" bierze się z SAMEGO adresu, więc `?wiadomosc=cokolwiek` bez podglądu %>
       <%# i bez błędu (np. karta renderowana po POST-cie z takim ogonem w adresie) wchodziłaby %>
       <%# wprost w `w.podglad.do` i wywracała CAŁĄ kartę na 500. Tu brak podglądu jest %>
@@ -108,15 +107,15 @@
           <pre class="podglad-maila"><%= w.podglad.tekst %></pre>
         </details>
 
-        <%# ⚠️⚠️ WARTOŚĆ POLICZONA W TRASIE, NIGDY LICZONA TUTAJ (poprawka 22.08.2026, %>
-        <%# sprzątanie po recenzji całości gałęzi). Do tej pory stało tu WŁASNE %>
-        <%# `(w.lista||[]).filter(…).pop()` — druga, inna reguła na to samo pytanie: „ostatni %>
-        <%# pasujący element listy" zamiast „największe id". Zgadzały się WYŁĄCZNIE dlatego, %>
+        <%# ⚠️⚠️ WARTOŚĆ POLICZONA W TRASIE, NIGDY LICZONA TUTAJ. Własne %>
+        <%# `(w.lista||[]).filter(…).pop()` w widoku byłoby drugą, inną regułą na to samo %>
+        <%# pytanie: „ostatni pasujący element listy" zamiast „największe id". %>
+        <%# Zgadzałyby się WYŁĄCZNIE dlatego, %>
         <%# że lista jest posortowana rosnąco; sortowanie „najnowsze u góry" (naturalne przy %>
         <%# dłuższej historii) przestawiłoby po cichu i to ostrzeżenie, i etykietę przycisku %>
         <%# na NAJSTARSZY wpis — bez błędu i bez czerwieni w suicie. A jest to jedyny hamulec %>
         <%# przed wysłaniem klientowi drugiego maila, którego nie da się cofnąć. %>
-        <%# Regułę trzyma teraz `ostatnieWgTematow` (oms/domain/wiadomosci.js). %>
+        <%# Regułę trzyma `ostatnieWgTematow` (domena/wiadomosci.js). %>
         <% if (w.ostatnia) { %>
           <p class="pasek-uwagi-klienta"><b>Uwaga</b>Ta wiadomość poszła już
             <%= fmtDataCzasKrotko(w.ostatnia.wyslana_at) %>. Wysłanie ponownie znaczy
@@ -141,6 +140,6 @@
   </section>
   <% } %>
 
-  <%# Komentarz wewnętrzny stał tu od 22.08 do 14.10.2026. Od PRZ-074 (prośba właściciela) stoi nad
-      Pozycjami, obok uwag klienta — partial `_komentarz-wewnetrzny.ejs`. Pole jest dalej JEDNO. %>
+  <%# Komentarz wewnętrzny nie stoi w tym pliku: jest nad Pozycjami, obok uwag klienta —
+      partial `_komentarz-wewnetrzny.ejs`. Pole jest JEDNO. %>
 </div>

@@ -25,7 +25,7 @@ export function wykonajMigracje(db: BazaSqlite, moduly: readonly ModulOms[], ter
   const byla = db.prepare('SELECT 1 FROM migracje WHERE modul = ? AND numer = ?');
   const zapisz = db.prepare('INSERT INTO migracje (modul, numer, nazwa, zastosowana_at) VALUES (?, ?, ?, ?)');
   const wynik: WynikMigracji[] = [];
-  // PRZ-130: odcisk „po” udanej migracji jest odciskiem „przed” następnej — w tym połączeniu zmienia się między nimi
+  // Odcisk „po” udanej migracji jest odciskiem „przed” następnej — w tym połączeniu zmienia się między nimi
   // tylko tabela migracje, której odcisk nie obejmuje. Liczony dwa razy zajmował połowę budowy bazy w każdym teście.
   // Inny proces może zmienić schemat między COMMIT a BEGIN IMMEDIATE — wtedy schema_version jest inny i liczymy od nowa.
   let poPoprzedniej = null as OdciskMigracji | null;
@@ -201,17 +201,17 @@ function deklaracjeKolumn(tokeny: TokenSql[]): Map<string, TokenSql[]> {
   return wynik;
 }
 
-// PRZ-131: oba odciski są czystą funkcją schematu, a schemat SQLite to tekst CREATE obiektów w sqlite_master
+// Oba odciski są czystą funkcją schematu, a schemat SQLite to tekst CREATE obiektów w sqlite_master
 // i sqlite_temp_master (z niego biorą się table_xinfo, klucze obce, indeksy i opcje tabel). Pamiętamy je po skrócie tego
 // tekstu: testy budują tę samą bazę tysiące razy, a odcisk był ~połową czasu budowy. Wołający dostają kopie.
-// W kluczu jest też schema_version (recenzja): tekst podmieniony przez writable_schema nie zmienia schematu wczytanego
+// W kluczu jest też schema_version: tekst podmieniony przez writable_schema nie zmienia schematu wczytanego
 // w połączeniu, który czytają PRAGMA-y odcisku, ale każdy DDL podbija licznik — taki rozjazd nie trafi w pamięć.
-// PRZ-173: budowa bazy zapisuje 1 klucz na migrację (37 kluczy na 37 migracji), a pojemność MUSI być ≥ liczbie migracji
-// wszystkich modułów — inaczej usuwanie najstarszego daje przy cyklicznym odczycie 0% trafień (37 migracji przy 32: pełna
-// bramka 473 → 955 s). To warunek konieczny, nie wystarczający: w jednym procesie testów są też inne stany schematu
-// (baza.test.ts wstawia 103 klucze), więc limit trzyma zapas. Pilnuje tego test »druga budowa bazy…«
-// w tests/core/baza.test.ts. Koszt: wpis pełnego schematu to ok. 250 KB w JSON (schemat 153 + kolumny 100 KB), więc
-// 256 wpisów ≈ 63 MB na proces w najgorszym razie (wczesne stany są mniejsze, a w praktyce zapełnia się tyle wpisów,
+// Budowa bazy zapisuje jeden klucz na migrację, a pojemność MUSI być ≥ liczbie migracji wszystkich modułów —
+// inaczej usuwanie najstarszego daje przy cyklicznym odczycie 0% trafień (przy pojemności mniejszej o kilka wpisów
+// niż liczba migracji pełna bramka trwała ponad dwa razy dłużej). To warunek konieczny, nie wystarczający:
+// w jednym procesie testów są też inne stany schematu, więc limit trzyma zapas. Pilnuje tego test »druga budowa
+// bazy…« w tests/core/baza.test.ts. Koszt: wpis pełnego schematu to ok. 250 KB w JSON (schemat 153 + kolumny 100 KB),
+// więc 256 wpisów ≈ 63 MB na proces w najgorszym razie (wczesne stany są mniejsze, a w praktyce zapełnia się tyle wpisów,
 // ile jest stanów schematu).
 const ODCISKOW_W_PAMIECI = 256;
 const odciski = new Map<string, { schemat?: string[]; kolumny?: Map<string, Kolumna[]> }>();

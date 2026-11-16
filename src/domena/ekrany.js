@@ -1,20 +1,19 @@
-// JEDNA AUTORYTATYWNA LISTA EKRANOW PANELU (spec 2026-09-12).
+// JEDNA AUTORYTATYWNA LISTA EKRANÓW PANELU.
 //
-// Karmi trzy rzeczy: straznika (kto gdzie wchodzi), menu boczne i pasek ikon. Do tego dnia
-// lista stala w DWOCH miejscach — `STRONY` w domain/menu-stron.js i recznie pisany pasek
-// ikon w layout-oms.ejs — i JUZ SIE ROZJECHALY: menu mialo „Stali klienci" bez „Wiadomosci",
-// pasek odwrotnie. Dopoki to byla nawigacja, byla to kosmetyka. Przy uprawnieniach ekran
-// pominiety na liscie jest EKRANEM BEZ PTASZKA, czyli albo cicha dziura, albo martwy
-// przycisk — wiec lista musi byc jedna.
+// Karmi trzy rzeczy: strażnika (kto gdzie wchodzi), menu boczne i pasek ikon. Wcześniej lista stała
+// w DWÓCH miejscach — `STRONY` w domena/menu-stron.js i ręcznie pisany pasek ikon w layout-oms.ejs —
+// i rozjeżdżała się: menu miało „Stali klienci" bez „Wiadomości", pasek odwrotnie. Dopóki to była
+// nawigacja, była to kosmetyka. Przy uprawnieniach ekran pominięty na liście jest EKRANEM BEZ PTASZKA,
+// czyli albo cichą dziurą, albo martwym przyciskiem — więc lista musi być jedna.
 //
-// ⚠️ TEN MODUL NIE DOTYKA ANI BAZY, ANI ZADANIA. Czysta funkcja adresu — dzieki temu test
-// kompletnosci tras moze ja wolac na surowych wzorcach Fastify (`/zamowienia/:id/faktura`)
-// tak samo, jak straznik wola ja na prawdziwym adresie (`/zamowienia/12/faktura`).
+// ⚠️ TEN MODUL NIE DOTYKA ANI BAZY, ANI ZADANIA. Czysta funkcja adresu — dzieki temu mozna ja wolac na surowych
+// wzorcach Fastify (`/zamowienia/:id/faktura`) tak samo, jak straznik wola ja na prawdziwym adresie
+// (`/zamowienia/12/faktura`).
 
 import { czyTrasaOtwarta } from '../core/bezpieczenstwo/logowanie-wspolne.js';
 import { POZYCJE_USTAWIEN, podmenuUstawien, modelNawigacjiUstawien } from './podmenu-ustawien.js';
 
-/** PRZ-123.C04b: Ustawienia → Integracje → Moduł faktur → Wysyłka do KSeF. Tutaj (PRZ-122.ZGODA-TFb), żeby wspólny ekran
+/** Ustawienia → Integracje → Moduł faktur → Wysyłka do KSeF. Tutaj, żeby wspólny ekran
  * wyboru modułu (trasy/ustawienia-programu.js) linkował do niego bez importu trasy TwojeFaktury. */
 export const EKRAN_KSEF_SPRZEDAZY = '/ustawienia/integracje/program-fakturowy/ksef';
 
@@ -32,12 +31,12 @@ const WZORCE_FAKTUR_ZAMOWIENIA = [
   /^\/zamowienia\/faktury-hurtem(\/|$)/,
   /^\/zamowienia\/[^/]+\/faktura(\/|$)/,
   /^\/zamowienia\/[^/]+\/faktura-allegro$/,
-  // ⚠️⚠️ DZIURA Z RECENZJI (12.09.2026): `/zamowienia/:id/dane/faktura` nie lapal sie na
+  // ⚠️⚠️ DZIURA: `/zamowienia/:id/dane/faktura` nie lapal sie na
   // wzorzec wyzej, bo ten wymaga „faktura" jako PIERWSZEGO segmentu po identyfikatorze —
   // trasa spadala do prefiksu `/zamowienia` i ladowala na ekranie „zamowienia". Rola
   // Produkcja mogla wiec przez ten formularz zmienic NIP nabywcy, a `rabatKontraktowy`
   // wywolywany zaraz po zapisie NIP-u umial przy okazji zmienic `rabat_procent` calego
-  // zamowienia (src/oms/web/routes/zamowienia.js, `zapisDanych('faktura', ...)`).
+  // zamowienia (src/moduly/zamowienia/reczne.js, `zapisDanych('faktura', ...)`).
   //
   // Dlatego cala galaz `/zamowienia/<id>/dane/` nalezy tu DOMYSLNIE, a wyjatki wysylkowe
   // sa wymienione JAWNIE zaraz ponizej. Kierunek jest celowy: pomylka „za wasko" (nowa
@@ -63,7 +62,7 @@ const WZORCE_POZOSTALYCH_DOKUMENTOW_ZAMOWIENIA = [
 
 /**
  * ⚠️ `dokladne` obsluguje ekran zamowien: lista stoi pod „/", a „/" jako PREFIKS pasowalby
- * do kazdego adresu w panelu. Ta sama pulapka, ktora domain/menu-stron.js rozwiazuje polem
+ * do kazdego adresu w panelu. Ta sama pulapka, ktora domena/menu-stron.js rozwiazuje polem
  * `sekcja` — tu jest jedno pole wiecej, bo lista sluzy takze straznikowi.
  */
 export const EKRANY = [
@@ -99,8 +98,6 @@ export const EKRANY = [
   },
   {
     klucz: 'okresy', etykieta: 'Okresy rozliczeniowe', href: '/okresy', prefiksy: ['/okresy'],
-    // PRZ-102.03 (wariant C, właściciel 20.10): Rozliczenia, Stali klienci i Wiadomości to grupa „Klienci” pod
-    // „Obsługą zamówień”; analizy (`analizy-cele`) wyszły z menu bocznego do górnego paska.
     nawigacja: { dzial: 'sprzedaz', grupa: 'faktury', kolejnosc: 60, etykieta: 'Rozliczenia okresowe' },
   },
   {
@@ -112,7 +109,7 @@ export const EKRANY = [
     nawigacja: { dzial: 'sprzedaz', grupa: 'faktury', kolejnosc: 40 },
   },
   {
-    // PRZ-167: `/analityka` (podsumowanie dnia) należy do Raportów — ten sam ptaszek, bez nowego ekranu na liście praw.
+    // `/analityka` (podsumowanie dnia) należy do Raportów — ten sam ptaszek, bez nowego ekranu na liście praw.
     klucz: 'raporty', etykieta: 'Raporty', href: '/raporty', prefiksy: ['/raporty', '/analityka'],
     nawigacja: { dzial: 'analizy-cele', grupa: 'analizy-cele', kolejnosc: 10 },
   },
@@ -146,7 +143,7 @@ export const EKRANY = [
 // Trasy dostepne KAZDEMU zalogowanemu, niezaleznie od ptaszkow. Wylogowanie odebrane
 // koncie bez ptaszka znaczyloby czlowieka zamknietego w panelu, ktorego nie umie opuscic;
 // przelacznik motywu nie niesie zadnej informacji.
-// PRZ-069: strona własnego konta (imię, zmiana hasła) — bez ptaszka, także dla konta bez żadnego ekranu.
+// Strona własnego konta (imię, zmiana hasła) — bez ptaszka, także dla konta bez żadnego ekranu.
 const DLA_KAZDEGO = ['/wyloguj', '/motyw', '/menu-boczne', '/konto', '/konto/imie', '/konto/haslo', '/konto/powiadomienia'];
 
 // ⚠️⚠️ TRASY, KTORE ODPYTUJE MASZYNA, A NIE CZLOWIEK — i to jest cala ich definicja.
@@ -154,9 +151,9 @@ const DLA_KAZDEGO = ['/wyloguj', '/motyw', '/menu-boczne', '/konto', '/konto/imi
 // Obie kolejki druku obsluguja czuwacze PowerShella na komputerze przy drukarce
 // (`deploy/drukarka/czuwacz-etykiet.ps1`, `czuwacz-faktur.ps1`). Loguja sie BASIC AUTHEM
 // na hasle z `.env` i odpytuja te adresy w petli. ZADEN widok panelu do nich nie prowadzi —
-// sprawdzone: `grep "kolejka-druku" src/oms/web/views/` nie ma ani jednego trafienia.
+// sprawdzone: w widokach panelu (`*.ejs`) nie ma ani jednego odnośnika do `kolejka-druku`.
 //
-// ⚠️⚠️ DLACZEGO TO TU STOI (recenzja calosci, 2026-09-13). Adresy naleza do ekranow
+// ⚠️⚠️ DLACZEGO TO TU STOI. Adresy naleza do ekranow
 // `zamowienia` i `pozostale-dokumenty-zamowienia`, wiec po degradacji konta serwisowego (pierwszy
 // czynny admin w tabeli) czuwacze dostawaly 403 — a ich petla lapie kazdy blad jako „panel
 // nieosiagalny", pisze JEDEN wiersz do lokalnego pliku przy drukarce i probuje dalej bez
@@ -167,7 +164,7 @@ const DLA_KAZDEGO = ['/wyloguj', '/motyw', '/menu-boczne', '/konto', '/konto/imi
 //
 // ⚠️ Mapowanie na ekran ZOSTAJE bez zmian — czlowiek z rola Produkcja dalej nie ma tu czego
 // szukac. To jest wylacznie wyjatek dla KONTA MASZYNOWEGO, i dlatego czyta go `dopuscSerwisowe`
-// w security/straznik.js, a nie `ekranDlaAdresu`.
+// w core/bezpieczenstwo/straznik.js, a nie `ekranDlaAdresu`.
 const PREFIKSY_MASZYNOWE = ['/kolejka-druku', '/kolejka-druku-faktur'];
 
 const wSekcji = (sciezka, prefiks) => sciezka === prefiks || sciezka.startsWith(`${prefiks}/`);
@@ -185,9 +182,7 @@ export function czyTrasaMaszynowa(url) {
  * Klucz ekranu, do ktorego nalezy adres — albo `null`, gdy do ZADNEGO.
  *
  * ⚠️ `null` JEST ODMOWA, nie „przepusc". Regula odwrotna znaczy, ze kazda trasa dopisana
- * za pol roku jest po cichu otwarta dla wszystkich. Bezpiecznikiem jest test kompletnosci
- * tras wyliczany Z INSTANCJI FASTIFY (tests/oms/kompletnosc-tras.test.js) — nowa trasa
- * bez przypisania to czerwony test, a nie niespodzianka na produkcji.
+ * za pol roku jest po cichu otwarta dla wszystkich.
  */
 export function ekranDlaAdresu(url) {
   const sciezka = String(url ?? '').split('?')[0] || '/';
@@ -270,7 +265,7 @@ export const ROLE = {
   administrator: { etykieta: 'Administrator', ekrany: '*', admin: true },
   sprzedaz: {
     etykieta: 'Sprzedaż',
-    // Wszystko poza pieniedzmi wlasciciela (finanse: ZUS, PIT-5, rachunek zarzadczy)
+    // Wszystko poza pieniedzmi sprzedawcy (finanse: ZUS, PIT-5, rachunek zarzadczy)
     // i poza konfiguracja panelu (ustawienia: tokeny, wiazanie kanalow).
     ekrany: EKRANY.map((e) => e.klucz).filter((k) => k !== 'finanse' && k !== 'ustawienia'),
     admin: false,

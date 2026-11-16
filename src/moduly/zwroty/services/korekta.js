@@ -34,7 +34,7 @@ const UWAGI_NA_DOKUMENCIE = 'Zwrot towaru';
 const dzien = (t) => String(t ?? '').slice(0, 10);
 
 /**
- * Usluga wystawienia korekty w inFakcie — spina `paryKorekty` (domain/korekta-pozycje.js),
+ * Usluga wystawienia korekty w inFakcie — spina `paryKorekty` (domena/korekta-pozycje.js),
  * rezerwacje w bazie i klienta inFaktu (`wystawKorekte`).
  *
  * TRZY REGULY, KTORE SA SEDNEM TEJ USLUGI:
@@ -54,7 +54,7 @@ const dzien = (t) => String(t ?? '').slice(0, 10);
  *    nigdy nie bylo, jest dokumentem NIEPRAWDZIWYM. Rozbieznosc dostaje ODMOWE PRZED
  *    rezerwacja: nieudana proba nie ma prawa zablokowac poprawnej.
  */
-// PRZ-118.08: dokument „przed”, korektę i listę korekt daje PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }`
+// Dokument „przed”, korektę i listę korekt daje PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }`
 // przez `zProgramu`); teksty dla człowieka jego nazwą (dla inFaktu znak w znak jak przed zmianą).
 export function createKorekta({ db, program: programPodany = null, infakt = null,
   nipSprzedawcy = /** @type {string | (() => string | null | undefined) | null} */ (null),
@@ -64,10 +64,10 @@ export function createKorekta({ db, program: programPodany = null, infakt = null
   async function wystaw(zamowienieId, zwrotId) {
     const z = pobierzZamowienie(db, zamowienieId);
     if (!z) throw bladOperatora('Nie ma takiego zamówienia.');
-    // ⚠️ Rozbieznosc z briefem: kolumna nazywa sie `infakt_uuid`, nie `uuid`
-    // (schema.sql: `faktury.infakt_uuid`) — tak samo czyta ja domain/ksef-doczytanie.js
-    // i routes/zamowienia.js. `z.faktura.uuid` bylby zawsze `undefined`.
-    // PRZ-121.A04b: faktura INNEGO programu (np. inFaktu przy innym module) = 409 `bezProgramu` TUTAJ — przed
+    // ⚠️ Wiersz faktury nie ma kolumny `uuid` — `z.faktura.uuid` byłoby zawsze `undefined`.
+    // Identyfikator dokumentu czyta `idDokumentuDla` (domena/dokument-programu.js — jedyne
+    // miejsce w `src/`, które czyta kolumnę `infakt_uuid`).
+    // Faktura INNEGO programu (np. inFaktu przy innym module) = 409 `bezProgramu` TUTAJ — przed
     // odczytem „przed” z programu i przed `zarezerwujKorekte`: odmowa nie ma prawa zablokować zwrotu ani pytać obcy program.
     const uuidFaktury = idDokumentuDla(z.faktura, program);
     if (!uuidFaktury) {
@@ -77,17 +77,17 @@ export function createKorekta({ db, program: programPodany = null, infakt = null
     if (!w) throw bladOperatora('Nie ma takiego zwrotu przy tym zamówieniu.');
 
     // ⚠️⚠️ JEDNA KOREKTA NA FAKTURE — I TO JEST BARIERA PODATKOWA, NIE WYGODA. Regule liczy
-    // DOMENA (`powodOdmowyKorektyDlaFaktury`, domain/zwrot.js) i to samo zdanie czyta baza
-    // WEWNATRZ transakcji rezerwacji (db/zwroty.js) — tutaj jest odmowa DLA CZLOWIEKA, tam
+    // DOMENA (`powodOdmowyKorektyDlaFaktury`, domena/zwrot.js) i to samo zdanie czyta baza
+    // WEWNATRZ transakcji rezerwacji (oms/db/zwroty.js) — tutaj jest odmowa DLA CZLOWIEKA, tam
     // bariera na wyscig. Powod odmowy i jego uzasadnienie stoja przy regule, nie tutaj.
     //
     // ⚠️ ODMOWA PRZED REZERWACJA (i przed dotknieciem inFaktu) — ta sama zasada, co przy
     // rozbieznosci pozycji nizej: nieudana proba nie ma prawa zablokowac poprawnej.
     //
-    // ⚠️⚠️ DWIE ODMOWY, NIE JEDNA (K1, recenzja kontrolna 2026-08-15). Ta pierwsza patrzy na
-    // INNE zwroty tego zamowienia; druga — na TEN zwrot, bo „Korektę wystawiłem ręcznie"
-    // zapisuje numer BEZ rezerwacji i do 2026-08-15 nie zatrzymywal go tu NIKT: panel skladal
-    // drugi dokument w inFakcie, a `zapiszKorekte` (COALESCE) nadpisywalo numer reczny nowym.
+    // ⚠️⚠️ DWIE ODMOWY, NIE JEDNA. Ta pierwsza patrzy na
+    // INNE zwroty tego zamówienia; druga — na TEN zwrot, bo „Korektę wystawiłem ręcznie"
+    // zapisuje numer BEZ rezerwacji. Bez drugiej odmowy panel złożyłby drugi dokument
+    // w inFakcie, a `zapiszKorekte` (COALESCE) nadpisałoby numer ręczny nowym.
     const odmowaFaktury = powodOdmowyKorektyDlaFaktury(w, zwrotyZamowienia(db, zamowienieId));
     if (odmowaFaktury) throw bladOperatora(odmowaFaktury);
     const odmowaZwrotu = powodOdmowyWystawieniaKorekty(w);
@@ -160,19 +160,19 @@ export function createKorekta({ db, program: programPodany = null, infakt = null
   /**
    * Numer korekty pojawia sie DOPIERO po przetworzeniu zlecenia po stronie inFaktu, wiec
    * ekran zwrotu pyta o niego przy otwarciu. Ta sama droga, co przy numerze KSeF
-   * (domain/ksef-doczytanie.js).
+   * (domena/ksef-doczytanie.js).
    *
    * ⚠️ NIE RZUCA NIGDY. Nieosiagalny inFakt nie ma prawa zamknac ekranu zwrotu — operator
    * przychodzi tu takze po to, zeby oznaczyc oddanie pieniedzy.
    *
-   * ⚠️⚠️ SAM `corrected_invoice_number` NIE WYSTARCZA I TO BYLA WADA KRYTYCZNA. Do jednej
+   * ⚠️⚠️ SAM `corrected_invoice_number` NIE WYSTARCZA. Do jednej
    * faktury moze istniec korekta, ktora NIE JEST korekta tego zwrotu: przypisana wczesniej
    * DRUGIEMU zwrotowi tego zamowienia albo wystawiona RECZNIE w inFakcie miesiac wczesniej.
-   * Zmierzone: zamowienie z faktura `FV 1/08/2026` i dwoma zwrotami (sierpien, wrzesien),
-   * w inFakcie JEDNA korekta → oba zwroty dostawaly ten sam numer, `zwrotRozliczony` oddawal
-   * `true` dla obu i zamowienie schodzilo z listy roboczej. To zlamanie niezmiennika, na
+   * Przykład: zamówienie z fakturą i dwoma zwrotami w różnych miesiącach,
+   * w inFakcie JEDNA korekta → oba zwroty dostałyby ten sam numer, `zwrotRozliczony` oddałby
+   * `true` dla obu i zamówienie zeszłoby z listy roboczej. To złamanie niezmiennika, na
    * ktorym stoi cala ta sciezka: odczyt mial byc JEDYNYM DOWODEM, ze korekta powstala
-   * (`201` z inFaktu nie dowodzi niczego — notatka 2026-08-14-oms-zwroty-pomiar.md),
+   * (`201` z inFaktu nie dowodzi niczego — zmierzone na koncie inFaktu),
    * a „potwierdzal" dokument, ktorego nie ma.
    *
    * Dlatego kandydat musi przejsc TRZY sita, a nie jedno:
@@ -180,7 +180,7 @@ export function createKorekta({ db, program: programPodany = null, infakt = null
    *   2. numer/uuid dokumentu NIE JEST juz przypisany innemu zwrotowi tego zamowienia,
    *   3. dokument NIE JEST STARSZY niz zlecenie tego zwrotu.
    * Zostaje DOKLADNIE JEDEN kandydat albo nie zapisujemy nic — dwa pasujace dokumenty to
-   * niepewnosc, a niepewnosc konczy sie tu cisza, ktora po progu (domain/zwrot.js) i tak
+   * niepewnosc, a niepewnosc konczy sie tu cisza, ktora po progu (domena/zwrot.js) i tak
    * zamienia sie w widoczny blad dla czlowieka.
    */
   async function doczytaj(zamowienieId, zwrotId) {
@@ -189,7 +189,7 @@ export function createKorekta({ db, program: programPodany = null, infakt = null
     const z = pobierzZamowienie(db, zamowienieId);
     const numerFaktury = z?.faktura?.numer;
     if (!numerFaktury) return;
-    // PRZ-121.A04b (recenzja): faktura INNEGO programu — bez pytania obcego programu. Jego korekta do własnej faktury
+    // Faktura INNEGO programu — bez pytania obcego programu. Jego korekta do własnej faktury
     // o tym samym numerze przykleiłaby się do tego zwrotu (sito 1 porównuje sam numer) i rozliczyła go fałszywie.
     if (programDokumentu(z.faktura) !== null && !czyDokumentProgramu(z.faktura, program)) return;
     const wszystkie = zwrotyZamowienia(db, zamowienieId);
@@ -199,7 +199,7 @@ export function createKorekta({ db, program: programPodany = null, infakt = null
       .flatMap((x) => [x.korekta_numer, x.korekta_uuid])
       .filter(Boolean));
 
-    // PRZ-147.02b: STAN ZLECENIA wg referencji — PRZED W3 niżej. Referencja wskazuje dokładnie TEN zwrot, więc
+    // STAN ZLECENIA wg referencji — PRZED sitem „więcej niż jedna otwarta sprawa” niżej. Referencja wskazuje dokładnie TEN zwrot, więc
     // zakaz zgadywania przy dwóch otwartych sprawach jej nie dotyczy. Zwalniamy WYŁĄCZNIE przy pewnej odmowie
     // (`odrzucona`); `nieznany`, 404 i błąd sieci (wyjątek) = cisza i dalej droga listy jak dotąd — zwolnienie przy
     // niepewnym stanie mogłoby dać drugą korektę do tej samej faktury.
@@ -233,7 +233,7 @@ export function createKorekta({ db, program: programPodany = null, infakt = null
       if (status?.stan === 'wystawiona') uuidZeStatusu = status.uuid ?? null;
     }
 
-    // Referencja wskazuje ten zwrot: odczyt uuid rozstrzyga przed W3, bez sita daty.
+    // Referencja wskazuje ten zwrot: odczyt uuid rozstrzyga przed sitem otwartych spraw, bez sita daty.
     if (uuidZeStatusu && typeof program?.pobierzKorekte === 'function') {
       let dokument; let odczytany = false;
       try {
@@ -263,12 +263,12 @@ export function createKorekta({ db, program: programPodany = null, infakt = null
     }
 
     // ⚠️⚠️ WIECEJ NIZ JEDNA OTWARTA SPRAWA KOREKTY = NIE ZGADUJEMY. TO JEST SWIADOMA DECYZJA,
-    // A NIE BRAK POMYSLU (W3, recenzja kontrolna 2026-08-15).
+    // A NIE BRAK POMYSLU.
     //
     // Sito 2 nizej odrzuca dokumenty ZAJETE przez inny zwrot — ale zwrot, ktory numeru jeszcze
-    // NIE MA, niczego nie zajmuje. Zmierzone: zwrot A z wiszaca rezerwacja po zerwanym
+    // NIE MA, niczego nie zajmuje. Przykład: zwrot A z wiszaca rezerwacja po zerwanym
     // polaczeniu, zwrot B bez numeru, w inFakcie JEDNA korekta wystawiona RECZNIE do B → numer
-    // B ladowal na zwrocie A, `zwrotRozliczony(A)` oddawal `true` i zamowienie schodzilo z listy
+    // B wylądowałby na zwrocie A, `zwrotRozliczony(A)` oddałby `true` i zamówienie zeszłoby z listy
     // roboczej. Reczne wystawienie drugiej korekty jest droga, ktora ten modul sam NAZYWA
     // ZALECANA (panel odmawia drugiej korekty swiadomie), wiec to nie jest przypadek teoretyczny.
     //
@@ -282,18 +282,18 @@ export function createKorekta({ db, program: programPodany = null, infakt = null
     // „Otwarta sprawa" = zwrot BEZ numeru korekty przy zafakturowanym zamowieniu; kazdy taki
     // zwrot moze jeszcze dostac numer, wiec kazdy jest kandydatem do pomylki.
     //
-    // ⚠️⚠️ REGULA MIESZKA W `domain/zwrot.js` (`korektaNieSprawdzona`), NIE TUTAJ (recenzja
-    // kontrolna 2026-08-15). Ekran zwrotu (routes/zwroty.js) musi umiec odroznic „pytalismy
+    // ⚠️⚠️ REGULA MIESZKA W `domena/zwrot.js` (`korektaNieSprawdzona`), NIE TUTAJ.
+    // Ekran zwrotu (moduly/zwroty/trasy/wspolne.js) musi umiec odroznic „pytalismy
     // i korekty nie ma" od „NIE pytalismy, bo sito nas zatrzymalo" — inaczej po progu
     // `korektaPrzepadla` widok twierdzi, ze inFakt odrzucil dokument, ktorego swiadomie nie
-    // sprawdzil. Trasa i ta funkcja czytaja TERAZ DOKLADNIE TO SAMO zdanie; dwie kopie tego
+    // sprawdzil. Trasa i ta funkcja czytaja DOKLADNIE TO SAMO zdanie; dwie kopie tego
     // warunku rozjechalyby sie przy pierwszej zmianie sita.
     if (korektaNieSprawdzona(w, wszystkie)) return;
 
     // Sito 3: data dokumentu wobec dnia zlecenia. `>=`, nie `>`: korekta powstaje zwykle
     // TEGO SAMEGO DNIA, co zlecenie, a `korekta_zlecona_at` jest w UTC (dzien UTC nigdy nie
     // jest pozniejszy niz warszawski), wiec ostrzejszy warunek odrzucalby poprawne trafienia.
-    // ⚠️ SWIADOMA TOLERANCJA: dokument BEZ zadnej daty przechodzi. Pomiar 2026-08-14 wymienia
+    // ⚠️ SWIADOMA TOLERANCJA: dokument BEZ zadnej daty przechodzi. Pomiar na koncie inFaktu wymienia
     // pola encji korekty istotne dla ZAPISU i nie rozstrzyga, ktore pole daty niesie LISTA
     // (`created_at` czy `invoice_date`) — odrzucanie po nieznanym polu wygaszaloby doczytanie
     // dla wszystkich korekt naraz, a to samo w sobie jest awaria. Twardym sitem jest tu 2.
@@ -306,10 +306,10 @@ export function createKorekta({ db, program: programPodany = null, infakt = null
     try {
       const lista = await program.listaKorekt({});
       // ⚠️ PO `corrected_invoice_number`, NIE po referencji zadania — encja korekty referencji
-      // NIE NIESIE (sprawdzone na zywym koncie 2026-08-14).
+      // NIE NIESIE (sprawdzone na żywym koncie).
       const kandydaci = (lista ?? []).filter((k) => k.corrected_invoice_number === numerFaktury
         && !zajete.has(k.number) && !zajete.has(k.uuid) && nieStarsza(k)
-        // PRZ-147.02b: status `wystawiona` zna uuid dokumentu — warunek tylko ODEJMUJE kandydatów, nigdy nie dodaje.
+        // Status `wystawiona` zna uuid dokumentu — warunek tylko ODEJMUJE kandydatów, nigdy nie dodaje.
         && (!uuidZeStatusu || k.uuid === uuidZeStatusu));
       const znaleziona = kandydaci.length === 1 ? kandydaci[0] : null;
       if (znaleziona) {
@@ -319,7 +319,7 @@ export function createKorekta({ db, program: programPodany = null, infakt = null
         // ⚠️ SLAD W LOGU ZAMOWIENIA. To jest zapis NUMERU DOKUMENTU PODATKOWEGO rozliczajacego
         // zwrot — bez wpisu po miesiacu nie da sie odpowiedziec, skad ten numer sie wzial ani
         // kiedy przybyl, a od niego zalezy, czy zwrot liczy sie jako rozliczony. Wpis powstaje
-        // WYLACZNIE przy FAKCIE (tak samo jak w services/ksef-doczytanie.js): inaczej historia
+        // WYLACZNIE przy FAKCIE (tak samo jak w moduly/faktury/services/ksef-doczytanie.js): inaczej historia
         // zamowienia roslaby proporcjonalnie do liczby odslon ekranu.
         //
         // ⚠️ To NIE JEST „Ręcznie (kto): …" — nikt tego nie klikal. Panel przeczytal fakt

@@ -1,12 +1,12 @@
-// ⚠️⚠️ REZERWACJA PRZED WYSŁANIEM DOKUMENTU DO KSeF (przewodnik 4.2). Jedyna bariera przed
-// DRUGIM ZGŁOSZENIEM TEGO SAMEGO DOKUMENTU U ORGANU — a duplikatu w KSeF nie da się skasować,
-// zostaje wyłącznie korekta.
+// ⚠️⚠️ REZERWACJA PRZED WYSŁANIEM DOKUMENTU DO KSeF (reguła: rezerwacja przed wywołaniem). Jedyna
+// bariera przed DRUGIM ZGŁOSZENIEM TEGO SAMEGO DOKUMENTU U ORGANU — a duplikatu w KSeF nie da się
+// skasować, zostaje wyłącznie korekta.
 //
-// Dlaczego sam `ksef_number` nie wystarczał: inFakt nadaje ten numer dopiero po ~70 sekundach
-// od przyjęcia zlecenia (docblock `wyslijDokumentDoKsef` w infakt/client.js), więc przez te
-// siedemdziesiąt sekund przeliczenie zbioru jest ŚLEPE na wysyłkę, którą panel sam przed
-// chwilą zlecił. Przycisk zatwierdzenia jest zwykłym formularzem, panel nie ma JavaScriptu
-// i celowo nie przekierowuje po wysyłce — dwuklik, back+resubmit i dwie otwarte karty
+// Dlaczego sam `ksef_number` nie wystarcza: inFakt nadaje ten numer dopiero po około minucie
+// od przyjęcia zlecenia (docblock `wyslijDokumentDoKsef` w oms/infakt/client.js), więc przez ten
+// czas przeliczenie zbioru jest ŚLEPE na wysyłkę, którą panel sam przed chwilą zlecił.
+// Przycisk zatwierdzenia jest zwykłym formularzem bez JavaScriptu, a trasa celowo
+// nie przekierowuje po wysyłce — dwuklik, back+resubmit i dwie otwarte karty
 // podglądu to zwykłe drogi do drugiego, NIEODWRACALNEGO zgłoszenia.
 //
 // To ten sam wzorzec, co `rozpocznijFakture` i `zajmijWysylkeDoAllegro` (db/faktury.js):
@@ -49,11 +49,11 @@ export function zajmijWysylkeKsef(db, uuid, { numer = null, kiedy = teraz() } = 
 /**
  * Zdjęcie rezerwacji — WYŁĄCZNIE po awarii JEDNOZNACZNEJ.
  *
- * ⚠️⚠️ TA FUNKCJA ISTNIEJE, ŻEBY PANEL NIE WCHODZIŁ W STAN BEZ WYJŚCIA (niezmiennik 4.9,
- * powracający tryb awarii tego projektu). Rezerwacja trwała przy KAŻDYM wyniku zamykała
- * dokument NA ZAWSZE także wtedy, gdy inFakt zgłoszenie ODRZUCIŁ (4xx) albo gdy do
- * wywołania w ogóle nie doszło: panel odmawiał wysyłki, której organ nigdy nie dostał,
- * a jedynym wyjściem była ręczna wysyłka w inFakcie.
+ * ⚠️⚠️ TA FUNKCJA ISTNIEJE, ŻEBY PANEL NIE WCHODZIŁ W STAN BEZ WYJŚCIA (reguła: każdy stan
+ * ma wyjście). Rezerwacja trwała przy KAŻDYM wyniku zamykałaby dokument NA ZAWSZE także
+ * wtedy, gdy inFakt zgłoszenie ODRZUCIŁ (4xx) albo gdy do wywołania w ogóle nie doszło:
+ * panel odmawiałby wysyłki, której organ nigdy nie dostał, a jedynym wyjściem byłaby
+ * ręczna wysyłka w inFakcie.
  *
  * ⚠️⚠️ WOLNO JĄ WYWOŁAĆ WYŁĄCZNIE TAM, GDZIE PANEL WIE, ŻE DOKUMENT DO ORGANU NIE POSZEDŁ:
  * inFakt odpowiedział i odmówił (4xx), albo `wyslijDokumentDoKsef` nie zostało w ogóle zawołane.

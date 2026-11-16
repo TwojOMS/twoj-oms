@@ -1,8 +1,7 @@
 // Wlasna seria numeracji zamowien wprowadzanych recznie: R/RRRR/NNN.
 //
-// Decyzja wlasciciela (spec Etap 3, punkt 4): od razu widac, ze zamowienie jest spoza
-// sklepu — w panelu, na liscie przewozowym i w rozmowie z klientem — i numer nie moze
-// zderzyc sie z tym, ktory sklep dopiero nada.
+// Od razu widac, ze zamowienie jest spoza sklepu — w panelu, na liscie przewozowym
+// i w rozmowie z klientem — i numer nie moze zderzyc sie z tym, ktory sklep dopiero nada.
 const WZORZEC = /^R\/(\d{4})\/(\d+)$/;
 
 /** `formatujNumer(2026, 7)` → `'R/2026/007'`. Powyzej 999 numer ROSNIE, nie urywa sie. */
@@ -16,13 +15,13 @@ export function kolejnyZNumeru(numer) {
 }
 
 /**
- * `zrodlo_id` zapisywany w bazie dla zamowienia recznego (db/zamowienia-reczne.js).
+ * `zrodlo_id` zapisywany w bazie dla zamowienia recznego (oms/db/zamowienia-reczne.js).
  *
  * ⚠️ NIE WOLNO uzywac samej pozycji w roku (1, 2, 3...) — `UNIQUE (sklep, zrodlo_id)`
- * w schema.sql nie wie NIC o latach, a licznik pozycji zeruje sie z rokiem
+ * w schemacie bazy nie wie NIC o latach, a licznik pozycji zeruje sie z rokiem
  * (nastepnyNumerReczny). Pierwsze zamowienie 2027 mialoby wiec ta sama pozycje co
  * pierwsze zamowienie 2026 — ten sam `zrodlo_id` — i INSERT rzucalby surowym bledem
- * SQLite operatorowi w twarz, dokladnie tak, jak potwierdzil recenzent.
+ * SQLite operatorowi w twarz.
  *
  * Kodowanie `rok * 100000 + kolejny`: mnoznik 100000 zostawia PIEC CYFR na pozycje
  * w roku, czyli do 99 999 zamowien rocznie — sto razy wiecej, niz kiedykolwiek pokaze

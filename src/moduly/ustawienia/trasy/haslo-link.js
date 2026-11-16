@@ -1,4 +1,4 @@
-// PRZ-069: otwarta trasa ustawienia hasła z jednorazowego linku. Bez automatycznego logowania.
+// Otwarta trasa ustawienia hasła z jednorazowego linku. Bez automatycznego logowania.
 // Każdy zły link (zużyty, przeterminowany, podmieniony, wyłączonego konta) dostaje TEN SAM komunikat
 // i liczy się do hamulca po IP — odpowiedź nie mówi, który z powodów zaszedł.
 import { utworzHamulec, LIMIT_PROB, KARA_MS } from '../../../core/bezpieczenstwo/hamulec.js';
@@ -9,8 +9,8 @@ import { MIN_DLUGOSC_HASLA } from './moje-konto.js';
 const NIEWAZNY = 'Link jest nieważny — poproś administratora o nowy.';
 
 /**
- * ⚠️ `strict-origin`, NIE `no-referrer` (recenzja D8 r1, P1-1 — zmierzone w Chromium 149 i Edge 155, tabela
- * w docs/prz069-odbior.md). Przy `no-referrer` przeglądarka wysyła z POST formularza `Origin: null` i bez
+ * ⚠️ `strict-origin`, NIE `no-referrer` (zmierzone w Chromium 149 i Edge 155).
+ * Przy `no-referrer` przeglądarka wysyła z POST formularza `Origin: null` i bez
  * Referera — ochrona CSRF (src/core/bezpieczenstwo/csrf.js) odrzuca to 403, więc hasła z linku nie dało się
  * ustawić w żadnej prawdziwej przeglądarce. `strict-origin` daje poprawny Origin, a Referer to sam origin
  * („http://host/”) — ścieżka z tokenem nie wychodzi w Refererze NIGDZIE, także do własnego serwera.
@@ -19,7 +19,7 @@ const NIEWAZNY = 'Link jest nieważny — poproś administratora o nowy.';
 export const POLITYKA_REFERERA_LINKU = 'strict-origin';
 
 export function registerHasloLinkRoutes(app, { db, teraz }) {
-  // Wygaszanie po karze i limit kluczy (recenzja D8 r1, P3-3): zgadywanie 256-bitowego tokenu jest bez sensu,
+  // Wygaszanie po karze i limit kluczy: zgadywanie 256-bitowego tokenu jest bez sensu,
   // hamulec tnie hałas — po karze licznik startuje od zera, a mapa w pamięci nie rośnie bez końca.
   const hamulec = utworzHamulec({ wygasanieMs: KARA_MS, maksKluczy: 10_000 });
   const chwila = () => teraz().getTime();

@@ -1,4 +1,4 @@
-// PRZ-091 — ekrany stanów magazynowych w zakładce Magazyn: import stanu otwarcia i pozycje zamówień bez karty.
+// Ekrany stanów magazynowych w zakładce Magazyn: import stanu otwarcia i pozycje zamówień bez karty.
 // Ruch ręczny z karty produktu obsługuje karta.js (potrzebuje jej ekranu do pokazania odmowy).
 // Wszystko tutaj działa WYŁĄCZNIE przy włączonych stanach (Ustawienia → Magazyn); wyłączone = 409 z wyjaśnieniem.
 import { przelacznikStanow, pozycjeBezKarty, podgladImportuOtwarcia, zapiszImportOtwarcia } from '../../oms/db/stany-magazynowe.js';

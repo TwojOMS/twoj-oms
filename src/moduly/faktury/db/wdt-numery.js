@@ -1,9 +1,9 @@
 // Licznik osobnej serii faktur WDT (WDT/n/MM/RRRR) — warstwa bazy. Format numeru i całą
-// resztę reguły trzyma domain/wdt.js; tutaj jest wyłącznie SQL.
+// resztę reguły trzyma domena/wdt.js; tutaj jest wyłącznie SQL.
 //
 // ⚠️ REZERWACJA JEST ATOMOWA (jeden UPSERT z RETURNING), bo wystawianie faktury to długie
 // `await` na inFakcie — dwa wystawiania WDT naraz nie mogą wyjść z tym samym numerem.
-// Wzorzec RETURNING jak w db/magazyn.js.
+// Wzorzec RETURNING jak w oms/db/magazyn.js.
 
 /** Zajmuje i oddaje kolejny numer serii w danym miesiącu (1, 2, 3…). */
 export function zarezerwujNumerWdt(db, { rok, miesiac }) {

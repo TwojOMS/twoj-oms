@@ -1,14 +1,14 @@
-// PRZ-160 E3.08a (D29) — części wspólne pętli ofert ERLI i Allegro, przeniesione z `petla-ofert.js`
-// bez zmiany zachowania. Jedyna różnica: komunikat bramki mówi, o którą listę kont chodzi.
+// Części wspólne pętli ofert ERLI i Allegro (`petla-ofert.js`, `petla-ofert-allegro.js`).
+// Komunikat bramki mówi, o którą listę kont chodzi (parametr `kanal` w `bramkaZapisu`).
 import { createHash, randomInt } from 'node:crypto';
 
 const KLUCZ_ZNAKU = 'oferty.znak_instalacji';
 // Bez znaków mylących na etykiecie (l/1, o/0, i).
 const ALFABET_ZNAKU = 'abcdefghjkmnpqrstuvwxyz23456789';
-// Pola treści — porównywane skrótem ostatnio wysłanej (decyzja 7); reszta z odczytu kanału.
+// Pola treści — porównywane skrótem ostatnio wysłanej; reszta z odczytu kanału.
 export const POLA_POZA_TRESCIA = ['price', 'stock', 'status'];
 
-/** Znak instalacji (D10): 6 losowych znaków, generowany raz i trwale w tabeli `ustawienia`. */
+/** Znak instalacji: 6 losowych znaków, generowany raz i trwale w tabeli `ustawienia`. */
 export function znakInstalacji(db, { losuj = randomInt, teraz = () => new Date() } = {}) {
   const istniejacy = db.prepare('SELECT wartosc FROM ustawienia WHERE klucz = ?').get(KLUCZ_ZNAKU);
   if (istniejacy) return String(istniejacy.wartosc);
@@ -48,7 +48,7 @@ export function bramkaZapisu({ konto, ustawienia, oferta, klucze, kanal = 'ERLI'
   return { wolno: true };
 }
 
-/** Próg potwierdzenia ceny (D13a) względem ceny w kanale. */
+/** Próg potwierdzenia ceny względem ceny w kanale. */
 export function cenaWymagaPotwierdzenia(kanalGr, celGr, progBp) {
   return Number.isSafeInteger(kanalGr) && kanalGr > 0 && Math.abs(celGr - kanalGr) * 10000 > progBp * kanalGr;
 }

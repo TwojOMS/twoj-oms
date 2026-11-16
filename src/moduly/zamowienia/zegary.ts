@@ -4,7 +4,7 @@ import { ODSTEP_PONAWIANIA_STATUSU_MS } from './services/sync-sklep.js';
 type Wynik = { kandydatow: number; wyslane: number; bledy: number };
 
 /**
- * PRZ-117: ponawianie statusu, który nie dojechał do Allegro albo sklepu przez chwilową awarię (1496, 26.10.2026).
+ * Ponawianie statusu, który nie dojechał do Allegro albo sklepu przez chwilową awarię.
  * Cichy, gdy nie ma kandydatów; awaria przebiegu idzie do logu kontenera i nie zatrzymuje zegara.
  */
 export function zegarPonawianiaStatusow(o: { sync: { ponowPrzejsciowe: (a: { teraz: Date }) => Promise<Wynik> };

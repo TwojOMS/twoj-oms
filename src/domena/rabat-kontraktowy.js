@@ -1,12 +1,12 @@
 import { parsujRabat } from './rabat.js';
 
 // Stawka rabatu, ktora NALEZY SIE klientowi z umowy — i decyzja, co z nia zrobic wobec
-// stawki juz wpisanej na zamowieniu (2026-08-23).
+// stawki juz wpisanej na zamowieniu.
 //
-// ⚠️ POWOD ISTNIENIA: rabat 40% klienta hurtowego byl wpisany w dwoch miejscach naraz i dzialal
-// wylacznie wtedy, gdy operator kliknal „Wstaw dane klienta". Dwa z trzech sierpniowych
-// zamowien tego klienta stanely po cenie KATALOGOWEJ — faktura zbiorcza bylaby zawyzona
-// o 69,56 zl. Stawka umowna nie moze zalezec od pamieci czlowieka.
+// ⚠️ POWÓD ISTNIENIA: rabat klienta hurtowego był wpisany w dwóch miejscach naraz i działał
+// wyłącznie wtedy, gdy operator kliknął „Wstaw dane klienta". Część zamówień takiego klienta
+// stawała po cenie KATALOGOWEJ — faktura zbiorcza byłaby zawyżona. Stawka umowna nie może
+// zależeć od pamięci człowieka.
 //
 // ⚠️ MODUL JEST CZYSTY: bez bazy, bez konfiguracji, bez zegara. Dostaje gotowy wiersz klienta
 // i oddaje liczbe oraz nazwe decyzji. Wyszukanie klienta robi serwis, przecenianie pozycji —
@@ -16,7 +16,7 @@ import { parsujRabat } from './rabat.js';
  * @param {{klientBazy: object|null}} zrodla
  * @returns {{procent: number, zrodlo: 'baza'|'brak'}}
  *
- * ⚠️ POLE `rozjazd` ODESZLO 2026-08-24 RAZEM Z `OMS_KLIENCI_ZBIORCZY`. Do tego dnia stawka
+ * ⚠️ POLE `rozjazd` ODESZŁO RAZEM Z `OMS_KLIENCI_ZBIORCZY`. Wcześniej stawka
  * stala w dwoch miejscach naraz (baza i `.env`), wiec ta funkcja oddawala rozjazd, a karta
  * pokazywala pas bez przycisku — naprawa nie byla w zasiegu ekranu. Zrodlo jest teraz JEDNO
  * (karta klienta), wiec nie ma dwoch liczb do uzgadniania.

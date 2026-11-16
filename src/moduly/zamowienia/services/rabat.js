@@ -10,7 +10,7 @@ import { czytajStawkeDomyslna } from '../../faktury/db/stawka-vat.js';
 import { zwolnionaZFlagi } from '../../faktury/db/zwolnienie-vat.js';
 
 // ZMIANA RABATU NA KARCIE — jedyna droga, którą wolno przeliczyć ceny już zapisanego
-// zamówienia (21.08.2026).
+// zamówienia.
 //
 // ⚠️⚠️ KOLEJNOŚĆ W TEJ FUNKCJI JEST O PIENIĄDZE i nie wolno jej przestawiać:
 //   1. POZYCJE — nowe ceny jednostkowe i kwoty linii;
@@ -31,7 +31,7 @@ import { zwolnionaZFlagi } from '../../faktury/db/zwolnienie-vat.js';
  *   pozycja pominięta (cena wpisana ręcznie) wygląda z zewnątrz jak rabat, który „nie
  *   zadziałał", i operator szukałby usterki tam, gdzie jej nie ma.
  */
-// PRZ-122.B07c: `opcje` = `{ zw: true }` (program wbudowany) — przeliczona pozycja ze stawką „zw” zapisuje się z nią.
+// `opcje` = `{ zw: true }` (program wbudowany) — przeliczona pozycja ze stawką „zw” zapisuje się z nią.
 // Stawka domyślna do ÷ przy WDT czytana bez flagi (jak dotąd): „zw” nie jest dzielnikiem ceny.
 export function zmienUstalenia(db, id, { b2b, termin_platnosci: termin, rabat_procent: rabatSurowy }, opcje) {
   const przed = pobierzZamowienie(db, id);
@@ -45,9 +45,9 @@ export function zmienUstalenia(db, id, { b2b, termin_platnosci: termin, rabat_pr
     // Zamowienie WDT (nabywca z numerem VAT-UE): ceny panelu zawieraja ÷1,23, wiec
     // rozpoznanie „pozycji panelu" i nowa cena musza isc ta sama transformacja —
     // inaczej zmiana rabatu pominelaby caly wsad z magazynu jako „wyceniony recznie".
-    // PRZ-122.B07f: firma zwolniona z VAT (flaga `zw` + zapisane zwolnienie) — numer UE to nie WDT, rabat od brutto.
+    // Firma zwolniona z VAT (flaga `zw` + zapisane zwolnienie) — numer UE to nie WDT, rabat od brutto.
     wdt: czyWdt(daneFaktury(przed).nip, { zwolniona: zwolnionaZFlagi(db, opcje) }),
-    // PRZ-105: ÷ stawka domyślna z Ustawień — ta sama, którą pozycja weszła z magazynu.
+    // ÷ stawka domyślna z Ustawień — ta sama, którą pozycja weszła z magazynu.
     stawkaDomyslna: czytajStawkeDomyslna(db),
   });
 
@@ -84,15 +84,15 @@ export function zmienUstalenia(db, id, { b2b, termin_platnosci: termin, rabat_pr
 /**
  * Stawka umowna dla NIP-u i decyzja, co z nia zrobic — cienka warstwa nad dwoma odczytami.
  *
- * ⚠️ CALA REGULA MIESZKA W `domain/rabat-kontraktowy.js`. Tutaj jest wylacznie wyszukanie
+ * ⚠️ CALA REGULA MIESZKA W `domena/rabat-kontraktowy.js`. Tutaj jest wylacznie wyszukanie
  * klienta w bazie stalych klientow. Druga kopia reguly rozjechalaby sie z pierwsza przy
  * pierwszej zmianie.
  *
  * ⚠️ NIP normalizuje `klientPoNip` (funkcja `normalizujNip`). Wlasne czyszczenie NIP-u tutaj
  * znaczyloby, ze ten sam klient bywa rozpoznany raz tak, raz inaczej.
  *
- * ⚠️ `config` odszedl z sygnatury 2026-08-24 razem z `OMS_KLIENCI_ZBIORCZY` — stawka ma
- * dzis jedno zrodlo i nie ma drugiej liczby do porownania.
+ * ⚠️ `config` odszedl z sygnatury, bo `OMS_KLIENCI_ZBIORCZY` przeniesiono na karty
+ * klientow — stawka ma dzis jedno zrodlo i nie ma drugiej liczby do porownania.
  */
 export function rabatKontraktowy(db, nip) {
   const stawka = stawkaKontraktowa({ klientBazy: klientPoNip(db, nip) });

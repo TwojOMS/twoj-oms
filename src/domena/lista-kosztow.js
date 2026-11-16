@@ -4,10 +4,10 @@ import { grosze, zl } from './kwoty.js';
 // Widok miesiaca kosztow: z listy wierszy (jak leza w bazie, `koszty.*`) robi sumy,
 // rozbicie na kategorie, pas nieprzypisanych i liste dokumentow w obcej walucie.
 // Czysta domena — bez bazy, bez sieci; wolno wolac na dowolnej tablicy obiektow o ksztalcie
-// wiersza `koszty` (patrz `kosztyMiesiaca` w db/koszty.js).
+// wiersza `koszty` (patrz `kosztyMiesiaca` w oms/db/koszty.js).
 //
-// ⚠️⚠️ KWOTY WCHODZA JAKO NAPISY, bo `koszty.netto/vat/brutto` sa TEXT-em (niezmiennik 4.5,
-// docs/oms/PRZEWODNIK.md: arytmetyka pieniedzy WYLACZNIE przez `grosze()`, nigdy na floatach —
+// ⚠️⚠️ KWOTY WCHODZĄ JAKO NAPISY, bo `koszty.netto/vat/brutto` są TEXT-em (reguła: pieniądze
+// w groszach — arytmetyka pieniędzy WYŁĄCZNIE przez `grosze()`, nigdy na floatach;
 // ta sama zasada, co przy `naWiersz` w koszt-metadane.js). Kazde sumowanie tutaj idzie wiec
 // na liczbach calkowitych (grosze), a zamiana z powrotem na napis (`zl()`) dzieje sie DOPIERO
 // na samym koncu, raz, tuz przed zwroceniem wyniku.
@@ -20,11 +20,11 @@ import { grosze, zl } from './kwoty.js';
 // to juz sa napisy w tym samym ksztalcie ('1067.00'), wiec nie ma tu nic do przeliczenia; nie
 // wchodza jednak do zadnej sumy w tym module, wiec przejscie przez `grosze()` sluzy tu tylko
 // za straznik, ze to naprawde jest kwota (rzuci glosno na smieciu, zamiast policzyc go jako 0).
-// ⚠️⚠️ DWIE DROGI DO KATEGORII, JEDNA REGULA PIERWSZENSTWA — I MIESZKA ONA TUTAJ (2026-08-13).
+// ⚠️⚠️ DWIE DROGI DO KATEGORII, JEDNA REGUŁA PIERWSZEŃSTWA — I MIESZKA ONA TUTAJ.
 //
-// Zwykla droga jest jedna: kategoria dobiera sie PO NIP-IE sprzedawcy (db/kategorie-kosztow.js)
+// Zwykla droga jest jedna: kategoria dobiera sie PO NIP-IE sprzedawcy (oms/db/kategorie-kosztow.js)
 // i obejmuje wszystkie faktury tego sprzedawcy, takze starsze. Sprzedawca BEZ polskiego NIP-u
-// (Google, Meta, Anthropic — czyli dokladnie ci, ktorych faktur nie ma w KSeF) nie ma jednak
+// (zagraniczne platformy reklamowe i usługi — czyli dokładnie ci, których faktur nie ma w KSeF) nie ma jednak
 // jak trafic do tamtej mapy, bo jej kluczem glownym jest NIP. Takiemu dokumentowi kategorie
 // przypina sie WPROST (`koszty.kategoria_dokumentu`).
 //
@@ -36,13 +36,13 @@ import { grosze, zl } from './kwoty.js';
 // albo w widoku) znaczylaby, ze ekran i suma miesiaca moga pokazac dwie rozne kategorie tego
 // samego dokumentu — i to bez zadnego bledu.
 //
-// ⚠️ EKSPORTOWANE, BO CZYTELNIK JEST DRUGI (2026-08-14): rachunek zarzadczy
-// (domain/rachunek-zarzadczy.js) rozbija koszty okresu na kategorie i musi pytac O TO SAMO.
-// Zanim ta funkcja wyszla na zewnatrz, tamten modul pytal wylacznie mapy po NIP-ie — wiec
-// koszty dopisane recznie (Google, Meta, Anthropic — czyli dokladnie te, ktorych w KSeF nie
-// ma i dla ktorych pole kategorii dokumentu powstalo) wchodzily do rachunku jako
-// „Nieprzypisane"/„drobne", podczas gdy zakladka KOSZTY pokazywala ich prawdziwa kategorie.
-// Suma sie zgadzala, wiec nic nie krzyczalo — rozjezdzalo sie rozbicie i prog rentownosci.
+// ⚠️ EKSPORTOWANE, BO CZYTELNIK JEST DRUGI: rachunek zarządczy
+// (domena/rachunek-zarzadczy.js) rozbija koszty okresu na kategorie i musi pytać O TO SAMO.
+// Gdy tamten moduł pytał wyłącznie mapy po NIP-ie, koszty dopisane ręcznie (zagraniczni
+// dostawcy — czyli dokładnie te, których w KSeF nie ma i dla których pole kategorii dokumentu
+// powstało) wchodziły do rachunku jako „Nieprzypisane"/„drobne", podczas gdy zakładka KOSZTY
+// pokazywała ich prawdziwą kategorię. Suma się zgadzała, więc nic nie krzyczało — rozjeżdżało
+// się rozbicie i próg rentowności.
 export const kategoriaWiersza = (w, poNipie) => (
   w.kategoria_dokumentu
     ? { kategoria: w.kategoria_dokumentu, typ: w.typ_dokumentu }
@@ -53,9 +53,8 @@ export function zlozWidok({ wiersze, kategoria }) {
   const pln = wiersze.filter((w) => czyPLN({ waluta: w.waluta }));
   const obce = wiersze.filter((w) => !czyPLN({ waluta: w.waluta }));
 
-  // ⚠️ ZALOZENIE DO POTWIERDZENIA POMIAREM (Zadanie 0, ktore ma dopisac §1.5 do
-  // docs/superpowers/specs/2026-08-12-oms-koszty-ksef-design.md — na dzien pisania tego
-  // kodu pomiar jeszcze sie nie odbyl). Zakladamy, ze KSeF podaje kwoty faktury korygujacej
+  // ⚠️ ZAŁOŻENIE DO POTWIERDZENIA POMIAREM (na dzień pisania tego kodu pomiar jeszcze się
+  // nie odbył). Zakladamy, ze KSeF podaje kwoty faktury korygujacej
   // JUZ ROZNICOWO, ze znakiem — korekta na minus po prostu wchodzi do sumy ponizej (i do
   // sumy kategorii) i ja pomniejsza, bez dodatkowego odejmowania po `rodzaj === 'Kor'`.
   // JESLI POMIAR POKAZE KWOTY PELNE (dodatnie): to WLASNIE TE DWIE PETLE (ponizej, przy
@@ -104,9 +103,9 @@ export function zlozWidok({ wiersze, kategoria }) {
     suma: { netto: zl(sumaGr.netto), vat: zl(sumaGr.vat), brutto: zl(sumaGr.brutto) },
     kategorie,
     nieprzypisane: { ile: nieprzypisaneIle, netto: zl(nieprzypisaneNettoGr) },
-    // ⚠️ Z KLUCZEM I ZRODLEM, a nie samym numerem dokumentu (2026-08-13). Koszt wpisany
+    // ⚠️ Z KLUCZEM I ŹRÓDŁEM, a nie samym numerem dokumentu. Koszt wpisany
     // recznie jest po uproszczeniu formularza ZAWSZE w PLN (jedna kwota w zlotowkach —
-    // domain/koszt-reczny.js), wiec tutaj trafic juz nie moze. Klucz zostaje dla wierszy
+    // domena/koszt-reczny.js), wiec tutaj trafic juz nie moze. Klucz zostaje dla wierszy
     // wpisanych PRZED tym uproszczeniem: bez niego ekran nie mialby czym zaadresowac
     // poprawki, a to jedyne miejsce, w ktorym dokument walutowy w ogole widac.
     obcaWaluta: obce.map((w) => ({

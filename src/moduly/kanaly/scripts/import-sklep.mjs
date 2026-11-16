@@ -1,7 +1,6 @@
 // ⚠️⚠️ BEZ SHEBANGA — ŚWIADOMIE. Git zamienia LF na CRLF przy wymeldowaniu na Windowsie,
 // a esbuild (przez vitest) zdejmuje wiersz shebanga szukając znaku nowej linii — po CRLF
-// zostaje samotny znak powrotu karetki i plik przestaje się parsować. Ten sam powód, co
-// w import-apilo.mjs.
+// zostaje samotny znak powrotu karetki i plik przestaje się parsować.
 import { openOmsDb } from '../../../oms/db/db.ts';
 import { createWooClient } from '../../../oms/woo/client.js';
 import { createImportSklepu } from '../services/import-sklep.js';
@@ -20,7 +19,7 @@ import { skonfigurowanyUrl } from '../../../core/konfiguracja-wartosci.ts';
 // NAJPIERW `--sonda` (nic nie zapisuje, mierzy), potem ten sam rozkaz bez `--sonda`.
 //
 // ⚠️ ŚWIADOMIE NIE MA PRZYCISKU W PANELU: operacja jednorazowa, dotyka liczb, z których
-// właściciel czyta sprzedaż, i nie ma powodu leżeć w zasięgu przypadkowego kliknięcia.
+// czyta się sprzedaż, i nie ma powodu leżeć w zasięgu przypadkowego kliknięcia.
 
 const WZORZEC_DATY = /^\d{4}-\d{2}-\d{2}$/;
 

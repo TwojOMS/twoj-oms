@@ -1,4 +1,4 @@
-// PRZ-108.08 (zmiana C1 planu automatyzacji, sekcja 4): akcja „Wyślij mail do kupującego” z wybranego szablonu.
+// Akcja „Wyślij mail do kupującego” z wybranego szablonu.
 //
 // Woła TĘ SAMĄ usługę co przycisk na karcie zamówienia (`wiadomosci.wyslij`) — ten sam skład treści, ta sama zgoda
 // domeny, ten sam rejestr `wiadomosci` i dziennik karty; różni się tylko ślad (`tryb: 'automat'`).
@@ -10,7 +10,7 @@
 //     wysłał ręcznie, zanim minęło opóźnienie;
 //  3. zgoda domeny (`czyWolnoWyslac` / `czyWolnoWyslacWlasny`): brak adresu, anulowane, brak paczki z numerem →
 //     pominięte z powodem domeny. Bez tego kroku `wyslij` zapisałby na karcie „NIE UDAŁO SIĘ PRZYGOTOWAĆ…” — błąd,
-//     a właściciel chciał pominięcia.
+//     a tu ma być pominięcie z powodem.
 //     Automat pomija anulowane także przy szablonie własnym; ręczna wysyłka z podglądem na karcie pozostaje dozwolona.
 import { czyWolnoWyslac, czyWolnoWyslacWlasny, NAZWA_TEMATU } from '../../../domena/wiadomosci.js';
 import { adresatKlienta } from '../../../domena/adresat-klienta.js';
@@ -54,7 +54,7 @@ export function akcjaMailKupujacy({ wiadomosci }) {
     if (juz) {
       return odmowa('juz_wyslany', `„${nazwa}” poszło już do tego zamówienia ${ktoWyslal(juz.kto)} ${kiedy(juz.wyslana_at)}.`);
     }
-    // Poprawka po recenzji 08 (usterka 2): rejestr `wiadomosci` pisze się dopiero po udanym `sendMail`. Wysyłka tego
+    // Rejestr `wiadomosci` pisze się dopiero po udanym `sendMail`. Wysyłka tego
     // samego szablonu do tego zamówienia, która jest „niepewna” (list mógł dojść) albo właśnie trwa — w dowolnej regule —
     // też blokuje: wolimy jeden brakujący mail niż dwa wysłane.
     const watpliwa = db.prepare(`SELECT w.stan, r.nazwa FROM automatyzacje_wykonania w JOIN automatyzacje_reguly r ON r.id = w.regula_id
@@ -72,10 +72,10 @@ export function akcjaMailKupujacy({ wiadomosci }) {
       const kod = !adresatKlienta(k.z) ? 'brak_adresu' : k.z.anulowane ? 'anulowane' : 'odmowa';
       return odmowa(kod, zg.powod);
     }
-    // PRZ-122.MAIL-OKNO: po wszystkich odmowach (mają pierwszeństwo) — faktura, którą sprzedawca jeszcze poprawia
+    // Po wszystkich odmowach (mają pierwszeństwo) — faktura, którą sprzedawca jeszcze poprawia
     // (okno poprawek; dla VAT: do numeru KSeF), nie idzie teraz: `pobierzPdf` zamknąłby ją. Mail czeka i idzie sam.
     // Wyścig gotowa → pobierzPdf (poprawka w ułamku sekundy między nimi) jest nieszkodliwy: PDF renderuje się z wersji
-    // zapisanej w zdarzeniu zamknięcia (B10b), więc klient dostaje dokładnie to, co zamknięto.
+    // zapisanej w zdarzeniu zamknięcia, więc klient dostaje dokładnie to, co zamknięto.
     if (szablon === 'faktura' && typeof u.fakturaGotowaDoWydania === 'function') {
       const g = await u.fakturaGotowaDoWydania(wykonanie.zamowienie_id, teraz());
       if (!g.gotowa) {

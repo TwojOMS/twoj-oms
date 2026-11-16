@@ -65,7 +65,7 @@ function opisKolizji(zywa) {
   const stan = stanPrzesylki(zywa);
   // Przesylka istnieje u kuriera i czeka na numer. Wyjscie jest JEDNO i nie jest nim
   // ponowienie: „Sprawdz ponownie" na karcie odpytuje o TE SAMA przesylke, a nadanie
-  // od nowa utworzyloby u InPostu druga (referencja go nie odsieje, spec 4.4).
+  // od nowa utworzyloby u InPostu druga (referencja go nie odsieje).
   if (stan === 'tworzona_u_kuriera') {
     return 'Przesyłka do tego zamówienia JUŻ ISTNIEJE u kuriera — czeka tylko na numer listu. '
       + 'Nie nadawaj jej drugi raz: kliknij „Sprawdź ponownie" przy paczce na karcie zamówienia.';
@@ -102,7 +102,7 @@ export function rozpocznijPrzesylke(db, zamowienieId, kurier, kolejnosc = 1) {
   // Odmowa PRZED wstawieniem, bo indeks jej nie zalatwi: nadanie paczki nr 1 moze wisiec
   // w toku, a paczka nr 2 ma INNY numer kolejny, wiec przeszlaby przez indeks bez oporu.
   // Dopoki nie wiadomo, czy paczka u kuriera powstala, kolejnej nie wolno dokladac.
-  // STANY_BLOKUJACE_KOLEJNA (domain/przesylka-stan.js) zamiast listy wpisanej tutaj:
+  // STANY_BLOKUJACE_KOLEJNA (domena/przesylka-stan.js) zamiast listy wpisanej tutaj:
   // ta sama lista rzadzi przyciskiem na karcie (mozliwaKolejnaPaczka), wiec druga kopia
   // rozjechalaby sie przy pierwszym nowym stanie — a rozjazd tutaj znaczy paczke, ktorej
   // karta nie proponowala, albo odwrotnie: przycisk prowadzacy prosto w odmowe.
@@ -121,7 +121,7 @@ export function rozpocznijPrzesylke(db, zamowienieId, kurier, kolejnosc = 1) {
   return zywaPrzesylkaPod(db, zamowienieId, kolejnosc);
 }
 
-// PRZESYLKA NADANA POZA PANELEM — wlasciciel nadal paczke w panelu DPD (typowo wtedy, gdy
+// PRZESYŁKA NADANA POZA PANELEM — człowiek nadał paczkę w panelu kuriera, np. DPD (typowo wtedy, gdy
 // panel odmowil powtornego nadania z ta sama referencja) i panel musi umiec sie o tym
 // dowiedziec. To takze JEDYNA uczciwa droga do statusu „Wyslane" bez nadawania z panelu:
 // status wynika z faktow, a faktem jest istnienie nadanej paczki.
@@ -144,7 +144,7 @@ export function rozpocznijPrzesylke(db, zamowienieId, kurier, kolejnosc = 1) {
 // zewnetrznego, ktore trzeba by oslonic rezerwacja wiersza, a rozbicie na dwa zapisy
 // tworzyloby okno na wiersz 'w_trakcie' bez numeru listu — czyli sztuczna sierote po
 // awarii, ktorej ta sciezka w ogole nie ma prawa produkowac.
-// ⚠️ `zrodloNumeru` (recenzja calej galezi): 'reka' domyslnie, bo tak wola TRASA — czlowiek
+// ⚠️ `zrodloNumeru`: 'reka' domyslnie, bo tak wola TRASA — czlowiek
 // przepisujacy numer z panelu kuriera. Usluga czytajaca numery z konta Allegro podaje
 // 'allegro' JAWNIE (services/przesylki-allegro.js) i to jest jedyna roznica miedzy tymi
 // dwoma wolajacymi, ktora widac potem w bazie. Domysl stoi po stronie czlowieka celowo:
@@ -153,7 +153,7 @@ export function rozpocznijPrzesylke(db, zamowienieId, kurier, kolejnosc = 1) {
 // `carrierAllegro` (domyslnie NULL) — identyfikator PRZEWOZNIKA z odpowiedzi Allegro.
 // Podaje go wylacznie services/przesylki-allegro.js, bo tylko tam ta wartosc istnieje;
 // wpis reczny czlowieka jej nie ma i nie ma skad wziac. NULL znaczy „nie wiemy, kogo pytac"
-// i wtedy panel NIE PYTA (domain/sledzenie-przesylki.js) — nigdy nie podstawia stalej.
+// i wtedy panel NIE PYTA (domena/sledzenie-przesylki.js) — nigdy nie podstawia stalej.
 export function zarejestrujPrzesylkeReczna(db, zamowienieId, {
   kurier, kolejnosc, numerListu, zrodloNumeru = ZRODLO_NUMERU.REKA, carrierAllegro = null,
 }) {
@@ -163,7 +163,7 @@ export function zarejestrujPrzesylkeReczna(db, zamowienieId, {
   // ta sama odmowa, co przy domknieciu przesylki „do wyjasnienia".
   if (!numer) throw bladOperatora('Podaj numer listu przewozowego — bez niego nie ma czego rejestrować.');
 
-  // STANY_BLOKUJACE_KOLEJNA (domain/przesylka-stan.js) zamiast listy wpisanej tutaj:
+  // STANY_BLOKUJACE_KOLEJNA (domena/przesylka-stan.js) zamiast listy wpisanej tutaj:
   // ta sama lista rzadzi przyciskiem na karcie (mozliwaKolejnaPaczka), wiec druga kopia
   // rozjechalaby sie przy pierwszym nowym stanie — a rozjazd tutaj znaczy paczke, ktorej
   // karta nie proponowala, albo odwrotnie: przycisk prowadzacy prosto w odmowe.
@@ -185,11 +185,11 @@ export function zarejestrujPrzesylkeReczna(db, zamowienieId, {
 }
 
 // `etykietaZplSciezka` jest opcjonalna i domyślnie NULL: DPD mogło nie oddać ZPL-a
-// (patrz zplBladOpis w kurierzy/dpd.js) albo zapis pliku mógł się nie udać — dokładnie
+// (patrz zplBladOpis w oms/kurierzy/dpd.js) albo zapis pliku mógł się nie udać — dokładnie
 // tak samo, jak `etykietaSciezka` bywa NULL przy awarii zapisu PDF-a. Brak ZPL-a NIE
 // jest awarią nadania, więc ta funkcja go nie wymaga.
-// `adresUzyty` (JSON, domyślnie NULL) — adres odbiorcy faktycznie użyty przy TYM nadaniu
-// (Zadanie „adres edytowalny"). Domyślne NULL zostaje wyłącznie dla wywołań, które go nie
+// `adresUzyty` (JSON, domyślnie NULL) — adres odbiorcy faktycznie użyty przy TYM nadaniu.
+// Domyślne NULL zostaje wyłącznie dla wywołań, które go nie
 // podadzą (nie powinno się to zdarzyć na prawdziwej ścieżce — services/nadanie.js zawsze
 // je liczy, patrz tamtejszy komentarz) — ale ta funkcja go nie wymusza, żeby nie stać się
 // drugim, konkurencyjnym miejscem walidacji obok nadanie.js.
@@ -226,7 +226,7 @@ export function zapiszIdPrzesylkiKuriera(db, id, idPrzesylkiKuriera) {
 }
 
 /**
- * ⚠️ PRZESYLKA U KURIERA JUZ ISTNIEJE, NUMERU LISTU JESZCZE NIE MA (InPost, Zadanie 6).
+ * ⚠️ PRZESYLKA U KURIERA JUZ ISTNIEJE, NUMERU LISTU JESZCZE NIE MA (InPost).
  *
  * Dwa rozne zdarzenia trafiaja tutaj i oba znacza to samo dla bazy:
  *  (a) tworzenie przesylki trwa dluzej niz okno odpytywania (`wTrakcieTworzenia` z klienta),
@@ -235,7 +235,7 @@ export function zapiszIdPrzesylkiKuriera(db, id, idPrzesylkiKuriera) {
  *
  * Status zostaje 'w_trakcie' CELOWO. To NIE jest 'blad': ten zwalnia miejsce w indeksie
  * czesciowym, a zwolnione miejsce przy InPoscie znaczy DRUGA prawdziwa paczke, bo ShipX
- * nie odsiewa duplikatow po referencji (spec, 4.4). To takze nie jest 'do_wyjasnienia':
+ * nie odsiewa duplikatow po referencji. To takze nie jest 'do_wyjasnienia':
  * tamten stan wymaga numeru listu (bez niego nie da sie go domknac) i mowi „zajrzyj do
  * panelu kuriera", a tutaj panel umie sprawe dokonczyc sam — jednym kliknieciem
  * „Sprawdz ponownie", ktore wylacznie ODPYTUJE o istniejaca przesylke.
@@ -297,10 +297,10 @@ export function zapiszBladSync(db, id, opis) {
   db.prepare('UPDATE przesylki SET sync_woo_blad = ? WHERE id = ?').run(opis, id);
 }
 
-// Zadanie 13: ostatni znany status z usługi zdarzeń DPD. `at` to CZAS ZDARZENIA
+// Ostatni znany status z usługi zdarzeń DPD. `at` to CZAS ZDARZENIA
 // zwrócony przez DPD (eventTime), nie czas naszego zapytania.
-// ⚠️ OD 28.08.2026 KOLUMNA JEST NOŚNA — stało tu „czysto prezentacyjna, nic od niej nie
-// zależy" i przestało to być prawdą. `domain/pobranie-zaplacone.js` czyta ją jako DZIEŃ
+// ⚠️ KOLUMNA JEST NOŚNA — dawniej stało tu „czysto prezentacyjna, nic od niej nie
+// zależy" i przestało to być prawdą. `domena/pobranie-zaplacone.js` czyta ją jako DZIEŃ
 // DORĘCZENIA i wysyła go do inFaktu jako datę zapłaty faktury za pobraniem. Zmiana
 // znaczenia albo formatu tej wartości zmienia dane księgowe. (Brak wartości jest dalej
 // dopuszczalny — tam spadamy na datę wystawienia.)
@@ -314,11 +314,11 @@ export function zapiszStatusDpd(db, id, { opis, at, kod = null }) {
     .run(opis ?? null, at ?? null, kod ?? null, id);
 }
 
-// PRZ-108.09 (zmiana C2 automatyzacji): chwila PIERWSZEGO dowodu odbioru przez kuriera (domena/dowod-odbioru.js).
+// Chwila PIERWSZEGO dowodu odbioru przez kuriera (domena/dowod-odbioru.js).
 // Zapis jednorazowy (`odebrana_at IS NULL`): późniejsze skany (w drodze, doręczona) nie przesuwają chwili — zdarzenie
 // „Kurier odebrał paczkę” czyta ją kursorem i nie może zobaczyć tej samej paczki drugi raz. Zwraca zapisaną chwilę
 // albo null, gdy chwila już była.
-// Recenzja 09, usterka 1: `kurierAt` — chwila odbioru U KURIERA (domena/dowod-odbioru.js, chwilaDowoduUKuriera), żeby
+// `kurierAt` — chwila odbioru U KURIERA (domena/dowod-odbioru.js, chwilaDowoduUKuriera), żeby
 // reguła mogła pominąć dowód spóźniony (pierwszy odczyt śledzenia dni po odbiorze).
 export function zapiszOdbiorPrzesylki(db, id, { at, dowod, kurierAt = null }) {
   const info = db.prepare('UPDATE przesylki SET odebrana_at = ?, odebrana_dowod = ?, odebrana_kurier_at = ? WHERE id = ? AND odebrana_at IS NULL')
@@ -345,12 +345,12 @@ export function zapiszProbeStatusuDpd(db, id, { at, blad = null }) {
 /**
  * Skasowanie SAMEGO bledu statusu, bez dotykania znacznika proby.
  *
- * ⚠️⚠️ ISTNIEJE, BO POPRAWKA `bezSledzenia` (11.08.2026) ZATKALA ZRODLO, ALE ZOSTAWILA OSAD.
+ * ⚠️⚠️ ISTNIEJE, BO POPRAWKA `bezSledzenia` ZATKALA ZRODLO, ALE ZOSTAWILA OSAD.
  * Kolumna `status_kuriera_blad` kasowala sie dotad WYLACZNIE „przy najblizszym udanym
  * odswiezeniu" — a u kuriera, ktorego panel z zalozenia NIE PYTA o status, takie odswiezenie
- * nie nastapi NIGDY. Cztery zamowienia z `allegro_wza` zostaly przez to na liscie roboczej
- * z odznaka „status u kuriera niedostepny" bez zadnego wyjscia (zgloszenie wlasciciela
- * 12.08.2026). Niezmiennik 4.9: panel nie moze wchodzic w stan, z ktorego nie umie wyjsc.
+ * nie nastapi NIGDY. Zamowienia z `allegro_wza` zostaly przez to na liscie roboczej
+ * z odznaka „status u kuriera niedostepny" bez zadnego wyjscia. Regula „kazdy stan ma
+ * wyjscie": panel nie moze wchodzic w stan, z ktorego nie umie wyjsc.
  *
  * ⚠️ `status_kuriera_pobrany_at` ZOSTAJE. To znacznik dlawika godzinowego, a nie czesc bledu —
  * skasowany kazalby panelowi pytac od nowa przy KAZDYM otwarciu karty.
@@ -442,10 +442,10 @@ export function odblokujPrzesylke(db, przesylkaId, { numerListu = null, opis } =
   return { ...p, numerListu: przycietyNumer || null };
 }
 
-// Domkniecie sprawy przesylki 'do_wyjasnienia' — akcja odlozona SWIADOMIE w Zadaniu 10
-// („operator widzi numer i ostrzezenie, ale przestawienie na `nadana` wymaga UPDATE
-// w SQLite"). Po dorobieniu wyjscia z zawieszonego nadania ta luka byla juz jedyna
-// asymetria: panel umial wejsc w stan, z ktorego nie umial wyjsc.
+// Domknięcie sprawy przesyłki 'do_wyjasnienia'. Bez tej akcji operator widzial numer
+// i ostrzezenie, ale przestawienie na `nadana` wymagalo UPDATE w SQLite. Po dorobieniu
+// wyjscia z zawieszonego nadania ta luka byla jedyna asymetria: panel umial wejsc
+// w stan, z ktorego nie umial wyjsc.
 //
 // Nie dotykamy DPD i niczego nie sprawdzamy — paczka jest u kuriera, a jedynym zrodlem
 // prawdy jest czlowiek, ktory na nia popatrzyl w panelu DPD.
@@ -469,7 +469,7 @@ export function domknijPrzesylke(db, przesylkaId) {
   return p;
 }
 
-// Wada z przegladu calej galezi: `sync_woo_blad` i „brak etykiety" przy przesylce nadanej
+// Wada: `sync_woo_blad` i „brak etykiety" przy przesylce nadanej
 // wpychaja zamowienie na liste robocza, a ZADEN z nich nie ma jak zniknac. Typowy przebieg:
 // 'do_wyjasnienia' ("DPD nie oddalo etykiety") -> domknijPrzesylke -> przesylka 'nadana'
 // BEZ etykiety -> odznaka zostaje na zawsze, bo nic jej nigdy nie zdejmuje.
@@ -493,8 +493,8 @@ export function domknijPrzesylke(db, przesylkaId) {
 // indeks czesciowy `przesylki_kolejnosc_zywa` (zamowienie_id, kolejnosc) WHERE
 // status <> 'blad' odbijal kazda kolejna probe zarejestrowania poprawnego numeru pod tym
 // samym numerem kolejnym, a jedynym wyjsciem byl reczny DELETE w pliku SQLite. Panel nie
-// moze wchodzic w stan, z ktorego nie umie wyjsc (PRZEWODNIK.md 4.9) — ta funkcja jest tym
-// wyjsciem, dopisanym w tym samym commicie, co stan.
+// moze wchodzic w stan, z ktorego nie umie wyjsc (regula „kazdy stan ma wyjscie") — ta funkcja
+// jest tym wyjsciem.
 //
 // ⚠️ GRANICA, ktorej NIE WOLNO przekroczyc: WYLACZNIE przesylka zarejestrowana recznie
 // (`nadana_recznie` = 1). Przesylka nadana Z PANELU ma numer listu NAPRAWDE przydzielony
@@ -534,14 +534,14 @@ export function skasujPrzesylkeReczna(db, przesylkaId) {
   // przeslanka do kasowania (literowka we wpisanym z reki numerze) tutaj NIE ISTNIEJE:
   // numeru nikt nie przepisywal, przyszedl z API.
   //
-  // ⚠️⚠️ DYSKRYMINATOREM JEST ZRODLO NUMERU, A NIE KURIER — i to jest poprawka I-1 z recenzji
-  // calej galezi. Do 04.08.2026 stalo tu `p.kurier === 'allegro'`, a `kurierWpisuRecznego`
-  // (kurierzy/index.js) oddaje 'allegro' TAKZE dla wiersza, ktory czlowiek WPISAL Z REKI przy
+  // ⚠️⚠️ DYSKRYMINATOREM JEST ZRODLO NUMERU, A NIE KURIER
+  // Dawniej stalo tu `p.kurier === 'allegro'`, a `kurierWpisuRecznego`
+  // (oms/kurierzy/index.js) oddaje 'allegro' TAKZE dla wiersza, ktory czlowiek WPISAL Z REKI przy
   // zamowieniu z Allegro. Odmowa obejmowala wiec reczny wpis i uzasadniala to zdaniem
   // „numer panel PRZECZYTAL z konta Allegro" — dla takiego wiersza wprost NIEPRAWDA.
   // Literowka w numerze zostawala WTEDY NA ZAWSZE: prawdziwy numer sie nie dociagnie, bo
   // rejestracja reczna USTAWIA `wyslane_at`, a wtedy karta przestaje pytac Allegro. Jedynym
-  // wyjsciem byl DELETE w pliku bazy — czyli dokladnie stan zakazany przez niezmiennik 4.9.
+  // wyjsciem byl DELETE w pliku bazy — czyli dokladnie stan zakazany regula „kazdy stan ma wyjscie".
   //
   // Odmowa ma bronic numerow PRZECZYTANYCH i broni ich dalej tak samo mocno; zmienil sie
   // wylacznie sposob ich rozpoznania. `kurier` zostaje nietkniety — steruje linkiem do
@@ -574,17 +574,12 @@ export function zalatwPrzesylkeRecznie(db, przesylkaId) {
   return { ...p, sprawy };
 }
 
-// KANDYDACI DO ZEGARA SLEDZENIA (services/czuwacz-przesylek.js): przesylki NADANE
-// z ostatnich dni, z numerem listu. `SELECT *`, bo wybor „kogo pytac" potrzebuje
-// takze `odpowiedz_surowa` (podwykonawca WzA), a filtr po etapie (doreczona/zwrot
-// wypadaja) liczy sie z `status_kuriera` w warstwie czystej — nie tutaj, zeby regula
-// etapu miala jedno miejsce (domain/etap-przesylki.js).
-// UKRYCIE PACZKI Z ZAKLADKI /przesylki (25.08.2026) — dla tych, ktorych zaden status nie
+// UKRYCIE PACZKI Z ZAKLADKI /przesylki — dla tych, ktorych zaden status nie
 // uratuje: zamowienie testowe, etykieta zrobiona i nigdy przez kuriera niepodjeta.
 //
 // ⚠️ ZAPIS TYLKO ZNACZNIKA I AUTORA — wiersz zostaje nietkniety w kazdym innym wymiarze.
 // Ukrycie NIE JEST kasowaniem: paczka dalej jest odpytywana przez czuwacza, dalej liczy sie
-// do zamowienia i dalej wraca na oczy, gdy kurier ja zeskanuje (domain/przesylka-stan.js:
+// do zamowienia i dalej wraca na oczy, gdy kurier ja zeskanuje (domena/przesylka-stan.js:
 // przesylkaUkryta). Gdyby ta funkcja cokolwiek czyscila, tamten powrot nie mialby z czego
 // nastapic.
 export function ukryjPrzesylke(db, id, kto) {
@@ -598,11 +593,17 @@ export function przywrocPrzesylke(db, id) {
   db.prepare('UPDATE przesylki SET ukryta_at = NULL, ukryta_przez = NULL WHERE id = ?').run(id);
 }
 
-// ⚠️ `sklep` DOKLADANY Z ZAMOWIENIA, i nie jest to ozdobnik (regresja 31.08.2026).
+// KANDYDACI DO ZEGARA SLEDZENIA (services/czuwacz-przesylek.js): przesylki NADANE
+// z ostatnich dni, z numerem listu. `SELECT *`, bo wybor „kogo pytac" potrzebuje
+// takze `odpowiedz_surowa` (podwykonawca WzA), a filtr po etapie (doreczona/zwrot
+// wypadaja) liczy sie z `status_kuriera` w warstwie czystej — nie tutaj, zeby regula
+// etapu miala jedno miejsce (domena/etap-przesylki.js).
+//
+// ⚠️ `sklep` DOKLADANY Z ZAMOWIENIA, i nie jest to ozdobnik (regresja).
 // Klient sledzenia kanalu Allegro wybiera KONTO po kanale zamowienia, a czuwacz przesylek
 // widzi wylacznie wiersz przesylki — wolal wiec `odswiezStatusKuriera` z atrapa `{ id }`
 // i kazda paczka kanalu Allegro dostawala `kanal: null`. Skutek byl niemy: zadnego zapisu,
-// zadnego bledu, znacznik proby rosl co godzine. Trzy DORECZONE paczki wisialy szesc dni
+// zadnego bledu, znacznik proby rosl co godzine. DORECZONE paczki wisialy dniami
 // w zakladce jako „bez ruchu".
 //
 // LEFT JOIN, nie INNER: przesylka bez wiersza zamowienia (nie powinno sie zdarzyc, ale

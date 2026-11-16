@@ -12,7 +12,7 @@ import { ktoKlikal } from '../../zamowienia/wspolne.js';
 // Guard uwierzytelniania, ptaszków i CSRF zapewnia wymagany moduł web.
 export function registerZwrotyRoutes(app, { db, definicje }) {
   const powrotKarty = (req) => bezpiecznyPowrotNaListe(req.query?.powrot ?? req.body?.powrot, definicje);
-  // PRZ-147.03: po rejestracji ekran zwrotu — tam następnym krokiem jest „Wystaw korektę”.
+  // Po rejestracji ekran zwrotu — tam następnym krokiem jest „Wystaw korektę”.
   const adresZwrotu = (req, id) => adresEkranuZwrotu(id, { powrot: powrotKarty(req) }, definicje);
 
   const zamowienieAlbo404 = (req, reply) => {

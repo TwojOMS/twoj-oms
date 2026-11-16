@@ -1,23 +1,25 @@
 import type { Migracja } from '../../../core/kontrakty.ts';
 
-// PRZ-160 E1.01 — model treści karty produktu. Wyłącznie dokładanie: kolumny NULL na istniejących
+// Model treści karty produktu. Wyłącznie dokładanie: kolumny NULL na istniejących
 // tabelach (bez nowych ograniczeń), cztery nowe tabele i oznaczenie istniejących pól jako `zastane`.
 // Odporność jak 0011: kolumna tylko gdy jej brak, tabele i indeksy IF NOT EXISTS, INSERT OR IGNORE.
 //
-// Reguła importu (src/domena/zrodla-pol.js): pole wolno zapisać, gdy kolumna jest pusta albo ma wiersz
-// źródła z reczne = 0. Pustość w SQL niżej musi być taka sama jak `polePuste` w JS (pilnuje test).
+// Reguła importu (`importMozeZapisac` w src/domena/zrodla-pol.js): pole z wierszem źródła reczne = 1 jest
+// chronione zawsze; poza tym import zapisuje pole puste albo takie, którego źródłem jest on sam lub połączenie
+// dalej na liście, albo źródło spoza tej listy.
+// Pustość w SQL niżej musi być taka sama jak `polePuste` w JS (pilnuje test).
 
 const KOLUMNY: readonly [string, string, string][] = [
-  // {"sekcje":[{"elementy":[…]}]} (E1.02); NULL = brak sekcji, stare `opis` zostaje.
+  // {"sekcje":[{"elementy":[…]}]}; NULL = brak sekcji, stare `opis` zostaje.
   ['karty_produktow', 'opis_sekcje_json', 'ALTER TABLE karty_produktow ADD COLUMN opis_sekcje_json TEXT'],
   // Klucz rodzica ze sklepu z prefiksem połączenia, np. 'woo_sklep:812'.
   ['karty_produktow', 'grupa_wariantow', 'ALTER TABLE karty_produktow ADD COLUMN grupa_wariantow TEXT'],
-  // Znacznik „współtworzone z AI” (D27), 0/1, NULL = nieznane.
+  // Znacznik „współtworzone z AI”, 0/1, NULL = nieznane.
   ['karty_produktow', 'ai_wspoltworzone', 'ALTER TABLE karty_produktow ADD COLUMN ai_wspoltworzone INTEGER'],
-  // Kolumna TEXT, ale trzyma JSON: {"typ":"TEXT","tekst":"…"} albo {"typ":"ATTACHMENTS",…} (D28).
+  // Kolumna TEXT, ale trzyma JSON: {"typ":"TEXT","tekst":"…"} albo {"typ":"ATTACHMENTS",…}.
   // Poprawność JSON pilnuje zapis — CHECK na istniejącej tabeli byłby nowym ograniczeniem.
   ['karty_produktow', 'informacja_bezpieczenstwa', 'ALTER TABLE karty_produktow ADD COLUMN informacja_bezpieczenstwa TEXT'],
-  // Wznowienie importu treści (E1.04) idzie po ofercie: kiedy pobrano treść i jaki znacznik zmiany miała oferta.
+  // Wznowienie importu treści idzie po ofercie: kiedy pobrano treść i jaki znacznik zmiany miała oferta.
   ['produkty_sklepowe', 'tresc_pobrana_at', 'ALTER TABLE produkty_sklepowe ADD COLUMN tresc_pobrana_at TEXT'],
   ['produkty_sklepowe', 'tresc_zmieniona_at', 'ALTER TABLE produkty_sklepowe ADD COLUMN tresc_zmieniona_at TEXT'],
 ];

@@ -22,7 +22,7 @@ export function wplatyPowiazane(db, dokumentIds = null) {
     for (const w of wiersze) {
       if (!mapa.has(w.dokument_id)) mapa.set(w.dokument_id, { rodzaj: r.rodzaj, id: w.powiazanie_id, wplaty: [], blad: null });
       const wynik = mapa.get(w.dokument_id);
-      // Recenzja P36a: dokument przy dwóch zamówieniach/okresach — nie sumujemy cudzych wpłat, saldo wraca do flagi (D7).
+      // Dokument przy dwóch zamówieniach/okresach — nie sumujemy cudzych wpłat, saldo wraca do flagi.
       if (wynik.rodzaj !== r.rodzaj || wynik.id !== w.powiazanie_id) {
         wynik.blad = 'Dokument jest powiązany z więcej niż jednym zamówieniem lub okresem.';
         wynik.wplaty = [];

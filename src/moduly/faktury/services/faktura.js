@@ -4,13 +4,13 @@ import { rozpocznijFakture, zakonczFakture, zwolnijFakture, oznaczFaktureDoWyjas
 import { bladOperatora } from '../../../domena/bledy.js';
 import { idDokumentuDla } from '../../../domena/dokument-programu.js';
 import { daneFaktury } from '../../../domena/dane-faktury.js';
-// „Komu wolno wystawic fakture" liczy sie W DOMENIE (domain/faktura-odmowa.js) — JEDNA
+// „Komu wolno wystawic fakture" liczy sie W DOMENIE (domena/faktura-odmowa.js) — JEDNA
 // regula dla wystawiania z karty i dla wystawiania hurtem. Druga kopia rozjechalaby sie
 // przy pierwszej zmianie i tryb masowy zaczalby przepuszczac to, czego karta odmawia.
 import { powodOdmowyFaktury, powodOdmowyZaplaconej } from '../../../domena/faktura-odmowa.js';
 import { wylaczoneModuly } from '../../../oms/db/moduly-opcjonalne.js';
 import { czyFakturaDlaKazdego } from '../db/faktury-dla-kazdego.js';
-// pozycje() i sprawdzSume() wyjete do domain/pozycje-faktury.js (pod nazwami pozycjeDokumentu
+// pozycje() i sprawdzSume() wyjete do domena/pozycje-faktury.js (pod nazwami pozycjeDokumentu
 // i sprawdzSumeDokumentu): to CZYSTE funkcje argumentu `z`, ktore musza liczyc DOKLADNIE tak
 // samo dla faktury VAT i dla przyszlej proformy — druga kopia arytmetyki rozjechalaby sie
 // przy pierwszej zmianie i klamalaby o kwocie, ktora klient ma zaplacic.
@@ -24,25 +24,25 @@ import { kwotaOczekiwanaGrosze, zl } from '../../../domena/suma-pozycji.js';
 // `dataPokryciaWplat` — data wplaty, ktora domknela kwote zamowienia. To jest cala tresc
 // wyliczanego `oplacone_at` na karcie, wiec log faktury i karta nie moga powiedziec czegos
 // innego o tym samym zamowieniu. (Sama suma wplat nie jest juz czytana TUTAJ: bariera
-// „zaplacone" pyta o nia domain/faktura-odmowa.js, tym samym `sumaWplatGrosze`.)
+// „zaplacone" pyta o nia domena/faktura-odmowa.js, tym samym `sumaWplatGrosze`.)
 import { dataPokryciaWplat } from '../../../domena/platnosci.js';
-// Dzien kalendarzowy liczony TA SAMA funkcja, co data sprzedazy (domain/data-sprzedazy.js)
+// Dzien kalendarzowy liczony TA SAMA funkcja, co data sprzedazy (domena/data-sprzedazy.js)
 // i data drukowana na karcie. Kontener chodzi z TZ=UTC, wiec `slice(0, 10)` po naszym
 // znaczniku wplaty potrafiloby cofnac dobe.
 import { dzienWarszawa } from '../../../domena/format-daty.js';
-// Termin platnosci i data wystawienia licza sie W DOMENIE (domain/termin-platnosci.js),
+// Termin platnosci i data wystawienia licza sie W DOMENIE (domena/termin-platnosci.js),
 // bez ani jednej daty policzonej tutaj: to sklep B2B, wiec termin jest elementem umowy
 // z klientem, a nie kosmetyka dokumentu — a dokumentu w inFakcie sie nie edytuje, tylko
 // kasuje i wystawia od nowa.
 import { datyFaktury, czyZaplacone } from '../../../domena/termin-platnosci.js';
 // Sposob zaplaty na dokumencie. Osobno od `datyFaktury`, bo NIE jest wyborem operatora
-// w formularzu, tylko faktem o zamowieniu (pobranie albo nie) — patrz domain/sposob-platnosci.js.
+// w formularzu, tylko faktem o zamowieniu (pobranie albo nie) — patrz domena/sposob-platnosci.js.
 import { sposobPlatnosciFaktury } from '../../../domena/sposob-platnosci.js';
-// WDT (spec 2026-08-26): rozpoznanie po NIP-ie nabywcy i pola payloadu — z domeny;
+// WDT: rozpoznanie po NIP-ie nabywcy i pola payloadu — z domeny;
 // VIES i seria numeracji — ze WSPOLNEJ galezi obu drog wystawiania (services/wdt-faktury.js),
 // zeby karta i okres nie mialy dwoch kopii tej samej reguly. Sama stawka 0% na pozycjach
 // liczy sie juz w pozycjeDokumentu.
-// PRZ-122.B07d: WDT = numer UE nabywcy I sprzedawca niezwolniony (`czyWdt` + `sprzedawcaZwolniony`, tylko program
+// WDT = numer UE nabywcy I sprzedawca niezwolniony (`czyWdt` + `sprzedawcaZwolniony`, tylko program
 // wbudowany). Firma zwolniona z VAT dla nabywcy z UE wystawia zwykłą fakturę „zw”: bez VIES, serii i pól WDT.
 import {
   czyNipUe, czyWdt, polaWdtInfakt, nipSprzedawcyDoWdt, LOG_NIE_WDT_ZWOLNIONA,
@@ -51,26 +51,26 @@ import { sprzedawcaZwolniony } from '../db/zwolnienie-vat.js';
 import {
   sprawdzWdtWVies, przygotujSerieWdt, seriaWdtPoAwarii, seriaWdtPoSukcesie, sprawdzNumeracjeWlasna, nazwaProgramu,
 } from './wdt-faktury.js';
-// PRZ-118.06: program fakturowy (kontrakt) zamiast klienta inFaktu. Usluga przyjmuje `{ program }` albo stary
+// Program fakturowy (kontrakt) zamiast klienta inFaktu. Usluga przyjmuje `{ program }` albo stary
 // `{ infakt }` (owija go adapter inFaktu) — oba naraz to blad programisty, rzucany przy tworzeniu uslugi.
 import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 import { gdzieDokument } from '../../../domena/nazwa-programu.js';
 
 /**
- * Data zapłaty (`paid_date`) faktury wystawionej jako „zapłacona” — JEDNO miejsce reguły (PRZ-119.12c,
- * zlecenie właściciela 12.11): dzień opłacenia zamówienia, a gdy go nie znamy — data sprzedaży faktury
+ * Data zapłaty (`paid_date`) faktury wystawionej jako „zapłacona” — JEDNO miejsce reguły:
+ * dzień opłacenia zamówienia, a gdy go nie znamy — data sprzedaży faktury
  * (`sale_date`, a bez niej `invoice_date`, bo wtedy program przyjmuje sprzedaż = wystawienie). Nigdy „dziś”.
  *
- * Program z `opis.dowolnaDataZaplaty` (Fakturownia, pomiar F9B: przyjmuje każdą datę) dostaje regułę wprost.
+ * Program z `opis.dowolnaDataZaplaty` (Fakturownia przyjmuje każdą datę) dostaje regułę wprost.
  * Pozostałe (inFakt, TwojeFaktury) — PRZYCIĘTĄ do daty wystawienia: dokumentacja zasobu `/paid.json` inFaktu
  * stawia warunek `paid_date` „nie wcześniejsza niż data wystawienia". Zamówienie opłacone w sklepie 1.08
  * i zafakturowane 6.08 dałoby datę wcześniejszą, czyli odmowę — i status, który miał się naprawić, zostałby zły.
- * ⚠️ NIEZMIERZONE z VM (brak konta próbnego inFaktu) — pytanie do właściciela, czy inFakt naprawdę odmawia.
+ * ⚠️ NIEZMIERZONE: nie sprawdzono na koncie próbnym inFaktu, czy naprawdę odmawia.
  *
  * Wybór ŹRÓDŁA daty wpłaty: `dataPokryciaWplat`, czyli data tej konkretnej wpłaty, która
  * PRZEKROCZYŁA kwotę zamówienia — a nie „ostatnia wpłata z listy". To jest chwila, od której
  * zamówienie jest opłacone (i dokładnie to, co panel pokazuje na karcie jako `oplacone_at`,
- * a `domain/data-sprzedazy.js` bierze za dzień powstania obowiązku podatkowego). Wpłata
+ * a `domena/data-sprzedazy.js` bierze za dzień powstania obowiązku podatkowego). Wpłata
  * dopisana PÓŹNIEJ jest nadpłatą — to sprawa salda zamowienia, nie data zapłaty tej faktury.
  * Przy jednej wpłacie na całość obie miary dają to samo.
  *
@@ -99,13 +99,11 @@ function dataZaplatyFaktury(z, daty, opis) {
 }
 
 /**
- * @param vies opcjonalna usluga VIES (services/vies.js). Brak = kazde sprawdzenie WDT
+ * @param vies opcjonalna usluga VIES (oms/services/vies.js). Brak = kazde sprawdzenie WDT
  *   konczy sie 'niedostepny' (wystawiamy z ostrzezeniem w logu) — panel bez sieci VIES
  *   ma dalej fakturowac, a nie stanac.
  * @param nipSprzedawcy NIP wlasny na adnotacje WDT (art. 106e ust. 1 pkt 24 — prefiks PL).
- *   Domyslna wartosc produkcyjna jak w config.proforma.nip i z tego samego powodu: dana
- *   jawna, ktorej brak nie moze skonczyc sie dokumentem bez wymaganego elementu.
- *   PRZ-108.10: tekst albo funkcja (NIP z Ustawien → Firma, czytany przy kazdym wystawieniu);
+ *   Tekst albo funkcja (NIP z Ustawien → Firma, czytany przy kazdym wystawieniu);
  *   WDT bez NIP-u odmawia przed rezerwacja (domena/wdt.js, nipSprzedawcyDoWdt).
  * @param teraz zegar — wylacznie do wyboru miesiaca serii WDT, gdy operator nie podal
  *   daty wystawienia. Wstrzykiwany jak w services/wiadomosci.js.
@@ -116,7 +114,7 @@ export function createFaktura({
   const program = zProgramu({ program: programFakturowy, infakt });
   // Odmiana nazwy programu do komunikatow (inFakt / inFaktu / inFakcie / inFaktem).
   const nazwa = nazwaProgramu(program);
-  // PRZ-122.B07c: flaga `zw` z opisu programu (TwojeFaktury) — ta sama reguła, co lista stawek w formularzach.
+  // Flaga `zw` z opisu programu (TwojeFaktury) — ta sama reguła, co lista stawek w formularzach.
   const opcjeZw = opcjeZwProgramu(program?.opis);
 
   // Awaria JEDNOZNACZNA = inFakt odpowiedzial i odrzucil (4xx). Dokumentu na pewno nie ma,
@@ -127,7 +125,7 @@ export function createFaktura({
   // UWAGA: to pytanie ma sens WYLACZNIE dla wyjatku z `program.wystaw`. Rozstrzyganie nim
   // awarii z wczesniejszych krokow (patrz podzial faz w `wystaw`) blokowalo zamowienia
   // na stale za bledy, przy ktorych o dokument nikt jeszcze nie poprosil.
-  // PRZ-119.03: odmowa „duplikat” (program ma JUŻ dokument dla tego zamówienia, np. 422 na `oid` w Fakturowni)
+  // Odmowa „duplikat” (program ma JUŻ dokument dla tego zamówienia, np. 422 na `oid` w Fakturowni)
   // to 4xx, ale dokument ISTNIEJE — rezerwacja zostaje, sprawa do wyjaśnienia.
   const jednoznacznaOdmowa = (e) => Number.isInteger(e?.status) && e.status >= 400 && e.status < 500 && !e?.duplikat;
 
@@ -143,20 +141,19 @@ export function createFaktura({
   /**
    * @param zamowienieId numer zamowienia w bazie panelu
    * @param termin OPCJONALNY wybor operatora: `{ dataWystawienia, termin }` z formularza.
-   *   Brak argumentu = zachowanie sprzed tej zmiany, czyli ZADNYCH dat w payloadzie i termin
-   *   z ustawien konta inFakt. To celowe: wystawianie z innych miejsc (i wszystkie dotychczasowe
-   *   wywolania) ma dzialac dokladnie tak jak dotad, bez cichego dokladania dat do dokumentu.
+   *   Brak argumentu = ŻADNYCH dat w payloadzie i termin z ustawień konta inFakt. To celowe:
+   *   wystawianie z innych miejsc nie dokłada po cichu dat do dokumentu.
    */
   async function wystaw(zamowienieId, termin = null) {
-    // PRZ-101.04: zamówienie GŁÓWNE grupy scalonej przychodzi z pozycjami całej grupy i wysyłką
+    // Zamówienie GŁÓWNE grupy scalonej przychodzi z pozycjami całej grupy i wysyłką
     // wg decyzji (jedna faktura na scalone zamówienie) — reszta tej funkcji liczy bez zmian.
     const z = zamowienieDoDokumentu(db, zamowienieId);
 
     // Odmowy LOKALNE stoja PRZED rezerwacja i przed czymkolwiek w sieci — komplet razem
     // z „nie ma takiego zamowienia", bo `powodOdmowyFaktury` odpowiada tez na brak wiersza.
-    // Sama regula (i cale jej uzasadnienie) siedzi w domain/faktura-odmowa.js: tu zostaje
+    // Sama regula (i cale jej uzasadnienie) siedzi w domena/faktura-odmowa.js: tu zostaje
     // WYLACZNIE moment, w ktorym o nia pytamy.
-    // PRZ-126.F02: opcja „faktura także bez prośby klienta” czytana z bazy przy KAŻDYM wystawieniu.
+    // Opcja „faktura także bez prośby klienta” czytana z bazy przy KAŻDYM wystawieniu.
     const odmowa = powodOdmowyFaktury(z, {
       okresyWlaczone: !wylaczoneModuly(db).includes('okresy'), dlaKazdego: czyFakturaDlaKazdego(db),
     });
@@ -164,15 +161,15 @@ export function createFaktura({
 
     // Cala arytmetyka PRZED rezerwacja: to sprawdzenia czysto lokalne, wiec nie ma powodu
     // zajmowac nimi miejsca w tabeli ani zostawiac sierot do sprzatania.
-    // PRZ-105: stawka per pozycja, domyslna z Ustawien (bez wpisu 23 — payload jak przed zmiana).
-    // PRZ-122.B07c: „zw” wyłącznie przy programie wbudowanym (opcjeZw z opisu programu); inny program — jak dotąd.
-    // PRZ-122.B07d: zwolnienie sprzedawcy czytane przy KAŻDYM wystawieniu (rezygnacja w Ustawieniach bez restartu).
+    // Stawka per pozycja, domyślna z Ustawień (bez wpisu — 23).
+    // „zw” wyłącznie przy programie wbudowanym (opcjeZw z opisu programu); inny program — jak dotąd.
+    // Zwolnienie sprzedawcy czytane przy KAŻDYM wystawieniu (rezygnacja w Ustawieniach bez restartu).
     const zwolniona = sprzedawcaZwolniony(db, program?.opis);
     const services = pozycjeDokumentu(z, { stawkaDomyslna: czytajStawkeDomyslna(db, opcjeZw), ...opcjeZw, zwolniona });
     sprawdzSumeDokumentu(services, z);
 
     // ⚠️ DRUGA BARIERA, O PIENIADZE — „ZAPLACONE" WYMAGA PRAWDZIWYCH WPLAT. Sama regula
-    // (i jej uzasadnienie) siedzi w domain/faktura-odmowa.js razem z reszta odmow.
+    // (i jej uzasadnienie) siedzi w domena/faktura-odmowa.js razem z reszta odmow.
     //
     // Odmowa stoi PRZED rezerwacja, jak reszta odmow lokalnych: zly wybor w formularzu ma
     // odbic sie od formularza, a nie zostawic w tabeli sierote blokujaca fakture.
@@ -189,22 +186,22 @@ export function createFaktura({
     // funkcja, ktora chwile wyzej sprawdzila `sprawdzSumeDokumentu`; `z.kwota_brutto`
     // rozjechaloby sie z dokumentem przy kazdej pozycji dopisanej recznie.
     const daty = termin ? datyFaktury(termin, kwotaOczekiwanaGrosze(z), undefined, { nazwa }) : {};
-    // PRZ-119.12c: data zapłaty faktury „zapłacone” — liczona RAZ (nie rzuca), idzie do ładunku wystawienia
+    // Data zapłaty faktury „zapłacone” — liczona RAZ (nie rzuca), idzie do ładunku wystawienia
     // (tylko program z `opis.dowolnaDataZaplaty`) i do oznaczenia zapłaty po wystawieniu.
     const paidDate = termin && czyZaplacone(termin.termin) ? dataZaplatyFaktury(z, daty, program.opis) : null;
 
     // Dane nabywcy licza sie RAZ, przed rezerwacja (funkcja czysta) — uzywa ich faza
     // przygotowania (kartoteka) i galaz WDT. Rozpoznanie WDT idzie po TYM SAMYM numerze,
     // ktory pojdzie do kartoteki i na dokument, wiec reczna poprawka NIP-u na karcie
-    // zmienia stawke razem z nabywca, nigdy osobno (por. domain/pozycje-faktury.js).
+    // zmienia stawke razem z nabywca, nigdy osobno (por. domena/pozycje-faktury.js).
     const d = daneFaktury(z);
     const wdt = czyWdt(d.nip, { zwolniona });
     // Nabywca z UE u sprzedawcy zwolnionego — nie WDT; ślad w logu zamówienia przy wystawieniu.
     const nieWdtZwolniona = zwolniona && czyNipUe(d.nip);
-    // PRZ-108.10: NIP sprzedawcy do adnotacji WDT — przy KAŻDYM wystawieniu (NIP z Ustawień → Firma bez restartu)
+    // NIP sprzedawcy do adnotacji WDT — przy KAŻDYM wystawieniu (NIP z Ustawień → Firma bez restartu)
     // i PRZED rezerwacją: WDT bez NIP-u odmawia tutaj, zanim cokolwiek dotknie bazy, VIES albo inFaktu.
     const nipWlasny = wdt ? nipSprzedawcyDoWdt(d.nip, nipSprzedawcy) : null;
-    // PRZ-118.06: WDT wymaga numeracji wlasnej programu (straznik duplikatu serii). Program bez tej zdolnosci
+    // WDT wymaga numeracji wlasnej programu (straznik duplikatu serii). Program bez tej zdolnosci
     // odmawia TU — przed rezerwacja faktury, przed VIES i przed licznikiem serii (nic nie zostaje do zwalniania).
     if (wdt && !program.opis.wdtWSeriiFaktur) sprawdzNumeracjeWlasna(program);
 
@@ -214,10 +211,10 @@ export function createFaktura({
     // FAZA PRZYGOTOWANIA (kroki 1-2). Nic tutaj NIE MOZE stworzyc dokumentu: GET po NIP-ie
     // niczego nie wystawia, POST /clients.json zaklada wpis w kartotece, a nasze wlasne
     // odmowy nie ida nawet do sieci. Dlatego kazda awaria tej fazy — bez wzgledu na to, czy
-    // niesie `status` — zwalnia rezerwacje. Poprzednia wersja rozstrzygala JEDNYM `catch`
-    // po `e.status`, wiec duplikat NIP-u w kartotece (blad czysto lokalny, bez statusu),
-    // zerwana siec na GET-cie i 500 z zakladania klienta blokowaly zamowienie na stale
-    // komunikatem o dokumencie, o ktory nigdy nie poproszono.
+    // niesie `status` — zwalnia rezerwacje. Jeden `catch` po `e.status` zablokowałby
+    // zamówienie na stałe przy duplikacie NIP-u w kartotece (błąd czysto lokalny, bez statusu),
+    // zerwanej sieci na GET-cie i 500 z zakładania klienta — komunikatem o dokumencie,
+    // o który nigdy nie poproszono.
     let nabywca;
     try {
       // Nabywca przez kontrakt: `przygotujNabywce` oddaje pola nabywcy do rozsypania w ladunku (dla inFaktu
@@ -266,9 +263,8 @@ export function createFaktura({
       // ani tu, ani nigdzie indziej w tej funkcji. Wysylka to OSOBNA, SWIADOMA decyzja
       // czlowieka: operator zatwierdza ja recznie na zakladce faktur, po ekranie podgladu
       // (POST /faktury/ksef/wyslij, services/wysylka-ksef.js), a panel zglasza ja do
-      // inFaktu przez `wyslijDokumentDoKsef` w infakt/client.js. Wczesniej ten parametr byl
-      // ustawiany na twardo, wiec KAZDA faktura z panelu leciala do KSeF automatycznie,
-      // mimo ze nikt o to nie prosil.
+      // inFaktu przez `wyslijDokumentDoKsef` w infakt/client.js. Parametr ustawiony na twardo
+      // wysłałby do KSeF automatycznie KAŻDĄ fakturę z panelu, choć nikt o to nie prosił.
       // `...daty` to `invoice_date` i (poza wariantem „bez terminu") `payment_date`. Rozsypane
       // NA KONCU celowo: gdy operator terminu nie podal, obiekt jest pusty i nie dokladamy do
       // dokumentu ani jednego pola, ktorego tam wczesniej nie bylo.
@@ -277,19 +273,18 @@ export function createFaktura({
       // pobraniem, wiec payload faktury przedplaconej zostaje bajt w bajt taki, jaki byl.
       // Przy pobraniu doklada `payment_method: 'delivery'` — bez tego kazda faktura
       // pobraniowa wychodzila z domyslnym „przelewem" z ustawien konta inFakt i mowila
-      // klientowi „zaplac przelewem" za cos, co zaplaci kurierowi (zgloszenie wlasciciela
-      // 07.08.2026, faktura 18/08/2026). Powod, dla ktorego to NIE jest czesc `datyFaktury`:
+      // klientowi „zaplac przelewem" za cos, co zaplaci kurierowi. Powod, dla ktorego to NIE jest czesc `datyFaktury`:
       // sposob zaplaty nie jest data i nie wynika z wyboru operatora w formularzu, tylko
-      // z FAKTU o zamowieniu — patrz domain/sposob-platnosci.js.
+      // z FAKTU o zamowieniu — patrz domena/sposob-platnosci.js.
       w = await program.wystaw({
         client_id: nabywca.client_id, services, ...daty, ...sposobPlatnosciFaktury(z, { przyjmuje: program.opis?.sposobyPlatnosci }),
-        // Pola WYLACZNIE dokumentu WDT (domain/wdt.js) — dla nabywcy krajowego oba
+        // Pola WYLACZNIE dokumentu WDT (domena/wdt.js) — dla nabywcy krajowego oba
         // rozsypania sa puste i payload zostaje bajt w bajt taki, jaki byl.
         ...(wdt ? polaWdtInfakt(d.nip, { nipSprzedawcy: nipWlasny }) : {}),
         ...(seriaWdt ? { number: seriaWdt.numer } : {}),
-        // Pomiar F9B: Fakturownia bez `paid_date` przy `status: paid` wpisuje DZIŚ. inFakt i TwojeFaktury — bez pola, jak dotąd.
+        // Fakturownia bez `paid_date` przy `status: paid` wpisuje DZIŚ. inFakt i TwojeFaktury — bez pola, jak dotąd.
         ...(paidDate && program.opis.dowolnaDataZaplaty ? { paid_date: paidDate } : {}),
-      // PRZ-119.03: identyfikator zamówienia dla programu (Fakturownia: `oid` + `oid_unique` — drugi dokument
+      // Identyfikator zamówienia dla programu (Fakturownia: `oid` + `oid_unique` — drugi dokument
       // dla tego samego zamówienia zostaje odrzucony). Programy, które go nie znają, ignorują drugi argument.
       }, { oid: `${z.sklep}-${z.numer}` });
     } catch (e) {
@@ -319,19 +314,17 @@ export function createFaktura({
 
     // ⚠️ KROK PO NIEODWRACALNYM — I DLATEGO NIE MA PRAWA NICZEGO ZEPSUĆ.
     //
-    // Usterka, którą to naprawia (zgłoszenie właściciela 06.08.2026, potwierdzone odczytem
-    // 60 ostatnich faktur z żywego konta): nasze dokumenty mają `paid_price` i `left_to_pay: 0`,
+    // Usterka, którą to naprawia: nasze dokumenty mają `paid_price` i `left_to_pay: 0`,
     // czyli DLA KLIENTA drukują „Zapłacono: 158,00 / Pozostało: 0,00" — a mimo to leżą
     // w inFakcie ze statusem `sent`, bo ten status przestawia się dopiero na `paid_date`,
-    // którego panel nie wysyłał. Skutkiem jest lista należności, na której właściciel widzi
-    // jako niezapłacone faktury dawno zapłacone. Luka jest OD POCZĄTKU i dotyczy WSZYSTKICH
-    // kanałów (te same objawy mają dokumenty z Apilo).
+    // którego panel nie wysyłał. Skutkiem jest lista należności, na której sprzedawca widzi
+    // jako niezapłacone faktury dawno zapłacone. Dotyczy to WSZYSTKICH kanałów.
     //
     // ⚠️ AWARIA TEGO WYWOŁANIA JEST NIESZKODLIWA I MUSI TAKA ZOSTAĆ. W tej linii dokument
     // w inFakcie JUŻ ISTNIEJE, ma numer, ma miejsce w numeracji i ma zapisany wiersz
     // w naszej bazie. Rzucenie stąd wywaliłoby operatorowi operację, która SIĘ UDAŁA,
     // i zostawiło rezerwację w stanie, którego nikt nie zdejmie. Jedynym skutkiem
-    // nieudanego oznaczenia jest STATUS W inFAKCIE — czyli dokładnie dzisiejszy stan rzeczy.
+    // nieudanego oznaczenia jest STATUS W inFAKCIE — faktura zostaje tam nieoznaczona jako opłacona.
     // Dlatego: łapiemy WSZYSTKO (nie tylko `bladOperatora` — także TypeError z naszego kodu
     // i złą ścieżkę, gdyby dokumentacja kłamała), zapisujemy do logu zamówienia i jedziemy dalej.
     //
@@ -353,7 +346,7 @@ export function createFaktura({
    * twierdzić, że status się zmienił, skoro tego nie sprawdza.
    *
    * Komunikat awarii jest DŁUGI celowo. Log zamówienia jest JEDYNYM miejscem, z którego
-   * właściciel się o tym dowie (na ekranie nic się nie stanie — i tak ma być), więc musi
+   * operator się o tym dowie (na ekranie nic się nie stanie — i tak ma być), więc musi
    * powiedzieć wszystko naraz: że faktura JEST wystawiona, że dokument dla klienta jest
    * poprawny, co dokładnie odpowiedział inFakt i co z tym zrobić ręcznie.
    */
@@ -368,7 +361,7 @@ export function createFaktura({
       wynik = `Zlecono w ${nazwa.miejscownik} oznaczenie faktury ${w.numer ?? '(bez numeru)'} jako opłaconej `
         + `(data zapłaty ${paidDate}). ${nazwa.mianownik} przetwarza to zadanie w tle.`;
     } catch (e) {
-      // PRZ-119.05: status „opłacona” przyjęty, padł sam zapis daty zapłaty — faktura JEST opłacona, nie oznaczać drugi raz.
+      // Status „opłacona” przyjęty, padł sam zapis daty zapłaty — faktura JEST opłacona, nie oznaczać drugi raz.
       wynik = e?.zaplataOznaczona
         ? `UWAGA: faktura ${w.numer ?? '(bez numeru)'} jest już oznaczona jako opłacona w ${nazwa.miejscownik} — popraw tylko `
           + `datę zapłaty. Powód: ${e.message}`
@@ -404,7 +397,7 @@ export function createFaktura({
     // patrza na DOKLADNIE ten sam wiersz (zLinii dokleja `faktura` do zamowienia).
     const f = pobierzZamowienie(db, zamowienieId)?.faktura;
     if (!f) throw bladOperatora('To zamówienie nie ma jeszcze faktury.');
-    // PRZ-121.04a: dokument innego programu niż moduł faktur OMS-u — odmowa 409 PRZED siecią (nic nie idzie do programu).
+    // Dokument innego programu niż moduł faktur OMS-u — odmowa 409 PRZED siecią (nic nie idzie do programu).
     const uuid = idDokumentuDla(f, program);
     if (!uuid) {
       throw bladOperatora(`Faktura nie została do końca wystawiona — panel nie zna jej numeru w ${nazwa.miejscownik}.`);

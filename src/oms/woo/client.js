@@ -3,7 +3,7 @@ import { transport } from '../../integracje/transport.js';
 import { miniaturyZeStoreApi } from '../../domena/miniatury.js';
 import { bladTylkoOdczyt, bladKluczaTylkoOdczyt, czyOdmowaZapisu } from '../../domena/woo-uprawnienia.js';
 
-// PRZ-132.09c: `tylkoTenSamOrigin` (sklepy z panelu) — przekierowanie na inny origin (host, port,
+// `tylkoTenSamOrigin` (sklepy z panelu) — przekierowanie na inny origin (host, port,
 // https→http) przerywa żądanie PRZED wysłaniem kolejnego, więc ani odczyt nie bierze cudzej odpowiedzi,
 // ani zapis 307/308 nie idzie na obcy host. Sklepy z env (bez opcji) zachowują dawne zachowanie.
 export function bladInnegoOrigin(origin) {
@@ -123,9 +123,9 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
       p.set('modified_after', modifiedAfter);
       p.set('dates_are_gmt', 'true');
     }
-    // PRZ-117: unikalny adres omija pamięć podręczną serwera sklepu. LiteSpeed Cache trzymał tę listę
-    // 30 min (zmierzone 26.10), a przy stojącym kursorze poller pyta tym samym adresem — nowe zamówienie
-    // czekało do pół godziny. Nagłówek `Cache-Control: no-cache` tej pamięci nie omija; Woo nieznany
+    // Unikalny adres omija pamięć podręczną serwera sklepu. LiteSpeed Cache potrafi trzymać tę
+    // listę pół godziny, a przy stojącym kursorze poller pyta tym samym adresem — nowe zamówienie
+    // czekałoby do pół godziny. Nagłówek `Cache-Control: no-cache` tej pamięci nie omija; Woo nieznany
     // parametr pomija.
     p.set('_oms', `${Date.now().toString(36)}-${(++zapytanListy).toString(36)}`);
     const { dane, res } = await strzal(`/orders?${p.toString()}`);
@@ -145,24 +145,22 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
    *
    * ⚠️ TO NIE JEST DRUGA WERSJA `pobierzZamowienia`. Tamta czyta po dacie MODYFIKACJI, bo
    * poller ma dowiedziec sie o KAZDEJ zmianie. Import historii czyta po dacie ZLOZENIA, bo
-   * zbior ma stac w miejscu przez caly przebieg: sklep dotknal 01.08.2026 calego archiwum
-   * naraz (zamowienia z 2019, 2020 i 2024 dostaly `date_modified_gmt` w tej samej sekundzie),
-   * wiec okno po modyfikacji potrafi sie zmienic w trakcie stronicowania — i strona 40
+   * zbiór ma stać w miejscu przez cały przebieg: sklep potrafi dotknąć całego archiwum naraz
+   * (zamówienia sprzed kilku lat dostają `date_modified_gmt` w tej samej sekundzie), więc okno po modyfikacji potrafi sie zmienic w trakcie stronicowania — i strona 40
    * pokazalaby wtedy co innego niz strona 39 oczekiwala.
    *
    * ⚠️ `after`/`before` w Woo sa OSTRE po obu stronach (`>` i `<`). Wolajacy podaje granice
    * z zapasem doby, a wlasciwe odciecie robi sie po `dzien` (czas warszawski) — filtr jedzie
    * w GMT, wiec sam nie umie odciac po dobie warszawskiej.
    *
-   * ⚠️⚠️ `perPage = 100` I NIE ZMNIEJSZAC „ZEBY BYLO DELIKATNIEJ" — pomiar na produkcji
-   * 2026-08-27 mowi cos odwrotnego niz intuicja. Koszt zapytania jest w PRZEWAZAJACEJ CZESCI
-   * staly (rozruch WordPressa + WooCommerce + autoryzacja), a nie proporcjonalny do liczby
-   * zamowien: 10 zamowien = 3,3 s (32 kB), 100 zamowien = 6,5 s (330 kB). Czyli 100 zamowien
-   * kosztuje dwa razy tyle co 10, a nie dziesiec razy. Zmniejszenie strony do 10 zamienia
-   * 86 rozruchow na 850 i wydluza caly import z ~9 do ~47 minut — WIECEJ pracy serwera, nie
-   * mniej. Powtorzone zapytanie kosztuje tyle samo (6 488 ms), wiec nie ma tu zadnego cache'u,
-   * ktory mialby to zamortyzowac. Strona w glebi listy NIE jest drozsza (zmierzone na
-   * stronach 1/20/45/70/84: 5 675–6 065 ms), wiec nie ma urwiska na koncu przebiegu.
+   * ⚠️⚠️ `perPage = 100` I NIE ZMNIEJSZAĆ „ŻEBY BYŁO DELIKATNIEJ" — pomiar na produkcji mówi
+   * coś odwrotnego niż intuicja. Koszt zapytania jest w PRZEWAŻAJĄCEJ CZĘŚCI stały (rozruch
+   * WordPressa + WooCommerce + autoryzacja), a nie proporcjonalny do liczby zamówień: strona
+   * 100 zamówień kosztuje około dwa razy tyle co strona 10, a nie dziesięć razy. Zmniejszenie
+   * strony do 10 mnoży liczbę rozruchów mniej więcej dziesięciokrotnie i wydłuża cały import
+   * kilkukrotnie — WIĘCEJ pracy serwera, nie mniej. Powtórzone zapytanie kosztuje tyle samo,
+   * więc nie ma tu żadnego cache'u, który miałby to zamortyzować. Strona w głębi listy NIE jest
+   * droższa (zmierzone od początku do końca listy), więc nie ma urwiska na końcu przebiegu.
    */
   async function pobierzZamowieniaZakresu({ after, before, page = 1, perPage = 100 } = {}) {
     const p = new URLSearchParams({
@@ -229,8 +227,8 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
     return wszystko;
   }
 
-  // status=publish JAWNIE: REST v3 domyslnie oddaje `any`, a sklep A ma setki szkicow
-  // (produkty techniczne przeniesione do sklepu B). Bez tego magazyn zalozylby karty-duchy.
+  // status=publish JAWNIE: REST v3 domyślnie oddaje `any`, a sklep potrafi mieć setki szkiców
+  // (np. produkty przeniesione do innego sklepu). Bez tego magazyn założyłby karty-duchy.
   // orderby=id&order=asc: stabilna kolejnosc miedzy stronami, inaczej zmiana w sklepie
   // w trakcie odczytu przesuwa okno i wiersz wpada dwa razy albo znika.
   const pobierzWszystkieProdukty = () =>
@@ -239,7 +237,7 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
   const pobierzWarianty = (produktId) =>
     pobierzWszystkieStrony(`/products/${produktId}/variations`, { orderby: 'id', order: 'asc' }, 'wariantów');
 
-  // PRZ-160.P3b.01: drzewo kategorii produktów sklepu (tylko odczyt; po 100 na stronę, wszystkie strony).
+  // Drzewo kategorii produktów sklepu (tylko odczyt; po 100 na stronę, wszystkie strony).
   const pobierzKategorieProduktow = () =>
     pobierzWszystkieStrony('/products/categories', { orderby: 'id', order: 'asc' }, 'kategorii');
 
@@ -248,7 +246,7 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
   // ⚠️⚠️ INNY ZASÓB NIŻ CAŁA RESZTA TEGO PLIKU. REST v3 (`/wp-json/wc/v3`) NIE ODDAJE adresu
   // miniatury — przy zdjęciu jest wyłącznie `src` oryginału. Store API oddaje przy każdym
   // zdjęciu gotowe `thumbnail`, w rozmiarze, który TEN sklep naprawdę wygenerował. To dlatego
-  // panel przestaje zgadywać rozmiar z nazwy pliku (patrz `domain/miniatury.js`).
+  // panel przestaje zgadywać rozmiar z nazwy pliku (patrz `domena/miniatury.js`).
   //
   // ⚠️ BEZ UWIERZYTELNIANIA, I TO CELOWO. Store API jest publicznym katalogiem sklepu i klucza
   // REST nie zna. Doklejony `Authorization` byłby sekretem wysłanym pod zasób, który go nie
@@ -340,7 +338,7 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
   // ⚠️⚠️ SCIEZKA ROZSTRZYGA RODZIC vs WARIANT: `products/944/variations/1091` to WARIANT,
   // `products/944` to rodzic. Zapis SKU na rodzica produktu wariantowego jest w WooCommerce
   // LEGALNY I CICHY — odpowie 200, a numer nie pojawi sie tam, gdzie zyje cena. Sklada ja
-  // `domain/zapis-do-sklepu.js`; klient jej NIE WYMYSLA i nie poprawia.
+  // `domena/zapis-do-sklepu.js`; klient jej NIE WYMYSLA i nie poprawia.
   //
   // ⚠️⚠️ BIALA LISTA KSZTALTU SCIEZKI. `produkty_sklepowe.produkt_id` jest kolumna TEKSTOWA
   // (bo identyfikator Allegro przychodzi napisem), a ta wartosc laduje wprost w adresie HTTP
@@ -361,7 +359,7 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
   /**
    * ⚠️⚠️ ODMOWA MA WYNIKAC Z POZYTYWNEGO ROZPOZNANIA PRODUKTU, A NIE Z BRAKU POLA.
    *
-   * ZNALEZIONE W RECENZJI 12.08.2026 (Critical) i zmierzone na atrapie: `strzal` robi
+   * Zmierzone na atrapie: `strzal` robi
    * `try { dane = await res.json(); } catch { dane = null; }` i rzuca WYLACZNIE przy
    * `!res.ok`. Odpowiedz 200 z cialem, ktorego nie rozumiemy — HTML WAF-a, strona trybu
    * konserwacji, JSON o innym ksztalcie — dawala wiec `dane = null`, czyli `wSklepie?.sku`
@@ -421,17 +419,18 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
 
   /**
    * Zapis pol produktu albo wariantu. ⚠️ WOLAJACY PODAJE KOMPLET POL i tylko one jada —
-   * panel wysyla WYLACZNIE `sku` i `dimensions` (niezmiennik modulu magazynu), a klient nie
+   * panel wysyla WYLACZNIE `sku` i `dimensions` (reguła modułu magazynu), a klient nie
    * dokleja niczego od siebie.
    *
    * ⚠️ PUT, nie POST: POST na `/products` ZALOZYLBY nowy produkt.
    */
-  // PRZ-149.04: przy kluczu „Odczyt” trzy zapisy odmawiają tu, zanim cokolwiek wyjdzie do sklepu.
+  // Przy kluczu „Odczyt” trzy zapisy odmawiają tu, zanim cokolwiek wyjdzie do sklepu.
   const zapiszProdukt = async (sciezka, pola) => tylkoOdczyt ? Promise.reject(bladTylkoOdczyt()) :
     strzal(`/${sprawdzSciezke(sciezka)}`, { method: 'PUT', body: JSON.stringify(pola ?? {}) })
       .then(({ dane }) => dane);
 
-  // E4.04: osobna, zawężona ścieżka. Świeży odczyt przed zapisem zapewnia pętla D61.
+  // Osobna, zawężona ścieżka stanów magazynowych. Świeży odczyt przed zapisem zapewnia pętla
+  // stanów Woo (moduly/magazyn/services/petla-stanow-woo.js).
   const ROZMIAR_PACZKI_STANOW = 100;
   const idStanu = id => {
     if (!/^\d+$/.test(String(id)) || !Number.isSafeInteger(Number(id)) || Number(id) <= 0) {

@@ -1,5 +1,5 @@
 <%#
-  KARTA ZAMOWIENIA — przebudowa 2026-07-31 (spec: docs/superpowers/specs/2026-07-31-karta-zamowienia-przebudowa-design.md).
+  KARTA ZAMOWIENIA.
 
   Karta jest STANOWISKIEM PRACY przy zamowieniu: wydruk faktury, przygotowanie etykiety,
   zebranie produktow do pakowania, a przy zamowieniu wyslanym — sprawdzenie statusu. Stad
@@ -8,27 +8,27 @@
     belka faktow → pasek spraw → dane klienta (3 kolumny) → uwagi klienta
     → Pozycje → Przesylka → Proforma → Faktura → Platnosci
 
-  Trzy zasady calej przebudowy:
+  Trzy zasady karty:
    1. KARTA JEST DOMYSLNIE TYLKO DO ODCZYTU. Kazdy formularz siedzi za „Edytuj" (parametr
-      `?edytuj=`, bez JavaScriptu). Wczesniej bylo tu pietnascie rozwinietych formularzy naraz.
+      `?edytuj=`, bez JavaScriptu). Bez tego byloby tu pietnascie rozwinietych formularzy naraz.
    2. WYKLAD ZSZEDL Z DROGI. Akapity tlumaczace reguly skrocone do jednego zdania; pelne
-      uzasadnienia siedza w docs/oms/PRZEWODNIK.md i w komentarzach kodu.
+      uzasadnienia siedza w komentarzach kodu.
    3. SPRAWY W JEDNYM MIEJSCU. Osiem identycznie wygladajacych `.uwaga` rozsypanych po karcie
-      zebral pasek „Do zalatwienia" (domain/sprawy-karty.js). Pasek mowi „cos jest", a sekcja
+      zebral pasek „Do zalatwienia" (domena/sprawy-karty.js). Pasek mowi „cos jest", a sekcja
       przy przycisku mowi „co z tym zrobic" — pelne ostrzezenia o KSeF i o DPD ZOSTAJA tam,
       gdzie stoi przycisk, ktorego dotycza.
 %>
 <% const wart = (v) => (v ? v : '—'); %>
 <% const oznaczenie = (pola, pole) => (pola.includes(pole) ? ' <span class="znacznik znacznik-reczny">zmienione ręcznie</span>' : ''); %>
-<%_ /* PRZ-126.C05a: żaden komputer z drukarką faktur nie zgłosił się w 5 min → bez „Drukuj”, jedna linia pod tabelą dokumentów (PRZ-152.G10b2); `null` (brak usługi) = jak dziś. */ -%>
+<%_ /* Żaden komputer z drukarką faktur nie zgłosił się w 5 min → bez „Drukuj”, jedna linia pod tabelą dokumentów; `null` (brak usługi) = jak dziś. */ -%>
 <%_ const bezDrukarki = typeof drukarkaFaktur !== 'undefined' && Boolean(drukarkaFaktur) && !drukarkaFaktur.podlaczone; -%>
 <%# ⚠️ ROZLICZENIE ZBIORCZE — jeden fakt, ktory zmienia znaczenie DWOCH sekcji karty
-    (Faktura i Platnosci). Do 2026-08-03 karta nie niosla go w ogole: operator widzial
+    (Faktura i Platnosci). Bez niego operator widzialby
     zwykle zamowienie firmowe z NIP-em i przycisk „Wystaw fakturę", a to zamowienie
-    rozlicza sie JEDNA faktura zbiorcza za caly miesiac. Stad brala sie druga droga do
-    dokumentu w inFakcie (recenzja koncowa galezi, K1).
+    rozlicza sie JEDNA faktura zbiorcza za caly miesiac. Stad bralaby sie druga droga do
+    dokumentu w inFakcie.
 
-    Nazwa miesiaca idzie z `MIESIACE` PRZEKAZANYCH Z TRASY (domain/okres-rozliczeniowy.js) —
+    Nazwa miesiaca idzie z `MIESIACE` PRZEKAZANYCH Z TRASY (domena/okres-rozliczeniowy.js) —
     tej samej tablicy, z ktorej komunikat odmowy sklada „Okres lipiec 2026 jest już
     rozliczony". Wlasna kopia w szablonie znaczylaby, ze karta, ekran okresu i odmowa moga
     kiedys nazwac ten sam miesiac inaczej. %>
@@ -44,9 +44,9 @@
 <%# numer, status, klient, ile klient jest nam winien, czym jedzie i skad przyszlo. %>
 <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Zamówienie " + (z.numer), idNaglowka: 'status', klasaNaglowka: 'naglowek-ekranu--pasek', akcje: include('_naglowek-akcje-zamowienie-0.ejs', {wOkresie, nazwaOkresu})}) %>
 
-<%# ——— BRAK NA STANIE (PRZ-091) ———————————————————————————————————————————————————— %>
+<%# ——— BRAK NA STANIE ———————————————————————————————————————————————————— %>
 <%# WYLACZNIE gdy stany magazynowe sa wlaczone i to zamowienie zdejmuje karte na minusie. %>
-<%# Brak nie blokuje zamowienia (decyzja właściciela 17.10) — pasek tylko mowi, czego nie ma. %>
+<%# Brak nie blokuje zamowienia — pasek tylko mowi, czego nie ma. %>
 <% if (brakiNaStanie.length) { %>
   <div class="pasek-uwaga" id="brak-na-stanie">
     <strong>Brak na stanie:</strong>
@@ -57,7 +57,7 @@
 
 <%# ——— 2. PASEK SPRAW ————————————————————————————————————————————————————————————— %>
 <%# WYLACZNIE gdy cos wisi. Pusty pasek „Do zalatwienia — 0" bylby dokladnie tym szumem, %>
-<%# ktorego cala przebudowa ma sie pozbyc. %>
+<%# ktorego karta ma sie wystrzegac. %>
 <% if (sprawy.length) { %>
   <div class="sprawy">
     <div class="sprawy-glowa">Do załatwienia — <%= sprawy.length %></div>
@@ -89,16 +89,16 @@
         <%# Panel ma mowic PRAWDE o tym, czego edycja NIE naprawia: paczka juz jedzie po adresie %>
         <%# z chwili nadania (kolumna przesylki.adres_uzyty) i zadna poprawka jej nie zawroci. %>
         <%# %>
-        <%# ⚠️ WYLACZNIE W TRYBIE EDYCJI (07.08.2026, prosba wlasciciela: „ten tekst moze %>
-        <%# pojawiac sie po kliknieciu Edytuj. Wczesniej ukryty"). Ostrzezenie mowi o SKUTKU %>
-        <%# POPRAWKI, wiec ma sens dokladnie wtedy, gdy ktos te poprawke robi — na karcie %>
-        <%# do odczytu byl to czerwony pasek przy kazdym nadanym zamowieniu, czyli przy %>
-        <%# wiekszosci. Tresc BEZ ZMIAN: to nie jest zmiekczenie ostrzezenia, tylko %>
-        <%# przeniesienie go tam, gdzie cos znaczy. %>
+        <%# ⚠️ WYLACZNIE W TRYBIE EDYCJI. Ostrzezenie mowi o SKUTKU POPRAWKI, %>
+        <%# wiec ma sens dokladnie wtedy, gdy ktos te poprawke robi. %>
+        <%# Na karcie do odczytu bylby to czerwony pasek przy kazdym nadanym %>
+        <%# zamowieniu, czyli przy wiekszosci — dlatego stoi tu, a nie tam. %>
+        <%# Tresc ostrzezenia jest pelna: to nie jest zmiekczenie, tylko %>
+        <%# umieszczenie go tam, gdzie cos znaczy. %>
         <% if (dane.jestNadanaPaczka) { %>
           <p class="pasek-uwaga">Paczka została już nadana. Poprawka danych dotyczy kolejnych przesyłek.</p>
         <% } %>
-        <%# PRZ-126.C02: odmowa zapisu wraca tu z komunikatem i wpisanymi wartościami. %>
+        <%# Odmowa zapisu wraca tu z komunikatem i wpisanymi wartościami. %>
         <% const bladWysylki = bladDanych?.sekcja === 'wysylka' ? bladDanych : null; %>
         <% const w = { ...dane.wysylka, ...(bladWysylki ? wartosciDanych ?? {} : {}) }; %>
         <% if (bladWysylki) { %><p class="pasek-blokada" id="blad-dane-wysylki"><%= bladWysylki.tekst %></p><% } %>
@@ -173,7 +173,7 @@
         <%# stanie sie faktem (REGON potrafi oddac nazwe urzedowa inna niz uzgodniona). %>
         <% const wpisaneFaktury = bladDanych?.sekcja === 'faktura' ? wartosciDanych : null; %>
         <% const f = { ...dane.faktura, ...(daneZGus ?? {}), ...(wpisaneFaktury ?? {}) }; %>
-        <%# PRZ-126.C02: błąd przy polu — z odmowy wystawienia (pole domeny: nip/nazwa/kraj) albo zapisu. %>
+        <%# Błąd przy polu — z odmowy wystawienia (pole domeny: nip/nazwa/kraj) albo zapisu. %>
         <%# Pole „nazwa” domeny to na karcie „firma”; „kraj” nie ma pola, więc stoi nad formularzem. %>
         <% const bladSekcji = bladFakturyWDanych ? bladFaktury : (bladDanych?.sekcja === 'faktura' ? bladDanych : null); %>
         <% const poleBledu = { nip: 'nip', nazwa: 'firma', firma: 'firma' }[bladSekcji?.pole] ?? null; %>
@@ -208,7 +208,7 @@
           <label>Ulica<input name="ulica" value="<%= f.ulica ?? '' %>"><%- oznaczenie(dane.fakturaReczne, 'ulica') %></label>
           <label>Kod pocztowy<input name="kod" value="<%= f.kod ?? '' %>"><%- oznaczenie(dane.fakturaReczne, 'kod') %></label>
           <label>Miasto<input name="miasto" value="<%= f.miasto ?? '' %>"><%- oznaczenie(dane.fakturaReczne, 'miasto') %></label>
-          <%# E-mail NIEOBOWIAZKOWY (doszedl 2026-07-31): faktura czesto idzie na inny adres %>
+          <%# E-mail NIEOBOWIAZKOWY: faktura czesto idzie na inny adres %>
           <%# niz zamowienie — „faktury@", „ksiegowosc@" albo biuro rachunkowe spoza zamowienia. %>
           <label>E-mail do faktury <span class="wyjasnienie">nieobowiązkowe</span>
             <input name="email" type="email" value="<%= f.email ?? '' %>" placeholder="np. faktury@firma.pl">
@@ -231,10 +231,10 @@
           </div>
         </form>
       <% } else { %>
-        <%# ⚠️ ZWIJANIE (Zadanie Z3b, 2026-08-05) — WYLACZNIE gdy klient NIE chce faktury: %>
+        <%# ⚠️ ZWIJANIE — WYLACZNIE gdy klient NIE chce faktury: %>
         <%# reszta pol (Nazwa, NIP, Adres, E-mail, „Skopiuj do wysylki") jest wtedy szumem, %>
         <%# ktorego operator i tak nigdy nie potrzebuje. Gdy klient CHCE fakture, sekcja %>
-        <%# wyglada DOKLADNIE jak wczesniej — dlatego dwie osobne galezie, nie jeden <dl> %>
+        <%# wyglada DOKLADNIE jak zwykla sekcja — dlatego dwie osobne galezie, nie jeden <dl> %>
         <%# z warunkowym <details> w srodku. %>
         <% const wierszPrzelacznika = `<dt>Klient chce fakturę</dt>`
              + `<dd>${dane.chceFakture ? 'Tak' : 'Nie'}${dane.przelacznikReczny ? ' <span class="znacznik znacznik-reczny">zmienione ręcznie</span>' : ''}</dd>`; %>
@@ -291,13 +291,13 @@
           </details>
         <% } %>
 
-        <%# ——— ZAPAMIETAJ TEGO KLIENTA (21.08.2026) ————————————————————————————— %>
+        <%# ——— ZAPAMIETAJ TEGO KLIENTA ————————————————————————————— %>
         <%# ⚠️ BAZA KLIENTOW ROSNIE Z PRACY. Osobny formularz „dodaj klienta" istnieje %>
         <%# (/klienci), ale nikt nie wypelnia formularza dla kogos, kogo wlasnie obsluzyl — %>
         <%# a wlasnie wtedy komplet danych jest na ekranie i jest sprawdzony. %>
         <%# %>
         <%# ⚠️ PRZYCISK ROZPOZNAJE PO NIP-IE, czy to nowy wpis, czy poprawka istniejacego %>
-        <%# (routes/zamowienia.js: klientPoNip). Bez tego drugi klik odbilby sie od indeksu %>
+        <%# (moduly/zamowienia/karta.js: klientPoNip). Bez tego drugi klik odbilby sie od indeksu %>
         <%# unikalnego komunikatem o duplikacie, ktorego operator nie zamawial. %>
         <form method="post" action="/zamowienia/<%= z.id %>/klient/zapamietaj" class="stopka-edycji">
           <input type="hidden" name="powrot" value="<%= powrot %>">
@@ -326,7 +326,7 @@
         <div><span>Złożone</span><span><%= fmtDataCzas(z.utworzone_at) %></span></div>
         <div>
           <span>Metoda wysyłki</span>
-          <%# Nazwa Z SLOWNIKA (domain/wysylka.js), nie surowa wartosc kolumny: to jest %>
+          <%# Nazwa Z SLOWNIKA (domena/wysylka.js), nie surowa wartosc kolumny: to jest %>
           <%# pole, w ktorym operator SPRAWDZA metode, wiec ma nazywac rzeczy po imieniu. %>
           <%# „nieznana" dostaje ostrzezenie, bo znaczy „panel nie rozpoznal metody sklepu". %>
           <%# Dopisek „(pobranie)" sklada etykietaWysylki, a NIE ten szablon: to samo zdanie %>
@@ -335,7 +335,7 @@
             <% if (nadanieKanalu && z.metoda_wysylki === 'nieznana') { %><%= nazwaDostawy(z) %>
             <% } else if (z.metoda_wysylki === 'nieznana') { %><span class="stan-zle"><%= etykietaWysylki('nieznana', z.pobranie) %></span>
             <% } else { %>
-              <%# PRZ-101.05: plakietka w kolorze przewoźnika jak w kolumnie „Dostawa” listy; klucz liczy kontekst %>
+              <%# Plakietka w kolorze przewoźnika jak w kolumnie „Dostawa” listy; klucz liczy kontekst %>
               <%# tą samą funkcją (przewoznikWiersza). Nieznany przewoźnik i odbiór osobisty — bez plakietki. %>
               <% if (przewoznikKarty) { %><span class="plakietka plakietka--<%= przewoznikKarty.klucz %>"><% } %>
               <span title="<%= nazwaDostawy(z) %>"><%= nazwaDostawy(z) %></span>
@@ -353,31 +353,31 @@
             <% if (mozeAdres(`/zamowienia/${z.id}/zwrot`)) { %><a href="<%= adresPodwidoku('zwrot') %>">Przejdź do ZWROTÓW</a><% } %>
           </p>
         <% } %>
-        <%# PRZ-104: do kiedy paczka ma wyjechać. Napisy i ocena z domeny (terminNaKarcie) — ta sama %>
+        <%# Do kiedy paczka ma wyjechać. Napisy i ocena z domeny (terminNaKarcie) — ta sama %>
         <%# miara, co zegar listy, „Po terminie” i statystyki; widok niczego nie liczy. %>
         <% const tw = terminWysylkiKarty; %>
         <div class="termin-wysylki"><span>Termin wysyłki</span><span><%= tw.napis %><%
           %><% if (tw.reczny) { %> <span class="znacznik znacznik-reczny">ustawiony ręcznie</span><% } %><%
           %><% if (tw.objasnienie) { %><br><span class="wyjasnienie"><%= tw.objasnienie %></span><% } %><%
           %><% if (tw.ocena) { %><br><span class="<%= tw.ocenaZla ? 'stan-zle' : 'wyjasnienie' %>"><%= tw.ocena %></span><% } %></span></div>
-        <%# PRZ-152.G3a: status zamówienia jest w nagłówku karty — tu stoi status PŁATNOŚCI, bez daty, %>
+        <%# Status zamówienia jest w nagłówku karty — tu stoi status PŁATNOŚCI, bez daty, %>
         <%# w kolorze (zielony / czerwony / pomarańczowy przy pobraniu). Stan liczy domena (stanPlatnosciKarty). %>
         <% const spk = stanPlatnosciKarty; %>
         <div><span>Status płatności</span><span><span class="znacznik <%= spk.klasa %>"<% if (spk.opis) { %> title="<%= spk.opis %>"<% } %>><%= spk.etykieta %></span><% if (z.oplacone_recznie) { %> <span class="znacznik">potwierdzone ręcznie</span><% } %></span></div>
         <%# Platnosc — metoda WPROST ze sklepu („Za pobraniem", „Przelew tradycyjny"). %>
-        <%# Zeszla z belki 2026-08-01 razem z reszta faktow opisowych. %>
+        <%# Stoi tu, a nie na belce, razem z reszta faktow opisowych. %>
         <div><span>Płatność</span><span><%= wart(z.metoda_platnosci) %></span></div>
         <%# Kwota pobrania WYLACZNIE przy pobraniu — przy zwyklej wysylce nie ma czego %>
         <%# inkasowac, a pusty wiersz w metryczce tylko myli. %>
         <% if (z.pobranie) { %>
           <div><span>Kwota pobrania</span><span><%= wart(z.kwota_pobrania) %> zł</span></div>
         <% } %>
-        <%# ——— SKAD PRZYSZLO ZAMOWIENIE (Etap 3 kampanii, 25.08.2026) ——————————————— %>
+        <%# ——— SKAD PRZYSZLO ZAMOWIENIE ——————————————— %>
         <%# ⚠️ WIERSZ POKAZUJE SIE WYLACZNIE PRZY ZAMOWIENIU, KTOREMU SKLEP TO ZAPISAL. %>
-        <%# Allegro i zamowienia reczne nie maja tego pojecia, a 21 zamowien sklepowych %>
-        <%# powstalo przed wlaczeniem atrybucji — „Nie wiadomo" przy kazdym z nich byloby %>
+        <%# Allegro i zamowienia reczne nie maja tego pojecia, a czesc zamowien sklepowych %>
+        <%# powstala przed wlaczeniem atrybucji — „Nie wiadomo" przy kazdym z nich byloby %>
         <%# szumem, a nie informacja. Widok NIC nie sklada: etykieta, szczegol i wskazowka %>
-        <%# przychodza gotowe z domeny (domain/atrybucja.js). %>
+        <%# przychodza gotowe z domeny (domena/atrybucja.js). %>
         <% if (dane.atrybucja) { %>
           <%# ⚠️ WIERSZ NA CALA SZEROKOSC (`.skad`), a nie etykieta-obok-wartosci jak reszta %>
           <%# metryczki: wartosc ma tu kilka linii, a w kolumnie ~300 px dzielonej z etykieta %>
@@ -400,14 +400,14 @@
                   weszła na <a href="<%= dane.atrybucja.wejscie %>" target="_blank" rel="noopener noreferrer"><%= dane.atrybucja.wejscie.replace(/^https?:\/\/[^/]+/, '') || '/' %></a>
                 </div>
               <% } %>
-              <%# Krotkie zdanie na ekranie, pelne w podpowiedzi — patrz domain/atrybucja.js. %>
+              <%# Krotkie zdanie na ekranie, pelne w podpowiedzi — patrz domena/atrybucja.js. %>
               <% if (dane.opisAtrybucji.wskazowka) { %>
                 <div class="wiersz-szczegoly wskazowka-zrodla" title="<%= dane.opisAtrybucji.wskazowkaPelna %>"><%= dane.opisAtrybucji.wskazowka %></div>
               <% } %>
             </span>
           </div>
         <% } %>
-        <%# ——— USTALENIA HANDLOWE (21.08.2026) ————————————————————————————————— %>
+        <%# ——— USTALENIA HANDLOWE ————————————————————————————————— %>
         <%# ⚠️ KAZDY Z TYCH TRZECH WIERSZY POKAZUJE SIE WYLACZNIE WTEDY, GDY COS ZNACZY. %>
         <%# „B2B: nie", „rabat: 0%" i „termin: nieuzgodniony" przy kazdym z tysiaca zamowien %>
         <%# to trzy wiersze szumu przyslaniajace te kilka, w ktorych ustalenia naprawde sa. %>
@@ -420,7 +420,7 @@
         <% if (z.rabat_procent) { %>
           <div><span>Rabat klienta B2B</span><span><%= z.rabat_procent %>% <span class="wyjasnienie">w cenach pozycji; klient go nie widzi</span></span></div>
         <% } %>
-        <%# ⚠️ PAS ROZJAZDU STAWEK (23.08.2026) — widoczny TYLKO wtedy, gdy jest co pokazac. %>
+        <%# ⚠️ PAS ROZJAZDU STAWEK — widoczny TYLKO wtedy, gdy jest co pokazac. %>
         <%# Ostrzezenie wyjace przy dobrych danych przestaje znaczyc cokolwiek, wiec decyzje %>
         <%# 'nic' i 'ustaw' nie rysuja tu niczego (ta druga zdazyla juz przeliczyc ceny). %>
         <%# %>
@@ -435,7 +435,7 @@
             i wpisz <%= rabatUmowy.stawka.procent %> w polu rabatu.
           </span></div>
         <% } %>
-        <%# ⚠️ DRUGI PAS — „rozjazd bazy z konfiguracja" — ZNIKNAL 2026-08-24 i nie ma %>
+        <%# ⚠️ DRUGI PAS — „rozjazd bazy z konfiguracja" — USUNIETY celowo i nie ma %>
         <%# go przywracac. Mowil o roznicy miedzy tabela `klienci` a `OMS_KLIENCI_ZBIORCZY`, %>
         <%# czyli o dwoch zrodlach jednej stawki, i nie mial przycisku, bo naprawa lezala %>
         <%# w pliku `.env` na NAS-ie. Warunki umowy stoja dzis WYLACZNIE na karcie klienta, %>
@@ -443,7 +443,7 @@
         <%# umowe z ZAMOWIENIEM i mowi o czym innym. %>
         <%# Powiazanie dosylki — zeszlo z belki, ale zniknac nie moze: bez niego nikt %>
         <%# patrzacy na zamowienie pierwotne nie dowie sie, ze cos do niego dojechalo, %>
-        <%# a reklamacja policzy sie drugi raz jako sprzedaz (domain/dosylka.js). %>
+        <%# a reklamacja policzy sie drugi raz jako sprzedaz (domena/dosylka.js). %>
         <% if (dosylka.pierwotne) { %>
           <div><span>Dosyłka do</span><span><a class="link-numer" title="<%= dosylka.pierwotne.numer %>" href="/zamowienia/<%= dosylka.pierwotne.id %>"><%= dosylka.pierwotne.numer %></a></span></div>
         <% } %>
@@ -462,7 +462,7 @@
         <%# ⚠️ TO SA PIENIADZE: pobranie bez kwoty to paczka, za ktora kurier nic nie %>
         <%# zainkasuje, a przelaczenie z pobrania na zwykla wysylke musi kwote przestac %>
         <%# uwzgledniac (inaczej kurier zainkasowalby ja drugi raz mimo przedplaty). %>
-        <%# DWA POLA, NIE JEDNO (2026-08-01): dostawa i pobranie sa od siebie niezalezne, %>
+        <%# DWA POLA, NIE JEDNO: dostawa i pobranie sa od siebie niezalezne, %>
         <%# wiec formularz musi umiec ustawic OBIE. Zlozone w jedna pozycje listy wracaloby %>
         <%# do stanu, w ktorym kazdy nowy kurier podwaja liczbe opcji. %>
         <form method="post" action="/zamowienia/<%= z.id %>/wysylka/metoda" class="pola">
@@ -484,7 +484,7 @@
           <label>Kwota pobrania (zł)<input name="kwota_pobrania" value="<%= z.kwota_pobrania || '' %>"></label>
           <%# Kod paczkomatu to ADRES przesylki — bez niego panel odmawia nadania, wiec %>
           <%# to pole jest jedynym wyjsciem z tamtej odmowy. Zapisuje sie WYLACZNIE przy %>
-          <%# metodzie, ktora punkt odbioru w ogole ma (domain/wysylka.js). %>
+          <%# metodzie, ktora punkt odbioru w ogole ma (domena/wysylka.js). %>
           <label>Kod paczkomatu (tylko InPost Paczkomat)
             <input name="punkt_odbioru" value="<%= z.punkt_odbioru || '' %>" placeholder="np. WRO10B">
           </label>
@@ -505,7 +505,7 @@
         <%# ⚠️⚠️ ZMIANA RABATU PRZELICZA CENY POZYCJI — i dlatego przycisk mowi o tym wprost. %>
         <%# Przeliczenie dotyka WYLACZNIE pozycji dodanych z magazynu, ktorych ceny sa dalej %>
         <%# takie, jakie wpisal panel; cena wystukana recznie zostaje nietknieta, a dziennik %>
-        <%# wymienia takie pozycje z nazwy (routes/zamowienia.js). %>
+        <%# wymienia takie pozycje z nazwy (moduly/zamowienia/karta.js). %>
         <form method="post" action="/zamowienia/<%= z.id %>/ustalenia" class="pola">
           <input type="hidden" name="powrot" value="<%= powrot %>">
           <label class="pole-przelacznik">
@@ -534,7 +534,7 @@
           </div>
         </form>
 
-        <%# ——— DATA WYSYLKI (PRZ-104) ————————————————————————————————————————————— %>
+        <%# ——— DATA WYSYLKI ————————————————————————————————————————————— %>
         <%# „Najpozniej do” — zastepuje standardowy termin w zegarze listy, „Po terminie” i statystykach. %>
         <%# Po wysylce formularza NIE MA (trasa i zapis i tak odmawiaja): spozniona wysylka nie da sie %>
         <%# „poprawic” po fakcie. Powrot do standardu to drugi przycisk tego samego formularza. %>
@@ -561,7 +561,7 @@
         <% } %>
 
         <%# Powiazanie dosylki. Stoi TUTAJ, a nie na ekranie zakladania, bo ekran zakladania %>
-        <%# stracil to pole 2026-08-01 (formularz mial byc krotki) — a numeru zamowienia %>
+        <%# nie ma tego pola (formularz ma byc krotki) — a numeru zamowienia %>
         <%# pierwotnego i tak zwykle szuka sie dopiero po rozmowie. Pole niesie numer %>
         <%# WIDOCZNY (R/2026/003 albo sklepowy), nie wewnetrzny id; puste KASUJE powiazanie. %>
         <form method="post" action="/zamowienia/<%= z.id %>/dosylka" class="pola">
@@ -578,7 +578,7 @@
       <%# raz zostawalaby na karcie na zawsze, bo dane ze sklepu juz nigdy by jej nie przebily. %>
       <%# WIDOCZNE TAKZE W ODCZYCIE — to jest awaryjne wyjscie, a te nie moga wymagac %>
       <%# wchodzenia w tryb edycji, zeby je znalezc. %>
-      <%_ /* PRZ-126.C02: odmowa „przywroc” (i kazdej innej trasy danych poza wysylka/faktura) tez wraca z komunikatem. */ -%>
+      <%_ /* Odmowa „przywroc” (i kazdej innej trasy danych poza wysylka/faktura) tez wraca z komunikatem. */ -%>
       <%_ if (bladDanych && !['wysylka', 'faktura', 'pozycje'].includes(bladDanych.sekcja)) { %><p class="pasek-blokada" id="blad-dane-<%= bladDanych.sekcja %>"><%= bladDanych.tekst %></p><% } -%>
       <% if (dane.saNadpisania && mozeAdres(`/zamowienia/${z.id}/dane/przywroc`)) { %>
         <form method="post" action="/zamowienia/<%= z.id %>/dane/przywroc">
@@ -607,13 +607,13 @@
 <% } %>
 <%- include('_komentarz-wewnetrzny.ejs') %>
 
-<%# ——— 4a/4b PRZENIESIONE NA DÓŁ KARTY (22.08.2026) ———————————————————————————————— %>
-<%# Pasek potwierdzenia i komentarz wewnętrzny stały tu od 21.08, gdy potwierdzenie było %>
-<%# JEDYNĄ rzeczą na tej karcie wychodzącą do klienta. Od 22.08 takich rzeczy są cztery, %>
-<%# więc zbierają się w jednej sekcji na dole (`_wiadomosci.ejs`) — razem z komentarzem, %>
-<%# bo to przy wysyłce najbardziej potrzeba notatki „nie wysyłać FV, klient chce zbiorczą". %>
+<%# ——— PASEK POTWIERDZENIA I WIADOMOŚCI: NA DOLE KARTY ——————————————————————————————— %>
+<%# Pasek potwierdzenia i wiadomości do klienta stoją w jednej sekcji na dole %>
+<%# (`_wiadomosci.ejs`), bo na karcie jest kilka rzeczy wychodzących do klienta. %>
+<%# Komentarz wewnętrzny to notatka, nie wiadomość: stoi wyżej, nad Pozycjami %>
+<%# (`_komentarz-wewnetrzny.ejs`), widoczny także bez poczty. %>
 
-<%# ——— 4a. ZAMÓWIENIE SCALONE (PRZ-101.04) ———————————————————————————————————————— %>
+<%# ——— 4a. ZAMÓWIENIE SCALONE ———————————————————————————————————————— %>
 <%# Tylko na karcie GŁÓWNEGO, krótko: numery dołączonych, decyzja wysyłki, „Rozdziel”. %>
 <%# Pozycje całej grupy stoją w panelu „Pozycje” niżej (zamowienieGrupy — to samo, co faktura). %>
 <% if (scalenie) { %>
@@ -661,12 +661,12 @@
 <%# edytowac, a „Razem" jest wynikiem, nie dana. %>
 <section class="panel<%= edytujWszystkiePozycje ? ' panel--edycja' : '' %>" id="pozycje">
   <div class="panel-glowa">
-    <%# Dopisek „— co spakować” zdjety 07.08.2026 (prosba wlasciciela: „zostaw sam napis
-        Pozycje”). Zmienione W OBU miejscach, bo ten sam naglowek stoi na karcie i na ekranie
-        zakladania — jedno przemianowane, drugie nie, wygladaloby na przeoczenie. %>
+    <%# Naglowek jest sam „Pozycje”, bez dopisku „— co spakować”. Tak samo na karcie
+        i na ekranie zakladania, bo ten sam naglowek stoi w obu miejscach —
+        jedno przemianowane, drugie nie, wygladaloby na przeoczenie. %>
     <h2>Pozycje</h2>
-    <%# Dopisek „zmiany nie idą do sklepu" w trybie edycji zdjęty 14.10.2026 (PRZ-074, prośba
-        właściciela). To samo mówi zdanie pod tabelą, przy „Zapisz pozycje". %>
+    <%# Dopisku „zmiany nie idą do sklepu" w trybie edycji nie ma:
+        to samo mówi zdanie pod tabelą, przy „Zapisz pozycje". %>
     <% if (!edytujWszystkiePozycje) { %>
       <a class="link-edytuj" href="<%= adresKarty('pozycje', 'pozycje') %>">Edytuj</a>
     <% } %>
@@ -677,7 +677,7 @@
       <form method="post" action="/zamowienia/<%= z.id %>/pozycje/zapisz" class="formularz-pozycji" data-vat="<%= stawkaVat %>" data-wdt="<%= wdt ? '1' : '0' %>"<%- zwolniona ? ' data-zwolniona="1"' : '' %>>
         <input type="hidden" name="powrot" value="<%= powrot %>">
         <button type="submit" hidden>Zapisz pozycje</button>
-        <%# PRZ-152.G13a: w 390 px tabela edycji (i odmowy) jedzie w bok we własnym przewijaku — bez tego
+        <%# W 390 px tabela edycji (i odmowy) jedzie w bok we własnym przewijaku — bez tego
             nazwa ściskała się do jednej litery w wierszu. %>
         <style>@media (max-width: 40rem) { .tab-pozycje[data-wiersze-pozycji] { min-width: 48rem; } }</style>
         <%# Każdy wiersz wysyła siedem równoległych pól, także wysyłka i pusty wzór. %>
@@ -686,7 +686,7 @@
           <colgroup><col class="kol-ilosc"><col><col class="kol-sku"><col class="kol-cena"><col class="kol-vat"><col class="kol-cena"><col class="kol-suma"><col class="kol-usun"></colgroup>
           <thead><tr><th class="kol-ilosc">Ilość</th><th>Nazwa</th><th>SKU</th><th class="liczba">Cena netto</th><th class="liczba">Stawka VAT</th><th class="liczba">Cena brutto</th><th class="liczba">Suma</th><th class="kol-usun">×</th></tr></thead>
           <tbody>
-            <%# PRZ-152.G13a: po odmowie zapisu pola niosą to, co człowiek wpisał (bladDanych.wpisane z reczne.js),
+            <%# Po odmowie zapisu pola niosą to, co człowiek wpisał (bladDanych.wpisane z reczne.js),
                 nie wartości z bazy — odmowa nie kasuje pracy. Bez odmowy `wpis` oddaje wartość z bazy. %>
             <% const wpisane = bladDanych?.sekcja === 'pozycje' ? bladDanych.wpisane : null; %>
             <% pozycjeKarty.forEach(function (w) { %>
@@ -770,7 +770,7 @@
       <% }); %>
       <script type="module" src="<%= zasob('pozycje-wiersze.js') %>"></script>
 
-      <%# ——— DODAJ Z MAGAZYNU (21.08.2026) ———————————————————————————————————————————— %>
+      <%# ——— DODAJ Z MAGAZYNU ———————————————————————————————————————————— %>
       <%# Szukanie idzie ZWYKLYM GET-em na te sama karte, bez JavaScriptu: pole `edytuj` %>
       <%# jedzie ukryte, zeby wyniki wrocily do OTWARTEJ sekcji pozycji, a nie zamknely jej %>
       <%# operatorowi w polowie roboty. %>
@@ -793,7 +793,7 @@
           </label>
           <%# ⚠️ CENNIK, NIE „KANAL". Ceny biora sie WYLACZNIE ze sklepow — Allegro ma %>
           <%# w cenie prowizje, wiec jako cennik nie wystepuje i wystapic nie moze %>
-          <%# (domain/magazyn-do-zamowienia.js). %>
+          <%# (domena/magazyn-do-zamowienia.js). %>
           <label class="magazyn-pole">Cennik
             <select name="cennik"
                     hx-get="/zamowienia/<%= z.id %>/magazyn/wyniki"
@@ -826,9 +826,9 @@
       </section>
     <% } else { %>
       <% if (pozycjeUsunieteKarty.length) { %><p class="wyjasnienie"><%= pozycjeUsunieteKarty.length === 1 ? "1 pozycja ze sklepu usunięta ręcznie" : ((n) => n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? `${n} pozycje ze sklepu usunięte ręcznie` : `${n} pozycji ze sklepu usuniętych ręcznie`)(pozycjeUsunieteKarty.length) %></p><% } %>
-      <%# PRZ-152.G13a: szerokości jak w tabeli edycji (layout-oms.ejs, `[data-wiersze-pozycji]`) — tam ich nie %>
-      <%# dopisujemy, bo ten arkusz zmieniają równolegle inne zadania. Na telefonie osiem kolumn nie mieści się %>
-      <%# w 390 px — tabela jedzie w bok we własnym przewijaku, nazwa nie łamie się po literze. %>
+      <%# Szerokości jak w tabeli edycji (oms-uklad.css, `.tab-pozycje[data-wiersze-pozycji]`) — tu %>
+      <%# powtórzone w `<style>` dla tabeli odczytu (`[data-tabela-odczytu]`). Na telefonie osiem kolumn %>
+      <%# nie mieści się w 390 px — tabela jedzie w bok we własnym przewijaku, nazwa nie łamie się po literze. %>
       <style>
         .tab-pozycje[data-tabela-odczytu] col.kol-sku { width: 6rem; }
         .tab-pozycje[data-tabela-odczytu] col.kol-cena { width: 6.5rem; }
@@ -846,9 +846,9 @@
         <thead>
           <%# Kolumna miniatury nie ma naglowka — obrazek opisuje sam siebie, a slowo %>
           <%# „Zdjecie" nad nim byloby jedyna rzecza w tym wierszu, ktorej nikt nie czyta. %>
-          <%# PRZ-152.G13a (05.11.2026): NETTO ZNOW MA WLASNA KOLUMNE — odczyt ma te same kolumny %>
-          <%# i w tej samej kolejnosci co edycja (właściciel: przelaczenie „Edytuj” nie moze przestawiac %>
-          <%# tabeli). Wczesniej (2026-08-07) netto stalo drobnym drukiem pod cena brutto. Na fakture %>
+          <%# NETTO MA WLASNA KOLUMNE — odczyt ma te same kolumny %>
+          <%# i w tej samej kolejnosci co edycja (przelaczenie „Edytuj” nie moze przestawiac %>
+          <%# tabeli), a netto nie stoi drobnym drukiem pod cena brutto. Na fakture %>
           <%# i do bariery arytmetycznej dalej idzie BRUTTO; kwoty z przecinkiem przez zlotowki(). %>
           <tr><th class="kol-mini"></th><th class="kol-ilosc">Ilość</th><th>Nazwa</th><th class="kol-sku">SKU</th><th class="liczba">Cena netto</th><th class="liczba kol-vat">Stawka VAT</th><th class="liczba">Cena brutto</th><th class="liczba">Suma</th></tr>
         </thead>
@@ -857,10 +857,10 @@
             <%# Miniatura liczona RAZ na wiersz, bo czytaja ja DWIE komorki: obrazkowa %>
             <%# (nizej) i nazwa, ktora przejmuje odnosnik, gdy miniatury nie ma. %>
             <%# ⚠️ KANAL I NUMER PRODUKTU IDA RAZEM ZE ZDJECIEM — to po tej parze odnajduje %>
-            <%# sie PRAWDZIWY adres miniatury w lustrze sklepow (domain/miniatura-pozycji.js). %>
+            <%# sie PRAWDZIWY adres miniatury w lustrze sklepow (domena/miniatura-pozycji.js). %>
             <% var mini = miniatura(z.sklep, w.produktId, w.zdjecie, w.sku); %>
             <tr<%- w.podsumowanie ? ' class="wiersz-razem"' : '' %>>
-              <%# Miniatura: adres wariantu 150x150 liczy DOMENA (domain/miniatury.js) — ta %>
+              <%# Miniatura: adres wariantu 150x150 liczy DOMENA (domena/miniatury.js) — ta %>
               <%# sama funkcja, co na liscie zamowien. Pozycja bez zdjecia (dopisana recznie, %>
               <%# produkt bez obrazka, oferta Allegro, o ktora jeszcze nie pytalismy albo %>
               <%# ktora zdjecia nie ma, wiersz wysylki i „Razem") NIE dostaje ani pustej %>
@@ -904,7 +904,7 @@
                 <% } else { %>
                   <%= w.nazwa %>
                 <% } %>
-                <%# PRZ-101.04: przy zamówieniu scalonym — z którego zamówienia pozycja przyszła. %>
+                <%# Przy zamówieniu scalonym — z którego zamówienia pozycja przyszła. %>
                 <% if (w.zZamowienia) { %><div class="sku z-zamowienia">z zamówienia <%= w.zZamowienia %></div><% } %>
                 <%# Jak w trybie edycji wyzej: `oznaczReczna` gasnie przy zamowieniu recznym. %>
                 <% if (w.oznaczReczna) { %><span class="znacznik znacznik-reczny">dopisana ręcznie</span><% } %>
@@ -912,16 +912,16 @@
                   <span class="znacznik znacznik-reczny">zmienione ręcznie: <%= w.polaZmienione.join(', ') %></span>
                 <% } %>
               </td>
-              <%# `skuDoPokazania`, nie `sku` — patrz komentarz wyzej. PRZ-152.G13a: osobna kolumna jak w edycji. %>
+              <%# `skuDoPokazania`, nie `sku` — patrz komentarz wyzej. Osobna kolumna jak w edycji. %>
               <td class="kol-sku"><%= w.skuDoPokazania || '' %></td>
               <%# Netto: zlotowki() oddaje „—" przy braku danych (pozycja sprzed kolumny netto). %>
               <td class="liczba"><%= w.podsumowanie ? '' : zlotowki(w.cenaNetto ?? '') %></td>
-              <%# PRZ-105: stawka pozycji (domain/tabela-pozycji.js — ta sama reguła co faktura). %>
+              <%# Stawka pozycji (domena/tabela-pozycji.js — ta sama reguła co faktura). %>
               <td class="liczba kol-vat"><%= w.stawkaOpis ?? '' %></td>
               <td class="liczba">
                 <% if (!w.podsumowanie) { %>
                   <%# ⚠️ CENA KATALOGOWA STOI OBOK, PRZEKRESLONA — i pokazuje sie WYLACZNIE %>
-                  <%# wtedy, gdy rozni sie od ceny placonej (domain/tabela-pozycji.js). %>
+                  <%# wtedy, gdy rozni sie od ceny placonej (domena/tabela-pozycji.js). %>
                   <%# Bez niej rabat jest niewidzialny, a cena „52,43" wyglada jak literowka. %>
                   <%# Rabatu w procentach TU NIE MA: stoi raz, w Szczegolach zamowienia, %>
                   <%# a powtorzony przy kazdym wierszu sugerowalby, ze bywa rozny na pozycje. %>
@@ -937,13 +937,13 @@
         </tbody>
       </table>
       </div>
-      <%# PRZ-105: Razem netto · VAT · Razem brutto — liczone jak faktura (w edycji: pod tabelą formularza). %>
+      <%# Razem netto · VAT · Razem brutto — liczone jak faktura (w edycji: pod tabelą formularza). %>
       <%- include('_podsumowanie-vat.ejs', { p: podsumowanieVat }) %>
     <% } %>
-    <%# Kupon rabatowy ze sklepu (kampania WRZESIEN30, 2026-08-25) — w OBU trybach, bo %>
+    <%# Kupon rabatowy ze sklepu — w OBU trybach, bo %>
     <%# w edycji tlumaczy, skad wziely sie ceny. Informacja OPISOWA: ceny pozycji wyzej %>
     <%# sa juz PO rabacie, wiec ten wiersz niczego nie liczy i nie zmienia sum. Liste %>
-    <%# sklada trasa (dane.kupony, domain/kupony.js) — szablon nie parsuje kolumn. %>
+    <%# sklada trasa (dane.kupony, domena/kupony.js) — szablon nie parsuje kolumn. %>
     <% if (dane.kupony.length) { %>
       <p class="kupony-karty">
         <% dane.kupony.forEach(function (k) { %>
@@ -956,9 +956,9 @@
 </section>
 
 <%# ——— 6. PRZESYLKA I PLATNOSCI — POL EKRANU NA KAZDA ——————————————————————————————— %>
-<%# ⚠️ OBOK SIEBIE OD 2026-08-07 (prosba wlasciciela). Obie sekcje sa niskie, a byly %>
-<%# rozciagniete na cala szerokosc — jedno spojrzenie lapie teraz logistyke i pieniadze %>
-<%# naraz. Ponizej 800 px kolumny wracaja jedna pod druga (media query w layoucie). %>
+<%# ⚠️ OBOK SIEBIE. Obie sekcje sa niskie, wiec rozciagniete na cala szerokosc %>
+<%# marnowalyby miejsce — jedno spojrzenie lapie logistyke i pieniadze %>
+<%# naraz. Ponizej 1000 px kolumny wracaja jedna pod druga (media query w oms-uklad.css). %>
 <div class="dwie-kolumny">
 <section class="panel" id="przesylka">
   <div class="panel-glowa"><h2>Przesyłka</h2></div>
@@ -987,10 +987,10 @@
       <%# po ewentualnym reprincie). Wyciagniete przed blok, bo czyta go i linia statusu, %>
       <%# i ostrzezenie o nieudanych probach nizej. %>
       <% const kol = poz.ostatniaPozycjaKolejki; %>
-      <%# PRZ-152.G8 — uklad zatwierdzony przez właściciela 04.11: wiersz 1 (tytul, plakietka, JEDEN %>
+      <%# Uklad: wiersz 1 (tytul, plakietka, JEDEN %>
       <%# status, akcje), wiersz 2 (numer + kopiuj), 3 (ostatnie zdarzenie), 4 („Do:"), stopka. %>
       <%# Napisy liczy domena (domena/karta-paczki.js) — widok je tylko wstawia. Warunki przyciskow %>
-      <%# sa TE SAME co przed zmiana, przeniesione bez przepisywania. %>
+      <%# licza domena i trasy — widok ich nie powiela. %>
       <% const k = poz.karta; %>
       <div class="paczka<%= poz.ukryta ? ' paczka--ukryta' : '' %>">
         <div class="paczka-glowa">
@@ -1002,9 +1002,9 @@
           <% } %>
           <span class="paczka-akcje">
             <% if (p.etykieta_sciezka) { %>
-              <%# ⚠️ NOWA KARTA (zgloszenie wlasciciela 11.08.2026, po pierwszym wydruku %>
-              <%# etykiety WzA). Karta zamowienia jest MIEJSCEM PRACY przy pakowaniu, wiec %>
-              <%# zabranie jej pod podglad PDF-a znaczylo powrot wstecz po kazdym wydruku. %>
+              <%# ⚠️ NOWA KARTA — karta zamowienia jest MIEJSCEM PRACY przy pakowaniu, %>
+              <%# wiec zabranie jej pod podglad PDF-a znaczyloby powrot wstecz po %>
+              <%# kazdym wydruku. %>
               <%# `rel` jest przy `target="_blank"` obowiazkowy: bez niego otwarty dokument %>
               <%# dostaje `window.opener` do panelu. %>
               <a class="btn btn--maly" href="/zamowienia/<%= z.id %>/przesylki/<%= p.id %>/etykieta"
@@ -1013,7 +1013,7 @@
             <%# „Drukuj" (kolejka druku na Zebrze) WYLACZNIE gdy ZPL istnieje. Powtorny wydruk %>
             <%# jest dozwolony — etykieta moze sie zaciac albo zgubic — wiec kazde klikniecie %>
             <%# tworzy NOWY wiersz kolejki. %>
-            <%# PRZ-152.G16b (właściciel 05.11: „Tak, Pobierz ZPL”): plik ZPL do awaryjnego druku bez czuwacza (G6z). %>
+            <%# Pobierz ZPL: plik ZPL do awaryjnego druku bez czuwacza. %>
             <% if (p.etykieta_zpl_sciezka && mozeAdres(`/zamowienia/${z.id}/przesylki/${p.id}/etykieta-zpl`)) { %>
               <a class="btn btn--maly" href="/zamowienia/<%= z.id %>/przesylki/<%= p.id %>/etykieta-zpl">Pobierz ZPL</a>
             <% } %>
@@ -1029,7 +1029,7 @@
               <details class="wydruki paczka-menu">
                 <summary class="btn btn--maly" aria-label="Więcej akcji: paczka <%= p.kolejnosc %>" title="Więcej akcji">⋯</summary>
                 <div class="wydruki-menu">
-                  <%# „Ukryj" WYLACZNIE przy paczce, ktora zastapila kolejna (04.09.2026). Regule %>
+                  <%# „Ukryj" WYLACZNIE przy paczce, ktora zastapila kolejna. Regule %>
                   <%# liczy domena (mozliweUkrycie), widok jej NIE POWTARZA — druga kopia rozjechalaby %>
                   <%# sie z odmowa w trasie przy pierwszej zmianie. %>
                   <% if (poz.mozliweUkrycie) { %>
@@ -1131,7 +1131,7 @@
         <% if (p.sync_woo_blad) { %>
           <p class="pasek-blokada">
             SKLEP NIEZSYNCHRONIZOWANY: <%= p.sync_woo_blad %>. Klient mógł nie dostać notatki z numerem listu — uzupełnij w WooCommerce.
-            <%# PRZ-117: notatkę panel ponawia sam co godzinę przez 48 h od nadania; przycisk robi to od razu. %>
+            <%# Notatkę panel ponawia sam co godzinę przez 48 h od nadania; przycisk robi to od razu. %>
             <% if (String(p.sync_woo_blad).startsWith('notatka: ')) { %>
               <br>Panel ponawia sam co godzinę przez 48 h od nadania.
             <% } %>
@@ -1156,9 +1156,9 @@
         <%# przypadkach. Ale WPISAL ja czlowiek tylko w jednym: paczke z Allegro panel sam %>
         <%# przeczytal (services/przesylki-allegro.js), wiec napis „zarejestrowana recznie" %>
         <%# klamalby o tym, skad wzial sie numer. %>
-        <%# ⚠️ ROZROZNIA JE ZRODLO NUMERU, A NIE `kurier` (poprawka I-1 recenzji calej galezi). %>
-        <%# Numer WPISANY Z REKI przy zamowieniu z Allegro tez ma kuriera 'allegro', wiec stary %>
-        <%# warunek pisal przy nim „przeczytany z konta" — czyli klamal o tym, skad sie wzial, %>
+        <%# ⚠️ ROZROZNIA JE ZRODLO NUMERU, A NIE `kurier`. %>
+        <%# Numer WPISANY Z REKI przy zamowieniu z Allegro tez ma kuriera 'allegro', wiec warunek %>
+        <%# oparty o kuriera pisalby przy nim „przeczytany z konta" — czyli klamalby o tym, skad sie wzial, %>
         <%# dokladnie tam, gdzie operator szuka odpowiedzi na pytanie o literowke. %>
         <% if (p.nadana_recznie) { %>
           <p class="paczka-linia"><span class="znacznik"><%= poz.wpisanaZReki
@@ -1179,7 +1179,7 @@
           <%# ⚠️ Przy numerze PRZECZYTANYM z konta Allegro tez go nie ma, choc `nadana_recznie` %>
           <%# jest ustawione: numeru nikt nie przepisywal, wiec literowka jest niemozliwa. %>
           <%# ⚠️⚠️ ALE przy numerze wpisanym Z REKI przy zamowieniu z Allegro przycisk MUSI BYC %>
-          <%# (poprawka I-1) — tam literowka jest jak najbardziej mozliwa, a bez tego wyjscia %>
+          <%# Tam literowka jest jak najbardziej mozliwa, a bez tego wyjscia %>
           <%# zly numer zostawal na karcie NA ZAWSZE. Rozstrzyga `wpisanaZReki` (domena), %>
           <%# a nie `kurier`, ktory obu tych przypadkow nie odroznia. Warunek widoku i odmowa %>
           <%# w bazie licza sie TA SAMA funkcja — przycisk stoi dokladnie tam, gdzie kasowanie %>
@@ -1205,27 +1205,27 @@
       <p class="pusto-sekcja">Brak paczek — nic jeszcze nie pojechało.</p>
     <% } %>
 
-    <%# I4 (recenzja galezi): przy odbiorze osobistym KLIENT nic nie odbiera od kuriera — %>
-    <%# nadanie i tak odmowi na koncu (nadanie.js: wybierzKuriera rzuca, bo `DLA_METODY` %>
-    <%# celowo nie zna tej metody), ale twarda odmowa NA KONCU sciezki to za malo: karta ma %>
+    <%# Przy odbiorze osobistym KLIENT nic nie odbiera od kuriera — %>
+    <%# nadanie i tak odmowi na koncu (wybierzKuriera rzuca, bo rejestr kurierow %>
+    <%# nie zna tej metody), ale twarda odmowa NA KONCU sciezki to za malo: karta ma %>
     <%# NIE PODPOWIADAC akcji, ktora zaraz odmowi. „Ekran nadania istnieje po to, zeby NIE %>
-    <%# klamac" (patrz komentarz przy GET /zamowienia/:id/nadaj w routes/zamowienia.js) — %>
+    <%# klamac" (patrz komentarz przy GET /zamowienia/:id/nadaj w moduly/wysylka/trasy/nadanie.js) — %>
     <%# to samo dotyczy przycisku, ktory na ten ekran prowadzi. %>
-    <%# PRZ-152.G8: nadanie kolejnej paczki i „Paczka nadana poza panelem?" w jednym rzedzie pod kartami. %>
+    <%# Nadanie kolejnej paczki i „Paczka nadana poza panelem?" w jednym rzedzie pod kartami. %>
     <div class="paczka-dalej">
     <% if (z.metoda_wysylki === 'odbior_osobisty' && !z.anulowane) { %>
       <p class="wyjasnienie">Odbiór osobisty — do tego zamówienia nie jedzie żadna paczka, nie ma czego nadawać.</p>
     <%# Czego BRAKUJE, zeby dalo sie nadac (dzis: kod paczkomatu). Blokada zamiast przycisku %>
     <%# — nadanie i tak odmowi (services/nadanie.js), a karta ma nie prowadzic na ekran, %>
     <%# ktory obieca nadanie i zaraz go odmowi. Powod policzony w trasie, TA SAMA funkcja %>
-    <%# co przy odmowie (domain/gotowosc-nadania.js). %>
+    <%# co przy odmowie (domena/gotowosc-nadania.js). %>
     <% } else if (brakDoNadania && !z.anulowane) { %>
       <p class="pasek-blokada"><%= brakDoNadania %></p>
     <% } else if (mozliwaKolejnaPaczka && (z.metoda_wysylki !== 'nieznana' || drogaErli?.metoda) && !z.anulowane) { %>
       <%# GET, nie POST: nadanie jest NIEODWRACALNE (DPD przydziela numer listu od razu), wiec %>
       <%# klikniecie prowadzi na osobny ekran z adresem i wymiarami. Etykieta linku ZMIENIA SIE, %>
       <%# gdy paczka juz jest — dolozenie drugiej ma byc INNA, swiadomie wybrana akcja. %>
-      <%# PRZ-152.G8: kolejna paczka to ZWYKLY przycisk (nie glowny) — glowna akcja karty jest gdzie indziej. %>
+      <%# Kolejna paczka to ZWYKLY przycisk (nie glowny) — glowna akcja karty jest gdzie indziej. %>
       <% if (z.przesylki.length === 0) { %>
         <a class="btn btn--glowny" href="<%= adresPodwidoku('nadaj') %>">Nadaj paczkę <%= z.pobranie ? '(za pobraniem)' : '' %></a>
       <% } else { %>
@@ -1263,7 +1263,7 @@
     <span class="znacznik <%= stan.klasa %>"><%= stan.etykieta %></span>
   </div>
   <div class="panel-cialo">
-    <%# Zdania o niedopłacie i nadpłacie stoją wyłącznie w pasku spraw (decyzja 2026-08-07, web-platnosci) —
+    <%# Zdania o niedopłacie i nadpłacie stoją wyłącznie w pasku spraw —
         tu mówią o nich plakietka i Saldo. %>
     <% if (stan.opis) { %><p class="wyjasnienie"><%= stan.opis %></p><% } %>
     <div class="platnosci-liczby">
@@ -1305,7 +1305,7 @@
             </td>
             <% if (saAkcjeRuchow) { %><td class="kol-akcje">
               <%# „Usuń” tylko przy wpłacie ręcznej: sklepową poller dopisałby z powrotem (odmowa i tak siedzi
-                  w usunWplateReczna). Wpłata dołączonego usuwa się z JEGO zamówienia (PRZ-101.11). %>
+                  w usunWplateReczna). Wpłata dołączonego usuwa się z JEGO zamówienia. %>
               <% if (w.zrodlo === 'reczna') { %>
                 <form method="post" action="/zamowienia/<%= w.zamowienieId ?? z.id %>/platnosci/<%= w.id %>/usun">
                   <input type="hidden" name="powrot" value="<%= powrot %>">
@@ -1326,34 +1326,34 @@
       </tbody>
     </table>
 
-    <%# ——— ZAREJESTRUJ ZWROT: JEDYNE WEJSCIE Z KARTY (poprawka po recenzji, Zadanie 5) ——— %>
+    <%# ——— ZAREJESTRUJ ZWROT: JEDYNE WEJSCIE Z KARTY ——————————————————————————————————— %>
     <%# Odnośnik ZAWSZE widoczny — także wtedy, gdy zwrotów jeszcze nie ma, %>
     <%# bo od kliknięcia w niego operator DOPIERO zaczyna. %>
     <%# Umyslnie POZA petla `z.zwroty` (i poza `if (dane.zwroty)`): to jest AKCJA, nie %>
-    <%# PODSUMOWANIE, i dziala niezaleznie od tego, czy podsumowanie sie rysuje — wymog %>
-    <%# wlasciciela dotyczyl podsumowania („nie chce zeby zwroty zajmowaly za duzo miejsca"), %>
-    <%# nie samego wejscia do ekranu zwrotu. %>
-    <%# Dawniej KOLOR NA PROSBE WŁAŚCICIELA (01.09.2026): `btn--groza`, czyli ta sama czerwien, co przy %>
+    <%# PODSUMOWANIE, i dziala niezaleznie od tego, czy podsumowanie sie rysuje — %>
+    <%# podsumowanie ma zajmowac malo miejsca, a samo wejscie do ekranu zwrotu %>
+    <%# ma byc zawsze pod reka. %>
+    <%# Kolor: `btn--groza`, czyli ta sama czerwien, co przy %>
     <%# pozostalych akcjach, ktorych sie nie robi codziennie i ktore cofa sie trudno. %>
     <%# To jest ODNOSNIK, nie zatwierdzenie — czerwien mowi „wazne i rzadkie", a nie %>
     <%# „nieodwracalne": nieodwracalny jest dopiero przycisk na ekranie zwrotu. %>
-    <%# Po D7 z 04.11 czerwień wraca na prośbę właściciela 06.11.2026 (PRZ-154.E1.7). %>
+    <%# Czerwień nie zmienia rozmiaru: %>
     <%# `btn btn--groza` ma ten sam zwykły rozmiar co „+ Dodaj wpłatę”. %>
-    <%# Dawniej OD 14.10.2026 (PRZ-074, prośba właściciela) ODNOSNIK STAŁ NA DOLE SEKCJI, pod formularzem %>
-    <%# wpłaty — wpłatę dodaje się codziennie, zwrot rzadko. Tu zostaje nagłówek formularza. %>
+    <%# Odnośnik stoi obok „+ Dodaj wpłatę", a nie pod formularzem wpłaty — %>
+    <%# wpłatę dodaje się codziennie, zwrot rzadko. %>
 
     <%# ——— SZYBKA WPLATA ——————————————————————————————————————————————————————————— %>
-    <%# PRZ-152.G9b (decyzja 04.11): natywne details otwiera pola bez JS i przeładowania. %>
-    <%# Zastępuje FORMULARZ NA STALE (prosba wlasciciela 2026-08-07: „zmien sposob dodawania %>
-    <%# nowych platnosci na wygodniejszy"). Do tej pory trzeba bylo kliknac „+ Dodaj wplate", %>
-    <%# przeladowac strone przez `?edytuj=wplata` i dopiero wtedy zobaczyc pola — trzy kroki %>
-    <%# do czynnosci wykonywanej codziennie. Adres `?edytuj=wplata` dalej dziala (zakladki, %>
-    <%# stare odnosniki), teraz otwiera details. Błąd też otwiera pola, zachowując wpisy. %>
+    <%# Natywne `details` otwiera pola bez JS i przeładowania strony: wpłata to czynność %>
+    <%# codzienna, wiec ma byc jednym klikiem, a nie trzema krokami %>
+    <%# (przycisk, przeladowanie przez `?edytuj=wplata`, dopiero wtedy pola). %>
+    <%# Adres `?edytuj=wplata` dalej dziala (zakladki, stare odnosniki) %>
+    <%# i otwiera `details`. %>
+    <%# Błąd też otwiera pola, zachowując wpisy. %>
     <%# %>
-    <%# ⚠️ ZNIKNAL TEZ przycisk „Potwierdz wplate calosci". Robil DOKLADNIE to samo, co dzis %>
-    <%# jedno klikniecie w podstawiona kwote — a mial wlasna trase i wlasne zaokraglenie, %>
+    <%# ⚠️ NIE MA przycisku „Potwierdz wplate calosci": byłby DOKLADNIE jednym klikiem %>
+    <%# w podstawiona kwote, a mialby wlasna trase i wlasne zaokraglenie, %>
     <%# czyli drugie miejsce, w ktorym mozna sie pomylic o pieniadze. Trasa POST /wplata %>
-    <%# ZOSTAJE (uzywa jej API i testy), zniknal wylacznie przycisk. %>
+    <%# ZOSTAJE (uzywa jej API i testy), nie ma wylacznie przycisku. %>
     <div class="rzad">
     <details class="wplata-formularz" id="wplata"<%= wplataOtwarta ? ' open' : '' %>>
       <summary class="btn">+ Dodaj wpłatę</summary>
@@ -1363,7 +1363,7 @@
       <% if (bladWplaty) { %><p class="pasek-blokada" role="alert"><%= bladWplaty.tekst %></p><% } %>
       <div class="rzad">
         <%# ⚠️ KWOTA to BRAKUJACA RESZTA, nie kwota zamowienia — liczy ja domena %>
-        <%# (domain/platnosci.js: domyslnaKwotaWplaty) TA SAMA funkcja, ktora drukuje pasek %>
+        <%# (domena/platnosci.js: domyslnaKwotaWplaty) TA SAMA funkcja, ktora drukuje pasek %>
         <%# salda tuz wyzej. Przy doplacie po wplacie czesciowej podstawienie pelnej kwoty %>
         <%# znaczyloby nadplate wpisana jednym klknieciem. Pole zostaje EDYTOWALNE: klient %>
         <%# potrafi zaplacic przez pomylke mniej. %>
@@ -1371,13 +1371,13 @@
           <input name="kwota" type="number" step="0.01" min="0.01" required
             value="<%= wartosciWplaty ? wartosciWplaty.kwota : domyslnaKwotaWplaty %>">
         </label>
-        <%# ⚠️ `type="date"` — a nie gole pole tekstowe. Do 07.08 do bazy szlo to, co czlowiek %>
+        <%# ⚠️ `type="date"` — a nie gole pole tekstowe: do bazy nie moze isc to, co czlowiek %>
         <%# wpisal, ZNAK W ZNAK, a z tej daty wylicza sie „oplacone". Walidacja stoi w domenie %>
         <%# (parsujWplate), bo widok nie jest bariera. %>
         <label>Data wpłaty
           <input name="data" type="date" value="<%= wartosciWplaty ? wartosciWplaty.data : dzisiaj %>" max="<%= dzisiaj %>">
         </label>
-        <%# ⚠️ Metoda jest WYMAGANA (audyt 22.08: 11 wplat bez metody na 3194,56 zl) — %>
+        <%# ⚠️ Metoda jest WYMAGANA — %>
         <%# dlatego stoi w glownym rzedzie, nie w rozwijanym: pole `required` schowane %>
         <%# w zamknietym <details> to odmowa przegladarki bez widocznego powodu. Odmowa %>
         <%# i tak siedzi w domenie (parsujWplate) — widok nie jest bariera. %>
@@ -1389,7 +1389,7 @@
             <% }); %>
           </select>
         </label>
-        <%# D6: opcjonalna uwaga w tym samym rzędzie, bez zagnieżdżonego details. %>
+        <%# Opcjonalna uwaga w tym samym rzędzie, bez zagnieżdżonego details. %>
         <label>Uwaga
           <input name="uwaga" value="<%= wartosciWplaty?.uwaga ?? '' %>" placeholder="uwaga (np. dopłata za dodatkowy szablon)">
         </label>
@@ -1408,14 +1408,14 @@
 </div>
 
 <%# ——— 7. FAKTURA I PROFORMA — JEDNA SEKCJA ———————————————————————————————————————— %>
-<%# ⚠️ SEKCJA RENDERUJE SIE ZAWSZE, a warunek z dawnej sekcji „Faktura" przeniosl sie DO %>
+<%# ⚠️ SEKCJA RENDERUJE SIE ZAWSZE, a warunek wystawienia faktury siedzi DO %>
 <%# SRODKA (`pokazFakture`). Powod jest merytoryczny, nie ukladowy: proforma NIE JEST %>
 <%# uwarunkowana znacznikiem „chce fakture" — kazde zamowienie (telefoniczne, z wyceny, B2B) %>
 <%# moze byc oplacone przelewem z gory, wiec przycisk „Wystaw proforme" ma stac na KAZDEJ %>
 <%# karcie. Scalenie bez tego rozdzielenia ukryloby proforme wszedzie tam, gdzie klient nie %>
 <%# zazyczyl sobie faktury — czyli w wiekszosci zamowien. %>
 <% const uwagaFaktury = stanFaktury === 'do_wyjasnienia' || stanFaktury === 'zawieszona'; %>
-<% /* PRZ-126.F02: fakturaDlaKazdego = opcja firmy „faktura także bez prośby klienta” (domyślnie wyłączona). */ const pokazFakture = ((dane.chceFakture || fakturaDlaKazdego) && !z.anulowane) || uwagaFaktury || z.faktura; %>
+<% /* fakturaDlaKazdego = opcja firmy „faktura także bez prośby klienta” (domyślnie wyłączona). */ const pokazFakture = ((dane.chceFakture || fakturaDlaKazdego) && !z.anulowane) || uwagaFaktury || z.faktura; %>
 <section class="panel" id="faktura">
   <style>
     #faktura .tab-dokumenty { width: 100%; }
@@ -1427,7 +1427,7 @@
     #faktura .akcje-bez-kreski { padding-top: 0; border-top: 0; }
     @media (max-width: 40rem) { #faktura .tab-dokumenty th, #faktura .tab-dokumenty td { padding-left: .3rem; padding-right: .3rem; } }
   </style>
-  <%# Kotwica po dawnej sekcji proformy — stare odnosniki (#proforma) maja dalej dzialac. %>
+  <%# Kotwica #proforma — stare odnosniki maja dalej dzialac. %>
   <span id="proforma"></span>
     <%# ——— 7. STOPKA: OBIE AKCJE W JEDNYM RZEDZIE ————————————————————————————————————— %>
     <%# ⚠️ „Wystaw proformę" ZOSTAJE WE WLASNYM `<form>` — to nie jest niedbalstwo, tylko %>
@@ -1453,7 +1453,7 @@
     <% } %>
   </div>
   <div class="panel-cialo">
-    <%# PRZ-152.G15: drugie zgłoszenie dokumentu, którego wysyłkę panel już zlecił — 303 z trasy wysyłki tutaj. %>
+    <%# Drugie zgłoszenie dokumentu, którego wysyłkę panel już zlecił — 303 z trasy wysyłki tutaj. %>
     <% if (locals.odmowaKsef) { %>
       <p class="pasek-uwaga" id="ksef-odmowa"><%= odmowaKsef %></p>
     <% } %>
@@ -1473,8 +1473,8 @@
         bez niego dostawa jest krajowa (23%).
       </p>
     <% } %>
-    <%_ /* PRZ-122.B07g: firma zwolniona z VAT (TwojeFaktury + art. 113) i nabywca z numerem VAT UE — to NIE WDT
-       (decyzja właściciela 27.10). `zwolnionaUe` liczy trasa (renderujKarte) tą samą regułą co dokument. */ -%>
+    <%_ /* Firma zwolniona z VAT (TwojeFaktury + art. 113) i nabywca z numerem VAT UE — to NIE WDT
+       `zwolnionaUe` liczy trasa (renderujKarte) tą samą regułą co dokument. */ -%>
     <%_ if (zwolnionaUe) { -%>
       <p class="pasek-uwaga">
         Nabywca ma numer VAT UE <strong><%= dane.faktura.nip %></strong>.
@@ -1484,11 +1484,11 @@
       </p>
     <%_ } -%>
     <%# ——— PRZYPISANIE DO OKRESU ROZLICZENIOWEGO ————————————————————————————————————— %>
-    <%# ⚠️ WYJSCIE Z POMYLKI, KTORA NIE MIALA WYJSCIA do 17.08.2026. Zamowienie trafia do %>
+    <%# ⚠️ WYJSCIE Z POMYLKI, KTORA NIE MA INNEGO WYJSCIA. Zamowienie trafia do %>
     <%# miesiaca po NIP-ie przy ZAKLADANIU — literowka albo brak NIP-u znaczyly, ze wypada %>
     <%# i z faktury zbiorczej (klient nigdy za nie nie zaplaci), i z raportu sprzedazy. %>
     <%# Cicho, bez bledu. Blok pokazuje sie WYLACZNIE wtedy, gdy przypisanie jest mozliwe %>
-    <%# — regula siedzi w domain/zmiana-okresu.js i rozstrzyga tez o odmowie w trasie. %>
+    <%# — regula siedzi w domena/zmiana-okresu.js i rozstrzyga tez o odmowie w trasie. %>
     <% if (przypisanieDoOkresu) { %>
       <p class="pasek-uwaga">
         NIP <strong><%= przypisanieDoOkresu.nip %></strong> należy do klienta rozliczanego zbiorczo
@@ -1508,21 +1508,21 @@
       </p>
     <% } %>
     <%# ——— DOKUMENTY: FAKTURA I PROFORMY W JEDNEJ TABELI ———————————————————————————— %>
-    <%# ⚠️ SCALONE Z DWOCH SEKCJI 2026-08-07 (prosba wlasciciela: „zakladki Faktura oraz %>
-    <%# proforma scal w jedno pole"). Proforma jest w czasie WCZESNIEJSZA (klient placi %>
-    <%# przelewem przed realizacja), ale to jest ten sam temat: dokumenty do tego zamowienia. %>
-    <%# Osobna sekcja znaczyla PUSTY panel „Zadna proforma nie zostala wystawiona" przy %>
-    <%# wiekszosci zamowien, ktore proformy nie maja. %>
+    <%# ⚠️ FAKTURA I PROFORMA W JEDNEJ TABELI. Proforma jest w czasie WCZESNIEJSZA %>
+    <%# (klient placi przelewem przed realizacja), ale to jest ten sam temat: %>
+    <%# dokumenty do tego zamowienia. Osobna sekcja znaczylaby PUSTY panel %>
+    <%# „Zadna proforma nie zostala wystawiona" przy wiekszosci zamowien, %>
+    <%# ktore proformy nie maja. %>
     <%# %>
     <%# ⚠️ Kwota faktury pochodzi z dokumentu programu: tabela `faktury` jej NIE TRZYMA. %>
     <%# Wstawienie tu biezacej kwoty zamowienia byloby %>
     <%# ZMYSLENIEM — dokument wystawiono na kwote z tamtej chwili, a pozycje mozna pozniej %>
     <%# poprawic. Proforma kwote ma (migawka `proformy.kwota_brutto`), bo to po niej klient placi. %>
     <% if (z.faktura || proformy.length) { %>
-      <%# PRZ-152.G10e: kolumna Stan tylko wtedy, gdy któryś wiersz ma co w niej pokazać (faktura, korekta, unieważniona proforma). %>
+      <%# Kolumna Stan tylko wtedy, gdy któryś wiersz ma co w niej pokazać (faktura, korekta, unieważniona proforma). %>
       <% const kolumnaStanu = Boolean(z.faktura) || proformy.some(function (p) { return p.uniewazniona_at; })
         || (z.zwroty || []).some(function (w) { return w.korekta_numer; }); %>
-      <div class="przewijak-tabeli"><%# G10d: na telefonie tabela szersza niż panel (overflow hidden) — przewija się w bok, kolumna Stan i akcje nie giną. %>
+      <div class="przewijak-tabeli"><%# Na telefonie tabela szersza niż panel (overflow hidden) — przewija się w bok, kolumna Stan i akcje nie giną. %>
       <table class="tab-pozycje tab-dokumenty">
         <thead><tr><th>Dokument</th><th>Numer</th><th>Data</th><th>Kwota</th><% if (kolumnaStanu) { %><th>Stan</th><% } %><th class="kol-akcje"></th></tr></thead>
         <tbody>
@@ -1537,13 +1537,13 @@
                   <% if (z.faktura.allegro_weryfikacja === 'REJECTED') { %>
                     <span class="waga waga--blokada">Allegro odrzuciło plik</span>
                   <% } else if (z.faktura.allegro_wyslana_at && !zdanieAllegroPoZamianieNip) { %>
-                    <%# Po zamianie NIP-u nowa faktura dziedziczy datę wysłania poprzedniej — plakietka przeczyłaby zdaniu D pod tabelą (PRZ-126 C09e). %>
+                    <%# Po zamianie NIP-u nowa faktura dziedziczy datę wysłania poprzedniej — plakietka przeczyłaby zdaniu D pod tabelą. %>
                     <span class="waga waga--ok" title="Weryfikacja pliku: <%= z.faktura.allegro_weryfikacja === 'WAITING' ? 'Allegro nie podaje jej wyniku — panel nie wie, czy plik przeszedł' : z.faktura.allegro_weryfikacja || 'nieznana' %>.">Wysłana do Allegro <%= fmtDzien(z.faktura.allegro_wyslana_at) %></span>
                   <% } %>
                 <% } %>
-                <%# ⚠️ DOWODEM „JEST W KSEF" SA OBIE KOLUMNY (recenzja Partii 2, K3). %>
+                <%# ⚠️ DOWODEM „JEST W KSEF" SA OBIE KOLUMNY. %>
                 <%# `ksef_status` niesie odpowiedz inFaktu Z CHWILI WYSTAWIENIA, a panel %>
-                <%# wystawia BEZ wysylki do KSeF — przy recznej wysylce wlasciciela zostaje %>
+                <%# wystawia BEZ wysylki do KSeF — przy recznej wysylce zostaje %>
                 <%# wiec pusta NA ZAWSZE. Prawdziwy numer przynosi czuwacz do `ksef_numer`; %>
                 <%# bez niego karta twierdzila „jeszcze nie wyslana" przy dokumencie, ktory %>
                 <%# JEST w KSeF. %>
@@ -1552,8 +1552,8 @@
                     <input readonly class="ksef-numer" value="<%= z.faktura.ksef_numer %>" size="40">
                   </details>
                 <% } else if (ksefKarty && ksefKarty.stan === 'wyslana_czeka') { %>
-                  <%# PRZ-102.23: rezerwacja `wysylki_ksef` — to samo, co lista Faktur („czeka na numer”); %>
-                  <%# PRZ-152.G15 (właściciel 05.11): plakietka z chwilą zlecenia zamiast zdania pod tabelą; przycisku nie ma. %>
+                  <%# Rezerwacja `wysylki_ksef` — to samo, co lista Faktur („czeka na numer”); %>
+                  <%# Plakietka z chwilą zlecenia zamiast zdania pod tabelą; przycisku nie ma. %>
                   <%# Klasa jak plakietki stanu na liście FAKTURY — `waga` ma wersaliki, a napis ma być znak w znak. %>
                   <span class="znacznik znacznik--cichy">Zlecono do KSeF <%= ksefKarty.zlecono %></span>
                 <% } else if (z.faktura.ksef_status) { %>
@@ -1561,7 +1561,7 @@
                 <% } else { %>
                   <span class="waga">jeszcze nie wysłana do KSeF</span>
                 <% } %>
-                <%_ /* PRZ-122.B20e: stan faktury programu wbudowanego (z adaptera, kontekst.js) — tylko przy prawie do ekranu. */ -%>
+                <%_ /* Stan faktury programu wbudowanego (z adaptera, kontekst.js) — tylko przy prawie do ekranu. */ -%>
                 <%_ const ekranFaktury = fakturaWbudowana && mozeAdres(`/faktury/twojefaktury/${fakturaWbudowana.dokumentId}`); -%>
                 <%_ if (ekranFaktury) { -%>
                   <div class="netto-cicho"><%= fakturaWbudowana.otwarty ? 'Fakturę możesz poprawić, dopóki nie wyjdzie do KSeF ani do nabywcy'
@@ -1574,7 +1574,7 @@
                 <%_ } -%>
                 <%# PDF pobierany z inFaktu ZA KAZDYM RAZEM na swiezo — panel nie trzyma %>
                 <%# kopii dokumentu, bo po korekcie kopia klamalaby przy drukarce. %>
-                <% /* PRZ-122.B10a: faktura B2B bez numeru KSeF — PDF dla nabywcy jeszcze niegotowy: zamiast
+                <% /* Faktura B2B bez numeru KSeF — PDF dla nabywcy jeszcze niegotowy: zamiast
                       pobrania i wydruku stan i podgląd dla operatora (z napisem podglądu). */
                    if (idDokumentuFaktury && !zdanieBraku && fakturaWbudowana?.czekaNaKsef) { %>
                   <span class="waga" title="PDF dla nabywcy będzie gotowy po przyjęciu faktury przez KSeF">czeka na KSeF</span>
@@ -1588,7 +1588,7 @@
                   <a class="btn btn--maly" href="/zamowienia/<%= z.id %>/faktura/pdf"
                      target="_blank" rel="noopener noreferrer">PDF</a>
                   <%# ⚠️ „Drukuj" NIE DRUKUJE OD RAZU i nie ma jak: panel stoi na NAS-ie, %>
-                  <%# a Brother nie przyjmuje PDF-a (zmierzone: IPP oglasza image/urf, %>
+                  <%# a Brother nie przyjmuje PDF-a (IPP oglasza image/urf, %>
                   <%# octet-stream i vnd.brother-hbp — bez application/pdf). Klikniecie %>
                   <%# WSTAWIA ZADANIE DO KOLEJKI, ktora zabiera czuwacz na komputerze %>
                   <%# ze sterownikiem — dokladnie tak, jak etykiety Zebry. %>
@@ -1599,7 +1599,7 @@
                     </form>
                   <% } %>
                 <% } %>
-                <%# PRZ-102.23: ten sam podgląd co z listy Faktur (dwa kroki, bariera liczona od nowa), %>
+                <%# Ten sam podgląd co z listy Faktur (dwa kroki, bariera liczona od nowa), %>
                 <%# a „Wróć” po wyniku prowadzi tu. Warunek liczy trasa (`ksefKarty`), prawo — `mozeAdres`. %>
                 <% if (ksefKarty && ksefKarty.wolno && mozeAdres('/faktury/ksef/podglad')) { %>
                   <form method="post" action="/faktury/ksef/podglad" class="w-linii">
@@ -1623,7 +1623,7 @@
               <td><%= zlotowki(p.kwota_brutto) %></td>
               <% if (kolumnaStanu) { %>
               <td>
-                <%# PRZ-152.G10p (właściciel 05.11: „po prostu jest proforma”): bez stanów aktualna / %>
+                <%# Proforma bez stanów aktualna / %>
                 <%# nieaktualna / rozliczona — zostaje tylko „unieważniona”. %>
                 <% if (p.uniewazniona_at) { %>
                   <span class="waga waga--blokada">unieważniona</span>
@@ -1634,7 +1634,7 @@
               <%# OBOK karty. Ten odnosnik wyszedl dopiero z testu pytajacego o KAZDY. %>
               <td class="kol-akcje"><% if (mozeAdres(`/proformy/${p.id}/pdf`)) { %><a class="btn btn--maly" href="/proformy/<%= p.id %>/pdf"
                      target="_blank" rel="noopener noreferrer">PDF</a><% } %>
-                <%# PRZ-152.G16b: „Drukuj” jak przy fakturze — wstawia proformę do kolejki czuwacza (G10a). %>
+                <%# „Drukuj” jak przy fakturze — wstawia proformę do kolejki czuwacza. %>
                 <%# Unieważnionej i bez pliku trasa i tak odmawia, więc przycisku nie rysujemy. %>
                 <% if (!bezDrukarki && !p.uniewazniona_at && p.plik_sciezka && mozeAdres(`/proformy/${p.id}/drukuj`)) { %>
                   <form method="post" action="/proformy/<%= p.id %>/drukuj" class="w-linii">
@@ -1644,11 +1644,11 @@
                 <% } %></td>
             </tr>
           <% }); %>
-          <%# ——— KOREKTA: WIERSZ W TEJ SAMEJ TABELI (Zadanie 5, element 3 z 3) —————————— %>
+          <%# ——— KOREKTA: WIERSZ W TEJ SAMEJ TABELI ——————————————————————— %>
           <%# ⚠️ Korekta JEST dokumentem, wiec stoi tu, obok faktury i proform — nie w %>
           <%# osobnej sekcji. Warunek jest `w.korekta_numer`: dopoki nikt korekty nie wystawil %>
-          <%# (Zadanie 8, jeszcze nieistniejace — trasa korekty siedzi za `korektaDostepna` %>
-          <%# w routes/zwroty.js), ten wiersz nie rysuje sie NIGDY. %>
+          <%# (trasa korekty siedzi za `korektaDostepna` %>
+          <%# w moduly/zwroty/trasy/wspolne.js), ten wiersz nie rysuje sie NIGDY. %>
           <% (z.zwroty || []).filter(function (w) { return w.korekta_numer; }).forEach(function (w) { %>
             <% const k = (locals.ksefKorektKarty || {})[w.id]; %>
             <tr>
@@ -1691,7 +1691,7 @@
         </tbody>
       </table>
       </div>
-      <%# PRZ-147.03: przy zwrocie bez numeru korekty — ten sam przycisk co na ekranie zwrotu (ta sama trasa POST), %>
+      <%# Przy zwrocie bez numeru korekty — ten sam przycisk co na ekranie zwrotu (ta sama trasa POST), %>
       <%# zdanie blokady z domeny albo, przy zleceniu w toku, odnośnik do ekranu zwrotu (tam widać stan zlecenia). %>
       <% const korektaNaKarcie = locals.korektaNaKarcie || {}; %>
       <% (z.zwroty || []).filter(function (w) { return korektaNaKarcie[w.id]; }).forEach(function (w) { %>
@@ -1702,7 +1702,7 @@
         <% } else if (k.blokada) { %>
           <p class="wyjasnienie" id="korekta-zwrotu-<%= w.id %>">Zwrot z <%= w.data %> (<%= w.kwota %> zł<% if (w.kwota_dostawy) { %> + dostawa <%= w.kwota_dostawy %> zł<% } %>): <span class="pasek-blokada"><%= k.blokada %></span></p>
         <% } else if (k.bezDostawy && k.programFaktur && mozeAdres(adresKorekty)) { %>
-          <%# PRZ-148.03: faktura bez pozycji „Dostawa” — przycisk wyłączony ze zdaniem z domeny zamiast POST z gołą odmową. %>
+          <%# Faktura bez pozycji „Dostawa” — przycisk wyłączony ze zdaniem z domeny zamiast POST z gołą odmową. %>
           <div class="wyjasnienie" id="korekta-zwrotu-<%= w.id %>">Zwrot z <%= w.data %> (<%= w.kwota %> zł<% if (w.kwota_dostawy) { %> + dostawa <%= w.kwota_dostawy %> zł<% } %>) nie ma jeszcze korekty.
             <button type="button" class="btn btn--maly" disabled title="<%= k.bezDostawy %>">Wystaw korektę</button>
             <span class="pasek-blokada"><%= k.bezDostawy %></span>
@@ -1724,7 +1724,7 @@
       <% } %>
     <% } %>
 
-    <%# „Specyfikacja do paczki (PDF)" stała tu do 14.10.2026 — od PRZ-074 jest w menu „Wydruki" %>
+    <%# „Specyfikacja do paczki (PDF)" jest w menu „Wydruki" %>
     <%# w belce na górze karty. Potwierdzenie wywozu zostaje przy fakturze: to dowód do WDT. %>
     <%# Dokument wywozu WYLACZNIE przy WDT — trasa i tak odmawia dla zamowienia %>
     <%# krajowego, ale przycisk bez zastosowania tylko kusilby bledem 400. %>
@@ -1736,12 +1736,12 @@
     <% } %>
 
     <%# ——— 1. BARIERY ——————————————————————————————————————————————————————————————— %>
-    <%# ⚠️ WSZYSTKIE PASKI STOJA RAZEM, NAD FORMULARZAMI (przebudowa 2026-08-07). Do tej pory %>
-    <%# byly wplecione w lancuch `else if` razem z formularzem wystawienia, wiec ostrzezenie %>
-    <%# potrafilo wyladowac miedzy polami a przyciskiem. Tresci sa BEZ ZMIAN — to sa bariery, %>
-    <%# nie szum, i nie podlegaja „mniej komunikatow". %>
+    <%# ⚠️ WSZYSTKIE PASKI STOJA RAZEM, NAD FORMULARZAMI. Nie sa wplecione %>
+    <%# w lancuch `else if` razem z formularzem wystawienia, bo ostrzezenie %>
+    <%# potrafiloby wyladowac miedzy polami a przyciskiem. To sa bariery, %>
+    <%# nie szum, wiec nie podlegaja „mniej komunikatow". %>
     <% if (pokazFakture) { %>
-      <%# Panel NIE FISKALIZUJE niczego (spec Etap 3, punkt 7) — paragon nabijany jest na
+      <%# Panel NIE FISKALIZUJE niczego — paragon nabijany jest na
           kasie, poza panelem. To przypomnienie, nie blokada: decyzja jest ksiegowa. %>
       <% if (z.metoda_wysylki === 'odbior_osobisty') { %>
         <p class="pasek-uwaga">
@@ -1772,17 +1772,17 @@
       <% } else if (stanFaktury === 'w_toku') { %>
         <p class="pasek-uwaga">Wystawianie faktury trwa — odśwież stronę za chwilę.</p>
       <% } %>
-      <%# PRZ-126.P1: powód blokady okresu lub konfiguracji stoi raz, pod przyciskiem. %>
+      <%# Powód blokady okresu lub konfiguracji stoi raz, pod przyciskiem. %>
     <% } %>
 
     <%# ——— 2. WYSTAWIENIE FAKTURY ————————————————————————————————————————————————————— %>
-    <%# ⚠️ WARUNEK SPLASZCZONY Z LANCUCHA `else if` (2026-08-07) i jest to zamiana ROWNOWAZNA: %>
+    <%# ⚠️ WARUNEK JEST SPLASZCZONY (bez lancucha `else if`) i jest to zamiana ROWNOWAZNA: %>
     <%# `zawieszona`, `do_wyjasnienia` i `w_toku` ZAWSZE maja wiersz w tabeli `faktury` %>
     <%# (to rezerwacja albo gotowy dokument), wiec `!z.faktura` odsiewa je wszystkie naraz. %>
-    <%# Splaszczenie bylo potrzebne, zeby pola i przycisk daly sie rozdzielic: przycisk stoi %>
-    <%# teraz we WSPOLNEJ stopce z proforma, a lancuch trzymal je w jednym wezle. %>
-    <%_ /* PRZ-126.C02: odmowa wystawienia nad formularzem; błąd w danych nabywcy stoi pod polem w „Dane do faktury”. */ -%>
-    <%_ /* Tagi zamykane myślnikiem: karta bez błędu ma HTML bajt w bajt jak dotąd (migawka PRZ-118.09). */ -%>
+    <%# Splaszczenie jest potrzebne, zeby pola i przycisk daly sie rozdzielic: przycisk stoi %>
+    <%# we WSPOLNEJ stopce z proforma, a lancuch trzymalby je w jednym wezle. %>
+    <%_ /* Odmowa wystawienia nad formularzem; błąd w danych nabywcy stoi pod polem w „Dane do faktury”. */ -%>
+    <%_ /* Tagi zamykane myślnikiem: karta bez błędu ma HTML bajt w bajt jak dotąd (migawka testu). */ -%>
     <%_ if (bladFaktury && bladFakturyWDanych) { -%>
         <p class="pasek-blokada" id="blad-faktury">Faktura NIE została wystawiona — <a href="#dane-faktury">popraw dane do faktury</a> i wystaw ponownie.</p>
     <%_ } else if (bladFaktury) { -%>
@@ -1792,7 +1792,7 @@
     <%_ const terminWybrany = String(formularzWystawienia?.termin ?? domyslnyTermin); -%>
     <% if (wolnoWystawicFakture) { %>
       <p class="etykieta-bloku">Wystaw fakturę</p>
-      <%# ⚠️ Brak wplaty NIE BLOKUJE faktury i to jest swiadome (services/faktura.js): %>
+      <%# ⚠️ Brak wplaty NIE BLOKUJE faktury i to jest swiadome (moduly/faktury/services/faktura.js): %>
       <%# to sklep B2B, faktura z terminem platnosci jest tam norma. Blokuje wylacznie %>
       <%# ANULOWANIE zamowienia. %>
       <%# %>
@@ -1805,7 +1805,7 @@
         <input type="hidden" name="powrot" value="<%= powrot %>">
         <div class="pola pola--siatka">
           <label>Termin płatności
-            <%# Opcje ida Z DOMENY (domain/termin-platnosci.js) — wpisane tu drugi raz %>
+            <%# Opcje ida Z DOMENY (domena/termin-platnosci.js) — wpisane tu drugi raz %>
             <%# rozjechalyby sie z tym, co serwer w ogole umie przyjac. Domyslny wybor %>
             <%# (`domyslnyTermin`) liczy sie W TRASIE — widok tylko odczytuje gotowa decyzje. %>
             <%# %>
@@ -1826,15 +1826,15 @@
           </label>
           <%# `type="date"` daje kalendarz po kliknieciu BEZ ani jednej linii skryptu — %>
           <%# ta sama sztuczka, co przy filtrze dat na liscie zamowien. Puste pole znaczy %>
-          <%# „dzisiaj", nie blad (domain/termin-platnosci.js). %>
+          <%# „dzisiaj", nie blad (domena/termin-platnosci.js). %>
           <%# ⚠️ PODPOWIEDZ POD POLEM, nie w etykiecie: wpleciona w etykiete rozpychala ja %>
           <%# na dwa wiersze i sasiednie pola przestawaly stac w jednej linii. %>
           <label>Data wystawienia
             <input type="date" name="data_wystawienia"<% if (formularzWystawienia?.dataWystawienia) { %> value="<%= formularzWystawienia.dataWystawienia %>"<% } %>>
             <span class="wyjasnienie">puste = dzisiaj</span>
           </label>
-          <%# Data sprzedazy (Zadanie 6). Pole wypelnione PROPOZYCJA z reguly prawnej %>
-          <%# (domain/data-sprzedazy.js), ale to WCIAZ TYLKO PROPOZYCJA — na dokument idzie %>
+          <%# Data sprzedazy. Pole wypelnione PROPOZYCJA z reguly prawnej %>
+          <%# (domena/data-sprzedazy.js), ale to WCIAZ TYLKO PROPOZYCJA — na dokument idzie %>
           <%# to, co operator widzi w polu. `wyjasnienie` mowi DLACZEGO ta data, nie tylko jaka. %>
           <label>Data sprzedaży
             <input type="date" name="data_sprzedazy" value="<%= formularzWystawienia?.dataSprzedazy ?? propozycjaSprzedazy.data %>">
@@ -1869,8 +1869,8 @@
     <% } %>
 
     <%# ——— 3. ODNOTOWANIE SKASOWANIA W INFAKCIE — PRZENIESIONE NA ZAKLADKE FAKTURY ————— %>
-    <%# Prosba właściciela 01.09.2026: „na co dzien jest to nieuzywane — chyba ani razu nie %>
-    <%# skorzystalem z tego". Blok stal tu przy KAZDEJ fakturze bez numeru KSeF; dzis %>
+    <%# Rzadko uzywane, wiec blok nie stoi tu przy KAZDEJ fakturze bez numeru KSeF. %>
+    <%# Zamiast tego %>
     <%# mieszka zwiniety na koncu /faktury (faktury.ejs, sekcja „Faktura skasowana %>
     <%# w inFakcie"), a lista kandydatow liczy sie Z BAZY PANELU — dokument skasowany %>
     <%# w inFakcie znika z listy pobieranej stamtad na zywo. %>
@@ -1885,16 +1885,16 @@
     <%# Blok pokazuje sie WYLACZNIE przy kanale Allegro: „to zamowienie nie przyszlo %>
     <%# z Allegro" przy kazdym zamowieniu sklepowym byloby szumem, a nie informacja. %>
     <%# Widok NIE liczy zgody sam — `zgodaFakturaAllegro` liczy TA SAMA funkcja domenowa, %>
-    <%# ktora odmawia w usludze (domain/allegro-faktura.js). %>
+    <%# ktora odmawia w usludze (domena/allegro-faktura.js). %>
     <% if (pokazFakture && kanalAllegro && z.faktura) { %>
-      <%# ⚠️⚠️ REJECTED ODDZIELONY OD RESZTY (recenzja Partii 3, K2). Do 06.08.2026 karta %>
-      <%# przeczyla sama sobie NA JEDNYM EKRANIE: pasek spraw wyzej mowil „Allegro %>
+      <%# ⚠️⚠️ REJECTED ODDZIELONY OD RESZTY. Inaczej karta %>
+      <%# przeczylaby sama sobie NA JEDNYM EKRANIE: pasek spraw wyzej mowi „Allegro %>
       <%# ODRZUCILO plik — kupujacy jej NIE MA", a ta sekcja obok: „kupujacy ma ja na %>
       <%# swoim koncie". Zdanie o koncie kupujacego NIE MA PRAWA pokazac sie przy REJECTED. %>
       <% var odrzuconyPrzezAllegro = z.faktura.allegro_weryfikacja === 'REJECTED'; %>
-      <% /* PRZ-126 C09e — znacznik D: zamowienie przepiete na fakture zastepcza (zly NIP), a u kupujacego jest
+      <% /* Znacznik D: zamowienie przepiete na fakture zastepcza (zly NIP), a u kupujacego jest
             POPRZEDNIA faktura. „Kupujacy ma ja na swoim koncie" klamaloby o nowej. Zdanie liczy domena.
-            Komentarz w tym samym tagu co if — osobne linie komentarza EJS zmienialyby HTML migawki PRZ-118.09. */
+            Komentarz w tym samym tagu co if — osobne linie komentarza EJS zmienialyby HTML migawki testu. */
          if (zdanieAllegroPoZamianieNip) { %>
         <p><%= zdanieAllegroPoZamianieNip %></p>
       <% } else if (z.faktura.allegro_wyslana_at && !odrzuconyPrzezAllegro) { %>
@@ -1932,7 +1932,7 @@
         <% } %>
       <% } else { %>
         <%# ⚠️ POWOD, A NIE SAM BRAK PRZYCISKU. Brak przycisku bez wyjasnienia jest stanem %>
-        <%# bez wyjscia (PRZEWODNIK 4.9): operator nie wie, czego brakuje, wiec albo grzebie %>
+        <%# bez wyjscia (reguła „każdy stan ma wyjście"): operator nie wie, czego brakuje, wiec albo grzebie %>
         <%# w bazie, albo wysyla fakture reka poza panelem — i panel przestaje o niej wiedziec. %>
         <p class="pasek-uwaga"><%= zgodaFakturaAllegro.powod %></p>
       <% } %>
@@ -1968,14 +1968,14 @@
     <% } %>
     <% if (!mozliwaProforma) { %>
       <p class="pasek-uwaga">Proformy nie są skonfigurowane w tym panelu.</p>
-    <%# `czyWolnoWystawic` ODMAWIA — brief zadania 7: pokazac POWOD, nie sam brak przycisku. %>
+    <%# `czyWolnoWystawic` ODMAWIA — karta pokazuje POWOD, nie sam brak przycisku. %>
     <% } else if (!zgodaProforma.wolno) { %>
       <p class="pasek-blokada"><%= zgodaProforma.powod %></p>
     <%# Pobranie NIE BLOKUJE (`czyWolnoWystawic` go w ogole nie sprawdza) — to OSTRZEZENIE, %>
     <%# bo zdarza sie tez celowo (np. doplata przelewem do zamowienia jadacego za pobraniem). %>
     <% } %>
 
-    <%# PRZ-152.G10e: jeden wiersz akcji (faktura i proforma obok siebie), pod nim drobne podpowiedzi. %>
+    <%# Jeden wiersz akcji (faktura i proforma obok siebie), pod nim drobne podpowiedzi. %>
     <%# Bez tabeli dokumentów nad wierszem nie ma kreski oddzielającej. %>
     <% if (wystawienieFaktury || (!z.faktura && jestProforma)) { %>
       <div class="stopka-edycji<%= z.faktura || proformy.length ? '' : ' akcje-bez-kreski' %>">
@@ -2013,22 +2013,22 @@
   </div>
 </section>
 
-<%# ——— 8. WIADOMOŚCI DO KLIENTA + KOMENTARZ WEWNĘTRZNY ———————————————————————————— %>
+<%# ——— 8. WIADOMOŚCI DO KLIENTA ———————————————————————————— %>
 <%# NA SAMYM DOLE, pod Fakturą — naturalna kolejność pracy: najpierw wystaw dokument, %>
 <%# potem go wyślij. %>
 <%# %>
-<%# ⚠️ INCLUDE JEST BEZWARUNKOWY, a `w` bywa `null` (odstępstwo od briefu, świadome). %>
-<%# Brief chował całą sekcję przy panelu bez poczty — a razem z nią KOMENTARZ WEWNĘTRZNY, %>
-<%# który z pocztą nie ma nic wspólnego. Karta bez pola notatki nie pozwala założyć %>
-<%# pierwszej i ukrywa istniejącą; pilnuje tego tests/oms/web-komentarz.test.js („Pole ma %>
-<%# być na karcie ZAWSZE"). Sam blok wiadomości chowa się dalej — wewnątrz partiala. %>
+<%# ⚠️ INCLUDE JEST BEZWARUNKOWY, a `w` bywa `null` (panel bez poczty): partial sam chowa %>
+<%# wtedy sekcję wiadomości i zostawia pusty kontener. Notatka wewnętrzna NIE zależy od tego %>
+<%# include — stoi wyżej, w `_komentarz-wewnetrzny.ejs`; że pole notatki jest na karcie ZAWSZE, %>
+<%# pilnuje test „bez usługi wiadomości sekcja znika, ale komentarz wewnętrzny ZOSTAJE” %>
+<%# w tests/moduly/wiadomosci/web-wiadomosci.test.js. %>
 <%- include('_wiadomosci.ejs', {
   w: (typeof wiadomosciSekcja !== 'undefined' ? wiadomosciSekcja : null),
   z: z,
   nazwyTematow: (typeof nazwyTematow !== 'undefined' ? nazwyTematow : {}),
 }) %>
 
-<%# ——— 9. HISTORIA ZMIAN (PRZ-094.18) ——————————————————————————————————————————————— %>
+<%# ——— 9. HISTORIA ZMIAN ——————————————————————————————————————————————— %>
 <%# Na SAMYM dole, po Wiadomosciach. Domyslnie zwinieta i bez zadnego zapytania do `log` — %>
 <%# patrz naglowek _historia.ejs. %>
 <%- include('_historia.ejs') %>

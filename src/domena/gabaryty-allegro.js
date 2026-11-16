@@ -7,12 +7,12 @@ const DLUGOSCI = Object.freeze({
   '09164667-daa5-42dc-8087-33d7485790ac': 60,
   '0fe5b4af-9f09-443d-9d49-62331a20b5b2': 64,
   '0560b75e-88c3-4b79-bcf7-62331a20b5b2': 64,
-  // Allegro Automaty Paczkowe DPD (AD). Limit 59 × 38 × 41 cm, 20 kg zmierzony 01.10.2026
-  // w `delivery-proposals` zamowienia #1376; do tego dnia usluga byla na bialej liscie WzA
-  // bez profilu, wiec formularz podsuwal paczke domyslna 110 × 75 cm, ktora nie wchodzi do skrytki.
+  // Allegro Automaty Paczkowe DPD (AD). Limit 59 × 38 × 41 cm, 20 kg — odczytany z `delivery-proposals`
+  // zamówienia. Bez profilu usługa na białej liście WzA dostawałaby paczkę domyślną 110 × 75 cm,
+  // która nie wchodzi do skrytki.
   '09bcdcdb-c62a-41c4-ba42-f2c599280e3c': 59,
-  // Allegro Odbior w Punkcie DPD Pickup pobranie (AD). Limit 64 × 38 × 41 cm, 20 kg zmierzony
-  // 28.10.2026 w `delivery-proposals` zamowienia #1508 (PRZ-124).
+  // Allegro Odbiór w Punkcie DPD Pickup pobranie (AD). Limit 64 × 38 × 41 cm, 20 kg — odczytany
+  // z `delivery-proposals` zamówienia.
   '16af1169-db74-4e94-a16d-f2c599280e3c': 64,
 });
 const WYSOKOSCI = Object.freeze({ S: 8, M: 19, L: 41 });

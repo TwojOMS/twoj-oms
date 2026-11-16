@@ -17,7 +17,7 @@
 .klucze-api .klucze-api-szczegoly{margin:.35rem 0 0;font-size:.82rem;line-height:1.5;color:var(--tekst-przygaszony)}
 .klucze-api-akcje{display:flex;align-items:center;gap:.6rem;flex:none}
 .klucze-api .klucze-api-akcje form{margin:0}
-/* PRZ-153.22: stan klucza jak plakietka OMS — czynny zielony, odwołany i wygasły szary; karta nieczynnego klucza przygaszona. */
+/* Stan klucza jak plakietka OMS — czynny zielony, odwołany i wygasły szary; karta nieczynnego klucza przygaszona. */
 .klucze-api-stan{display:inline-block;padding:.05rem .55rem;border-radius:999px;font-size:.8rem;font-weight:600;background:var(--ramka);color:var(--tekst)}
 .klucze-api-stan--czynny{background:var(--ok-tlo);color:var(--ok-tekst)}
 .klucze-api .ust-sekcja.klucze-api-karta--nieczynny{background:var(--powierzchnia-2)}
@@ -38,14 +38,14 @@
 .ust-filtry{display:flex;align-items:end;gap:1rem;flex-wrap:wrap;margin:1.5rem 0}.ust-filtry label{display:flex;flex-direction:column;gap:.4rem}.ust-filtry .ust-checkbox{flex-direction:row;align-items:center;align-self:center}.ust-filtry input[type=search]{min-width:220px}
 .ust-filtry input[type=search],.ust-filtry select{font:inherit;min-height:38px;padding:.4rem .6rem;border:1px solid var(--ramka-pola);border-radius:5px;background:var(--powierzchnia);color:var(--tekst)}
 .ust-katalog{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:1rem;margin-bottom:2rem}.ust-karta-integracji{border:1px solid var(--ramka);border-radius:8px;padding:1.3rem;display:flex;flex-direction:column;align-items:start;gap:.6rem;background:var(--powierzchnia)}.ust-karta-integracji h3,.ust-karta-integracji p{margin:0}.ust-karta-integracji p{min-height:2.5em}.ust-karta-integracji .btn{margin-top:auto}.ust-logo-marki{width:116px;height:54px;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:6px;padding:8px;box-sizing:border-box}.ust-logo-marki img{max-width:100%;max-height:100%;object-fit:contain}
-/* PRZ-136.09: usługi planowane wyciszone, akcje karty: „Dodaj” + zwykły link „Zarządzaj”. */
+/* Usługi planowane wyciszone, akcje karty: „Dodaj” + zwykły link „Zarządzaj”. */
 .ust-karta-integracji--planowana{background:transparent;border-style:dashed}.ust-karta-integracji--planowana .ust-logo-marki{opacity:.55}.ust-karta-integracji--planowana h3,.ust-karta-integracji--planowana p{color:var(--st-szary-tekst)}
 .ust-znacznik--wkrotce{background:var(--st-szary-tlo);color:var(--st-szary-tekst);font-weight:600;border-radius:999px;padding:.15rem .6rem}
 .ust-karta-akcje{margin-top:auto;display:flex;align-items:center;gap:1rem;flex-wrap:wrap}.ust-link{font-size:.9rem}
 .ust-znacznik{display:inline-block;font-size:.76rem;padding:.22rem .5rem;border-radius:4px;background:color-mix(in srgb,currentColor 8%,transparent)}.ust-stan-dziala{color:#27855c}.ust-stan-uwaga{color:#a56a10}.ust-polaczenie{display:grid;grid-template-columns:116px 1fr;gap:1.3rem;padding:1.5rem 0;border-bottom:1px solid var(--ramka)}.ust-polaczenie h2{margin:0;font-size:1.05rem}.ust-polaczenie p{margin:.5rem 0}.ust-kopie-stany{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
 .oms-settings-content input,.oms-settings-content textarea,.oms-settings-content select{max-width:100%;box-sizing:border-box}.oms-settings-content :focus-visible{outline:3px solid var(--link);outline-offset:3px}
 @media(max-width:700px){.ust-zakladki{gap:.2rem 1rem}.ust-zakladki a{font-size:.85rem}.ust-kopie-stany{grid-template-columns:1fr}.ust-polaczenie{grid-template-columns:1fr;gap:.8rem}.ust-filtry{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.6rem;align-items:end}.ust-filtry>label:first-child{grid-column:1}.ust-filtry>button{grid-column:2;grid-row:1}.ust-filtry>label:nth-of-type(2),.ust-filtry>.ust-checkbox{grid-column:1/-1}.ust-filtry input[type=search]{min-width:0;width:100%}.ust-filtry select{width:100%}.ust-katalog{grid-template-columns:1fr}.oms-settings-content .ust-sekcja{padding:1rem}.ust-formularz{grid-template-columns:minmax(0,1fr)}}
-/* PRZ-154.E1.5: osobna kolumna działów, logo pozostaje w menu głównym. */
+/* Osobna kolumna działów, logo pozostaje w menu głównym. */
 .oms-settings-column ul{gap:4px}
 .oms-shell--ustawienia .oms-top-actions{margin-left:auto}
 .oms-settings-heading{padding:0 10px;font-size:18px;font-weight:650;letter-spacing:-.4px;line-height:24px;color:var(--tekst)}
@@ -77,7 +77,7 @@
 .allegro-konfiguracja.erli-konfigurator input[type=radio],.allegro-konfiguracja .woo-stany input[type=radio]{accent-color:var(--marka);width:1.1rem;min-width:1.1rem;min-height:1.1rem;padding:0;margin:.25rem .5rem 0 0;flex:0 0 1.1rem}
 .erli-konfigurator input{box-sizing:border-box}
 .erli-konfigurator label{overflow-wrap:anywhere}
-/* PRZ-157.11b: tabela metod dostawy (krok 3) — select dzieli szerokość komórki zamiast stałych 30rem. */
+/* Tabela metod dostawy (krok 3) — select dzieli szerokość komórki zamiast stałych 30rem. */
 .erli-metody{border-collapse:collapse;width:100%;margin-block:.6rem}
 .erli-metody :is(th,td){text-align:left;vertical-align:top;padding:.6rem .5rem;border-bottom:1px solid var(--ramka)}
 .erli-metody thead th{font-size:.85rem;font-weight:600;color:var(--tekst-przygaszony)}
@@ -90,7 +90,7 @@
 .erli-konfigurator .erli-wymiary p{display:block}
 .allegro-konfiguracja.erli-konfigurator .erli-wymiary input{width:100%}
 .erli-konfigurator input[type=radio]+label{min-height:48px}
-/* PRZ-157.12u: zrobione kroki ERLI jako jednolinijkowe karty do rozwinięcia; „Odłącz” i „Usuń sklep” jako ciche odnośniki na dole. */
+/* Zrobione kroki ERLI jako jednolinijkowe karty do rozwinięcia; „Odłącz” i „Usuń sklep” jako ciche odnośniki na dole. */
 .erli-konfigurator details.erli-krok{border:1px solid var(--ramka);border-radius:8px;margin-block:0 .75rem;background:var(--powierzchnia)}
 .erli-konfigurator details.erli-krok>summary{cursor:pointer;padding:.8rem 1.3rem;min-height:48px;box-sizing:border-box;color:var(--tekst-przygaszony)}
 .erli-konfigurator details.erli-krok>summary::marker{color:var(--tekst-przygaszony)}
@@ -109,13 +109,13 @@
 .erli-konfigurator :is(.erli-odlacz,.erli-usun)>summary{cursor:pointer;color:var(--link);text-decoration:underline;text-decoration-color:var(--link-podkreslenie);font-size:.9rem;width:max-content;min-height:24px}
 .erli-konfigurator :is(.erli-odlacz,.erli-usun)>form{margin-top:.6rem;max-width:78ch}
 .allegro-konfiguracja details{margin-block:.6rem;overflow-wrap:anywhere}
-/* PRZ-146.03: kod Device do przepisania, przyciski kroku 3, „Przerwij podłączanie”, odłączenie nieaktywne do zaznaczenia. */
+/* Kod Device do przepisania, przyciski kroku 3, „Przerwij podłączanie”, odłączenie nieaktywne do zaznaczenia. */
 .allegro-kod{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem 1rem;margin:.4rem 0 1.2rem}
 .allegro-kod code{font-family:ui-monospace,Consolas,monospace;font-size:1.6rem;font-weight:600;letter-spacing:.08em;padding:.3rem .7rem;border:1px solid var(--ramka-pola);border-radius:5px;background:var(--powierzchnia);user-select:all}
 .allegro-akcje-konta{margin-block:1rem;gap:.75rem}.allegro-akcje-konta form{margin:0}
 .allegro-przerwij{margin-top:2rem}.allegro-przerwij>summary{cursor:pointer;color:var(--link);text-decoration:underline;text-decoration-color:var(--link-podkreslenie);font-size:.9rem;width:max-content}
 @media(max-width:700px){.allegro-akcje-konta{flex-direction:column;align-items:stretch}.allegro-kod code{font-size:1.3rem}.allegro-dane{grid-template-columns:minmax(0,1fr);gap:.25rem}.allegro-dane dt:not(:first-child){margin-top:.6rem}}
-/* Pasek kroków konfiguratorów kanałów (kroki-kanalu.ejs). */
+/* Pasek kroków konfiguratorów kanałów (src/core/web/konfigurator/kroki-konfiguratora.ejs). */
 .oms-settings-content .stepper{list-style:none;display:flex;margin:1rem 0 1.2rem;padding:0;max-width:56rem}
 .oms-settings-content .step{flex:1;display:flex;flex-direction:column;align-items:center;gap:.35rem;position:relative;text-align:center;min-width:0}
 .oms-settings-content .step::before{content:"";position:absolute;top:12px;left:calc(-50% + 17px);right:calc(50% + 17px);height:2px;background:var(--ramka)}
@@ -128,7 +128,7 @@
 .oms-settings-content .step.current .step-label{color:var(--tekst)}
 @media(max-width:720px){.oms-settings-content .step-label{display:none}.oms-settings-content .step.current .step-label{display:block}}
 
-/* PRZ-136: lista „Moje połączenia” (makieta docs/plany/PRZ-136-makieta-polaczenia.html, blok „PRZ-136”; pusty stan w 08) */
+/* Lista „Moje połączenia”. */
 .pol-podsumowanie { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem 1rem; padding: 0 0 .9rem; border-bottom: 1px solid var(--ramka); margin: 0 0 1.1rem; max-width: 60rem; }
 .pol-podsumowanie-liczby { display: flex; flex-wrap: wrap; gap: .35rem 1.1rem; margin: 0; font-size: .88rem; color: var(--tekst-przygaszony); }
 .pol-licznik { display: inline-flex; align-items: center; gap: .35rem; color: inherit; text-decoration: none; }
@@ -207,13 +207,13 @@ a.pol-licznik:hover { color: var(--tekst); text-decoration: underline; }
   .pol-pusto-akcje { grid-column: 2; justify-content: flex-start; margin-top: .4rem; }
 }
 
-/* PRZ-148.06: podpowiedź pod polem i ostrzeżenie w formularzu kreatora (nad przyciskiem). */
+/* Podpowiedź pod polem i ostrzeżenie w formularzu kreatora (nad przyciskiem). */
 .ust-pomoc { font-size: .85rem; color: var(--tekst-przygaszony); }
 .ust-sekcja p.ust-uwaga, .ust-uwaga { color: var(--uwaga-tekst); background: var(--uwaga-tlo); padding: .5rem .75rem; border-radius: 5px; font-size: .88rem; }
 .ust-uwaga a { color: inherit; font-weight: 600; }
 .ust-sekcja form + form { margin-top: 1.25rem; }
 
-/* PRZ-152.G11a: „Szablony paczek” — tabela z edycją w wierszu i sekcja „Paczkomaty i automaty”. */
+/* „Szablony paczek” — tabela z edycją w wierszu i sekcja „Paczkomaty i automaty”. */
 .ust-sekcja.ust-sekcja-szeroka { max-width: 56rem; }
 
 
@@ -268,7 +268,7 @@ a.pol-licznik:hover { color: var(--tekst); text-decoration: underline; }
   .ust-automat-akcje { grid-column: 1 / -1; justify-content: flex-start; }
 }
 
-/* PRZ-160 E3d.02-02: tabela reguł „cennik według rozmiaru” w kroku „Oferty” Allegro i ERLI (_cenniki-reguly.ejs).
+/* Tabela reguł „cennik według rozmiaru” w kroku „Oferty” Allegro i ERLI (_cenniki-reguly.ejs).
    Bez JS. Na wąskim ekranie wiersz staje się kartą, a etykiety pól (dla czytnika zawsze) wychodzą na wierzch. */
 .ust-cenniki { margin-block: 1rem; }
 .ust-cenniki .ust-cenniki-tabela { width: auto; max-width: 100%; }

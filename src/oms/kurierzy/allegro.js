@@ -1,22 +1,19 @@
-// SLEDZENIE PRZESYLEK KANALU ALLEGRO (25.08.2026) — paczki, ktorych panel NIE NADAWAL.
+// ŚLEDZENIE PRZESYŁEK KANAŁU ALLEGRO — paczki, których panel NIE NADAWAŁ.
 //
-// Do tego dnia wiersz z `kurier = 'allegro'` nie mial klienta w mapie kurierow i bylo to
-// zapisane jako decyzja: „panel o te paczke nikogo nie pyta, bo nadal jej nie my"
-// (kurierzy/index.js). Zalozenie okazalo sie za szerokie. Sonda na zywym API 25.08 pokazala,
-// ze `GET /order/carriers/{carrierId}/tracking?waybill=` oddaje PELNA historie takze dla
-// przesylek nadanych POZA panelem — Allegro Punkt i Allegro One wlacznie. Szesc paczek,
-// ktore tego dnia wisialy w zakladce jako „bez ruchu", bylo w rzeczywistosci DORECZONYCH:
-// panel nigdy o nie nie zapytal, wiec `status_kuriera` zostawal NULL, a regula „bez ruchu"
-// liczyla wiek od nadania i alarmowala bez konca.
+// Bez tego klienta wiersz z `kurier = 'allegro'` nie miałby kogo zapytać o status.
+// Sonda na żywym API pokazała, że `GET /order/carriers/{carrierId}/tracking?waybill=`
+// oddaje PEŁNĄ historię także dla przesyłek nadanych POZA panelem — Allegro Punkt
+// i Allegro One włącznie. Bez pytania `status_kuriera` zostawałby NULL, a reguła
+// „bez ruchu” liczyłaby wiek od nadania i alarmowała bez końca przy paczkach już doręczonych.
 //
-// ⚠️ NIE ZASTEPUJE DZIALAJACEGO TORU WzA PRZEZ DPD. Od 22.09.2026 inne WzA
-// (One/ORLEN/DHL) korzystaja z tego klienta odczytu, z `carrier` i `packages.waybill`
-// zapisanymi w zasobie WzA, a nie z numeru podwykonawcy.
+// ⚠️ NIE ZASTĘPUJE DZIAŁAJĄCEGO TORU WzA PRZEZ DPD. Inne WzA
+// (One/ORLEN/DHL) korzystają z tego klienta odczytu, z `carrier` i `packages.waybill`
+// zapisanymi w zasobie WzA, a nie z numeru podwykonawcy (domena/sledzenie-przesylki.js).
 //
 // KONTRAKT jak `dpd.statusPrzesylki` i `inpost.statusPrzesylki`: `{ opis, at }` najnowszego
 // zdarzenia albo `null`, gdy zdarzen nie ma. Dokladamy `kod` — Allegro jako jedyny oddaje
 // wartosc MASZYNOWA (`code`) obok opisu, ktory jest TLUMACZENIEM zaleznym od
-// `Accept-Language`. Etap liczy sie z kodu (domain/etap-przesylki.js: KODY_ALLEGRO).
+// `Accept-Language`. Etap liczy sie z kodu (domena/etap-przesylki.js: KODY_ALLEGRO).
 
 const czas = (z) => Date.parse(z?.occurredAt ?? '');
 
@@ -38,24 +35,22 @@ export function createAllegroSledzenieClient({ allegroDla }) {
    */
   async function statusPrzesylki(numerListu, kontekst = {}) {
     const carrier = String(kontekst?.carrier ?? '').trim();
-    // ⚠️ BEZ IDENTYFIKATORA PRZEWOZNIKA NIE PYTAMY, i to nie jest nadgorliwosc. Zmierzone
-    // 25.08 na wszystkich 74 identyfikatorach z `GET /order/carriers`: zly przewoznik oddaje
+    // ⚠️ BEZ IDENTYFIKATORA PRZEWOŹNIKA NIE PYTAMY, i to nie jest nadgorliwość. Zmierzone
+    // na wszystkich identyfikatorach z `GET /order/carriers`: zły przewoźnik oddaje
     // HTTP 200 z `trackingDetails: null` — czyli odpowiedz NIEODROZNIALNA od paczki swiezo
     // nadanej. Podstawienie stalej 'ALLEGRO' dzialaloby na dzisiejszych danych i milczaloby
     // przy pierwszej paczce, ktorej Allegro przypisze innego przewoznika.
     if (!carrier) return null;
 
-    // ⚠️⚠️ BRAK KANALU TO NASZA USTERKA, NIE STAN PACZKI — i dlatego GLOSNO (31.08.2026).
-    // Do tego dnia obie sytuacje konczyly sie tym samym cichym `null`, a roznica miedzy
-    // nimi jest przepasc:
-    //   • kanal PODANY, ale bez podpietego konta — panel czyta stary wiersz kanalu, ktory
-    //     odlaczono. Stan POPRAWNY: paczka po prostu nie jest odpytywana.
-    //   • kanalu NIE PODANO — wolajacy nie wie, o ktore konto pytac, czyli ktos podal
-    //     atrape zamowienia. Tak wlasnie wolal czuwacz przesylek (`{ id }` bez `sklep`)
-    //     i przez szesc dni „pytal" o trzy DORECZONE paczki, ktore wisialy jako
-    //     „bez ruchu": zapisu nie bylo, bledu nie bylo, znacznik proby rosl co godzine.
-    // Rzut ladu je w logu jako BLAD TECHNICZNY i zapala odznake „status u kuriera
-    // niedostepny" (services/status-kuriera.js) — czyli ta sama usterka nastepnym razem
+    // ⚠️⚠️ BRAK KANAŁU TO NASZA USTERKA, NIE STAN PACZKI — i dlatego GŁOŚNO.
+    // Ciche `null` w obu sytuacjach byłoby błędem, bo różnica między nimi jest przepaść:
+    //   • kanał PODANY, ale bez podpiętego konta — panel czyta stary wiersz kanału, który
+    //     odłączono. Stan POPRAWNY: paczka po prostu nie jest odpytywana.
+    //   • kanału NIE PODANO — wołający nie wie, o które konto pytać, czyli ktoś podał
+    //     atrapę zamówienia (np. `{ id }` bez `sklep`). Wtedy doręczone paczki wisiałyby
+    //     jako „bez ruchu”: zapisu nie ma, błędu nie ma, znacznik próby rośnie co przebieg.
+    // Rzut ląduje w logu jako BŁĄD TECHNICZNY i zapala odznakę „status u kuriera
+    // niedostępny” (moduly/wysylka/services/status-kuriera.js) — czyli ta sama usterka następnym razem
     // sama sie zglosi, zamiast czekac, az ktos zauwazy paczke stojaca w miejscu.
     if (kontekst?.kanal === null || kontekst?.kanal === undefined) {
       throw new Error('Śledzenie Allegro wywołane BEZ KANAŁU zamówienia — nie wiadomo, o które konto pytać.');
@@ -74,7 +69,7 @@ export function createAllegroSledzenieClient({ allegroDla }) {
     // „status niedostepny" przy kazdym przebiegu czuwacza i nic by jej nie zdjelo.
     if (!Array.isArray(zdarzenia) || !zdarzenia.length) return null;
 
-    // ⚠️ NAJNOWSZE PO `occurredAt`, NIE PO POZYCJI W TABLICY. Sonda 25.08 zwrocila pary
+    // ⚠️ NAJNOWSZE PO `occurredAt`, NIE PO POZYCJI W TABLICY. Sonda zwróciła pary
     // zdarzen o IDENTYCZNYM znaczniku czasu („Dispatched from sorting center" i „accepted
     // at the sorting center" o 00:48:01) — Allegro porzadkuje je czyms innym niz sam czas.
     // Branie ostatniego elementu dzialaloby na zmierzonych danych i przeklamalo przy

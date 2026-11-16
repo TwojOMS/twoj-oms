@@ -9,16 +9,15 @@ const teraz = () => new Date().toISOString();
  * ⚠️ WYNIK JEST WAZNY WYLACZNIE W TRANSAKCJI, KTORA OD RAZU WSTAWIA WIERSZ Z TYM NUMEREM.
  * Dwa rownoczesne klikniecia „Wystaw proformę" policza to samo — dlatego `zapiszProforme`
  * nizej wola te funkcje JUZ POD BLOKADA ZAPISU (BEGIN IMMEDIATE), a indeks unikalny
- * `proformy_kolejny` (schema.sql) jest DRUGA siatka, nie pierwsza. Ta sama zasada, co przy
- * numerze serii recznej (db/zamowienia-reczne.js) i numerze kolejnej paczki (db/przesylki.js).
+ * `proformy_kolejny` (migracja 0001-baseline.sql) jest DRUGĄ siatką, nie pierwszą. Ta sama zasada,
+ * co przy numerze serii ręcznej (oms/db/zamowienia-reczne.js).
  *
  * ⚠️ LICZYMY MAX, A NIE COUNT. Numer raz nadany jest SPALONY, takze gdy dokument
  * uniewazniono: klient dostal PDF na maila i moze go miec przed soba, wiec drugi dokument
  * o tym samym numerze znaczylby dwie rozne kwoty pod jednym tytulem przelewu. `COUNT(*)`
  * zaczalby po pierwszym uniewaznieniu wydawac numery, ktore juz sa u ludzi.
  *
- * Licznik zeruje sie co miesiac (warunek na pare `rok`+`miesiac`) — dokladnie jak w serii
- * Apilo, ktora ten dokument nasladuje.
+ * Licznik zeruje się co miesiąc (warunek na parę `rok`+`miesiac`), bo numer niesie miesiąc i rok.
  *
  * Numer skladamy JEDNA funkcja z domeny (`formatNumeru`), a nie tutaj drugi raz — dwie
  * kopie formatu rozjechalyby sie przy pierwszej zmianie, a numer jest tym, co klient
@@ -41,15 +40,15 @@ export function nastepnyNumer(db, rok, miesiac) {
  * w ktorym dwa klikniecia licza ten sam „nastepny" numer.
  *
  * ⚠️ KWOTA PRZECHODZI PRZEZ `grosze()`/`zl()`, a do bazy idzie wartosc POLICZONA, nie surowy
- * input. To ta sama lekcja, co przy wplatach okresu (db/platnosci.js): `String(kwota)` na
+ * input. To ta sama lekcja, co przy wpłatach okresu (oms/db/platnosci.js): `String(kwota)` na
  * `undefined` zapisywalo w bazie napis „undefined", ktorego zaden pozniejszy odczyt juz nie
  * parsuje — a tutaj taki wiersz zostawalby z ZUZYTYM numerem z serii. Odmowa (bladOperatora
  * z `grosze`) leci PRZED otwarciem transakcji, wiec nieudana proba nie zuzywa numeru.
  *
- * `rok`/`miesiac` mozna podac wprost (testy, wystawienie „za poprzedni miesiac"); domyslnie
- * wychodza Z TEGO SAMEGO znacznika czasu, co `utworzona_at`. Dwa niezalezne odczyty zegara
- * daly by na przelomie miesiaca numer z jednego miesiaca przy liczniku drugiego — ta sama
- * pulapka, co przy `utworzone_at` zamowienia recznego (db/zamowienia-reczne.js).
+ * `rok`/`miesiąc` można podać wprost (serwis podaje je z dnia w czasie warszawskim); domyślnie
+ * wychodzą Z TEGO SAMEGO znacznika czasu, co `utworzona_at`. Dwa niezależne odczyty zegara
+ * dałyby na przełomie miesiąca numer z jednego miesiąca przy liczniku drugiego — ta sama
+ * pułapka, co przy `utworzone_at` zamówienia ręcznego (oms/db/zamowienia-reczne.js).
  *
  * ⚠️ Uniewaznienia poprzednich proform TU NIE MA — robi je `uniewaznijPoprzednie`, wolane
  * przez serwis (services/proforma.js) zaraz po zapisie. Kolejnosc faz nalezy do serwisu, bo
@@ -88,7 +87,7 @@ export function zapiszProforme(db, zamowienieId, {
  *
  * Lista, a nie pojedynczy wiersz, i to jest zasadnicza roznica wobec faktury VAT: proforma
  * jest odwracalna, wiec zamowienie ma HISTORIE dokumentow z oznaczeniem aktualnej (patrz
- * `aktualnaProforma` w domain/proforma-stan.js). Porzadek chronologiczny jest tym, co widzi
+ * `aktualnaProforma` w domena/proforma-stan.js). Porzadek chronologiczny jest tym, co widzi
  * operator na karcie — numery maja rosnac z gory na dol.
  *
  * Pusta lista, a nie `null`, zeby kod czytajacy nie musial rozrozniac „brak proform" od

@@ -21,7 +21,7 @@ export type OpcjeNadania = {
   klienciKanalow?: Record<string, any>;
   katalogEtykiet: string;
   paczkaDomyslna?: PaczkaKuriera;
-  /** PRZ-117: odstęp przed powtórką notatki; testy podają atrapę. */
+  /** Odstęp przed powtórką notatki; testy podają atrapę. */
   czekaj?: (ms: number) => Promise<void>;
 };
 export type OpcjePaczkiNadania = {
@@ -29,7 +29,7 @@ export type OpcjePaczkiNadania = {
   adres?: AdresOdbiorcyKuriera; punktOdbioru?: string | null;
   kwotaPobrania?: string | null; kurierWybrany?: string;
   pobranieNaTejPaczce?: boolean; drukowac?: boolean;
-  /** PRZ-145.01 (E5-D4): niedopłata, którą operator potwierdził na ekranie (kwota pobrania poniżej niej). */
+  /** Niedopłata, którą operator potwierdził na ekranie (kwota pobrania poniżej niej). */
   potwierdzonaNiedoplata?: string | null;
 };
 /** Metadane wyjątków rzucanych przez rzeczywiste adaptery kurierskie. */

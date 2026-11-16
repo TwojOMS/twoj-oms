@@ -1,4 +1,4 @@
-// PRZ-135.T2 — umowa firmy z kurierem na przesyłki za pobraniem (dziś: InPost).
+// Umowa firmy z kurierem na przesyłki za pobraniem (dziś: InPost).
 // Tabela `ustawienia` (jak faktury-dla-kazdego.js), klucz `wysylka.umowa_pobrania.<kurier>`,
 // wartości `tak`/`nie`. Bez migracji i bez pamięci podręcznej. Brak wiersza = wyłączone.
 //

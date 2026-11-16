@@ -4,7 +4,7 @@ import {
   kopertaZaloguj, kopertaSzukajPoNip, firmaZOdpowiedzi, pole, rozpakuj,
 } from '../../domena/gus.js';
 
-// Klient GUS BIR1.1 (baza REGON). Sieć i sesja — reguły siedzą w domain/gus.js.
+// Klient GUS BIR1.1 (baza REGON). Sieć i sesja — reguły siedzą w domena/gus.js.
 //
 // ⚠️ TRZY RZECZY, KTÓRE ROBIĄ TĘ USŁUGĘ INNĄ NIŻ ZWYKŁY REST:
 //  1. Trzeba się ZALOGOWAĆ kluczem i dostać identyfikator sesji, który potem jedzie
@@ -65,7 +65,7 @@ export function createGusClient({ klucz, url }, { fetchImpl, http = transport({ 
     // Zły klucz NIE daje błędu HTTP — usługa oddaje pustą wartość. Bez tej kontroli panel
     // szedłby dalej z pustym `sid` i mówił „nie znaleziono firmy" przy KAŻDYM NIP-ie.
     if (!sid) {
-      // PRZ-102.11: klucz bywa w pliku (GUS_KLUCZ) albo w Ustawienia → Integracje → GUS — komunikat wskazuje oba.
+      // Klucz bywa w pliku (GUS_KLUCZ) albo w Ustawienia → Integracje → GUS — komunikat wskazuje oba.
       throw bladOperatora('GUS odrzucił logowanie — sprawdź klucz użytkownika BIR (Ustawienia → Integracje → GUS albo GUS_KLUCZ w pliku konfiguracji).');
     }
     sesja = { sid, do: teraz() + ZYWOTNOSC_SESJI_MS };
@@ -97,7 +97,7 @@ export function createGusClient({ klucz, url }, { fetchImpl, http = transport({ 
   }
 
   /**
-   * PRZ-102.11: „Sprawdź połączenie” z Ustawień — świeże logowanie kluczem (Zaloguj). Niczego w GUS nie zmienia
+   * „Sprawdź połączenie” z Ustawień — świeże logowanie kluczem (Zaloguj). Niczego w GUS nie zmienia
    * i o nic nie pyta; zły klucz kończy się tym samym komunikatem co przy pierwszym „Pobierz z GUS”.
    */
   async function sprawdzPolaczenie() {

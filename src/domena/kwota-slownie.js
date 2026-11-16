@@ -33,16 +33,16 @@ const MILION = ['milion', 'miliony', 'milionów'];
 /**
  * Wybór formy rzeczownika wg polskiej liczebnikowej odmiany.
  *
- * ⚠️ POPRAWIONE PO RECENZJI. Pierwsza wersja traktowała KAŻDĄ liczbę o jedności 1 (1, 21, 31,
- * 101, 1001…) jak formę pojedynczą („21 złoty"), co jest błędem — forma pojedyncza w polskim
- * przysługuje WYŁĄCZNIE liczbie równej dokładnie 1, nie „liczbie kończącej się na 1". Test do
- * tej wersji zaszywał tę samą (błędną) regułę, więc ją potwierdzał, zamiast łapać.
+ * ⚠️ PUŁAPKA: łatwo potraktować KAŻDĄ liczbę o jedności 1 (1, 21, 31, 101, 1001…) jak formę
+ * pojedynczą („21 złoty”), co jest błędem — forma pojedyncza w polskim przysługuje WYŁĄCZNIE
+ * liczbie równej dokładnie 1, nie „liczbie kończącej się na 1”. Test zaszywający tę samą
+ * (błędną) regułę ją potwierdza, zamiast łapać.
  *
  * Reguła poprawna:
  * - liczba RÓWNA DOKŁADNIE 1 → forma pojedyncza (`jedynkowa`), np. „jeden złoty";
  * - ostatnia cyfra 2-4 ORAZ dwie ostatnie cyfry NIE są 12/13/14 → forma[0] (złote) — dwie
  *   ostatnie cyfry sprawdzamy, żeby wykluczyć „12/13/14" i „112/113/114" (te są dopełniaczem,
- *   mimo że kończą się na 2-4 — to jest właśnie pułapka z zadania);
+ *   mimo że kończą się na 2-4 — to jest właśnie ta pułapka);
  * - wszystko pozostałe (0, 5-9, 11-21 z jednością 1, 11-14, …) → forma[1] (złotych).
  */
 function odmiana(liczba, [dwaCztery, piecPlus], jedynkowa) {

@@ -1,10 +1,10 @@
-// Lista uslug, ktorych osiagalnosc panel potrafi sprawdzic, i podsumowanie wyniku.
-// Modul jest CZYSTY: nie dotyka sieci, bazy ani zegara — cele wynikaja WYLACZNIE
-// z konfiguracji, ktora panel dostal.
+// Lista usług, których osiągalność panel potrafi sprawdzić, i podsumowanie wyniku.
+// Moduł jest CZYSTY: nie dotyka sieci, bazy ani zegara — cele wynikają WYŁĄCZNIE
+// z konfiguracji, którą panel dostał.
 //
-// ⚠️ POWSTAL PO AWARII 17.08.2026. Po restarcie NAS-a panel pokazywal „Sklep nieosiągalny:
-// fetch failed" przy sklepach, Allegro i inFakcie naraz — a wszystkie trzy usługi działały.
-// Padł DNS (DHCP rozdawało adres serwera skasowanego 19 dni wcześniej). Komunikat „fetch
+// ⚠️ POWSTAŁ PO AWARII. Po restarcie serwera w sieci lokalnej panel pokazywał „Sklep nieosiągalny:
+// fetch failed” przy sklepach, Allegro i inFakcie naraz — a wszystkie trzy usługi działały.
+// Padł DNS (DHCP rozdawało adres nieistniejącego już serwera). Komunikat „fetch
 // failed" nie odróżnia „nie znam nazwy" od „usługa nie odpowiada", więc szukanie zaczęło się
 // od kodu panelu zamiast od sieci. Ten ekran ma to rozstrzygać w pięć sekund.
 //
@@ -41,7 +41,7 @@ export function celeLacznosci(config = {}) {
   for (const [klucz, kanal] of Object.entries(config.kanaly ?? {})) {
     cele.push(cel(`allegro:${klucz}`, kanal?.etykieta ? `Allegro — ${kanal.etykieta}` : `Allegro ${klucz}`, kanal?.api));
   }
-  // PRZ-118.08: program fakturowy — klucz i nazwa z opisu programu (`config.program = { opis, url }`), adres podaje
+  // Program fakturowy — klucz i nazwa z opisu programu (`config.program = { opis, url }`), adres podaje
   // wołający (ten, którego używa skonfigurowany klient; ustawienia/cele-diagnostyki.ts). Stary kształt `config.infakt`
   // zostaje dla wołających bez programu: własny adres = baseUrl klienta, bez nadpisania historyczny cel inFaktu.
   if (config.program) cele.push(cel(config.program.opis.id, config.program.opis.nazwa.mianownik, config.program.url));

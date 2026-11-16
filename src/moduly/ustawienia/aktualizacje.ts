@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 
-// PRZ-099: ekran Ustawienia → Aktualizacje — tylko informacja (plan docs/plany/PRZ-095-099-aktualizacje.md, zadanie 5).
+// Ekran Ustawienia → Aktualizacje — tylko informacja.
 // Bieżąca wersja z /app/wydanie.json (ma go wyłącznie obraz zbudowany z paczki klienta), najnowsza z GitHub Releases
 // na kliknięcie administratora — nigdy w tle, żeby instalacja nie łączyła się z GitHubem bez wiedzy klienta.
 // Adres repo jest stałą, nie zmienną env: fork i tak zmienia kod, a zmienna kosztowałaby wpis w manifeście konfiguracji.

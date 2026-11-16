@@ -34,20 +34,20 @@ const {db,config,poller,nadanie,faktura,proforma,kurierzy,gus,syncSklep,wiadomos
 app.get('/zamowienia/:id', async (req, reply) => {
     let z = pobierzZamowienie(db, Number(req.params.id));
     if (!z) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, Number(req.params.id)), 404);
-    // PRZ-101.04: dołączone nie ma własnej karty — jest częścią głównego (pozycje pokazuje karta głównego).
+    // Dołączone nie ma własnej karty — jest częścią głównego (pozycje pokazuje karta głównego).
     if (z.scalone_do) return reply.redirect(`/zamowienia/${z.scalone_do}`);
 
     // ⚠️ NUMER KSeF DOCIAGA KARTA, TAK SAMO JAK NUMERY LISTOW Z ALLEGRO NIZEJ — i z tego
     // samego powodu: koszt ograniczony UWAGA CZLOWIEKA, zero ruchu w tle.
     //
-    // Zgloszenie wlasciciela 12.08.2026: „dlaczego numer KSeF pojawia sie w panelu faktur
-    // szybko, a na karcie duzo pozniej?". Bo zakladka FAKTURY czyta inFakt NA ZYWO, a karta
-    // czytala wylacznie `ksef_numer` z bazy — a to pole wypelnial tylko czuwacz, co GODZINE.
+    // Bez tego numer KSeF pojawialby sie w zakladce FAKTURY szybko, a na karcie duzo pozniej:
+    // zakladka FAKTURY czyta program fakturowy NA ZYWO, a karta czytala wylacznie `ksef_numer`
+    // z bazy — a to pole wypelnial tylko czuwacz, co GODZINE.
     // Gorzej: czuwacz pyta wylacznie o kanal Allegro i o dokumenty wyslane przez panel
-    // (domain/ksef-oczekiwanie.js), wiec dla faktury sklepowej, ktora poszla do KSeF inna
+    // (domena/ksef-oczekiwanie.js), wiec dla faktury sklepowej, ktora poszla do KSeF inna
     // droga, numer na karcie nie pojawilby sie NIGDY.
     //
-    // ⚠️ Odpornosc siedzi w USLUDZE (services/ksef-doczytanie.js nie rzuca nigdy), a nie tutaj
+    // ⚠️ Odpornosc siedzi w USLUDZE (moduly/faktury/services/ksef-doczytanie.js nie rzuca nigdy), a nie tutaj
     // — inaczej kazde wywolanie trzeba by owijac w try/catch przy renderowaniu karty. Dlawik
     // stoi na `ksef_sprawdzona_at`, wiec dwadziescia razy F5 to jedno zapytanie do inFaktu.
     //
@@ -88,16 +88,16 @@ app.get('/zamowienia/:id', async (req, reply) => {
     // ma prawa wywalic karty, dokladnie jak awaria kuriera; slad idzie do logu, zeby
     // diagnozujacy mial gdzie zajrzec.
     //
-    // ⚠️ DLAWIK GODZINOWY (I-3) — `wyslane_at` ogranicza CZAS ZYCIA odpytywania, a nie jego
+    // ⚠️ DLAWIK GODZINOWY — `wyslane_at` ogranicza CZAS ZYCIA odpytywania, a nie jego
     // TEMPO. Bez tego warunku dwadziescia razy F5 na karcie znaczylo dwadziescia zadan do
     // Allegro; teraz znaczy jedno. Uzasadnienie i sposob przechowania znacznika proby (wpis
     // do logu zamiast nowej kolumny) stoja przy `allegroWymagaOdpytania`.
     //
-    // ⚠️ OD 25.08.2026 CZAS ZYCIA ODPYTYWANIA LICZY `wartoPytacAllegroONumery`
-    // (domain/allegro-numery.js), a nie samo `!z.wyslane_at`. Tamten warunek gubil numer
+    // ⚠️ CZAS ZYCIA ODPYTYWANIA LICZY `wartoPytacAllegroONumery`
+    // (domena/allegro-numery.js), a nie samo `!z.wyslane_at`. Tamten warunek gubil numer
     // PIERWSZEJ paczki, gdy operator oznaczal wysylke szybciej, niz panel zdazyl zajrzec —
-    // przy zamowieniu 1207 dzielilo je DWADZIESCIA SEKUND, a na produkcji zebralo sie tak
-    // 22 zamowienia Allegro bez ani jednej przesylki, mimo numerow po stronie Allegro.
+    // wystarczylo kilkadziesiat sekund, a zamowienia Allegro zostawaly bez ani jednej
+    // przesylki, mimo numerow po stronie Allegro.
     // Dlawik godzinowy zostaje bez zmian: reguly ograniczaja CZAS ZYCIA, dlawik TEMPO.
     if (przesylkiAllegro && umiejetnosciZamowienia(z).wysylkaPlatformy
       && wartoPytacAllegroONumery(z, { maPrzesylke: (z.przesylki ?? []).length > 0, teraz: new Date().toISOString() })
@@ -155,15 +155,15 @@ app.get('/zamowienia/:id', async (req, reply) => {
     // Pętla po paczkach, a nie po zamówieniu: dławik godzinowy siedzi w wierszu przesyłki,
     // więc każda paczka pyta o SWÓJ numer listu i we własnym rytmie.
     //
-    // ⚠️ USŁUGĘ WYBIERAMY PO `p.kurier`, A NIE „TĘ JEDNĄ". Do Zadania 9 stało tu wywołanie
-    // DPD dla KAŻDEJ przesyłki zamówienia — więc od chwili, w której panel zaczął nadawać
-    // paczkomaty, numer InPostu jechałby do DPD. Karty by to nie wywaliło (odświeżanie jest
+    // ⚠️ USŁUGĘ WYBIERAMY PO `p.kurier`, A NIE „TĘ JEDNĄ". Kiedyś stało tu wywołanie
+    // DPD dla KAŻDEJ przesyłki zamówienia — więc po dodaniu nadawania paczkomatów
+    // numer InPostu jechałby do DPD. Karty by to nie wywaliło (odświeżanie jest
     // odporne z założenia) i właśnie dlatego było groźne: każda paczkomatowa paczka pytałaby
     // co godzinę niewłaściwego kuriera i pokazywała „status niedostępny" zamiast statusu.
     //
     // Brak klienta danego kuriera (panel bez sekcji INPOST_*) to TRYB POPRAWNY, nie awaria:
     // paczka po prostu nie jest odpytywana, karta wstaje, reszta zamówień działa dalej.
-    // Ta sama zasada, co przy składaniu mapy w bootstrap.js.
+    // Ta sama zasada, co przy składaniu mapy kurierów (moduly/wysylka/kurierzy.ts).
     // Wybor „kogo pytac" (w tym podwykonawcy WzA) i dlawik godzinowy siedza W SRODKU
     // odswiezStatusKuriera (services/status-kuriera.js) — karta i zegar przesylek ida
     // ta sama sciezka i dziela jeden licznik proby na paczke.
@@ -177,10 +177,10 @@ app.get('/zamowienia/:id', async (req, reply) => {
     //
     // ⚠️ ODMOWA NIE JEST BLEDEM STRONY. `?wiadomosc=faktura` przy zamowieniu bez faktury
     // oddaje karte z POWODEM, a nie 400 na pustym ekranie: operator ma sie dowiedziec,
-    // czego dopisac (niezmiennik 4.9).
+    // czego dopisac (reguła: każdy stan ma wyjście).
     //
     // ⚠️ ADRES CZYTA `wyborWiadomosci` — TA SAMA funkcja, ktora ustawia stan sekcji w
-    // `daneWiadomosci`. Dwa niezalezne odczyty tego parametru (tak bylo do 22.08.2026) daja
+    // `daneWiadomosci`. Dwa niezalezne odczyty tego parametru (tak bylo wczesniej) daja
     // sekcje w stanie „podglad" bez danych podgladu przy pierwszej rozbieznosci miedzy nimi.
     const wyborW = wyborWiadomosci(req);
     const dodatkiKarty = {};
@@ -198,7 +198,7 @@ app.post('/zamowienia/:id/dane/gus', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
     if (!z) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id, { kotwica: 'faktura' }), 404);
-    // PRZ-102.11: klucz z pliku albo z Ustawień, sprawdzany przy każdym żądaniu (zapis działa bez restartu).
+    // Klucz z pliku albo z Ustawień, sprawdzany przy każdym żądaniu (zapis działa bez restartu).
     if (!gusDostepny(gus)) return ekranOdmowyKarty(reply, KOMUNIKAT_BRAK_GUS, adresPowrotuNaKarte(req, id, { kotwica: 'faktura' }), 503);
 
     // NIP bierzemy Z FORMULARZA, nie z bazy: operator zwykle właśnie go wpisał albo poprawił,
@@ -291,7 +291,7 @@ app.post('/zamowienia/:id/status', async (req, reply) => {
 app.post('/zamowienia/:id/wiadomosc/:temat', async (req, reply) => {
     const id = Number(req.params.id);
     if (!pobierzZamowienie(db, id)) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id, { kotwica: 'wiadomosci' }), 404);
-    // PRZ-108.02: pytamy przy każdym żądaniu — poczta zapisana w Ustawieniach po starcie działa bez restartu.
+    // Pytamy przy każdym żądaniu — poczta zapisana w Ustawieniach po starcie działa bez restartu.
     const wiadomosci = wiadomosciCzynne();
     if (!wiadomosci) return ekranOdmowyKarty(reply, 'Poczta nie jest skonfigurowana — wiadomości panel nie wyśle.', adresPowrotuNaKarte(req, id, { kotwica: 'wiadomosci' }), 503);
 
@@ -300,7 +300,7 @@ app.post('/zamowienia/:id/wiadomosc/:temat', async (req, reply) => {
     } catch (e) {
       // ⚠️ Awaria SMTP i odmowa domeny wychodza TA SAMA droga, bo dla operatora to jedno
       // zdanie: „nie poszlo, i dlatego". Slad techniczny zostaje w logu karty (usluga).
-      // PRZ-109.03: odmowa serwera poczty (znacznik z uslugi, kod nodemailera) dostaje zdanie z kodu, a konto
+      // Odmowa serwera poczty (znacznik z uslugi, kod nodemailera) dostaje zdanie z kodu, a konto
       // z dostepem do ekranu poczty — takze wskazowke, gdzie poprawic. Tresc bledu nigdy na ekran.
       const wskazUstawienia = maDostepDoAdresu(req.konto ?? null, EKRAN_POCZTY);
       return ekranOdmowyKarty(reply, `Wiadomość NIE została wysłana: ${komunikatWysylkiMaila(e, { wskazUstawienia })}`, adresPowrotuNaKarte(req, id, { kotwica: 'wiadomosci' }));
@@ -340,7 +340,7 @@ app.post('/zamowienia/:id/ustalenia', async (req, reply) => {
         b2b: req.body?.b2b !== undefined,
         termin_platnosci: parsujTerminZamowienia(req.body?.termin_platnosci),
         rabat_procent: req.body?.rabat_procent,
-      }, kontekst.opcjeZw); // PRZ-122.B07c: pozycja „zw” przeliczana rabatem zapisuje się tylko przy TwojeFaktury
+      }, kontekst.opcjeZw); // Pozycja „zw” przeliczana rabatem zapisuje się tylko przy TwojeFaktury
     } catch (e) {
       dopiszLog(db, id, { akcja: 'ustalenia', wynik: `BŁĄD: ${e.message}` });
       return ekranOdmowyKarty(reply, `Nie udało się zapisać ustaleń: ${komunikatDlaOperatora(e)}`, adresPowrotuNaKarte(req, id, { kotwica: 'szczegoly' }), 400);
@@ -365,7 +365,7 @@ app.post('/zamowienia/:id/ustalenia', async (req, reply) => {
     });
     return reply.redirect(adresPowrotuNaKarte(req, id, { kotwica: 'szczegoly' }));
   });
-// PRZ-104: ręczna data wysyłki („najpóźniej do”) — puste pole = powrót do standardowego terminu.
+// Ręczna data wysyłki („najpóźniej do”) — puste pole = powrót do standardowego terminu.
 // Reguła terminu i walidacja dnia mieszkają w domenie (termin-wysylki.js); trasa tylko parsuje i zapisuje.
 app.post('/zamowienia/:id/termin-wysylki', async (req, reply) => {
     const id = Number(req.params.id);
@@ -387,7 +387,7 @@ app.post('/zamowienia/:id/termin-wysylki', async (req, reply) => {
       // Zła data to błędny formularz, nie awaria — bez wpisu w logu, jak inne odmowy walidacji tej karty.
       return ekranOdmowyKarty(reply, `Nie zapisano daty wysyłki: ${komunikatDlaOperatora(e)}`, adresPowrotuNaKarte(req, id, { kotwica: 'szczegoly' }));
     }
-    // ⚠️ PO WYSYŁCE BEZ ZMIAN (decyzja właściciela 21.10.2026) — inaczej spóźnioną wysyłkę dałoby się
+    // ⚠️ PO WYSYŁCE BEZ ZMIAN — inaczej spóźnioną wysyłkę dałoby się
     // „poprawić” po fakcie, a statystyka terminowości przestałaby mówić prawdę. Jedyna blokada stoi
     // w zapisie (`wyslane_at IS NULL` w UPDATE), więc łapie też paczkę nadaną po otwarciu karty.
     if (!zapiszTerminWysylkiRecznego(db, id, dzien)) {
@@ -410,7 +410,7 @@ app.post('/zamowienia/:id/klient/zapamietaj', async (req, reply) => {
     const f = daneFaktury(z);
     const a = adresOdbiorcy(z) ?? {};
     const istniejacy = klientPoNip(db, f.nip);
-    // ⚠️ NOWY KLIENT Z NIEROZPOZNANA DOSTAWA DOSTAJE DOSTAWE NIEUSTALONA (PRZ-102.24): pusta
+    // ⚠️ NOWY KLIENT Z NIEROZPOZNANA DOSTAWA DOSTAJE DOSTAWE NIEUSTALONA: pusta
     // metoda i pusty koszt. Allegro/Woo daja `nieznana` albo nazwe spoza `DOSTAWY` — walidacja
     // odbijala wtedy cale „Zapamietaj” z 400, a podstawione „dpd” udawaloby ustalenie, ktorego
     // nikt nie zrobil. Pusta metoda daje w `znormalizujKlienta` pusta metode i pusty koszt
@@ -439,7 +439,7 @@ app.post('/zamowienia/:id/klient/zapamietaj', async (req, reply) => {
         metoda_wysylki: istniejacy ? istniejacy.metoda_wysylki : metodaNowego,
         koszt_dostawy_brutto: istniejacy ? istniejacy.koszt_dostawy_brutto : '',
         // ⚠️ Ustalenia bierzemy z zamowienia TYLKO przy nowym wpisie. Istniejacy wpis i tak dostaje
-        // nizej wszystko spoza danych nabywcy z bazy (`daneNabywcyNaKarcie`, PRZ-102.07).
+        // nizej wszystko spoza danych nabywcy z bazy (`daneNabywcyNaKarcie`).
         b2b: (istniejacy ? istniejacy.b2b : z.b2b) ? 'on' : '',
         rabat_procent: istniejacy ? istniejacy.rabat_procent : (z.rabat_procent ?? 0),
         termin_platnosci: istniejacy ? istniejacy.termin_platnosci : z.termin_platnosci,
@@ -454,7 +454,7 @@ app.post('/zamowienia/:id/klient/zapamietaj', async (req, reply) => {
     try {
       // ⚠️⚠️ U ISTNIEJACEGO KLIENTA TYLKO NIEPUSTE DANE NABYWCY. `zapiszKlienta` pisze komplet
       // kolumn; bez tego jeden klik zerowal umowe zbiorcza i jej kwoty, a zamowienie bez adresu
-      // kasowalo adres z karty (PRZ-102.07).
+      // kasowalo adres z karty.
       if (istniejacy) {
         dane = daneNabywcyNaKarcie(istniejacy, dane);
         zapiszKlienta(db, istniejacy.id, dane);
@@ -495,7 +495,7 @@ app.post('/zamowienia/:id/wysylka/metoda', async (req, reply) => {
     // indziej, bo od tej chwili nikt juz o pobranie nie pyta.
     const czyPobranieZFormularza = req.body?.pobranie !== undefined;
     // ⚠️ KOD PACZKOMATU JEST ADRESEM PRZESYLKI. Bez niego zamowienia paczkomatowego nie da
-    // sie nadac (domain/gotowosc-nadania.js odmawia juz na karcie), a przypadek jest zyciowy:
+    // sie nadac (domena/gotowosc-nadania.js odmawia juz na karcie), a przypadek jest zyciowy:
     // klient bywa, ze podaje kod w uwagach zamiast wybrac paczkomat w checkoucie. To pole
     // jest JEDYNYM wyjsciem z tamtej odmowy — bez niego panel wchodzilby w stan, z ktorego
     // sam nie umie wyjsc. Bramka (wielkie litery, pominiecie przy metodach bez punktu)
@@ -506,7 +506,7 @@ app.post('/zamowienia/:id/wysylka/metoda', async (req, reply) => {
     );
     // Bledny formularz, a nie awaria — wiec bez wpisu w logu, tak samo jak przy parsujPaczke.
     if (blad) return ekranOdmowyKarty(reply, blad, adresPowrotuNaKarte(req, id), 400);
-    // PRZ-101.04 (recenzja, W2): pobranie na zamówieniu scalonym — odmowa (domena/scalanie.js).
+    // Pobranie na zamówieniu scalonym — odmowa (domena/scalanie.js).
     const pobranieGrupy = nadpisanie.pobranie ? powodOdmowyPobraniaGrupy(zam) : null;
     if (pobranieGrupy) return ekranOdmowyKarty(reply, pobranieGrupy, adresPowrotuNaKarte(req, id), 400);
 
@@ -518,7 +518,7 @@ app.post('/zamowienia/:id/wysylka/metoda', async (req, reply) => {
     }
     dopiszLog(db, id, {
       akcja: 'wysylka.metoda',
-      // Log nazywa OBIE decyzje — dostawe i pobranie — bo od 2026-08-01 sama nazwa metody
+      // Log nazywa OBIE decyzje — dostawe i pobranie — bo sama nazwa metody
       // nie mowi juz nic o tym, czy kurier ma cos zainkasowac.
       wynik: `Ręcznie (${ktoKlikal(req)}): metoda wysyłki ustawiona ręcznie na ${nadpisanie.metoda}`
         + `${nadpisanie.pobranie ? ` za pobraniem, kwota pobrania ${nadpisanie.kwota_pobrania} zł` : ' (bez pobrania)'}.`,
@@ -529,7 +529,7 @@ app.post('/zamowienia/:id/wysylka/przywroc', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
     if (!z) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
-    // PRZ-101.04 (recenzja, W2): powrót do sklepu, który ma pobranie, to włączenie pobrania tylnymi
+    // Powrót do sklepu, który ma pobranie, to włączenie pobrania tylnymi
     // drzwiami — ta sama odmowa, co przy zmianie metody.
     const pobranieGrupy = pobranieZeSklepu(z) ? powodOdmowyPobraniaGrupy(z) : null;
     if (pobranieGrupy) return ekranOdmowyKarty(reply, pobranieGrupy, adresPowrotuNaKarte(req, id), 400);

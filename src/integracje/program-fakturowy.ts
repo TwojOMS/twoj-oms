@@ -1,4 +1,4 @@
-// PRZ-118 — kontrakt programu fakturowego: listy metod, strażnik przy składaniu modułu i podkładka dla usług.
+// Kontrakt programu fakturowego: listy metod, strażnik przy składaniu modułu i podkładka dla usług.
 // Typy: core/kontrakty.ts (ProgramFakturowy, OpisProgramu). Pierwszy wykonawca: integracje/programy/infakt.ts.
 import type { ProgramFakturowy, ZdolnoscProgramu } from '../core/kontrakty.ts';
 import { PROG_ZAWIESZONEJ_FAKTURY_MS } from '../domena/faktura-stan.js';
@@ -66,11 +66,11 @@ export function sprawdzProgramFakturowy(p: unknown): ProgramFakturowy {
     if (!zadeklarowane.has(zdolnosc) && ma) odmowa(`metoda ${metoda} jest, a zdolności ${zdolnosc} nie zadeklarowano`);
   }
 
-  // Do PRZ-119 jedyna zaimplementowana reguła to 'wierszami' (domena/podsumowanie-wierszami.js).
+  // Jedyna zaimplementowana reguła to 'wierszami' (domena/podsumowanie-wierszami.js).
   if (opis.regulaVat !== 'wierszami') {
     odmowa(`regulaVat „${String(opis.regulaVat)}” nieobsługiwana — panel liczy VAT tylko wierszami`);
   }
-  // Niezmiennik „wystawienie ≠ wysyłka do KSeF”: tylko literał false.
+  // Reguła „wystawienie ≠ wysyłka do KSeF”: tylko literał false.
   if (opis.wystawienieWysylaDoKsef !== false) {
     odmowa('wystawienieWysylaDoKsef musi być false — wysyłka do KSeF to osobna, świadoma decyzja człowieka');
   }
@@ -89,9 +89,9 @@ export function sprawdzProgramFakturowy(p: unknown): ProgramFakturowy {
 }
 
 /**
- * Podkładka na czas PRZ-118: usługa przyjmuje `{ program }` albo stary `{ infakt }` (52 pliki testów wstrzykują
- * `infakt`). Oba naraz = błąd programisty. Żaden = `null` (usługa bez programu fakturowego, jak dziś bez `infakt`).
- * Bez sprawdzProgramFakturowy — mock w teście usługi bywa niepełny i ma działać tak jak dziś.
+ * Podkładka na czas przejścia na program fakturowy: usługa przyjmuje `{ program }` albo stary `{ infakt }` (wiele
+ * testów wstrzykuje `infakt`). Oba naraz = błąd programisty. Żaden = `null` (usługa bez programu fakturowego).
+ * Bez sprawdzProgramFakturowy — mock w teście usługi bywa niepełny i ma działać tak jak wcześniej.
  */
 function jestProgramem(o: unknown): o is ProgramFakturowy {
   if (!o || typeof o !== 'object') return false;

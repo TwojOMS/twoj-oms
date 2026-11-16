@@ -1,6 +1,6 @@
 // Stan bezpiecznika odpytywania zasobu faktur Allegro — wiersz na kanal.
 // Reguly (kiedy pytac, kiedy otworzyc, kiedy zamknac) siedza w
-// domain/bezpiecznik-weryfikacji.js, zeby dalo sie je przetestowac bez bazy. Ten modul
+// domena/bezpiecznik-weryfikacji.js, zeby dalo sie je przetestowac bez bazy. Ten modul
 // wylacznie zapisuje i czyta.
 
 /** Stan kanalu albo `undefined`, gdy jeszcze o nim nie pytalismy. NIGDY nie rzuca. */

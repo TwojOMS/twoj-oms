@@ -5,24 +5,24 @@
     sprzedaja (z cenami, odnosnikami i zdjeciami z KAZDEGO kanalu osobno) oraz dopisanie
     oferty Allegro, ktorej dopasowanie nie zlapalo.
 
-    ⚠️⚠️ EKRAN KARTY JEST DOMYSLNIE DO ODCZYTU (wymaganie wlasciciela). Formularz otwiera dopiero
+    ⚠️⚠️ EKRAN KARTY JEST DOMYSLNIE DO ODCZYTU. Formularz otwiera dopiero
     „Edytuj" — parametr `?edytuj=dane`, BEZ JavaScriptu, dokladnie tak jak trzy panele karty
-    zamowienia (`zamowienie.ejs`). Panel w trybie edycji dostaje `panel--edycja`, bo inaczej
+    zamowienia (`moduly/zamowienia/widoki/zamowienie.ejs`). Panel w trybie edycji dostaje `panel--edycja`, bo inaczej
     latwo nie zauwazyc, ze zmiany czekaja niezapisane.
 
     ⚠️⚠️ WIDOK NICZEGO NIE LICZY I NICZEGO NIE ROZSTRZYGA. Wymiary w centymetrach, procenty
     podpowiedzi, adresy miniatur, etykiety kanalow i to, ktory produkt wolno odpiac —
-    wszystko przychodzi POLICZONE z `web/routes/magazyn.js` (ta sama zasada, co
+    wszystko przychodzi POLICZONE z `moduly/magazyn/karta.js` (ta sama zasada, co
     w magazyn-lista.ejs, magazyn-powiazania.ejs i faktury.ejs).
 
-    ⚠️ ANI JEDNEGO KOLORU WPISANEGO WPROST — wszystko z palety w layout-oms.ejs. Paleta ma
+    ⚠️ ANI JEDNEGO KOLORU WPISANEGO WPROST — wszystko z palety w public/oms-uklad.css. Paleta ma
     wariant jasny i ciemny, wiec wartosc wpisana tutaj zadzialalaby w jasnym i po cichu
     zniknela w ciemnym (nikt nie oglada obu naraz).
 
-    ⚠️⚠️ EKRAN KARTY NIE ZAPISUJE NICZEGO DO SKLEPU ANI NA ALLEGRO. Zapis SKU i wymiarow do
-    WooCommerce to Zadanie 15 i ma wlasny, obowiazkowy podglad. %>
+    ⚠️⚠️ FORMULARZ DANYCH KARTY NIE PISZE DO SKLEPU ANI NA ALLEGRO. Zapis SKU i wymiarow do
+    sklepu ma wlasny, obowiazkowy podglad (moduly/magazyn/zapis.js). %>
 
-<%# Adres powrotu (Zadanie 6) — `wroc` zwalidowany w trasie (`bezpiecznyWroc`), albo goly
+<%# Adres powrotu — `wroc` zwalidowany w trasie (`bezpiecznyWroc`), albo goly
     „/magazyn", gdy go nie bylo albo nie przeszedl bariery adresu. Widok niczego tu nie
     rozstrzyga — dostaje juz gotowy `adresPowrotu`. %>
 <p class="wroc"><a href="<%= adresPowrotu %>">← Magazyn</a></p>
@@ -79,7 +79,7 @@
         <label>Nazwa<%- include('_zrodlo-pola.ejs', { pole: 'nazwa' }) %><input name="nazwa" value="<%= wartosci.nazwa %>"></label>
         <label>SKU<input name="sku" value="<%= wartosci.sku %>"></label>
         <%# ⚠️ POLA SA W CENTYMETRACH, BAZA TRZYMA MILIMETRY. Czlowiek mysli o produkcie
-            w centymetrach; przeliczenie stoi na granicy zapisu (domain/rozmiar.js).
+            w centymetrach; przeliczenie stoi na granicy zapisu (domena/rozmiar.js).
             Puste pole KASUJE wymiar, napis niezrozumialy ODMAWIA — nigdy zgadywanie. %>
         <label>Szerokość (cm)<input name="szerokosc_cm" value="<%= wartosci.szerokosc_cm %>"
           inputmode="decimal" placeholder="np. 70"></label>
@@ -89,8 +89,8 @@
           inputmode="decimal" placeholder="opcjonalnie"></label>
         <label>Waga (kg)<input name="waga_kg" value="<%= wartosci.waga_kg %>"
           inputmode="decimal" placeholder="opcjonalnie"></label>
-        <%# PRZ-153.E5.3c: EAN (8 albo 13 cyfr z cyfra kontrolna), cena w zl (baza trzyma grosze),
-            stawka VAT z listy faktur. Puste pole kasuje wartosc, napis niezrozumialy ODMAWIA. %>
+        <%# EAN (8 albo 13 cyfr z cyfra kontrolna), cena w zl (baza trzyma grosze),
+            stawka VAT z listy domena/vat.js. Puste pole kasuje wartosc, napis niezrozumialy ODMAWIA. %>
         <label>EAN<%- include('_zrodlo-pola.ejs', { pole: 'ean' }) %><input name="ean" value="<%= wartosci.ean %>"
           inputmode="numeric" placeholder="8 albo 13 cyfr"></label>
         <label>Cena katalogowa (zł)<%- include('_zrodlo-pola.ejs', { pole: 'cena_gr' }) %><input name="cena_zl" value="<%= wartosci.cena_zl %>"
@@ -106,7 +106,7 @@
         </label>
         <%# Pozycje z kategorii POWIAZANYCH produktow (plus ta juz ustawiona) — nie z palca:
             filtr kategorii dopasowuje CALA nazwe, a nazw jest kilkaset i nikt ich nie pamieta. %>
-        <%# PRZ-160.P3b.01: plus słownik kategorii (Magazyn → Kategorie). „Albo dodaj nową” wygrywa z wyborem
+        <%# Plus słownik kategorii (Magazyn → Kategorie). „Albo dodaj nową” wygrywa z wyborem
             i trafia do słownika przy zapisie; tak samo Marka (słownik Magazyn → Marki). %>
         <label>Kategoria główna<%- include('_zrodlo-pola.ejs', { pole: 'kategoria_glowna' }) %>
           <select name="kategoria_glowna">
@@ -132,7 +132,7 @@
           <input name="marka_nowa" value="<%= wartosci.marka_nowa %>" maxlength="200"
             autocomplete="off" placeholder="nowa nazwa — trafi do słownika">
         </label>
-        <%# ⚠️ TRZY STANY, NIE DWA, i pole jest WYLACZNIE RECZNE (decyzja wlasciciela):
+        <%# ⚠️ TRZY STANY, NIE DWA, i pole jest WYLACZNIE RECZNE:
             zadnego wyliczania z wymiarow. „Nieoznaczone" to robota do wykonania,
             „nie" to decyzja czlowieka. %>
         <label>Paczkomat
@@ -197,7 +197,7 @@
     trzeba wiedziec, skad ktore pochodzi. %>
 <%- include('_karta-galeria.ejs') %>
 <% if (stanMagazynowy) { %>
-<%# PRZ-091 — stan magazynowy karty; bez włączonych stanów (Ustawienia → Magazyn) sekcji nie ma.
+<%# Stan magazynowy karty; bez włączonych stanów (Ustawienia → Magazyn) sekcji nie ma.
     Liczbę, historię i klucz formularza liczy trasa — widok tylko wypisuje. %>
 <section class="panel" id="stan-karty">
   <div class="panel-naglowek">
@@ -327,7 +327,7 @@
                   <% } %>
                   <%# ⚠️ WLASNY „adresOdepnij", NIE doklejone „/odepnij" za adresem karty —
                       adres karty moze niesc „?wroc=…", a doklejenie sciezki PO nim wsadzaloby
-                      ja w srodek wartosci parametru zamiast za nim (Zadanie 6). %>
+                      ja w srodek wartosci parametru zamiast za nim. %>
                   <form class="w-linii" method="post" action="<%= adresOdepnij %>">
                     <input type="hidden" name="produktSklepowyId" value="<%= p.id %>">
                     <button class="btn" type="submit">Odepnij</button>
@@ -348,10 +348,10 @@
 </section>
 
 <%# ——— DOPISANIE OFERTY ALLEGRO ————————————————————————————————————————————————————
-    ⚠️⚠️ WYSZUKIWARKA, NIE SAMA LISTA PODPOWIEDZI. Pomiar obalil zalozenie planu: tytuly
-    na Allegro sa SPRZEDAZOWE, nie katalogowe („Lampa stołowa Grzybek - DUŻA lampka nocna
-    do sypialni" wobec sklepowego „Lampa Grzybek – 30cm"), wiec podpowiedz trafia
-    w mniejszosc przypadkow. Bez pola szukania 447 powiazan to 447 przewinien pelnej listy.
+    ⚠️⚠️ WYSZUKIWARKA, NIE SAMA LISTA PODPOWIEDZI. Pomiar pokazal, ze tytuly
+    na Allegro sa SPRZEDAZOWE, nie katalogowe („Lampa stołowa Muchomor - DUŻA lampka nocna
+    do sypialni" wobec sklepowego „Lampa Muchomor – 30cm"), wiec podpowiedz czesto
+    nie trafia. Bez pola szukania kazde powiazanie to przewijanie pelnej listy.
 
     ⚠️ PODPOWIEDZ NICZEGO NIE WIAZE — wiaze klikniecie „Przypnij". Ocena obok jest
     PODPOWIEDZIA, nie decyzja, i liczy ja ta sama funkcja, co na ekranie powiazan. %>

@@ -2,17 +2,15 @@ import { bladOperatora } from '../../domena/bledy.js';
 import { typKategorii } from './kategorie-kosztow.js';
 
 // ⚠️⚠️ SLOWNIK FIRM, KTORYCH FAKTUR NIE MA W KSeF — i jedyny powod, dla ktorego formularz
-// kosztu recznego ma TRZY POLA zamiast osmiu (2026-08-13, prosba wlasciciela: „wystarczy
-// tabela z dopisywaniem fv: 1. Firma (pole wyboru np. facebook) 2. data 3. kwota — tyle").
+// kosztu ręcznego ma TRZY POLA: firmę (pole wyboru), datę i kwotę.
 //
 // Za pozycja listy stoi komplet tego, czego operator NIE MA WPISYWAC: pelna nazwa sprzedawcy,
-// kategoria kosztu i typ. Uzasadnienie ksztaltu tabeli (dwie nazwy, typ jako kopia) stoi przy
-// `firmy_reczne` w schema.sql i nie ma go tu drugi raz.
+// kategoria kosztu i typ.
 //
 // ⚠️ CZEGO TU NIE MA I MIEC NIE MA: kasowania firmy ani jej poprawiania. Wiersz kosztu trzyma
 // nazwe sprzedawcy i kategorie WPROST (kopia, nie odnosnik), wiec skasowanie firmy nie
-// popsuloby zadnego kosztu — ale tez niczego nie naprawia, a lista, ktora rosnie o jedna
-// pozycje na kwartal, nie potrzebuje sprzataczki. Zle wpisana firma kosztuje jedna pozycje
+// popsuloby zadnego kosztu — ale tez niczego nie naprawia, a lista, która rośnie
+// rzadko, nie potrzebuje sprzątaczki. Zle wpisana firma kosztuje jedna pozycje
 // na liscie wyboru; zle wpisany koszt poprawia sie na ekranie poprawki.
 
 export const wszystkieFirmyReczne = (db) => db.prepare(
@@ -20,7 +18,7 @@ export const wszystkieFirmyReczne = (db) => db.prepare(
 ).all();
 
 // `undefined` znaczy „takiej firmy nie ma na liscie" i tak ma to czytac wolajacy: o tym, ze
-// jest to odmowa dla czlowieka, decyduje `naWierszReczny` (domain/koszt-reczny.js) — tam,
+// jest to odmowa dla czlowieka, decyduje `naWierszReczny` (domena/koszt-reczny.js) — tam,
 // gdzie stoi cala reszta sprawdzen wpisu recznego.
 export const firmaReczna = (db, nazwa) => db.prepare(
   'SELECT nazwa, sprzedawca, kategoria, typ FROM firmy_reczne WHERE nazwa = ?',
@@ -31,10 +29,9 @@ export const firmaReczna = (db, nazwa) => db.prepare(
 // Trzecie pole znaczyloby, ze ta sama kategoria moze dostac tu inny typ niz w rozbiciu
 // miesiaca — czyli rozjazd progu rentownosci wpisywany przez formularz.
 //
-// ⚠️ PELNA NAZWA SPRZEDAWCY = NAZWA Z LISTY. Startowe trzy pozycje maja te nazwy rozne
-// („Facebook (Meta)" na liscie, „Meta Platforms Ireland Limited" na dokumencie), bo tak
-// wygladaja ich faktury i wpisal je czlowiek, ktory je widzial. Formularz o pelna nazwe NIE
-// PYTA: to byloby czwarte pole na ekranie, ktorego cala tresc brzmi „przepisz to samo".
+// ⚠️ PEŁNA NAZWA SPRZEDAWCY = NAZWA Z LISTY. Tabela ma osobną kolumnę `sprzedawca` (nazwa jak
+// na dokumencie może różnić się od krótkiej nazwy na liście), ale formularz o pełną nazwę NIE
+// PYTA: to byłoby kolejne pole na ekranie, którego cała treść brzmi „przepisz to samo".
 export function dopiszFirmeReczna(db, nazwa, kategoria) {
   const nazwaFirmy = String(nazwa ?? '').trim();
   if (!nazwaFirmy) {

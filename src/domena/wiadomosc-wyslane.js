@@ -1,16 +1,15 @@
 import { przewoznikWiersza, linkSledzeniaPaczki } from './przewoznik-przesylki.js';
 import { punktOdbioru, punktOdbioruOpis } from './wysylka.js';
 
-// MAIL „ZAMÓWIENIE WYSŁANE" (PRZ-102.21, decyzja właściciela 20.10: „Tak, jako szablon. Automatyzacje wysyłki
-// wiadomości jako osobne zadanie."). Moduł czysty: z zamówienia liczy listę paczek do maila — nic nie wysyła.
+// MAIL „ZAMÓWIENIE WYSŁANE": szablon. Moduł czysty: z zamówienia liczy listę paczek do maila — nic nie wysyła.
 //
-// ⚠️ TYLKO PACZKI Z NUMEREM LISTU. `z.przesylki` jest już bez nieudanych prób ('blad', db/zamowienia.js);
+// ⚠️ TYLKO PACZKI Z NUMEREM LISTU. `z.przesylki` jest już bez nieudanych prób ('blad', oms/db/zamowienia.js);
 // tu odpada jeszcze wiersz bez numeru (nadanie trwa, przesyłka tworzona u kuriera) i 'do_wyjasnienia' —
 // numer przydzielony, ale nadanie nie doszło do końca, więc paczki za nim może nie być. Mail z takim numerem
 // wysłałby klienta na stronę śledzenia, która nic nie pokaże.
 //
 // ⚠️ LINK TYLKO Z `linkSledzeniaPaczki` (przewoznik-przesylki.js) — ten sam, co na karcie i w zakładce Przesyłki
-// (PRZ-152.G7: po prawdziwym przewoźniku, nie po kodzie drogi nadania). Nieznany przewoźnik
+// (po prawdziwym przewoźniku, nie po kodzie drogi nadania). Nieznany przewoźnik
 // = sam numer, nigdy zgadnięty adres. Nazwa przewoźnika dla człowieka z `przewoznikWiersza` — tej samej reguły,
 // co zakładka Przesyłki (paczka „Wysyłam z Allegro" ma nazwę tego, kto ją wiezie, nie „allegro").
 

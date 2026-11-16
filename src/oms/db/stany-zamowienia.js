@@ -1,4 +1,4 @@
-// PRZ-091: „brak na stanie” na karcie zamówienia — odczyt, bez żadnego zapisu.
+// „brak na stanie” na karcie zamówienia — odczyt, bez żadnego zapisu.
 //
 // Pozycja → karta rozstrzyga TA SAMA reguła co stan magazynu (`zuzycieZZamowien` → `kartaPozycji` z domeny),
 // na tych samych pozycjach efektywnych (po ręcznych poprawkach) i z tym samym warunkiem granicy włączenia.

@@ -12,17 +12,15 @@ import { utworzAkcje } from './akcje/index.js';
 import { regulyDoOstrzezen } from './db/reguly.js';
 
 /**
- * PRZ-108.06 (zmiana A planu automatyzacji, właściciel 21.10): ekran Ustawienia → Automatyzacje (tylko admin) z automatami
- * systemowymi — automat wysyłki do KSeF (przeniesiony z ekranu inFaktu; logika i zapis zostają w module faktur)
- * i odnośnik do autoodpowiedzi Allegro.
- * PRZ-108.07 (zmiana B): reguły „zdarzenie → warunki → akcja” — trzy tabele (migracja 0001), silnik z zegarem co minutę,
- * kreator, dziennik. Rejestry zdarzeń i akcji są w B PUSTE, więc żadna reguła nic nie zrobi; przy zerze włączonych
- * reguł przebieg zegara to jedno SELECT i zero zapisów. Testy podają sztuczne rejestry przez `nadpisania`
- * (`automatyzacje.zdarzenia`, `automatyzacje.akcje`, `automatyzacje.sprawdzWarunki`, `automatyzacje.pocztaGotowa`).
- * PRZ-108.08 (C1): zdarzenia „Paczka nadana” i „Status zmienił się na”, akcja „Wyślij mail do kupującego” (usługa
- * wiadomości) i warunki w chwili wykonania (status, numer listu, dostawa, pobranie). PRZ-108.08 po recenzji: migracja 0002 (indeksy detektora statusu i ostrzeżeń).
- * PRZ-108.09 (C2): zdarzenie „Kurier odebrał paczkę” — migracja 0003 (`przesylki.odebrana_at`, `odebrana_dowod`)
- * i 0004 (`odebrana_kurier_at` — chwila odbioru u kuriera, do odrzucenia spóźnionego dowodu; recenzja 09).
+ * Ekran Ustawienia → Automatyzacje (tylko admin) z automatami systemowymi — automat wysyłki do KSeF (logika i zapis
+ * zostają w module faktur) i odnośnik do autoodpowiedzi Allegro.
+ * Reguły „zdarzenie → warunki → akcja”: trzy tabele (migracja 0001), silnik z zegarem co minutę, kreator, dziennik.
+ * Przy zerze włączonych reguł przebieg zegara to jedno SELECT i zero zapisów. Testy podają sztuczne rejestry przez
+ * `nadpisania` aplikacji (`automatyzacje.zdarzenia`, `automatyzacje.akcje`, `automatyzacje.sprawdzWarunki`, `automatyzacje.pocztaGotowa`).
+ * Zdarzenia: „Paczka nadana”, „Status zmienił się na”, „Kurier odebrał paczkę” i „Nowe zamówienie”; akcja „Wyślij mail
+ * do kupującego” (usługa wiadomości); warunki w chwili wykonania (status, numer listu, dostawa, pobranie).
+ * Migracje: 0002 — indeksy detektora statusu i ostrzeżeń; 0003 — `przesylki.odebrana_at`, `odebrana_dowod`;
+ * 0004 — `odebrana_kurier_at` (chwila odbioru u kuriera, do odrzucenia spóźnionego dowodu).
  */
 export const modulAutomatyzacje: ModulOms<null> = {
   nazwa: 'automatyzacje', wersja: '1.2.0', wymaga: ['rdzen', 'web', 'kanaly', 'faktury', 'wiadomosci', 'zamowienia', 'wysylka'],
@@ -32,23 +30,23 @@ export const modulAutomatyzacje: ModulOms<null> = {
     const nadpisane = <T>(nazwa: string, domyslna: T): T => {
       try { return ctx.usluga<T>('automatyzacje', nazwa); } catch { return domyslna; }
     };
-    // PRZ-108.08 (C1): usługa wiadomości czytana przy każdym wykonaniu (null w wąskim składzie bez modułu wiadomości).
+    // Usługa wiadomości czytana przy każdym wykonaniu (null w wąskim składzie bez modułu wiadomości).
     const wiadomosci = () => {
       try { return ctx.usluga<any>('wiadomosci', 'wiadomosci') ?? null; } catch { return null; }
     };
     const zdarzenia = nadpisane<readonly any[]>('zdarzenia', ZDARZENIA);
     const akcje = nadpisane<readonly any[]>('akcje', utworzAkcje({ wiadomosci }));
     const sprawdzWarunki = nadpisane('sprawdzWarunki', sprawdzanieWarunkow);
-    // PRZ-108.02: usługa wiadomości istnieje zawsze; czy poczta jest TERAZ ustawiona, mówi `gotowe()` (zapis poczty
+    // Usługa wiadomości istnieje zawsze; czy poczta jest TERAZ ustawiona, mówi `gotowe()` (zapis poczty
     // w Ustawieniach działa bez restartu).
     const pocztaGotowa = nadpisane<() => boolean>('pocztaGotowa', () => Boolean(wiadomosci()?.gotowe?.()));
     const silnik = createSilnikAutomatyzacji({ db: ctx.db, zdarzenia, akcje, sprawdzWarunki, pocztaGotowa,
       teraz: ctx.teraz, log: ctx.log });
     // `w_toku` → `niepewne` robi pierwszy przebieg zegara, nie budowa modułu: skrypt budujący aplikację na tej samej
-    // bazie nie przestawi trwającej wysyłki serwera (recenzja 07, usterka 8).
+    // bazie nie przestawi trwającej wysyłki serwera.
     return {
       uslugi: { silnik, zdarzenia, akcje },
-      // PRZ-108.08 (recenzja B, usterka 6): wstrzymana reguła jako uwaga zdrowia modułu (wzór: kanaly/modul.ts).
+      // Wstrzymana reguła jako uwaga zdrowia modułu (wzór: kanaly/modul.ts).
       // Uwaga: zbiorcze `zdrowie()` aplikacji czytają dziś tylko testy — na stronie głównej adminowi pokazuje ją tabelka
       // ostrzeżeń (domena/ostrzezenia.js, `ostrzezeniaAutomatyzacji`, zamowienia/kontekst.js).
       zdrowie: () => ({ alarmy: [], uwagi: regulyDoOstrzezen(ctx.db, new Date(ctx.teraz().getTime() - 7 * 24 * 3600 * 1000).toISOString())

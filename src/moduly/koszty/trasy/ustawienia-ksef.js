@@ -1,4 +1,4 @@
-// PRZ-102.22: Ustawienia → Integracje → KSeF (faktury kosztowe). Wzór: zamowienia/ustawienia-gus.js (PRZ-102.11).
+// Ustawienia → Integracje → KSeF (faktury kosztowe). Wzór: zamowienia/ustawienia-gus.js.
 //
 // Dostęp: strażnik po prefiksie `/ustawienia` wpuszcza tylko konto z uprawnieniem „ustawienia”, a gościa demo
 // zatrzymuje na każdym POST-cie (core/bezpieczenstwo/podglad-demo.js) — tu tych blokad nie powtarzamy.
@@ -21,12 +21,12 @@ const KOMUNIKATY = {
 };
 
 export function registerUstawieniaKsefRoutes(app, { db, zrodloKsef, nipSprzedawcy: nip, infakt = null }) {
-  // PRZ-118.09: zdanie „Wysyłka faktur sprzedaży idzie przez …” — nazwa programu z usługi `infakt` modułu faktur.
+  // Zdanie „Wysyłka faktur sprzedaży idzie przez …” — nazwa programu z usługi `infakt` modułu faktur.
   const program = infakt;
   const nazwaProgramu = odmianaNazwyProgramu(program);
   const wbudowany = program?.opis?.wbudowany === true;
   const k = zrodloKsef;
-  // PRZ-108.10: NIP firmy funkcją (plik albo Ustawienia → Firma) — czytany przy każdym widoku i zapisie.
+  // NIP firmy funkcją (plik albo Ustawienia → Firma) — czytany przy każdym widoku i zapisie.
   const nipTeraz = () => (typeof nip === 'function' ? nip() : nip) ?? null;
   function widok(req, reply, { bledy = [], test = null } = {}) {
     const zapis = wczytajKonfiguracjeIntegracji(db, 'ksef');
@@ -39,7 +39,7 @@ export function registerUstawieniaKsefRoutes(app, { db, zrodloKsef, nipSprzedawc
       zapisano: KOMUNIKATY[req.query?.zapisano] ?? null, nazwaProgramu,
     });
   }
-  // PRZ-152.G13k1: odmowa w układzie OMS (status i tekst bez zmian); tekst nie niesie tokenu.
+  // Odmowa w układzie OMS (status i tekst bez zmian); tekst nie niesie tokenu.
   const zEnv = (reply) => stronaOdmowy(reply, 409,
     'Token KSeF jest ustawiony w pliku konfiguracji (oms.env, KSEF_TOKEN) — tam go zmień. Formularz niczego nie zapisał.',
     { tytul: 'Token KSeF jest w pliku konfiguracji', wroc: EKRAN_KSEF, napisWroc: 'Wróć do ustawień KSeF' });

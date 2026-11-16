@@ -1,4 +1,4 @@
-// PRZ-160.P3b.01 — strony słowników Magazynu: Kategorie (/magazyn/kategorie) i Marki (/magazyn/marki).
+// Strony słowników Magazynu: Kategorie (/magazyn/kategorie) i Marki (/magazyn/marki).
 // Lista płaska z liczbą kart (odnośnik do filtra listy Magazynu), dodanie, zmiana nazwy (przepisuje karty
 // w jednej transakcji), usunięcie tylko bez kart. Kategorie można też pobrać z połączenia WooCommerce
 // (tylko odczyt sklepu). Uprawnienie: ekran „magazyn” — to samo, co edycja karty (prefiks /magazyn).
@@ -50,7 +50,7 @@ export function registerSlownikiMagazynu(app, { db, sklepy = {}, definicje = () 
       woo: strona.typ === 'kategorie' ? polaczeniaWoo() : [],
       adresFiltra: nazwa => `/magazyn?${strona.filtr}=${encodeURIComponent(nazwa)}`,
       adresBez: `/magazyn?brak=${strona.filtr}`,
-      // PRZ-160.E3.11: kolumna „Allegro” (przypisanie na środowisko; null = brak konta i mapowań).
+      // Kolumna „Allegro” (przypisanie na środowisko; null = brak konta i mapowań).
       allegro: kolumnaAllegro(db, strona.typ, kontaAllegro),
     });
   }

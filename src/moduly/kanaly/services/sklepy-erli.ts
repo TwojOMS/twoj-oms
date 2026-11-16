@@ -118,12 +118,12 @@ export function createSklepyErli(o:{db:DatabaseSync;teraz:()=>Date;ustawieniaEnv
     stawkaVat:b.stawkaVat===''?null:b.stawkaVat,
     czynne:b.czynne==='czynne',
    };
-   // PRZ-160 E4.10 (D48): bufor i próg skoku tylko z formularza, który je pokazuje (stany choć raz włączone).
+   // Bufor i próg skoku tylko z formularza, który je pokazuje (stany choć raz włączone).
    if(stanyKiedysWlaczone(db))for(const p of ['buforSzt','progSkokuSzt'])if(b[p]!==undefined)zmiany[p]=liczba(b[p]);
    let pole='stalaIlosc';
    try{
     if(b.stalaIlosc===''||b.stalaIlosc==null)throw new Error('Podaj stałą liczbę sztuk');
-    // E3d.02-02: tabela reguł zamiast pola cennikDostaw (cennik ERLI to tekst dowolny); błąd przy wierszu = nic
+    // Tabela reguł zamiast pola cennikDostaw (cennik ERLI to tekst dowolny); błąd przy wierszu = nic
     // nie zapisane. Ciało bez tabeli (stary formularz) zostawia reguły konta bez zmian.
     if(formularzNieaktualny(b,ustawieniaOfertKonta(db,k).cenniki))return {ok:false,status:409,komunikat:FORMULARZ_NIEAKTUALNY};
     const tabela=regulyZKroku(b);
@@ -131,7 +131,7 @@ export function createSklepyErli(o:{db:DatabaseSync;teraz:()=>Date;ustawieniaEnv
     if(bledyTabeli.length)return {ok:false,status:400,komunikat:bledyTabeli[0],bledyPol:tabela!.bledyPol};
     if(tabela)zmiany.cenniki=tabela.reguly;
     return transakcja(()=>{
-     // Walidacja E2.01 przy każdym polu; błąd cofa całość, także przy pierwszym zapisie.
+     // Walidacja przy każdym polu; błąd cofa całość, także przy pierwszym zapisie.
      for(const [nazwa,wartosc] of Object.entries(zmiany)){
       pole=nazwa;zapiszUstawieniaOfertKonta(db,k,{[nazwa]:wartosc},{aktor:a.login,teraz:o.teraz().toISOString()});
      }

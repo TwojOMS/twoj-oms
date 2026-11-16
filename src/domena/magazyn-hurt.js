@@ -4,9 +4,9 @@ import { PACZKOMAT_WARTOSCI } from './paczkomat.js';
 // EDYCJA HURTEM W MAGAZYNIE — reguly czyste. Zadnej bazy, zadnego HTTP: tutaj rozstrzyga
 // sie WYLACZNIE, co formularz znaczy i ktore karty ta tresc faktycznie zmieni.
 //
-// PO CO TEN EKRAN ISTNIEJE (zmierzone na produkcji 2026-08-12): 645 kart bez wymiaru,
-// 965 bez oznaczenia paczkomatu, 152 bez kategorii glownej. Bez niego trzeba by otworzyc
-// 645 kart po kolei.
+// PO CO TEN EKRAN ISTNIEJE: w katalogu bywa kilkaset kart bez wymiaru, kilkaset bez
+// oznaczenia paczkomatu i sporo bez kategorii glownej. Bez niego trzeba by otworzyc te
+// karty po kolei.
 //
 // ⚠️⚠️ PUSTE POLE ZNACZY „NIE RUSZAJ" — I JEST TO ODWROTNIE NIZ NA KARCIE PRODUKTU. Tam puste
 // pole KASUJE wartosc i jest to bezpieczne, bo czlowiek patrzy na jedna karte i widzi, co robi.
@@ -72,7 +72,7 @@ const NIE_ROZUMIEM_WYMIARU = (surowe) => `„${surowe}" to nie jest wymiar w cen
 export function polecenieZFormularza(body) {
   const polecenie = {};
 
-  // ⚠️ CENTYMETRY WCHODZA, MILIMETRY LADUJA W BAZIE — przelicza `domain/rozmiar.js`, TA SAMA
+  // ⚠️ CENTYMETRY WCHODZA, MILIMETRY LADUJA W BAZIE — przelicza `domena/rozmiar.js`, TA SAMA
   // funkcja, ktorej uzywa karta produktu. Druga kopia arytmetyki znaczylaby, ze „10,5 cm"
   // wpisane hurtem to co innego niz „10,5 cm" wpisane na karcie.
   for (const [pole, kolumna] of [['szerokosc_cm', 'szerokosc_mm'], ['wysokosc_cm', 'wysokosc_mm']]) {
@@ -96,8 +96,8 @@ export function polecenieZFormularza(body) {
   // a czyszczenie musialoby byc osobnym, nazwanym wyborem (jak przy paczkomacie nizej).
   if (kategoria !== BRAK_POLA && kategoria.trim()) polecenie.kategoria_glowna = kategoria.trim();
 
-  // ⚠️ PACZKOMAT WYLACZNIE RECZNIE, TRZY STANY, ZERO WYLICZANIA Z WYMIAROW (decyzja
-  // wlasciciela). Droga typowa to zaznaczyc duza grupe i ustawic „nie", a wyjatki poprawic
+  // ⚠️ PACZKOMAT WYLACZNIE RECZNIE, TRZY STANY, ZERO WYLICZANIA Z WYMIAROW.
+  // Droga typowa to zaznaczyc duza grupe i ustawic „nie", a wyjatki poprawic
   // pojedynczo. Czwarta wartosc w kolumnie zepsulaby filtr „bez oznaczenia paczkomatu" —
   // karta z napisem „moze" nie bylaby ani oznaczona, ani nieoznaczona.
   const paczkomat = poleHurtu(body, 'paczkomat');
@@ -118,8 +118,8 @@ export function polecenieZFormularza(body) {
   }
 
   // Skrocenie nazwy o rozmiar. ⚠️ WYLACZNIE W REJESTRZE MAGAZYNU — nazwa NIE JEDZIE do
-  // sklepu (decyzja wlasciciela): jest zaindeksowanym tytulem strony, a czesc katalogu
-  // wlasnie przeniesiono do drugiego sklepu z przekierowaniami 301.
+  // sklepu: jest zaindeksowanym tytulem strony, a jego zmiana w sklepie wplywa na pozycje
+  // w wyszukiwarce.
   const skroc = poleHurtu(body, 'nazwa_bez_rozmiaru');
   if (skroc !== BRAK_POLA && typeof skroc === 'string' && skroc.trim()) {
     polecenie.nazwaBezRozmiaru = true;
@@ -189,7 +189,7 @@ function wartoscDocelowa(karta, polecenie, kolumna) {
  *
  * @returns {Array<{id: number, nazwa: string, zmiany: object, opisy: Array}>}
  *
- * ⚠️⚠️ KARTA, KTORA JUZ MA TE WARTOSC, NIE WCHODZI. Podglad obiecujacy „zmienię 645"
+ * ⚠️⚠️ KARTA, KTORA JUZ MA TE WARTOSC, NIE WCHODZI. Podglad obiecujacy „zmienię 600"
  * i zmieniajacy 200 klamie o wlasnym skutku — a ten ekran istnieje wylacznie po to, zeby
  * czlowiek zobaczyl skutek PRZED kliknieciem. Skutek uboczny i pozadany: powtorne wyslanie
  * tego samego formularza nie przestawia juz `zmieniony_at` sześciuset kartom.

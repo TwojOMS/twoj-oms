@@ -1,4 +1,4 @@
-// src/oms/services/czuwacz-formulki.js
+// src/moduly/wiadomosci/services/czuwacz-formulki.js
 //
 // AUTORESPONDER — stala formulka w oknie godzin. Zastepuje autoresponder z Apilo, ktory
 // wysylal jedna formulke do KAZDEJ wiadomosci, o kazdej porze.
@@ -23,23 +23,23 @@ import {
   listaWatkow, dowody, zapiszDowod, oznaczWyslane, oznaczBlad, licznikFormulek,
 } from '../../../oms/db/allegro-watki.js';
 
-// ⚠️ BEZPIECZNIK ILOSCIOWY. Wlasciciel mowi, ze wiadomosci jest „bardzo malo" — wiec nagly
+// ⚠️ BEZPIECZNIK ILOSCIOWY. Formulka odpowiada na pojedyncze wiadomosci poza godzinami — nagly
 // ruch nie znaczy dobrego dnia, tylko usterke (petla, zla detekcja autora, podwojony poller).
 // Wtedy czuwacz ma STANAC, a nie zalac kupujacych formulkami.
 export const MAKS_FORMULEK_NA_GODZINE = 5;
 
 const GODZINA_MS = 60 * 60 * 1000;
 
-// ⚠️⚠️ GORNA GRANICA WIEKU WIADOMOSCI — decyzja wlasciciela z 29.08.2026.
+// ⚠️⚠️ GORNA GRANICA WIEKU WIADOMOSCI.
 //
 // Okno godzin sprawdza WYLACZNIE godzine i dzien tygodnia nadejscia, a karencja jest
 // MINIMUM, nie maksimum — wiec bez tej granicy nic nie bronilo formulce polecec na
 // wiadomosc sprzed miesiecy. Przy oknie „po godzinach" (18-8) stare watki nie lapia sie
 // PRZYPADKIEM (przyszly w srodku dnia); przy oknie calodobowym zlapalyby sie od razu.
 //
-// Wyszlo to przy naprawie kolejnosci wiadomosci (domain/najnowsza-wiadomosc.js): poller
-// bral zla wiadomosc jako ostatnia, przez co WSZYSTKIE 18 watkow sklepu A kwalifikowalo sie
-// do formulki — w tym rozmowy z maja i lipca, dawno odpisane.
+// Wyszlo to przy naprawie kolejnosci wiadomosci (domena/najnowsza-wiadomosc.js): poller
+// bral zla wiadomosc jako ostatnia, przez co WSZYSTKIE watki sklepu kwalifikowaly sie
+// do formulki — w tym rozmowy sprzed miesiecy, dawno odpisane.
 //
 // ⚠️ TRESC FORMULKI SAMA WYZNACZA TE GRANICE. Zdanie „nie ma nas teraz przy komputerze,
 // odpiszemy rano" jest FALSZYWE dla wiadomosci sprzed doby — a wyslane po miesiacach jest

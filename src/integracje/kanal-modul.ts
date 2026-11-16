@@ -32,7 +32,7 @@ export function katalogKanalu(opis: OpisKanalu, metody: Partial<KatalogKanalu>):
   };
 }
 
-/** Metody klienta HTTP z E2.03; brak metody nigdy nie udaje przyjęcia żądania. */
+/** Metody klienta HTTP Erli (`src/oms/erli/client.js`); brak metody nigdy nie udaje przyjęcia żądania. */
 export type KlientKataloguErli = {
   szukajProduktow?: (filtry: Parameters<KatalogKanalu['odczytOfert']>[0]) => Promise<unknown>;
   utworzProdukt?: (...args: Parameters<KatalogKanalu['wystawOferte']>) => Promise<unknown>;
@@ -59,7 +59,7 @@ export function katalogErli(klient: KlientKataloguErli): KatalogKanalu {
   });
 }
 
-/** PRZ-160.E3.07 (D44): operacje Allegro spoza `KatalogKanalu` — wąski obiekt metod klienta jednego konta. */
+/** Operacje Allegro spoza `KatalogKanalu` — wąski obiekt metod klienta jednego konta. */
 export type WezlyAllegro = Readonly<{
   wgrajZdjecie: (bajty: Uint8Array, typ: string, opcje?: Readonly<{ ai?: boolean | number }>) => Promise<unknown>;
   stanOperacji: (adres: string) => Promise<unknown>;
@@ -69,11 +69,13 @@ export type WezlyAllegro = Readonly<{
   komendaCeny: (commandId: string, pozycje: readonly Readonly<{ ofertaId: string; cena: string }>[]) => Promise<unknown>;
   wynikKomendy: (rodzaj: 'ilosc' | 'cena', commandId: string) => Promise<unknown>;
   oplatyOferty: (ofertaId: string) => Promise<unknown>;
-  /** E3.17 (D41): prognoza opłat przed wznowieniem wyprzedanej oferty (`offer-quotes` daje 403, P18). */
+  /** Prognoza opłat przed wznowieniem wyprzedanej oferty (`POST /pricing/offer-fee-preview`, bez skutku po stronie
+   *  Allegro). `oplatyOferty` (`GET /pricing/offer-quotes`) oddaje 403 przy zakresach panelu — pomiar
+   *  w tests/fixtures/allegro/e3-pomiar-p18-oplaty.json. */
   podgladOplat: (oferta: Readonly<Record<string, unknown>>) => Promise<unknown>;
 }>;
 
-/** Metody klienta HTTP z E3.03 (`src/oms/allegro/client.js`); brak metody nigdy nie udaje przyjęcia żądania. */
+/** Metody klienta HTTP Allegro (`src/oms/allegro/client.js`); brak metody nigdy nie udaje przyjęcia żądania. */
 export type KlientKataloguAllegro = Partial<WezlyAllegro> & {
   ofertyKonta?: (filtry: Parameters<KatalogKanalu['odczytOfert']>[0]) => Promise<unknown>;
   utworzOferte?: (cialo: Parameters<KatalogKanalu['wystawOferte']>[1]) => Promise<unknown>;
@@ -93,9 +95,8 @@ const groszeNaZlGr = (grosze: number) => `${Math.trunc(grosze / 100)}.${String(g
 const idKomendy = (v: unknown) => (typeof v === 'string' && v.trim() !== '' ? v : null);
 
 /**
- * Komendy ilości i ceny z pozycji kontraktu. `commandId` przychodzi z pozycji (pętla zapisuje go w
- * `wyslane_pola_json` PRZED wywołaniem — D9, D38); łącznik nigdy go nie losuje, bo ponowienie z nowym
- * identyfikatorem byłoby drugą komendą. Jedna komenda = jeden `commandId` (wartość pilnuje klient).
+ * Komendy ilości i ceny z pozycji kontraktu. `commandId` przychodzi z pozycji (wołający ma go zapisać
+ * PRZED wywołaniem); łącznik nigdy go nie losuje, bo ponowienie z nowym identyfikatorem byłoby drugą komendą. Jedna komenda = jeden `commandId` (wartość pilnuje klient).
  */
 function komendyAllegro(zmiany: readonly PozycjaKomendAllegro[]): KomendaAllegro[] | string {
   if (!Array.isArray(zmiany) || zmiany.length === 0) return 'brak pozycji do zmiany ilości i ceny';
@@ -160,7 +161,7 @@ export function katalogAllegro(klient: KlientKataloguAllegro): KatalogKanalu {
 const NAZWY_WEZLOW_ALLEGRO = ['wgrajZdjecie', 'stanOperacji', 'szukajProduktow', 'ofertyPoSygnaturze',
   'komendaIlosci', 'komendaCeny', 'wynikKomendy', 'oplatyOferty', 'podgladOplat'] as const satisfies readonly (keyof WezlyAllegro)[];
 
-/** D44 + E3.17: 9 metod klienta konta wprost (bariera i odświeżanie tokenu są w kliencie z `klienciKanalow`). */
+/** 9 metod klienta konta wprost (bariera i odświeżanie tokenu są w kliencie z `klienciKanalow`). */
 export function wezlyAllegro(klient: Partial<WezlyAllegro>): WezlyAllegro {
   return Object.freeze(Object.fromEntries(NAZWY_WEZLOW_ALLEGRO.map(nazwa => [nazwa, async (...args: unknown[]) => {
     const wykonaj = klient[nazwa];

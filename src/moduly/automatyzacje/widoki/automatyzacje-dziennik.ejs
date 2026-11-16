@@ -1,4 +1,4 @@
-<%# PRZ-108.07: reguła — stan, granica, historia włączeń i dziennik wykonań (makieta, kadr 6). Ostatnie 200 wykonań,
+<%# Reguła — stan, granica, historia włączeń i dziennik wykonań (makieta, kadr 6). Ostatnie 200 wykonań,
     filtr stanu. Włączenie z ostrzeżeniem o nieodwracalności i granicy; wstrzymana reguła ma „Wyślij zaległe (N)”
     i „Pomiń zaległe”. %>
 <p class="szw-powrot"><a href="/ustawienia/automatyzacje">← Automatyzacje</a></p>
@@ -23,7 +23,7 @@
   <p>Od <strong><%= granica %></strong><% if (wlaczyl) { %> (włączył: <%= wlaczyl %>)<% } %>. Liczy zdarzenia od tej chwili — zamówień sprzed włączenia nie rusza: pomija też zamówienia, które przed włączeniem miały już paczkę z numerem listu albo zostały złożone ponad 14 dni wcześniej.</p>
   <% } %>
   <p><%= opis %>. Kanały: <strong><%= kanaly.join(', ') || '—' %></strong>. Najwyżej <%= regula.limit_na_godzine %> na godzinę.</p>
-  <%# PRZ-108.08: warunki poza kanałem sprawdzane są w chwili wykonania — zdanie z makiety (kadr 6). %>
+  <%# Warunki poza kanałem sprawdzane są w chwili wykonania — zdanie z makiety (kadr 6). %>
   <% if (warunkiOpis) { %><p class="ust-pomoc">Po opóźnieniu reguła sprawdza, czy zamówienie nadal <%= warunkiOpis %> — dopiero wtedy działa. Inaczej pomija je z powodem w dzienniku i w historii zamówienia.</p><% } %>
   <% if (noweKanaly.length) { %><p class="ust-pomoc"><strong>Nowe kanały od czasu zapisu: <%= noweKanaly.join(', ') %> — niezaznaczone.</strong> Zaznaczysz je w edycji reguły.</p><% } %>
   <% for (const k of klopoty) { %><div class="pas-uprzedzenie" role="alert"><p><span class="znacznik znacznik--czerwony"><%= k.krotko %></span> <%= k.zdanie %></p></div><% } %>

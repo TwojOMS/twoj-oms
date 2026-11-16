@@ -1,17 +1,16 @@
 import { transport } from '../../integracje/transport.js';
-// Jedyne miejsce w OMS, ktore rozmawia z Google Analytics Data API (Etap 2 kampanii,
-// 2026-08-25). Konto USLUGOWE (JWT-bearer), nie OAuth: dziala w kontenerze bez czlowieka
-// przy przegladarce i nie wygasa — ta sama droga, co skrypt arkuszy (gsheets.mjs).
+// Jedyne miejsce w OMS, które rozmawia z Google Analytics Data API. Konto USŁUGOWE
+// (JWT-bearer), nie OAuth: działa w kontenerze bez człowieka przy przeglądarce i nie wygasa.
 //
 // ⚠️ SAME ODCZYTY (`runReport`). Zakres `analytics.readonly` — klucz nie ma prawa niczego
 // w GA4 zmienic, nawet gdyby ktos pomylil sie w kodzie.
 //
 // ⚠️ KLUCZ CZYTANY LENIWIE, PRZY PIERWSZYM UZYCIU, A NIE PRZY STARCIE PANELU. Brak pliku
-// (nie wgrany na NAS, zly wolumen) ma zgasic SEKCJE i zostawic slad w `kampania_zrodla`,
+// (nie wgrany na serwer, zły wolumen) ma zgasić SEKCJĘ i zostawic slad w `kampania_zrodla`,
 // a nie polozyc calego OMS-a przy starcie kontenera — zamowienia i paczki nie moga zalezec
 // od tego, czy dziala pomiar marketingu.
 //
-// ⚠️ ANI KLUCZ PRYWATNY, ANI TOKEN NIE TRAFIAJA DO ZADNEGO KOMUNIKATU (niezmiennik 4.10).
+// ⚠️ ANI KLUCZ PRYWATNY, ANI TOKEN NIE TRAFIAJĄ DO ŻADNEGO KOMUNIKATU (reguła: sekrety nie wychodzą).
 
 import { createSign } from 'node:crypto';
 import { readFileSync } from 'node:fs';

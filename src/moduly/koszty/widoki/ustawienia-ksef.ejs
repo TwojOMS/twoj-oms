@@ -28,7 +28,7 @@
 <section class="ust-sekcja" id="ksef-stan">
   <h2>Stan połączenia</h2>
   <% if (stan && !nipSprzedawcy) { %>
-    <%# PRZ-108.10: NIP firmy może być wpisany w OMS-ie — bez niego token nie ma kontekstu firmy. %>
+    <%# NIP firmy może być wpisany w OMS-ie — bez niego token nie ma kontekstu firmy. %>
     <p class="ust-stan ust-stan-blad"><strong>Nieużywany</strong></p>
     <p>OMS nie zna NIP-u firmy, więc nie loguje się tym tokenem do KSeF. Wpisz NIP w <a href="/ustawienia/firma">Ustawienia → Firma</a>.</p>
   <% } else if (stan && !nipNiezgodny) { %>
@@ -75,7 +75,7 @@
   <form method="post" action="/ustawienia/integracje/ksef/sprawdz">
     <p>Sprawdzenie loguje się do KSeF zapisanym tokenem i czyta listę faktur zakupowych z ostatniej doby. Niczego nie wysyła i nie dopisuje do kosztów.</p>
     <% if (!zEnv && !nipSprzedawcy) { %>
-      <%# PRZ-108.10 (recenzja): bez NIP-u firmy sprawdzenie i tak odmówi — mówimy to przed kliknięciem. %>
+      <%# Bez NIP-u firmy sprawdzenie i tak odmówi — mówimy to przed kliknięciem. %>
       <p class="pas-uprzedzenie"><%= odmowaBrakNip %></p>
     <% } %>
     <div class="ust-akcje"><button class="btn" type="submit">Sprawdź połączenie</button></div>

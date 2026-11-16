@@ -1,60 +1,109 @@
 <%#
   Ekran logowania. Renderuje sie z `bezPaska: true`, wiec layout nie rysuje gornego paska —
   na tym ekranie nie ma dokad nawigowac, a paskiem z ikonami do zamowien i faktur kusilibysmy
-  do klikania w miejsca, ktore i tak odesla z powrotem tutaj.
+  do klikania w miejsca, ktore i tak odesla z powrotem tutaj. `ekranLogowania: true` dokłada
+  arkusz oms-logowanie.css (marka produktu, ta sama w obu motywach).
 
   ⚠️ Formularz NIE MA pola „zapamietaj mnie" i to jest decyzja, nie przeoczenie. Ciasteczko
   jest wazne 90 dni i odnawia sie przy uzyciu, wiec „zapamietaj" bylo by pytaniem, na ktore
   jedyna sensowna odpowiedzia jest „tak" — a pytanie o to przy kazdym logowaniu sugerowaloby,
   ze istnieje jakis powod, zeby odpowiedziec inaczej.
+
+  Demo publiczne (`demo` poza trybem próby jest null): gość wchodzi jednym przyciskiem — login i hasło
+  gościa są jawne, więc jadą w polach ukrytych. Formularz konta (administrator demo) stoi pod
+  `/login?konto` i wraca po błędzie tego formularza (`formularzKonta`), nigdzie nielinkowany.
 %>
-<div class="logowanie">
-  <div class="logowanie-karta">
-    <div class="logowanie-marka">
-      <strong>OMS</strong>
-      <span>Panel zamówień</span>
-    </div>
-    <h1>Zaloguj się</h1>
-    <%_ if (typeof komunikat !== 'undefined' && komunikat) { -%>
-    <p class="logowanie-komunikat" role="status" style="margin:0 0 1rem;padding:.55rem .7rem;font-size:.86rem;color:var(--ok);background:var(--ok-tlo);border-radius:6px"><%= komunikat %></p>
-    <%_ } -%>
+<% const przyciskDemo = Boolean(demo) && !formularzKonta; %>
+<div class="lg-ekran">
 
-    <% if (blad === 'zablokowane') { %>
-      <p class="logowanie-blad" role="alert">
-        Za dużo nieudanych prób. Spróbuj ponownie za <%= Math.max(zostaloS, 1) %> s.
-      </p>
-    <% } else if (blad === 'zle-dane') { %>
-      <%# ⚠️ Jeden komunikat na oba przypadki. „Zly login" i „zle haslo" to dwie rozne %>
-      <%# odpowiedzi, z ktorych zgadujacy odczytuje, ze nazwe konta juz trafil. %>
-      <p class="logowanie-blad" role="alert">Nieprawidłowy login lub hasło.</p>
-    <% } %>
+  <main class="lg-strona-formularza">
+    <div class="lg-logo-formularza"><img class="lg-logo" src="/public/twojoms-logo.svg" width="280" height="56" alt="Twój OMS"></div>
 
-    <%# PRZ-075: demo publiczne — wspólne konto gościa, dane jawne. `demo` jest null poza trybem próby. %>
-    <%_ if (demo) { -%>
-    <%# PRZ-083: data-demo-reset = znak instancji; nakladka „Trwa restart demo" (oms-demo.js) czeka, az sie zmieni. %>
-    <p class="logowanie-demo"<% if (demo.resetPlanowy) { %> data-demo-reset="<%= demo.resetPlanowy %>"<% } %> style="margin:0 0 1rem;padding:.55rem .7rem;font-size:.86rem;background:var(--ok-tlo);border-radius:6px">
-      Wersja demonstracyjna. Zaloguj się jako <code><%= demo.login %></code>, hasło <code><%= demo.haslo %></code>.
-      Dane są zmyślone i wracają do stanu początkowego <%= demo.reset %>.
-    </p>
-    <%_ } -%>
-    <form method="post" action="/login">
-      <input type="hidden" name="powrot" value="<%= powrot %>">
-      <label class="logowanie-pole">
-        <span>Login</span>
-        <input type="text" name="uzytkownik" autocomplete="username" autofocus required>
-      </label>
-      <label class="logowanie-pole">
-        <span>Hasło</span>
-        <input type="password" name="haslo" autocomplete="current-password" required>
-      </label>
-      <button class="logowanie-wyslij" type="submit">Zaloguj</button>
-    </form>
-
-    <p class="logowanie-stopka">
-      <%_ if (!demo) { -%>
-      Panel działa wyłącznie w sieci lokalnej.
+    <%_ if (przyciskDemo) { -%>
+    <%# data-demo-reset = znak instancji; nakladka „Trwa restart demo" (oms-demo.js) czeka, az sie zmieni. %>
+    <div class="lg-panel"<% if (demo.resetPlanowy) { %> data-demo-reset="<%= demo.resetPlanowy %>"<% } %>>
+      <p class="lg-znacznik">Wersja demonstracyjna</p>
+      <h1>Zobacz panel od środka</h1>
+      <p class="lg-wstep"><% if (firma) { %>Firma „<%= firma %>” i&nbsp;jej zamówienia są zmyślone.<% } else { %>Firma i&nbsp;jej zamówienia są zmyślone.<% } %> Klikaj, co chcesz: wszystko wraca do stanu początkowego <%= demo.reset %>.</p>
+      <%_ if (blad === 'zablokowane') { -%>
+      <p class="lg-blad" role="alert">Za dużo prób logowania. Spróbuj ponownie za <%= Math.max(zostaloS, 1) %> s.</p>
+      <%_ } else if (blad === 'zle-dane') { -%>
+      <p class="lg-blad" role="alert">Nieprawidłowy login lub hasło.</p>
       <%_ } -%>
-      Zalogowanie trzyma się tego urządzenia przez 90 dni i odnawia się przy każdym wejściu.
-    </p>
+      <form method="post" action="/login">
+        <input type="hidden" name="powrot" value="<%= powrot %>">
+        <input type="hidden" name="uzytkownik" value="<%= demo.login %>">
+        <input type="hidden" name="haslo" value="<%= demo.haslo %>">
+        <button class="lg-przycisk lg-przycisk-duzy" type="submit">Wejdź do demo <span aria-hidden="true">→</span></button>
+      </form>
+    </div>
+    <%_ } else { -%>
+    <div class="lg-panel">
+      <h1>Zaloguj się</h1>
+      <p class="lg-wstep">Konto zakłada administrator panelu.</p>
+      <%_ if (typeof komunikat !== 'undefined' && komunikat) { -%>
+      <p class="lg-komunikat" role="status"><%= komunikat %></p>
+      <%_ } -%>
+      <% if (blad === 'zablokowane') { %>
+        <p class="lg-blad" role="alert">Za dużo nieudanych prób. Spróbuj ponownie za <%= Math.max(zostaloS, 1) %> s.</p>
+      <% } else if (blad === 'zle-dane') { %>
+        <%# ⚠️ Jeden komunikat na oba przypadki. „Zly login" i „zle haslo" to dwie rozne %>
+        <%# odpowiedzi, z ktorych zgadujacy odczytuje, ze nazwe konta juz trafil. %>
+        <p class="lg-blad" role="alert">Nieprawidłowy login lub hasło.</p>
+      <% } %>
+      <form class="lg-formularz" method="post" action="/login">
+        <input type="hidden" name="powrot" value="<%= powrot %>">
+        <%_ if (demo) { -%>
+        <input type="hidden" name="formularz" value="konto">
+        <%_ } -%>
+        <label class="lg-pole"><span>Login</span><input type="text" name="uzytkownik" autocomplete="username" autofocus required></label>
+        <label class="lg-pole"><span>Hasło</span><input type="password" name="haslo" autocomplete="current-password" required></label>
+        <button class="lg-przycisk" type="submit">Zaloguj</button>
+      </form>
+    </div>
+    <%_ } -%>
+
+    <%_ if (!demo) { -%>
+    <p class="lg-stopka">Panel działa wyłącznie w&nbsp;sieci lokalnej. Zalogowanie trzyma się tego urządzenia przez 90&nbsp;dni i&nbsp;odnawia się przy każdym wejściu.</p>
+    <%_ } -%>
+  </main>
+
+  <div class="lg-marka-gora">
+    <%_ if (demo) { -%>
+    <div class="lg-marka-tresc">
+      <p class="lg-znacznik-marki">Otwarty kod · licencja MIT</p>
+      <h2 class="lg-haslo">Darmowy system do obsługi zamówień z&nbsp;otwartym kodem.</h2>
+      <dl class="lg-lista">
+        <div><dt>Zamówienia</dt><dd>Allegro, ERLI i&nbsp;sklep WooCommerce na jednej liście</dd></div>
+        <div><dt>Faktury</dt><dd><% if (programyFaktur) { %><%= programyFaktur %>, wysyłka do KSeF<% } else { %>wysyłka do KSeF<% } %></dd></div>
+        <div><dt>Wysyłka</dt><dd>etykiety i&nbsp;nadanie wielu paczek naraz</dd></div>
+        <div><dt>Magazyn</dt><dd>karty produktów i&nbsp;stany w&nbsp;kanałach sprzedaży</dd></div>
+      </dl>
+    </div>
+    <%_ } else if (firma) { -%>
+    <div class="lg-marka-tresc">
+      <p class="lg-znacznik-marki">Panel zamówień</p>
+      <h2 class="lg-haslo"><%= firma %></h2>
+      <p class="lg-firma-opis">Zamówienia, faktury i&nbsp;wysyłka w&nbsp;jednym miejscu.</p>
+    </div>
+    <%_ } else { -%>
+    <div class="lg-marka-tresc">
+      <h2 class="lg-haslo">Panel zamówień</h2>
+      <p class="lg-firma-opis">Zamówienia, faktury i&nbsp;wysyłka w&nbsp;jednym miejscu.</p>
+    </div>
+    <%_ } -%>
+  </div>
+
+  <div class="lg-marka-dol">
+    <%_ if (demo) { -%>
+    <ul class="lg-linki">
+      <li><a class="lg-link" href="https://twojoms.pl">twojoms.pl</a></li>
+      <li><a class="lg-link" href="https://github.com/TwojOMS/twoj-oms">Kod na GitHubie</a></li>
+      <li><a class="lg-link" href="https://twojoms.pl/instalacja.html">Jak zainstalować</a></li>
+    </ul>
+    <p class="lg-przypis">Bez abonamentu i&nbsp;bez opłat za zamówienie. Program działa na Twoim serwerze.</p>
+    <%_ } else { -%>
+    <p class="lg-przypis">Twój OMS · otwarty kod, licencja MIT · <a class="lg-link" href="https://twojoms.pl">twojoms.pl</a></p>
+    <%_ } -%>
   </div>
 </div>

@@ -2,15 +2,16 @@
 //
 // ⚠️ To jest ŁATA NA WTYCZKĘ, a nie reguła biznesowa. Wtyczka panelu indywidualnego
 // (`psm-zamowienia-indywidualne`) wstawia do koszyka WSZYSTKO jednym produktem-zaślepką
-// (`psm-zam-placeholder`): i szablon, i wysyłkę, i realizację priorytetową. Woo dostaje więc
+// (pozycja zastępcza, `SKU_PLACEHOLDERA` w domena/indywidualne.js): i szablon, i wysyłkę,
+// i realizację priorytetową. Woo dostaje więc
 // zamówienie, w którym wysyłka jest `line_item`, a `shipping_lines` jest puste — po stronie
 // sklepu nie ma ani jednego pola, po którym dałoby się je odróżnić od towaru. Zostaje NAZWA.
 //
-// ⚠️ DLATEGO TA REGUŁA ZGADUJE i ma być JEDNA. Do 2026-08-21 istniała wyłącznie w
-// `domain/agregacja-sprzedazy.js` (żeby „wysyłka kurierem DPD" nie konkurowała z szablonami
-// w rankingu i nie zawyżała licznika sztuk); od tej daty czyta ją także karta zamówienia,
-// żeby nie rysować pustego wiersza „Wysyłka 0,00" pod pozycją, która TĄ wysyłką jest.
-// Druga kopia listy wzorców rozjechałaby te dwa miejsca po cichu.
+// ⚠️ DLATEGO TA REGUŁA ZGADUJE i ma być JEDNA. Pierwotnie istniała wyłącznie w
+// `domena/agregacja-sprzedazy.js` (żeby „wysyłka kurierem DPD" nie konkurowała z szablonami
+// w rankingu i nie zawyżała licznika sztuk); później zaczęła ją czytać także lista produktów
+// i karta zamówienia (żeby nie rysować pustego wiersza „Wysyłka 0,00" pod pozycją, która TĄ
+// wysyłką jest). Druga kopia listy wzorców rozjechałaby te miejsca po cichu.
 //
 // Właściwa naprawa jest we WTYCZCE — wysyłka ma jechać jako `shipping_line`, a realizacja
 // priorytetowa jako `fee_line`. Do tego czasu ta lista jest jedynym, co je rozpoznaje.

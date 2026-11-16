@@ -1,6 +1,6 @@
-// PRZ-160 E3.28-03 — ekran „Problemy ofert”: oferty ERLI i Allegro czekające na decyzję w jednej tabeli.
+// Ekran „Problemy ofert”: oferty ERLI i Allegro czekające na decyzję w jednej tabeli.
 // Akcje zapisują tylko zamiar w rejestrze; do kanału nic nie idzie z trasy (wysyła pętla).
-// Wznów (decyzja właściciela 14.11): sam znacznik `wyslanePola.wznow` bez kwoty i bez osobnej zgody na opłatę.
+// Wznów: sam znacznik `wyslanePola.wznow` bez kwoty i bez osobnej zgody na opłatę.
 import { ofertaPoId, zmienOferte, ofertyDoDecyzji, liczbaOfertDoDecyzji, ofertyKarty, ofertyZProblememIlosci, ustawieniaOfertKonta }
   from '../../oms/db/oferty-kanalow.ts';
 import { przelacznikStanow, migawkaStanow, stanKarty, dodajRuch } from '../../oms/db/stany-magazynowe.js';
@@ -16,7 +16,7 @@ import { mozePonowic, duplikatDoWyboru, ponowOferte, mozeWznowic, zakonczonaDoWz
 const LIMIT = 200;
 const ADRES = '/magazyn/problemy-ofert';
 const zl = gr => `${kwotaDziesietna(gr).replace('.', ',')} zł`;
-// E4.13: przycisk alarmu ilości według kodu (trasa `/:ofertaId/ilosc/:akcja` sprawdza, że kod się zgadza).
+// Przycisk alarmu ilości według kodu (trasa `/:ofertaId/ilosc/:akcja` sprawdza, że kod się zgadza).
 const AKCJE_ILOSCI = Object.freeze({
   'potwierdz-skok': { kod: 'skok', napis: 'Potwierdź skok' },
   'wyslij-stan-oms': { kod: 'rozjazd-dol', napis: 'Wyślij stan OMS' },
@@ -24,7 +24,7 @@ const AKCJE_ILOSCI = Object.freeze({
   'przyjalem': { kod: 'rozjazd-gora', napis: 'Przyjąłem' },
 });
 const ODMOWA_ZMIANY = 'Dane się zmieniły — odśwież listę.';
-// E4.13p (N3): odmowa według powodu z iloscDlaKanalu, gdy karta nie daje ilości.
+// Odmowa według powodu z iloscDlaKanalu, gdy karta nie daje ilości.
 const BEZ_STANU = Object.freeze({
   'stany-niezatwierdzone': 'Stany magazynowe nie są jeszcze zatwierdzone — do zatwierdzenia podglądu OMS nie zmienia ilości ofert.',
   'brak-stanu': 'Stan karty nie jest znany — uzupełnij stan otwarcia.',
@@ -33,8 +33,8 @@ const ofert = n => `${n} ${n === 1 ? 'oferta' : [2, 3, 4].includes(n % 10) && ![
 const szt = n => `${n} szt.`;
 /** Alarm ilości widoczny na ekranie: wstrzymujący albo `brak-stanu` (jak w zapytaniu ofertyDoDecyzji). */
 const problemIlosci = o => (o.iloscProblem && (o.iloscProblem.wstrzymuje === true || o.iloscProblem.kod === 'brak-stanu') ? o.iloscProblem : null);
-/** Baza W/T po decyzji człowieka (E4.13p2 B2): najświeższy odczyt kanału i jego chwila — sprzedaż po alarmie wypada po T.
- * E4.13p3 N2: W z `odczytIlosc`, bo pętle zapisują go zawsze razem z `odczytanoAt` (`odczytIloscKanalu` bywa starszy).
+/** Baza W/T po decyzji człowieka: najświeższy odczyt kanału i jego chwila — sprzedaż po alarmie wypada po T.
+ * W z `odczytIlosc`, bo pętle zapisują go zawsze razem z `odczytanoAt` (`odczytIloscKanalu` bywa starszy).
  * Odczyt z alarmu tylko zapasowo, z T = chwila kliknięcia. */
 const bazaOdczytu = (o, at) => {
   if (Number.isFinite(o.odczytIlosc)) {
@@ -59,23 +59,23 @@ export function registerProblemyOfert(app, { db, pomoc, kontaErli, kontaAllegro 
     if (erli) return { rodzaj: 'erli', konto: erli };
     const allegro = kontaA.find(k => k.klucz === klucz);
     if (allegro) return { rodzaj: 'allegro', konto: allegro };
-    // E4.30: sklep Woo z podłączonym klientem (ta sama mapa co pętla stanów Woo) — akcje ilości jak ERLI;
-    // Ponów, Wznów i potwierdzenie ceny nie są dla Woo. E4.30p: jak pętla — tylko sklepy z konfiguracji.
+    // Sklep Woo z podłączonym klientem (ta sama mapa co pętla stanów Woo) — akcje ilości jak ERLI;
+    // Ponów, Wznów i potwierdzenie ceny nie są dla Woo. Jak pętla — tylko sklepy z konfiguracji.
     return kanalySklepow.includes(klucz) && Object.hasOwn(sklepy, klucz) && sklepy[klucz] ? { rodzaj: 'woo', konto: { klucz } } : null;
   };
   const NAZWY_RODZAJOW = Object.freeze({ erli: 'ERLI', allegro: 'Allegro', woo: 'WooCommerce' });
   const wroc = reply => reply.code(303).redirect(ADRES);
   const wrocDoIlosci = reply => reply.code(303).redirect(`${ADRES}?filtr=ilosc`);
   const stanyWlaczone = () => przelacznikStanow(db).wlaczone;
-  /** Ilość z karty dla konta oferty (D47: stan − bufor); `ilosc: null` i `powod`, gdy stanu nie znamy. */
+  /** Ilość z karty dla konta oferty (stan − bufor); `ilosc: null` i `powod`, gdy stanu nie znamy. */
   const celOferty = (o, migawka = migawkaStanow(db)) => {
     const ustawienia = ustawieniaOfertKonta(db, o.kanal);
     const wynik = iloscOferty(migawka, o.kartaId, ustawienia);
     return { ilosc: wynik?.ilosc ?? null, powod: wynik?.powod ?? null };
   };
   /**
-   * E4.13: Wznów przy włączonych stanach bierze ilość z karty, nie ze stałej konta. Odmowa przy celu null/0 i przy
-   * aktywnym problemie ilości (poza `czeste-wznawianie` — to właśnie ta decyzja człowieka). Stany wyłączone — jak E3.
+   * Wznów przy włączonych stanach bierze ilość z karty, nie ze stałej konta. Odmowa przy celu null/0 i przy
+   * aktywnym problemie ilości (poza `czeste-wznawianie` — to właśnie ta decyzja człowieka). Stany wyłączone — ilość ze stałej konta, jak bez tej funkcji.
    */
   const wznowienieIlosci = (o, migawka) => {
     if (!stanyWlaczone()) return {};
@@ -85,7 +85,7 @@ export function registerProblemyOfert(app, { db, pomoc, kontaErli, kontaAllegro 
     if (!ilosc) return { odmowa: BEZ_STANU[powod] ?? 'Karta nie ma sztuk do wystawienia — wznów ofertę, gdy przyjdzie towar.' };
     return { ilosc };
   };
-  /** `wlaczone` = false (N1): zalegający alarm po wyłączeniu stanów — sam opis, bez przycisków (trasy i tak odmówią). */
+  /** `wlaczone` = false: zalegający alarm po wyłączeniu stanów — sam opis, bez przycisków (trasy i tak odmówią). */
   const opisIlosci = (o, p, wlaczone) => {
     const szablon = Object.hasOwn(PROBLEMY_ILOSCI, p.kod) ? PROBLEMY_ILOSCI[p.kod].tekst : `Problem ilości: ${p.kod}`;
     const szczegoly = [
@@ -106,7 +106,7 @@ export function registerProblemyOfert(app, { db, pomoc, kontaErli, kontaAllegro 
     const wszystkich = liczbaOfertDoDecyzji(db);
     const ilosci = liczbaOfertDoDecyzji(db, { ilosc: true });
     const przelacznik = przelacznikStanow(db);
-    // D14 (§5.0 Zasada 1): instalacja, która nigdy nie włączyła stanów, nie widzi filtra etapu 4.
+    // Instalacja, która nigdy nie włączyła stanów, nie widzi filtra ilości.
     const etap4 = przelacznik.historia.length > 0 || ilosci > 0;
     const filtr = etap4 && req.query?.filtr === 'ilosc' ? 'ilosc' : null;
     const pokazanych = filtr ? ilosci : wszystkich;
@@ -119,7 +119,7 @@ export function registerProblemyOfert(app, { db, pomoc, kontaErli, kontaAllegro 
       const akcje = k ? akcjeProblemu(o, k.rodzaj) : { wznow: null, cena: null };
       const wznow = akcje.wznow && mozeWznowic(o) && k.konto.zgoda !== false && !wznowienieIlosci(o, migawka).odmowa ? akcje.wznow : null;
       const p = problemIlosci(o);
-      // E4.32a: formularz niesie listę pokazanych ofert — trasa potwierdza tylko ją.
+      // Formularz niesie listę pokazanych ofert — trasa potwierdza tylko ją.
       if (p?.kod === 'zero-masowe' && k && wlaczone && !zera.has(o.kanal)) zera.set(o.kanal, idyZer(o.kanal));
       return {
         id: o.id, kartaId: o.kartaId, nazwa: o.nazwa, konto: o.kanal,
@@ -174,7 +174,7 @@ export function registerProblemyOfert(app, { db, pomoc, kontaErli, kontaAllegro 
     return wroc(reply);
   });
 
-  // E4.13: decyzje przy alarmach ilości — tylko rejestr (i ruch `korekta`); wysyła pętla.
+  // Decyzje przy alarmach ilości — tylko rejestr (i ruch `korekta`); wysyła pętla.
   app.post(`${ADRES}/:ofertaId/ilosc/:akcja`, async (req, reply) => {
     if (!uprawniony(req)) return odmowa(reply, 403, 'Brak prawa edycji magazynu.');
     const akcja = Object.hasOwn(AKCJE_ILOSCI, req.params.akcja) ? req.params.akcja : null;
@@ -187,8 +187,8 @@ export function registerProblemyOfert(app, { db, pomoc, kontaErli, kontaAllegro 
     if (!stanyWlaczone()) return odmowa(reply, 409, 'Stany magazynowe są wyłączone.');
     const at = new Date().toISOString();
     const baza = bazaOdczytu(o, at);
-    // Decyzja człowieka przesuwa T (E4.07 N3): inaczej następny przebieg liczy skok/rozjazd od starej wysyłki.
-    // E4.13p3: bez odczytu nie ma pary W/T (D53/D54) — także „Potwierdź skok” odmawia.
+    // Decyzja człowieka przesuwa T: inaczej następny przebieg liczy skok/rozjazd od starej wysyłki.
+    // Bez odczytu nie ma pary W/T — także „Potwierdź skok” odmawia.
     if (!baza) return odmowa(reply, 409, 'Brak odczytu ilości z kanału — poczekaj na następny przebieg.');
     const nowaBaza = { wyslanaIlosc: baza.ilosc, iloscWyslanaAt: baza.at };
     if (akcja === 'potwierdz-skok') {
@@ -207,7 +207,7 @@ export function registerProblemyOfert(app, { db, pomoc, kontaErli, kontaAllegro 
       zmienOferte(db, o.id, zmiany);
       return wrocDoIlosci(reply);
     }
-    // B1: ruch to różnica z chwili alarmu (odczyt − cel); cel liczony teraz tylko, gdy alarm go nie ma.
+    // Ruch to różnica z chwili alarmu (odczyt − cel); cel liczony teraz tylko, gdy alarm go nie ma.
     const odczyt = Number.isFinite(o.iloscProblem.odczyt) ? o.iloscProblem.odczyt : baza.ilosc;
     const teraz = celOferty(o);
     if (teraz.ilosc == null) return odmowa(reply, 409, BEZ_STANU[teraz.powod] ?? 'Stan karty nie jest znany.');
@@ -219,9 +219,9 @@ export function registerProblemyOfert(app, { db, pomoc, kontaErli, kontaAllegro 
           powod: `rozjazd: ${o.kanal}`,
           klucz: `rozjazd:${o.id}:${o.iloscProblem.od ?? at}`, konto: req.konto ?? null, at });
       }
-      // E4.13p4 (B1 r4): korekta z chwilą kliknięcia — inne oferty karty widzą ją jako wyjaśnioną (D53), a ta oferta
+      // Korekta z chwilą kliknięcia — inne oferty karty widzą ją jako wyjaśnioną, a ta oferta
       // nie liczy jej dwa razy, bo wyjaśnienia pomijają jej własną korektę (klucz `rozjazd:<id>:…`), a S ją zawiera.
-      // B1 r2: S = stan karty po korekcie (w tej samej transakcji), inaczej korekta wygląda na skok.
+      // S = stan karty po korekcie (w tej samej transakcji), inaczej korekta wygląda na skok.
       const poKorekcie = stanKarty(db, o.kartaId)?.stan;
       zmienOferte(db, o.id, { ...zmiany, ...(Number.isFinite(poKorekcie) ? { stanKartyWyslany: poKorekcie } : {}) });
       db.exec('COMMIT');
@@ -232,24 +232,24 @@ export function registerProblemyOfert(app, { db, pomoc, kontaErli, kontaAllegro 
     return wrocDoIlosci(reply);
   });
 
-  /** E4.32a: id ofert konta z `zero-masowe`, rosnąco — lista pokazana na ekranie i porównywana przy kliknięciu. */
+  /** Id ofert konta z `zero-masowe`, rosnąco — lista pokazana na ekranie i porównywana przy kliknięciu. */
   const idyZer = konto => ofertyZProblememIlosci(db, konto, 'zero-masowe').map(o => o.id).sort((a, b) => a - b);
 
-  // E4.13: „Wyślij zera” — jedno kliknięcie zdejmuje `zero-masowe` z ofert jednego konta.
-  // E4.32a: tylko z ofert z listy, którą pokazał formularz; nowe zera spoza niej → 409, nic nie zapisuje.
+  // „Wyślij zera” — jedno kliknięcie zdejmuje `zero-masowe` z ofert jednego konta.
+  // Tylko z ofert z listy, którą pokazał formularz; nowe zera spoza niej → 409, nic nie zapisuje.
   app.post(`${ADRES}/konto/:konto/wyslij-zera`, async (req, reply) => {
     if (!uprawniony(req)) return odmowa(reply, 403, 'Brak prawa edycji magazynu.');
     const konto = String(req.params.konto);
     if (!kontoOfert(konto)) return odmowa(reply, 404, 'Nie ma takiego konta.');
     if (!stanyWlaczone()) return odmowa(reply, 409, 'Stany magazynowe są wyłączone.');
-    // E4.31 (N2): przed zatwierdzeniem bieżącego włączenia potwierdzenie ominęłoby zero masowe po zatwierdzeniu.
+    // Przed zatwierdzeniem bieżącego włączenia potwierdzenie ominęłoby zero masowe po zatwierdzeniu.
     if (iloscDlaKanalu({ migawka: migawkaStanow(db), tryb: 'zarzadzana' }).powod === 'stany-niezatwierdzone') {
       return odmowa(reply, 409, BEZ_STANU['stany-niezatwierdzone']);
     }
     const pokazane = new Set(String(pomoc.pole(req.body, 'oferty') ?? '').split(',').map(Number)
       .filter(id => Number.isSafeInteger(id) && id > 0));
     if (!pokazane.size) return odmowa(reply, 400, 'Brak listy ofert do potwierdzenia — odśwież listę.');
-    // E4.30p: potwierdzenie ważne tylko w bieżącym przełączeniu stanów (pętle porównują z migawką).
+    // Potwierdzenie ważne tylko w bieżącym przełączeniu stanów (pętle porównują z migawką).
     const zaznaczenie = { login: req.konto?.login ?? null, at: new Date().toISOString(),
       przelaczenieId: przelacznikStanow(db).przelaczenieId };
     db.exec('BEGIN IMMEDIATE');

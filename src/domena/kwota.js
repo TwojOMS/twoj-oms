@@ -7,7 +7,7 @@
 // ceny ze sklepu z cena na Allegro — czyli w miejscu, w ktorym magazyn ma pomagac decydowac.
 //
 // ⚠️ WALUTY TEN MODUL NIE ZNA I NIE MA ZNAC. Sprawdza ja wolajacy: Allegro niesie walute przy
-// kwocie (`domain/allegro-oferta.js` odmawia wszystkiemu poza PLN), a sklepy trzymaja ja
+// kwocie (`domena/allegro-oferta.js` odmawia wszystkiemu poza PLN), a sklepy trzymaja ja
 // w ustawieniu sklepu, nie przy produkcie.
 
 // Kwota dziesietna BEZ znaku. Zmierzone ksztalty: „89.00", „79.0", „89", „74.90".

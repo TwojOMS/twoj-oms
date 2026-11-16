@@ -1,4 +1,4 @@
-// PRZ-160 E3.06b: wejście funkcji E3.06 (`ofertaAllegroZKarty`) z bazy jednym odczytem — dla podglądu, karty i pętli,
+// Wejście funkcji `ofertaAllegroZKarty` z bazy jednym odczytem — dla podglądu, karty i pętli,
 // jak `tresc-oferty.js` dla ERLI. Bez sieci: opis kategorii tylko z pamięci podręcznej (`kanaly_kategorie`, wersja 2).
 // Liczba zapytań na kartę jest stała (nie zależy od liczby zdjęć, parametrów ani ofert).
 import { ofertaAllegroZKarty } from '../../../domena/allegro-oferta-z-karty.js';
@@ -11,10 +11,10 @@ import { iloscOferty } from './tresc-oferty.js';
 const EPOKA = new Date(0).toISOString();
 const SQLITE_BEZ_STREFY = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)$/;
 
-/** Kody błędów E3.06 zależne od konta — bez konta (E3.12) nie są brakami karty. */
+/** Kody błędów zależne od konta — bez konta nie są brakami karty. */
 const BLEDY_KONTA = new Set(['ustawienia', 'narzut', 'ilosc', 'czas-wysylki', 'producent', 'znak-instalacji']);
 
-/** Ustawienia zastępcze „bez konta”: komplet, żeby E3.06 sprawdziło całą kartę (zadania i tak nie oddajemy). */
+/** Ustawienia zastępcze „bez konta”: komplet, żeby `ofertaAllegroZKarty` sprawdziła całą kartę (zadania i tak nie oddajemy). */
 const USTAWIENIA_BEZ_KONTA = Object.freeze({
   narzutBp: 0, stalaIlosc: 0, czasWysylkiDni: 0, cennikDostaw: '-', stawkaVat: '23', zwrotyId: '-', reklamacjeId: '-',
   producentId: '-', bezpieczenstwoDomyslne: '-',
@@ -28,7 +28,7 @@ function json(w, domyslna = null) {
 }
 
 /**
- * Jeden format czasu dla E3.06, które porównuje `wygasa_at > teraz` jako napisy: ISO UTC z „Z”
+ * Jeden format czasu dla `ofertaAllegroZKarty`, która porównuje `wygasa_at > teraz` jako napisy: ISO UTC z „Z”
  * (`2026-11-14T12:00:00.000Z`). Zapis SQLite bez strefy (`2026-11-14 12:45:00`) to UTC; strefa (`+01:00`) przeliczona;
  * nieczytelny napis = wygasły (epoka), żeby zdjęcie poszło do ponownego wgrania, a nie z martwym adresem.
  */
@@ -68,11 +68,11 @@ function opisZPamieci(wiersze, konta) {
 }
 
 /**
- * Oferta Allegro karty na koncie: odczyt z bazy i wynik E3.06.
+ * Oferta Allegro karty na koncie: odczyt z bazy i wynik `ofertaAllegroZKarty`.
  * @param {any} db
  * @param {number} kartaId
- * @param {{klucz: string, nazwa?: string, srodowisko?: 'produkcja'|'sandbox'} | null} konto `null` = wynik „bez konta”
- *   (E3.12): tylko braki karty, bez zadania i bez zdjęć do wgrania.
+ * @param {{klucz: string, nazwa?: string, srodowisko?: 'produkcja'|'sandbox'} | null} konto `null` = wynik „bez konta”:
+ *   tylko braki karty, bez zadania i bez zdjęć do wgrania.
  * @param {{srodowisko?: 'produkcja'|'sandbox', kontaSrodowiska?: string[], teraz?: Date|string, katalog?: object|null,
  *   migawka?: object, tworzenie?: boolean}} [opcje] `tworzenie` — podgląd/zatwierdzenie nowej oferty (odmowa wyjątku cennika spoza listy)
  */
@@ -93,7 +93,7 @@ export function ofertaAllegroKarty(db, kartaId, konto, opcje = {}) {
 
   const zdjecia = db.prepare(`SELECT id, kolejnosc, adres_zrodlowy, sha256, typ, ai, ai_reczne FROM zdjecia_kart
     WHERE karta_id = ? ORDER BY kolejnosc, id`).all(kartaId);
-  // D32: mapa wgranych zdjęć tylko tego konta — adres z innego konta Allegro nie zadziała.
+  // Mapa wgranych zdjęć tylko tego konta — adres z innego konta Allegro nie zadziała.
   const wgraneZdjecia = db.prepare(`SELECT a.zdjecie_id, a.adres, a.ai, a.wygasa_at FROM zdjecia_kart_allegro a
     JOIN zdjecia_kart z ON z.id = a.zdjecie_id WHERE z.karta_id = ? AND a.konto = ?`).all(kartaId, konto?.klucz ?? '')
     .map(w => ({ ...w, wygasa_at: czasIsoUtc(w.wygasa_at) }));
@@ -106,13 +106,13 @@ export function ofertaAllegroKarty(db, kartaId, konto, opcje = {}) {
   const ka = db.prepare('SELECT nazwa, kategoria_id, parametry_json, produkt_id FROM karty_allegro WHERE karta_id = ?').get(kartaId);
   const kartaAllegro = ka ? { ...ka, parametry: json(ka.parametry_json, []) } : null;
 
-  // Kategoria karty (P3: kategoria główna) i jej mapa w środowisku konta.
+  // Kategoria karty (kategoria główna) i jej mapa w środowisku konta.
   const glowna = napis(karta.kategoria_glowna);
   const kategorieKarty = glowna ? [glowna] : [];
   const mapaKategorii = db.prepare(`SELECT kategoria_karty, kategoria_allegro_id FROM allegro_mapa_kategorii
     WHERE srodowisko = ? AND kategoria_karty = ?`).all(srodowisko, glowna)
     .map(w => ({ kategoriaKarty: w.kategoria_karty, kategoriaAllegroId: napis(w.kategoria_allegro_id) }));
-  // Ta sama kolejność co w E3.06 (D33): nadpisanie → import → mapa; reguły i opis czytamy dla tej jednej kategorii.
+  // Ta sama kolejność co w `ofertaAllegroZKarty`: nadpisanie → import → mapa; reguły i opis czytamy dla tej jednej kategorii.
   const kategoria = napis(kartaAllegro?.kategoria_id) || napis(daneImportu?.kategoria_id)
     || napis(mapaKategorii[0]?.kategoriaAllegroId);
   const reguly = db.prepare(`SELECT kategoria_allegro_id, parametr_id, rodzaj, wartosc_json, pole, przelicznik
@@ -132,7 +132,7 @@ export function ofertaAllegroKarty(db, kartaId, konto, opcje = {}) {
     WHERE konto = ? AND marka = ?`).all(konto?.klucz ?? '', marka)
     .map(w => ({ marka: w.marka, zrodlo: w.zrodlo, producentId: w.producent_id, osobaOdpowiedzialnaId: w.osoba_odpowiedzialna_id }));
 
-  // D43: oferty karty na kontach środowiska — rejestr OMS i lustro sklepu; ta sama oferta liczy się raz.
+  // Oferty karty na kontach środowiska — rejestr OMS i lustro sklepu; ta sama oferta liczy się raz.
   const listaKont = JSON.stringify(konta);
   const rejestr = db.prepare(`SELECT kanal, id_zewnetrzne, stan FROM oferty_kanalow
     WHERE karta_id = ? AND kanal IN (SELECT value FROM json_each(?))`).all(kartaId, listaKont);
@@ -155,9 +155,9 @@ export function ofertaAllegroKarty(db, kartaId, konto, opcje = {}) {
     return { karta, bledy, ostrzezenia: wynik.ostrzezenia, zadanie: null, droga: wynik.droga, doWgrania: [], bezKonta: true };
   }
   const ustawienia = ustawieniaOfertKonta(db, konto.klucz);
-  // E4.06: `opcje.migawka` (jedna na żądanie) → ilość z iloscDlaKanalu i bufora konta; bez niej dzisiejsza stała.
+  // `opcje.migawka` (jedna na żądanie) → ilość z iloscDlaKanalu i bufora konta; bez niej dzisiejsza stała.
   const ilosc = iloscOferty(opcje.migawka, kartaId, ustawienia);
-  // E3d.02-03: wyjątek cennika dostaw z karty na tym koncie (podgląd, karta i pętla czytają ten sam).
+  // Wyjątek cennika dostaw z karty na tym koncie (podgląd, karta i pętla czytają ten sam).
   const wyjatek = wyjatekCennika(db, { kartaId, konto: konto.klucz });
   const wynik = ofertaAllegroZKarty({ ...wspolne, konto, znakInstalacji: znakInstalacji(db), ustawienia, wgraneZdjecia,
     producenciMarek, ilosc, wyjatekCennika: wyjatek, tworzenie: opcje.tworzenie === true });

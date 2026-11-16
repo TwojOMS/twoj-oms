@@ -1,10 +1,10 @@
-// PRZ-102.17: zdania o płatności w mailach (Ustawienia → Szablony wiadomości → „Zdania o płatności").
+// Zdania o płatności w mailach (Ustawienia → Szablony wiadomości → „Zdania o płatności").
 //
 // Jeden wiersz tabeli `ustawienia` (klucz `wiadomosci.zdania_platnosci`, JSON { klucz: tekst }), bez migracji — wzór
 // jak szablony (oms/db/szablony-wiadomosci.js). W JSON-ie leżą tylko zdania ZMIENIONE; brak klucza = tekst domyślny.
 // Usługi czytają zapis przy KAŻDYM złożeniu maila (services/wiadomosci.js, podgląd szablonu) — zmiana działa od
 // następnego maila, bez restartu. Reguły treści w domena/zdania-platnosci.js; znaki sterujące odrzuca to samo
-// wyrażenie, co podpis maili (PRZ-102.10).
+// wyrażenie, co podpis maili.
 import {
   KLUCZ_ZDAN, ZDANIA, DOMYSLNE_ZDANIA, czyZnaneZdanie, odczytajZdania, zdaniaDoMaila, regulaTresci,
   maksZdania, kolizjeEtykiet, ETYKIETY_Z_DWUKROPKIEM,
@@ -24,7 +24,7 @@ export function wczytajZapisaneZdania(db) {
 
 /**
  * Zapisane zdania rozdzielone na te, które przechodzą DZISIEJSZE reguły (`dobre`), i odrzucone (`odrzucone`:
- * { klucz: powód }). Recenzja PRZ-102.17: zdanie zapisane przed zaostrzeniem reguł albo wpisane do bazy z pominięciem
+ * { klucz: powód }). Zdanie zapisane przed zaostrzeniem reguł albo wpisane do bazy z pominięciem
  * formularza nie może wyjść do klienta — odczyt sprawdza je tym samym `sprawdzZdanie`, co zapis.
  */
 export function zdaniaZReguly(zapisane) {
@@ -34,7 +34,7 @@ export function zdaniaZReguly(zapisane) {
     if (blad) odrzucone[klucz] = blad;
     else if (wartosc) dobre[klucz] = wartosc;
   }
-  // PRZ-102.19: zmienione etykiety przelewu, które brzmią jak inna etykieta, wracają do domyślnych. W pętli, bo powrót
+  // Zmienione etykiety przelewu, które brzmią jak inna etykieta, wracają do domyślnych. W pętli, bo powrót
   // jednej do domyślnej może zderzyć ją z inną zmienioną („Termin" → „Rachunek" przy odrzuconym „Rachunek" → „Konto {x}").
   for (;;) {
     const zderzone = Object.entries(kolizjeEtykiet(zdaniaDoMaila(dobre))).filter(([k]) => Object.hasOwn(dobre, k));
@@ -48,7 +48,7 @@ export function zdaniaZReguly(zapisane) {
  * Zdania zmienione w panelu, które wolno wysłać. Zdanie odrzucone przez reguły = tekst domyślny w mailu i jedna linia
  * w logu (sam klucz, BEZ treści — treść pisał operator i nie musi trafiać do logu).
  */
-// Recenzja PRZ-102.19 (D4): ostatni zalogowany zapis każdej bazy. Ten sam wiersz z tym samym odrzuconym zdaniem dawał
+// Ostatni zalogowany zapis każdej bazy. Ten sam wiersz z tym samym odrzuconym zdaniem dawał
 // linię w logu przy KAŻDYM mailu i każdym podglądzie karty; teraz raz na zmianę zapisu (i raz na start procesu).
 const ZALOGOWANE = new WeakMap();
 
@@ -73,7 +73,7 @@ export const zdaniaPlatnosciTeraz = (db, opcje) => zdaniaDoMaila(wczytajZdaniaPl
  */
 export function sprawdzZdanie(klucz, surowa) {
   if (!czyZnaneZdanie(klucz)) return { wartosc: '', blad: 'Nieznane zdanie.' };
-  // Recenzja PRZ-102.19 (W1): każdy odstęp z \p{Zs} (twarda spacja, spacja firetowa…) to jedna zwykła spacja, a znak
+  // Każdy odstęp z \p{Zs} (twarda spacja, spacja firetowa…) to jedna zwykła spacja, a znak
   // niewidoczny (\p{Cf}: spacja zerowej szerokości, miękki dywiz, znaczniki kierunku) = odmowa — przy zapisie i odczycie.
   let tekst = String(surowa ?? '').replace(/\r\n?|\n/gu, ' ').replace(/\p{Zs}+/gu, ' ').trim();
   if (ZAKAZANE.test(tekst) || NIEWIDOCZNE.test(tekst)) {
@@ -113,7 +113,7 @@ export function zapiszZdaniaPlatnosci(db, pola, teraz = new Date().toISOString()
     for (const s of sprawdzone) {
       if (s.wartosc) stan[s.klucz] = s.wartosc; else delete stan[s.klucz];
     }
-    // PRZ-102.19: kolizje sprawdzone na KOMPLECIE po zapisie (pola spoza formularza też się liczą). Recenzja (D5): błąd
+    // Kolizje sprawdzone na KOMPLECIE po zapisie (pola spoza formularza też się liczą). Błąd
     // przy polach ZMIENIONYCH tym formularzem (obie strony zmienione — przy obu); gdy żadna nie jest zmieniona
     // (zderzenie zostało z dawnego zapisu), przy wszystkich zderzonych.
     const przed = zdaniaDoMaila(wczytajZapisaneZdania(db));

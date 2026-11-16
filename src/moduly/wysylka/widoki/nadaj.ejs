@@ -1,21 +1,21 @@
-<%# ⚠️ Przebudowa na dwie kolumny (2026-08-05), wg zatwierdzonej makiety. Ostrzezenia %>
-<%# o NIEODWRACALNOSCI (gorne i dolne) zostaly USUNIETE swiadomie — decyzja wlasciciela %>
-<%# 04.08: ekran nie ma juz nigdzie mowic, ze operacji nie da sie cofnac. Ochrona %>
-<%# TECHNICZNA zostaje NIETKNIETA: numer kolejny niesiony przez formularz (ponizej), %>
-<%# indeks czesciowy `przesylki (zamowienie_id, kolejnosc)` w bazie i odmowa DPD dla %>
-<%# powtorzonej referencji — patrz przewodnik OMS, 4.3. Zmienia sie to, co widzi %>
-<%# czlowiek, nie to, co robi panel. %>
+<%# ⚠️ Układ w dwóch kolumnach. Ostrzeżenia %>
+<%# o NIEODWRACALNOŚCI (górne i dolne) usunięto świadomie: ekran nie ma %>
+<%# nigdzie mówić, że operacji nie da się cofnąć. Ochrona %>
+<%# TECHNICZNA zostaje NIETKNIĘTA: numer kolejny niesiony przez formularz (poniżej), %>
+<%# indeks częściowy `przesylki (zamowienie_id, kolejnosc)` w bazie i odmowa DPD dla %>
+<%# powtórzonej referencji — reguła: jedna żywa paczka na numer. Zmienia się to, co widzi %>
+<%# człowiek, nie to, co robi panel. %>
 <% const wart = (v) => (v ? v : '—'); %>
 
 <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Nadanie paczki nr " + (kolejnosc), opisHtml: include('_naglowek-opis-nadaj.ejs')}) %>
 
-<%# ⚠️ PACZKOMAT POTRAFI NADAWAC SIE DLUGO. InPost tworzy przesylke asynchronicznie: %>
-<%# panel czeka na numer listu do 30 s, a w najgorszym razie cale nadanie zajmuje ok. %>
-<%# 2,5 minuty (kurierzy/inpost.js: LIMIT_ODPYTYWANIA_MS + limity pojedynczych zadan). %>
-<%# Bez tego zdania operator widzi wylacznie kreciolek przegladarki i naturalnie klika %>
-<%# drugi raz — a to jest jedyna droga do dwoch paczek, ktorej indeks juz nie zatrzyma, %>
-<%# bo pierwsze wywolanie wciaz trwa i to ono trzyma wiersz. TRESC ZOSTAJE, zmienia sie %>
-<%# tylko klasa (pasek-uwaga zamiast goleg .uwaga), zeby pasowala do reszty panelu. %>
+<%# ⚠️ PACZKOMAT POTRAFI NADAWAĆ SIĘ DŁUGO. InPost tworzy przesyłkę asynchronicznie: %>
+<%# panel czeka na numer listu do 30 s, a w najgorszym razie całe nadanie zajmuje ok. %>
+<%# 2,5 minuty (oms/kurierzy/inpost.js: LIMIT_ODPYTYWANIA_MS + limity pojedynczych zadań). %>
+<%# Bez tego zdania operator widzi wyłącznie kręciołek przeglądarki i naturalnie klika %>
+<%# drugi raz — a to jest jedyna droga do dwóch paczek, której indeks już nie zatrzyma, %>
+<%# bo pierwsze wywołanie wciąż trwa i to ono trzyma wiersz. TREŚĆ ZOSTAJE, zmienia się %>
+<%# tylko klasa (pasek-uwaga zamiast gołej .uwaga), żeby pasowała do reszty panelu. %>
 <% if (formularzPaczkomatu) { %>
   <p class="pasek-uwaga">
     Nadanie do paczkomatu potrafi potrwać nawet ok. 2,5 minuty — InPost przyznaje numer listu
@@ -34,12 +34,12 @@
   </p>
 <% } %>
 
-<%# JEDEN formularz na caly ekran: adres i wymiary musza pojechac do POST RAZEM, bo od %>
-<%# Zadania „adres edytowalny" to WLASNIE ten formularz — nie zamowienie w sklepie — jest %>
-<%# zrodlem tego, co pojedzie do DPD (patrz komentarz w domain/adres-formularza.js i %>
-<%# kurierzy/dpd.js). Lista pozycji (tylko do odczytu) i stopka akcji siedza w TYM SAMYM %>
-<%# formularzu — nie maja wlasnych pol, wiec to nieszkodliwe, a przyciski zatwierdzajace %>
-<%# musza byc elementami TEGO formularza, zeby submit zadzialal. %>
+<%# JEDEN formularz na cały ekran: adres i wymiary muszą pojechać do POST RAZEM, bo %>
+<%# WŁAŚNIE ten formularz — nie zamówienie w sklepie — jest %>
+<%# źródłem tego, co pojedzie do DPD (patrz komentarz w domena/adres-formularza.js i %>
+<%# oms/kurierzy/dpd.js). Lista pozycji (tylko do odczytu) i stopka akcji siedzą w TYM SAMYM %>
+<%# formularzu — nie mają własnych pól, więc to nieszkodliwe, a przyciski zatwierdzające %>
+<%# muszą być elementami TEGO formularza, żeby submit zadziałał. %>
 <form method="post" action="/zamowienia/<%= z.id %>/nadaj" class="nadanie-formularz">
   <input type="hidden" name="powrot" value="<%= powrot %>">
   <%# ⚠️ Numer kolejny NIESIONY PRZEZ FORMULARZ — to jest ochrona przed podwojnym %>
@@ -52,10 +52,10 @@
     <input type="hidden" name="delivery_method_id_allegro" value="<%= deliveryMethodIdAllegro %>">
   <% } %>
 
-  <%# ⚠️ WSKAZANIE KURIERA NIESIONE PRZEZ FORMULARZ (2026-08-07) — dokladnie tak samo, %>
-  <%# jak numer kolejny wyzej i z tego samego powodu: POST sprawdza je PONOWNIE %>
-  <%# (domain/kurier-nadania.js), bo bariera nie moze mieszkac w widoku. Puste dla %>
-  <%# zamowien spoza Allegro — wtedy pola nie ma w ogole i POST zachowuje sie jak dotad. %>
+  <%# ⚠️ WSKAZANIE KURIERA NIESIONE PRZEZ FORMULARZ — dokładnie tak samo, %>
+  <%# jak numer kolejny wyżej i z tego samego powodu: POST sprawdza je PONOWNIE %>
+  <%# (domena/kurier-nadania.js), bo bariera nie może mieszkać w widoku. Puste dla %>
+  <%# zamówień spoza Allegro — wtedy pola nie ma w ogóle i POST zachowuje się jak dotąd. %>
   <% if (kurierWybrany) { %>
     <input type="hidden" name="kurier" value="<%= kurierWybrany %>">
   <% } %>
@@ -69,13 +69,13 @@
       </div>
       <div class="panel-cialo">
 
-        <%# Paczkomat: kod + NAZWA automatu na samej gorze — kod jest adresem TEJ %>
-        <%# przesylki, wiec ma stac przed imieniem i nazwiskiem, nie po nich. Pole jest %>
-        <%# EDYTOWALNE: klient bywa, ze wpisuje kod w uwagach zamiast wybrac go w %>
-        <%# checkoucie, a operator poprawia go tuz przed zatwierdzeniem. Poprawka jest %>
-        <%# JEDNORAZOWA — leci prosto do InPostu przy TYM nadaniu (routes/zamowienia.js, %>
-        <%# kurierzy/inpost.js: punktOdbioru) i NIE zapisuje sie do zamowienia. Trwala %>
-        <%# korekta ma swoje miejsce w „Szczegolach zamowienia" (zamowienie.ejs) — to %>
+        <%# Paczkomat: kod + NAZWA automatu na samej górze — kod jest adresem TEJ %>
+        <%# przesyłki, więc ma stać przed imieniem i nazwiskiem, nie po nich. Pole jest %>
+        <%# EDYTOWALNE: klient bywa, że wpisuje kod w uwagach zamiast wybrać go w %>
+        <%# checkoucie, a operator poprawia go tuż przed zatwierdzeniem. Poprawka jest %>
+        <%# JEDNORAZOWA — leci prosto do InPostu przy TYM nadaniu (moduly/wysylka/trasy/nadanie.js, %>
+        <%# oms/kurierzy/inpost.js: punktOdbioru) i NIE zapisuje się do zamówienia. Trwała %>
+        <%# korekta ma swoje miejsce w „Szczegółach zamówienia” (moduly/zamowienia/widoki/zamowienie.ejs) — to %>
         <%# jest INNE pole, nie duplikat tamtego. %>
         <% if (zPunktemOdbioru) { %>
           <div class="paczkomat">
@@ -91,13 +91,13 @@
           </div>
         <% } %>
 
-        <%# Adres jest EDYTOWALNY: operator moze poprawic zly kod, dopisac numer %>
-        <%# mieszkania albo wyslac dosylke pod inny adres, zanim zatwierdzi. Wartosci %>
-        <%# startowe pochodza z adresOdbiorcy(z) — patrz GET /zamowienia/:id/nadaj w %>
-        <%# routes/zamowienia.js. To, co operator tu zostawi w chwili zatwierdzenia, %>
-        <%# JEST adresem, ktory pojedzie do DPD — klient DPD go NIE przelicza juz %>
-        <%# ponownie z zamowienia (patrz kurierzy/dpd.js), wiec ten formularz nie jest %>
-        <%# kolejna, niezalezna kopia adresu — jest JEGO JEDYNYM zrodlem od chwili %>
+        <%# Adres jest EDYTOWALNY: operator może poprawić zły kod, dopisać numer %>
+        <%# mieszkania albo wysłać dosyłkę pod inny adres, zanim zatwierdzi. Wartości %>
+        <%# startowe pochodzą z adresOdbiorcy(z) — patrz GET /zamowienia/:id/nadaj w %>
+        <%# moduly/wysylka/trasy/nadanie.js. To, co operator tu zostawi w chwili zatwierdzenia, %>
+        <%# JEST adresem, który pojedzie do DPD — klient DPD go NIE przelicza już %>
+        <%# ponownie z zamówienia (patrz oms/kurierzy/dpd.js), więc ten formularz nie jest %>
+        <%# kolejną, niezależną kopią adresu — jest JEGO JEDYNYM źródłem od chwili %>
         <%# zatwierdzenia. %>
         <div class="pola">
           <div class="pola-para">
@@ -133,11 +133,11 @@
           </div>
         </div>
 
-        <%# Kraj CELOWO NIE jest edytowalny — panel obsluguje wylacznie przesylki krajowe %>
-        <%# (sessionType zaszyty na DOMESTIC w kurierzy/dpd.js). Ukryte pole niesie wartosc %>
-        <%# dalej, zeby odmowa dla przesylek zagranicznych w dpd.js dalej dzialala takze %>
-        <%# PO tej zmianie — gdyby pole zniklo calkowicie, kazde zamowienie wygladaloby %>
-        <%# jak krajowe (parsujAdresOdbiorcy domyslnie ustawia 'PL' pod jego nieobecnosc). %>
+        <%# Kraj CELOWO NIE jest edytowalny — panel obsługuje wyłącznie przesyłki krajowe %>
+        <%# (sessionType zaszyty na DOMESTIC w oms/kurierzy/dpd.js). Ukryte pole niesie wartość %>
+        <%# dalej, żeby odmowa dla przesyłek zagranicznych w dpd.js dalej działała także %>
+        <%# przy edytowalnym adresie — gdyby pole zniknęło całkowicie, każde zamówienie wyglądałoby %>
+        <%# jak krajowe (parsujAdresOdbiorcy domyślnie ustawia 'PL' pod jego nieobecność). %>
         <input type="hidden" name="kraj" value="<%= adres.kraj %>">
 
         <% if (zPunktemOdbioru) { %>
@@ -162,10 +162,10 @@
           </details>
         <% } %>
 
-        <%# ⚠️ „PONIŻEJ" BYLO NIEPRAWDA — pola adresu stoja WYZEJ, i to w OBU wariantach: %>
-        <%# przy DPD wprost w formularzu, przy paczkomacie w zwinietej sekcji <details>. %>
-        <%# Zdanie kierujace operatora w zle miejsce jest gorsze niz brak zdania: przy %>
-        <%# paczkomacie kazalo szukac pol, ktorych nie widac, dopoki sekcji sie nie rozwinie. %>
+        <%# ⚠️ POLA ADRESU STOJĄ WYŻEJ, i to w OBU wariantach: %>
+        <%# przy DPD wprost w formularzu, przy paczkomacie w zwiniętej sekcji <details>. %>
+        <%# Zdanie kierujące operatora w złe miejsce jest gorsze niż brak zdania: przy %>
+        <%# paczkomacie kazałoby szukać pól „poniżej”, których nie widać, dopóki sekcji się nie rozwinie. %>
         <% if (brakujacePola.length) { %>
           <p class="pasek-blokada">
             Zamówieniu brakuje danych, których DPD wymaga do nadania (<%= brakujacePola.join(', ') %>).
@@ -186,10 +186,10 @@
 
         <div class="fakty">
           <div><span class="k">Nr zamówienia</span><span class="w"><a class="link-numer" title="<%= z.numer %>" href="<%= adresKarty %>"><%= z.numer %></a></span></div>
-          <%# Nazwa metody dostawy idzie WYLACZNIE ze slownika ETYKIETY_WYSYLKI %>
-          <%# (etykietaWysylki, wstrzykiwana w KAZDY widok przez web/server.js: %>
-          <%# defaultContext) — nigdy z nowego lancucha `if`. To dokladnie blad I5 z %>
-          <%# lipca, ktory wrocil raz juz przy przenoszeniu belki karty. %>
+          <%# Nazwa metody dostawy idzie WYŁĄCZNIE ze słownika ETYKIETY_WYSYLKI %>
+          <%# (domena/wysylka.js; etykietaWysylki wstrzykuje do KAŻDEGO widoku core/web/pipeline.js) — %>
+          <%# nigdy z nowego łańcucha `if`. Taki łańcuch już raz się rozjechał %>
+          <%# przy przenoszeniu belki karty. %>
           <div><span class="k">Metoda dostawy</span><span class="w"><%= nazwaDostawy(z) %></span></div>
           <%# ⚠️ DRUGI WIERSZ TYLKO PRZY WSKAZANIU RECZNYM. Metoda zamowienia mowi, co %>
           <%# wybral kupujacy na Allegro; ta linia mowi, czym NAPRAWDE nadajemy — i bez %>
@@ -199,34 +199,34 @@
           <% } else if (kurierWybrany) { %>
             <div><span class="k">Nadajemy</span><span class="w"><%= etykietaWysylki(metodaUzyta, false) %> — nasza umowa <a class="drobne" href="<%= adresNadania() %>">(zmień)</a></span></div>
           <% } else if (adresWyboruKuriera) { %>
-            <%# ⚠️ DROGA DOMYSLNA MOWI O SOBIE WPROST. Ekran wyboru zszedl z przeplywu %>
-            <%# (19.09.2026), wiec bez tego wiersza operator nie wiedzialby, ze paczka %>
-            <%# jedzie na UMOWIE ALLEGRO — ani ze da sie to zmienic. Odnosnik jest jedynym %>
-            <%# wejsciem na dosylke nasza umowa: brakujacy produkt, zamiennik za zgubiona. %>
+            <%# ⚠️ DROGA DOMYŚLNA MÓWI O SOBIE WPROST. Ekran wyboru nie stoi już w przepływie, %>
+            <%# więc bez tego wiersza operator nie wiedziałby, że paczka %>
+            <%# jedzie na UMOWIE ALLEGRO — ani że da się to zmienić. Odnośnik jest jedynym %>
+            <%# wejściem na dosyłkę naszą umową: brakujący produkt, zamiennik za zgubioną. %>
             <div><span class="k">Nadajemy</span><span class="w">Wysyłam z Allegro — umowa Allegro <a class="drobne" href="<%= adresWyboruKuriera %>">(nadaj naszą umową)</a></span></div>
           <% } %>
         </div>
 
-        <%# Pieniadze do zainkasowania od klienta. %>
-        <%# ⚠️ Przy KOLEJNEJ paczce zdanie jest ODWROTNE i to jest najwazniejsze %>
-        <%# ostrzezenie na tym ekranie: kwota pobrania widnieje na zamowieniu, wiec %>
-        <%# operator ma pelne prawo sadzic, ze jedzie na kazdej paczce. Powtorzenie %>
-        <%# kwoty znaczyloby, ze kurier zainkasuje ja od klienta DRUGI RAZ — dlatego %>
-        <%# <cod> jedzie DOMYSLNIE tylko na paczce nr 1 (kurierzy/dpd.js), a ekran musi to %>
-        <%# powiedziec, zanim ktokolwiek kliknie. Odstepstwo (zamiennik wyrzuconej etykiety) %>
-        <%# wymaga jawnego zaznaczenia i jest opisane nizej, przy tym polu. %>
+        <%# Pieniądze do zainkasowania od klienta. %>
+        <%# ⚠️ Przy KOLEJNEJ paczce zdanie jest ODWROTNE i to jest najważniejsze %>
+        <%# ostrzeżenie na tym ekranie: kwota pobrania widnieje na zamówieniu, więc %>
+        <%# operator ma pełne prawo sądzić, że jedzie na każdej paczce. Powtórzenie %>
+        <%# kwoty znaczyłoby, że kurier zainkasuje ją od klienta DRUGI RAZ — dlatego %>
+        <%# <cod> jedzie DOMYŚLNIE tylko na paczce nr 1 (oms/kurierzy/dpd.js), a ekran musi to %>
+        <%# powiedzieć, zanim ktokolwiek kliknie. Odstępstwo (zamiennik wyrzuconej etykiety) %>
+        <%# wymaga jawnego zaznaczenia i jest opisane niżej, przy tym polu. %>
         <%# %>
-        <%# ⚠️ Z4 (2026-08-05): przy paczce nr 1 kwota jest POLEM EDYTOWALNYM. Pole %>
-        <%# ISTNIEJE WYLACZNIE w tej galezi — obok zdania „ta paczka jedzie bez %>
-        <%# pobrania" byloby zaproszeniem do podwojnego inkasa od klienta, a przy %>
-        <%# zamowieniu bez pobrania zamienialoby przesylke przedplacona w pobraniowa. %>
-        <%# Poprawka jest JEDNORAZOWA, dokladnie jak kod paczkomatu wyzej: leci prosto %>
-        <%# do kuriera przy TYM nadaniu (routes/zamowienia.js → services/nadanie.js → %>
-        <%# kurierzy/dpd.js) i NIE zapisuje sie do zamowienia. Trwala korekta ma swoje %>
-        <%# miejsce w „Szczegolach zamowienia" na karcie — to jest INNE pole. %>
-        <%# ⚠️ Wartosc startowa to `proponowanePobranie` z trasy: przy przedplatach reszta liczona %>
-        <%# w domenie (PRZ-137.04), bez nich `kwotaPobrania(z)` = dawne `z.kwota_pobrania`. Widok %>
-        <%# jej NIE LICZY sam — druga implementacja tej samej kwoty rozjechalaby sie z tamta. %>
+        <%# ⚠️ Przy paczce nr 1 kwota jest POLEM EDYTOWALNYM. Pole %>
+        <%# ISTNIEJE WYŁĄCZNIE w tej gałęzi — obok zdania „ta paczka jedzie bez %>
+        <%# pobrania” byłoby zaproszeniem do podwójnego inkasa od klienta, a przy %>
+        <%# zamówieniu bez pobrania zamieniałoby przesyłkę przedpłaconą w pobraniową. %>
+        <%# Poprawka jest JEDNORAZOWA, dokładnie jak kod paczkomatu wyżej: leci prosto %>
+        <%# do kuriera przy TYM nadaniu (trasy/nadanie.js → services/nadanie.js → %>
+        <%# oms/kurierzy/dpd.js) i NIE zapisuje się do zamówienia. Trwała korekta ma swoje %>
+        <%# miejsce w „Szczegółach zamówienia” na karcie — to jest INNE pole. %>
+        <%# ⚠️ Wartość startowa to `proponowanePobranie` z trasy: przy przedpłatach reszta liczona %>
+        <%# w domenie, bez nich `kwotaPobrania(z)` = dawne `z.kwota_pobrania`. Widok %>
+        <%# jej NIE LICZY sam — druga implementacja tej samej kwoty rozjechałaby się z tamtą. %>
         <% if (z.pobranie) { %>
           <% if (bladKwotPobrania) { %>
             <p class="pasek-uwaga"><%= bladKwotPobrania %></p>
@@ -237,25 +237,25 @@
             <% } else if (brakKwotyPobrania && !bladKwotPobrania) { %>
               <p class="pasek-uwaga">Brak kwoty pobrania na zamówieniu. Zamówienie ma wpłaty <%= przedplatyPobrania %> zł — wpisz kwotę do zainkasowania<% if (limitPobrania) { %>, najwyżej <%= limitPobrania %> zł (kwota zamówienia minus wpłaty)<% } %>.</p>
             <% } else if (!bladKwotPobrania && !limitPobrania) { %>
-              <%# PRZ-148.05: K ≤ 0 i brak brutto — niedopłaty nie da się policzyć, więc bez „najwyżej  zł”. %>
+              <%# K ≤ 0 i brak brutto — niedopłaty nie da się policzyć, więc bez „najwyżej  zł”. %>
               <p class="pasek-blokada">Zamówienie ma wpłaty <%= przedplatyPobrania %> zł, ale nie ma kwoty zamówienia ani kwoty pobrania większej od zera — panel nie policzy niedopłaty. Uzupełnij kwotę pobrania na karcie zamówienia albo wyłącz pobranie.</p>
             <% } else if (!bladKwotPobrania) { %>
               <p class="pasek-blokada">Zamówienie ma wpłaty <%= przedplatyPobrania %> zł — pobierz najwyżej <%= limitPobrania %> zł albo wyłącz pobranie na karcie zamówienia.</p>
             <% } %>
           <% } %>
           <% if (kolejnosc > 1) { %>
-            <%# ⚠️ DO 04.09.2026 BYL TU SAM CZERWONY PAS I KONIEC — pobranie na paczce N > 1 %>
-            <%# bylo NIEMOZLIWE. Zdarzenie na zamowieniu 1385 pokazalo brakujacy przypadek: %>
-            <%# klient domowil towar telefonicznie PO wydrukowaniu etykiety, etykieta poszla %>
-            <%# do kosza, a paczka nr 1 nigdy nie pojechala. Ponowne nadanie jako nr 1 jest %>
-            <%# niemozliwe (DPD zna juz gola referencje), wiec zamiennik MUSI byc paczka nr 2 — %>
-            <%# i bez pobrania kurier nie zainkasowalby ani zlotowki. %>
+            <%# ⚠️ WCZEŚNIEJ BYŁ TU SAM CZERWONY PAS I KONIEC — pobranie na paczce N > 1 %>
+            <%# było NIEMOŻLIWE. Brakowało przypadku: %>
+            <%# klient domówił towar telefonicznie PO wydrukowaniu etykiety, etykieta poszła %>
+            <%# do kosza, a paczka nr 1 nigdy nie pojechała. Ponowne nadanie jako nr 1 jest %>
+            <%# niemożliwe (DPD zna już gołą referencję), więc zamiennik MUSI być paczką nr 2 — %>
+            <%# i bez pobrania kurier nie zainkasowałby ani złotówki. %>
             <%# %>
-            <%# ⚠️ PANEL NIE MA JAVASCRIPTU, wiec pole kwoty NIE ODSLANIA SIE po zaznaczeniu. %>
-            <%# Oba elementy stoja jawnie, a regula „kwota dziala tylko przy zaznaczonym polu" %>
-            <%# jest WYPISANA — to uczciwsze niz pole, ktore wyglada na aktywne i po cichu %>
-            <%# ginie w trasie POST (domain/pobranie-nadania.js pilnuje tego po stronie serwera). %>
-            <%# PRZ-137.03 (D3): kurier, który nie wiezie pobrania na kolejnej paczce, albo %>
+            <%# ⚠️ EKRAN DZIAŁA BEZ SKRYPTÓW (skrypt tylko podpowiada wymiary), więc pole kwoty NIE ODSŁANIA SIĘ po zaznaczeniu. %>
+            <%# Oba elementy stoją jawnie, a reguła „kwota działa tylko przy zaznaczonym polu” %>
+            <%# jest WYPISANA — to uczciwsze niż pole, które wygląda na aktywne i po cichu %>
+            <%# ginie w trasie POST (domena/pobranie-nadania.js pilnuje tego po stronie serwera). %>
+            <%# Kurier, który nie wiezie pobrania na kolejnej paczce, albo %>
             <%# paczkomat bez umowy — POST odmówi TYM tekstem (powodOdmowyZamiennika). %>
             <% if (odmowaZamiennika) { %>
               <p class="pasek-blokada">
@@ -301,7 +301,7 @@
               </p>
             </div>
           <% } else { %>
-            <%# PRZ-137.02 (D2): pobranie OMS-owe (ręczne, zmienione na karcie) u kuriera bez %>
+            <%# Pobranie OMS-owe (ręczne, zmienione na karcie) u kuriera bez %>
             <%# włączonej umowy na pobranie — panel odmówi nadania TYM tekstem. Warunek i tekst %>
             <%# liczy trasa z domeny (wymagaUmowyPobrania, powodUmowyPobrania); pobranie %>
             <%# sprzedane przez sklep tego paska nie dostaje. %>
@@ -322,19 +322,19 @@
                   Wiem, że kwota pobrania różni się od niedopłaty <%= niedoplataPobrania %> zł — nadaj z kwotą wpisaną w polu
                 </label>
               <% } %>
-              <%# ⚠️⚠️ DO 01.09.2026 POLE PRZY ALLEGRO STALO PUSTE (prosba właściciela o zmiane). %>
-              <%# Powodem byla niewiedza panelu: numery listow z Allegro dociagaja sie tylko %>
-              <%# dopoki `wyslane_at` jest puste, wiec karta potrafi pokazywac „brak paczek" %>
-              <%# przy paczce, ktora dawno jedzie (zam. 1120, 07.08.2026) — a podstawiona %>
-              <%# kwota czytalaby sie jak potwierdzenie panelu, ze inkaso sie NALEZY. %>
+              <%# ⚠️⚠️ KWOTA JEST PODSTAWIONA TAKŻE PRZY ALLEGRO, choć panel nie wie wszystkiego: %>
+              <%# numery listów z Allegro dociągają się tylko dopóki `wyslane_at` jest puste, %>
+              <%# więc karta potrafi pokazywać „brak paczek” %>
+              <%# przy paczce, która dawno jedzie — a podstawiona %>
+              <%# kwota czyta się jak potwierdzenie panelu, że inkaso się NALEŻY. %>
               <%# %>
-              <%# ⚠️ TA NIEWIEDZA NIE ZNIKLA — zniklo wylacznie przepisywanie kwoty reka przy %>
-              <%# KAZDEJ allegrowej paczce (codziennie) dla scenariusza, ktory zdarzyl sie raz. %>
-              <%# Ostrzezenie zostaje w DWOCH miejscach, ktorych ta zmiana NIE DOTYKA: %>
-              <%#   1. ekran WYBORU KURIERA (nadaj-kurier.ejs) — przechodzi przez niego kazda %>
-              <%#      allegrowa paczka i mowi wprost, czego panel nie wie; %>
-              <%#   2. paczka nr 2 i dalsze — czerwony pas wyzej, a pole kwoty dziala dopiero %>
-              <%#      po jawnym zaznaczeniu „pobranie ma pojechac na TEJ paczce". %>
+              <%# ⚠️ TA NIEWIEDZA NIE ZNIKA — ale kwoty nie trzeba przepisywać ręką przy %>
+              <%# KAŻDEJ allegrowej paczce (codziennie) dla scenariusza, który zdarza się rzadko. %>
+              <%# Ostrzeżenie zostaje w miejscu, którego to pole NIE DOTYKA: %>
+              <%#   paczka nr 2 i dalsze — czerwony pas wyżej, a pole kwoty działa dopiero %>
+              <%#   po jawnym zaznaczeniu „pobranie ma pojechać na TEJ paczce”. %>
+              <%# Ekran WYBORU KURIERA (nadaj-kurier.ejs) tego ostrzeżenia nie niesie — %>
+              <%# podpowiada tylko, którzy kurierzy przyjmą pobranie na kolejnej paczce. %>
               <p class="podpowiedz">
                 <%= przedplatyPobrania ? 'Wypełnione resztą po przedpłatach.' : 'Wypełnione kwotą zamówienia.' %> Zmiana dotyczy <strong>tylko tej paczki</strong> —
                 po nadaniu nie da się jej odkręcić inaczej niż <%= panelKuriera %>.
@@ -343,13 +343,13 @@
           <% } %>
         <% } %>
 
-        <%# ⚠️ PACZKOMAT NIE MA WYMIAROW (Zadanie 7). InPost przyjmuje SZABLON skrytki %>
-        <%# (A/B/C, kurierzy/inpost.js: SZABLONY_GABARYTU), a domyslne wymiary panelu %>
-        <%# (110×75×1 cm — plaska paczka wielkoformatowa) NIE MIESZCZA SIE w %>
-        <%# zadnej skrytce automatu. Dlatego to jest WYBOR ze skonczonego zbioru, %>
-        <%# zaznaczony wg ustawienia (G11c: propozycjaAutomatu, bez ustawienia A), a nie pole tekstowe — patrz %>
-        <%# domain/paczka.js: parsujPaczkeInpost. Dla DPD (galaz „else") ekran ma %>
-        <%# ANI JEDNEJ zmiany w polach wobec tego, co bylo. %>
+        <%# ⚠️ PACZKOMAT NIE MA WYMIARÓW. InPost przyjmuje SZABLON skrytki %>
+        <%# (A/B/C, oms/kurierzy/inpost.js: SZABLONY_GABARYTU), a domyślne wymiary panelu %>
+        <%# (110×75×1 cm — płaska paczka wielkoformatowa) NIE MIESZCZĄ SIĘ w %>
+        <%# żadnej skrytce automatu. Dlatego to jest WYBÓR ze skończonego zbioru, %>
+        <%# zaznaczony wg ustawienia (propozycjaAutomatu, bez ustawienia A), a nie pole tekstowe — patrz %>
+        <%# domena/paczka.js: parsujPaczkeInpost. Dla DPD (gałąź „else”) ekran ma %>
+        <%# ANI JEDNEJ zmiany w polach wobec tego, co było. %>
         <% if (formularzPaczkomatu) { %>
           <h3>Waga i gabaryt</h3>
           <div class="pola">
@@ -369,7 +369,7 @@
           <h3>Waga i gabaryt</h3>
           <div class="pola">
             <div class="rzad">
-              <%# PRZ-125: `required` — pusta waga zatrzymuje formularz w przegladarce, zamiast odbic sie gola 400 z serwera. %>
+              <%# `required` — pusta waga zatrzymuje formularz w przegladarce, zamiast odbic sie gola 400 z serwera. %>
               <label>Waga (kg) <input name="waga" value="<%= propozycjaAutomatu?.waga ?? '' %>" inputmode="decimal" required class="oms-pole"></label>
             </div>
             <div class="gabaryty">
@@ -424,11 +424,11 @@
 
   </div>
 
-  <%# ——— ZAWARTOSC PACZKI (Zadanie 2) — TYLKO DO ODCZYTU ———————————————————————————— %>
-  <%# Widok NIE liczy niczego sam: wierszePozycji(z) + miniatura sa TE SAME funkcje, %>
-  <%# ktorych uzywa karta zamowienia (routes/zamowienia.js, trasa karty) — druga kopia %>
-  <%# reguly rozjechalaby sie z nia przy pierwszej zmianie. Zadnego formularza, zadnego %>
-  <%# „Edytuj", zadnego „Usun": edycja pozycji ma jedno miejsce i jest nim karta. %>
+  <%# ——— ZAWARTOŚĆ PACZKI — TYLKO DO ODCZYTU ———————————————————————————— %>
+  <%# Widok NIE liczy niczego sam: wierszePozycji(z) (domena/tabela-pozycji.js) + miniatura to TE SAME funkcje, %>
+  <%# których używa karta zamówienia (moduly/zamowienia/kontekst.js) — druga kopia %>
+  <%# reguły rozjechałaby się z nią przy pierwszej zmianie. Żadnego formularza, żadnego %>
+  <%# „Edytuj”, żadnego „Usuń”: edycja pozycji ma jedno miejsce i jest nim karta. %>
   <section class="panel">
     <div class="panel-glowa">
       <h2>Zawartość paczki</h2>
@@ -444,7 +444,7 @@
             <%# Miniatura liczona RAZ na wiersz, bo czytaja ja DWIE komorki: obrazkowa %>
             <%# (nizej) i nazwa, ktora przejmuje odnosnik, gdy miniatury nie ma. %>
             <%# ⚠️ KANAL I NUMER PRODUKTU IDA RAZEM ZE ZDJECIEM — to po tej parze odnajduje %>
-            <%# sie PRAWDZIWY adres miniatury w lustrze sklepow (domain/miniatura-pozycji.js). %>
+            <%# sie PRAWDZIWY adres miniatury w lustrze sklepow (domena/miniatura-pozycji.js). %>
             <% var mini = miniatura(z.sklep, w.produktId, w.zdjecie, w.sku); %>
             <tr<%- w.podsumowanie ? ' class="wiersz-razem"' : '' %>>
               <td class="kol-mini">
@@ -493,20 +493,20 @@
     </div>
   </section>
 
-  <%# ——— STOPKA AKCJI (Zadanie 3) —————————————————————————————————————————————————— %>
-  <%# Dwa przyciski zatwierdzajace w TYM SAMYM formularzu, rozroznione przez %>
-  <%# `name="zatwierdzenie"` (patrz POST /zamowienia/:id/nadaj w routes/zamowienia.js): %>
-  <%# „Nadaj przesylke" tylko zapisuje numer listu, „Nadaj i drukuj" robi to samo i %>
-  <%# DODATKOWO wstawia swiezo pobrana etykiete ZPL do kolejki druku na Zebrze. Oba %>
-  <%# Przy WzA roznia sie tez NIEZMIENNYM formatem zamawianej etykiety; oba sa %>
-  <%# nieodwracalne, i wyglad ma tego NIE sugerowac inaczej. %>
-  <%# ⚠️ „Anuluj" jest LINKIEM (<a>), NIGDY <button> — button wewnatrz tego formularza %>
-  <%# wyslalby go i NADAL paczke, dokladnie to, przed czym operator chcial sie wycofac. %>
-  <%# „NADAJ I DRUKUJ" ISTNIEJE TYLKO TAM, GDZIE BEDZIE ZPL. WzA zamawia go od Allegro %>
-  <%# tylko przy tym przycisku; przy zwyklym „Nadaj" zamawia PDF. Warunek %>
+  <%# ——— STOPKA AKCJI —————————————————————————————————————————————————— %>
+  <%# Dwa przyciski zatwierdzające w TYM SAMYM formularzu, rozróżnione przez %>
+  <%# `name="zatwierdzenie"` (patrz POST /zamowienia/:id/nadaj w moduly/wysylka/trasy/nadanie.js): %>
+  <%# „Nadaj przesyłkę” tylko zapisuje numer listu, „Nadaj i drukuj” robi to samo i %>
+  <%# DODATKOWO wstawia świeżo pobraną etykietę ZPL do kolejki druku na Zebrze. Oba %>
+  <%# Przy WzA różnią się też NIEZMIENNYM formatem zamawianej etykiety; oba są %>
+  <%# nieodwracalne, i wygląd ma tego NIE sugerować inaczej. %>
+  <%# ⚠️ „Anuluj” jest LINKIEM (<a>), NIGDY <button> — button wewnątrz tego formularza %>
+  <%# wysłałby go i NADAL paczkę, dokładnie to, przed czym operator chciał się wycofać. %>
+  <%# „NADAJ I DRUKUJ” ISTNIEJE TYLKO TAM, GDZIE BĘDZIE ZPL. WzA zamawia go od Allegro %>
+  <%# tylko przy tym przycisku; przy zwykłym „Nadaj” zamawia PDF. Warunek %>
   <%# liczy DOMENA (kurier-nadania.js: nadanieDaZpl), widok go tylko czyta. %>
-  <%# ⚠️ BRAK PRZYCISKU MOWI, DLACZEGO GO NIE MA (niezmiennik 4.9) — sam znikniety przycisk %>
-  <%# kaze szukac usterki tam, gdzie jej nie ma. %>
+  <%# ⚠️ BRAK PRZYCISKU MÓWI, DLACZEGO GO NIE MA (reguła: każdy stan ma wyjście) — sam zniknięty przycisk %>
+  <%# każe szukać usterki tam, gdzie jej nie ma. %>
   <div class="stopka-akcji">
     <button type="submit" class="btn btn--glowny" name="zatwierdzenie" value="nadaj">Nadaj przesyłkę</button>
     <% if (bedzieZpl) { %>

@@ -1,4 +1,4 @@
-// PRZ-091: Ustawienia → Magazyn — przełącznik „Włącz stany magazynowe” (decyzje właściciela 17.10.2026).
+// Ustawienia → Magazyn — przełącznik „Włącz stany magazynowe”.
 // Reguły i zapis przełącznika siedzą w rdzeniu (oms/db/stany-magazynowe.js); ta trasa tylko pokazuje i przełącza.
 //
 // Kto może przełączyć: strażnik po prefiksie `/ustawienia` wpuszcza wyłącznie konto z uprawnieniem „ustawienia”,

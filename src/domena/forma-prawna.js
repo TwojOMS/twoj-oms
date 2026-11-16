@@ -1,8 +1,7 @@
-// Skrót formy prawnej w nazwie firmy — WYŁĄCZNIE do wyświetlania w wąskich kolumnach (PRZ-078).
+// Skrót formy prawnej w nazwie firmy — WYŁĄCZNIE do wyświetlania w wąskich kolumnach.
 // inFakt oddaje nazwę nabywcy tak, jak stoi w rejestrze: „… SPÓŁKA Z OGRANICZONĄ
 // ODPOWIEDZIALNOŚCIĄ" wielkimi literami. Najdłuższe słowo tej frazy nie łamie się, więc jedna
-// taka faktura rozpychała tabelę Faktur o ~100 px (pomiar na produkcji 14.10.2026: 1091/911 px
-// przy oknie 1280 px). Pełna nazwa zostaje w podpowiedzi — ta funkcja niczego nie zapisuje.
+// taka faktura rozpychała tabelę Faktur o około 100 px przy oknie 1280 px. Pełna nazwa zostaje w podpowiedzi — ta funkcja niczego nie zapisuje.
 
 const FORMY = [
   [/spółka\s+z\s+ograniczoną\s+odpowiedzialnością/iu, 'sp. z o.o.'],

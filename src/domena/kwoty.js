@@ -1,12 +1,12 @@
 import { bladOperatora } from './bledy.js';
 
 // ⚠️ TEN MODUŁ NIE MA ŻADNEGO IMPORTU POZA `bledy.js` I TAK MA ZOSTAĆ. To jest liść drzewa
-// zależności domeny i właśnie dlatego powstał (07.08.2026, przy edytowalnej wysyłce).
+// zależności domeny i właśnie dlatego powstał.
 //
 // `grosze` i `zl` mieszkały w `suma-pozycji.js` i czytali je stamtąd WSZYSCY — także
 // `pozycje-reczne.js`. Kiedy `suma-pozycji.js` musiał zacząć pytać o EFEKTYWNĄ kwotę
-// wysyłki (domain/wysylka-kwota.js), a tamten moduł o znormalizowaną postać pól
-// (domain/pozycje-reczne.js), powstałby cykl:
+// wysyłki (domena/wysylka-kwota.js), a tamten moduł o znormalizowaną postać pól
+// (domena/pozycje-reczne.js), powstałby cykl:
 //
 //     suma-pozycji → wysylka-kwota → pozycje-reczne → suma-pozycji
 //
@@ -20,15 +20,15 @@ import { bladOperatora } from './bledy.js';
 // wszystkich importów naraz byłoby zmianą w kilkunastu plikach przy okazji zupełnie innej
 // poprawki.
 
-// Kwoty inFaktu sa CALKOWITE, w groszach. Liczymy na liczbach calkowitych do samego konca:
-// porownanie sumy pozycji z kwota zamowienia na floatach (61.50 * 2 === 123.00) potrafi
-// chybic o 1e-13 i albo przepuscic blad, albo zablokowac poprawna fakture. TA SAMA funkcja
-// steruje BARIERA ARYTMETYCZNA faktury (services/faktura.js) i ostrzezeniem pod tabela
-// „Pozycje" na karcie zamowienia (domain/tabela-pozycji.js) — jedno miejsce, zeby oba
-// widoki nigdy sie nie rozjechaly.
+// Kwoty inFaktu są CAŁKOWITE, w groszach. Liczymy na liczbach całkowitych do samego końca:
+// porównanie sumy pozycji z kwotą zamówienia na floatach (61.50 * 2 === 123.00) potrafi
+// chybić o 1e-13 i albo przepuścić błąd, albo zablokować poprawną fakturę. TA SAMA funkcja
+// steruje BARIERĄ ARYTMETYCZNĄ faktury (domena/pozycje-faktury.js) i ostrzeżeniem pod tabelą
+// „Pozycje” na karcie zamówienia (domena/tabela-pozycji.js) — jedno miejsce, żeby oba
+// widoki nigdy się nie rozjechały.
 //
-// Pusta/nieliczbowa kwota ma RZUCIC, a nie zamienic sie w NaN. NaN w JSON-ie staje sie
-// `null`, wiec bez tej oslony do inFaktu poleciałaby pozycja bez ceny.
+// Pusta/nieliczbowa kwota ma RZUCIĆ, a nie zamienić się w NaN. NaN w JSON-ie staje się
+// `null`, więc bez tej osłony do inFaktu poleciałaby pozycja bez ceny.
 export function grosze(kwota, opis) {
   if (kwota === null || kwota === undefined || String(kwota).trim() === '') {
     throw bladOperatora(`Brak kwoty: ${opis}. Faktury nie da się wystawić bez ceny.`);
@@ -54,16 +54,16 @@ export const cenaPolska = (napis) => `${liczbaPolska(napis, { minimumFractionDig
  * operatora (napis z kropką, jak oddaje go `zl` wyżej, na napis, jaki czyta klient).
  *
  * ⚠️ PUSTA WARTOŚĆ ODDAJE „—", NIE „ zł" — i to jest strażnik, nie ozdobnik (przeniesione
- * tu z domain/potwierdzenie-zamowienia.js 22.08.2026, przy recenzji). Do tego dnia istniały
+ * tu z domena/potwierdzenie-zamowienia.js). Wcześniej istniały
  * DWIE prywatne kopie tej samej funkcji: ta w potwierdzeniu miała strażnik pustki, a kopia
- * w domain/blok-platnosci.js — nie. Jedna funkcja w liściu drzewa zależności (obok `grosze`
+ * w domena/blok-platnosci.js — nie. Jedna funkcja w liściu drzewa zależności (obok `grosze`
  * i `zl` wyżej) jest jedynym sposobem, żeby nie dało się już napisać trzeciej kopii bez
  * tego strażnika.
  */
 export function zlotowki(napis) {
   const tekst = String(napis ?? '').trim();
   if (tekst === '') return '—';
-  // Przecinek dziesiętny („12,50”) był pokazywany przed PRZ-160.09 — zostaje, odpada tylko nie-liczba.
+  // Kwota z przecinkiem („12,50”) też przychodzi na wejściu i przechodzi bez zmian — odpada tylko nie-liczba.
   if (!Number.isFinite(Number(tekst.replace(',', '.')))) return '';
   return `${tekst.replace('.', ',')} zł`;
 }

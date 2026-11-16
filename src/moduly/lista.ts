@@ -22,7 +22,7 @@ import { modulApiPanelu } from './api-panelu/modul.ts';
 import { modulAutomatyzacje } from './automatyzacje/modul.ts';
 
 /** Jedyne miejsce włączenia modułów; kolejność wynika z wymaga.
- * PRZ-122.ZGODA-TFc: moduł `twojefaktury` (migracje schematu `tf_*`) rejestruje szew, zaraz po `faktury`; kopia bez
+ * Moduł `twojefaktury` (migracje schematu `tf_*`) rejestruje szew, zaraz po `faktury`; kopia bez
  * modułu TwojeFaktury go nie ma. */
 export const MODULY: readonly ModulOms[] = [modulRdzen, modulWeb, modulKanaly, modulFaktury,
   ...(szewTwojeFaktury ? [szewTwojeFaktury.modul] : []), modulWiadomosci, createModulZamowienia({ zWiadomosciami: true }), modulWysylka,
@@ -35,7 +35,7 @@ function zgodaInstalacji(env: Srodowisko): boolean {
 
 /** Jedyna zmienna część listy: jawne definicje kanałów danego uruchomienia.
  * `szewTwojeFaktury` — szew testów (`null` = lista kopii bez modułu TwojeFaktury); bez klucza — szew z drzewa.
- * PRZ-122.AS3: moduł `twojefaktury` (migracje `tf_*`, przedrostki serii próby) tylko przy zgodzie instalacji
+ * Moduł `twojefaktury` (migracje `tf_*`, przedrostki serii próby) tylko przy zgodzie instalacji
  * (`OMS_TWOJEFAKTURY=tak`); bez niej baza nie dostaje tabel TF, a te, które już ma, zostają nietknięte. */
 export function modulyDla(env: Srodowisko, o: { szewTwojeFaktury?: SzewTwojeFaktury | null } = {}): readonly ModulOms[] {
   const definicje = definicjeKanalow(env);

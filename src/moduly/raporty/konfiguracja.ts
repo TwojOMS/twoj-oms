@@ -52,7 +52,7 @@ export function wczytajRaportyDlaKanalow(env: Srodowisko, definicje: readonly De
       return m;
     })(),
     definicje,
-    // PRZ-102.14: źródła zamówień dla automatu granic — OD i braki kluczy tą samą regułą, co /health (D01).
+    // Źródła zamówień dla automatu granic — OD i braki kluczy tą samą regułą, co /health (D01).
     zrodlaKanalow: definicje.map(d => ({ typ: d.typ, prefiks: d.prefiks, raport: d.raport ?? null,
       od: String(env[`${d.prefiks}_OD`] ?? '').trim(), braki: brakujaceKluczeKanalu(d, env) })),
   };

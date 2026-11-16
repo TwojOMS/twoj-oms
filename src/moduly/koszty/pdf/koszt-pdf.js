@@ -4,21 +4,21 @@ import PDFDocument from 'pdfkit';
 import { grosze, zl } from '../../../domena/kwoty.js';
 
 // Generator PDF-a WIZUALIZACJI faktury kosztowej pobranej z KSeF. KSeF oddaje wylacznie XML,
-// wiec kartke do obejrzenia (i do wpiecia do archiwum na NAS-ie obok oryginalu) rysujemy sami.
-// Uklad KALKUJE pdf/proforma-pdf.js i pdf/specyfikacja-pdf.js — te same stale formatu, te same
-// pomocnicze zwykly()/gruby(), ten sam naglowek sekcji i ta sama tabela pozycji. Dokumenty maja
-// wygladac jak z jednej firmy.
+// więc kartkę do obejrzenia (i do wpięcia do archiwum obok oryginału) rysujemy sami.
+// Układ KALKUJE faktury/pdf/proforma-pdf.js i zamowienia/pdf/specyfikacja-pdf.js — te same
+// stałe formatu, te same pomocnicze zwykly()/gruby(), ten sam nagłówek sekcji i ta sama tabela
+// pozycji. Dokumenty mają wyglądać jak z jednej firmy.
 //
-// ⚠️ PRZEBUDOWA 2026-09-03 — POWOD: pytanie wlasciciela „czy te wizualizacje XML nadaja sie do
-// dostarczenia do biura?". Nie nadawaly sie. Kartka niosla sprzedawce, numer, date wystawienia,
-// pozycje i trzy kwoty — i to wszystko. Brakowalo NABYWCY, adresow, daty sprzedazy, rozbicia
-// VAT na stawki, brutta pozycji, adnotacji, podstawy zwolnienia i informacji o platnosci, czyli
-// wiekszosci elementow z art. 106e ust. 1 ustawy o VAT. Ksiegowa dostawala dokument, ktorego
-// nie da sie sprawdzic. Wzorem ukladu jest wydruk z inFaktu, ktory wlasciciel pokazal.
+// ⚠️ KARTKA MUSI NADAWAĆ SIĘ DO DOSTARCZENIA BIURU RACHUNKOWEMU. Sama wizualizacja ze sprzedawcą,
+// numerem, datą wystawienia, pozycjami i trzema kwotami się nie nadaje: bez NABYWCY, adresów,
+// daty sprzedaży, rozbicia VAT na stawki, brutta pozycji, adnotacji, podstawy zwolnienia
+// i informacji o płatności brakuje większości elementów z art. 106e ust. 1 ustawy o VAT,
+// a księgowa dostaje dokument, którego nie da się sprawdzić. Wzorem układu jest wydruk faktury
+// z inFaktu.
 //
 // ⚠️ TEN MODUL TYLKO RYSUJE i nadal NIE ZNA ANI JEDNEJ NAZWY WEZLA FA(3). Wszystko, co wymaga
 // wiedzy o schemie — etykiety stawek, „Tak"/„Nie" adnotacji, forma platnosci slownie, brutto
-// wyprowadzone tam, gdzie FA go nie niesie — powstaje w domain/koszt-xml.js (`dokumentZXml`).
+// wyprowadzone tam, gdzie FA go nie niesie — powstaje w domena/koszt-xml.js (`dokumentZXml`).
 // Schema FA zmienia sie decyzja Ministerstwa; drugie mapowanie tutaj rozjechaloby sie
 // z pierwszym przy pierwszej takiej zmianie.
 //
@@ -60,41 +60,38 @@ const SZARY_PASEK = '#c9c9c9';
 const SZARY_WIERSZ = '#eeeeee';
 const SZARY_LINIA = '#cccccc';
 
-// ⚠️ DECYZJA WLASCICIELA (03.09.2026) — ZDANIE ODROZNIAJACE WIZUALIZACJE OD DOKUMENTU ZOSTALO
-// ZDJETE Z KARTKI. Do tego dnia stalo tutaj (pod tytulem, na pierwszej stronie) i w stopce
-// KAZDEJ strony: „Wizualizacja dokumentu z KSeF — oryginałem jest plik XML.". Powod usuniecia
-// (decyzja wlasciciela, NIE przeoczenie): biuro ksiegowe pracuje z dokumentami z KSeF na co
-// dzien i samo wie, ze to wizualizacje — zdanie tlumaczylo adresatowi cos, co juz wiedzial.
+// ⚠️ ZDANIE ODRÓŻNIAJĄCE WIZUALIZACJĘ OD DOKUMENTU ZOSTAŁO ŚWIADOMIE ZDJĘTE Z KARTKI. Stało
+// pod tytułem na pierwszej stronie i w stopce KAŻDEJ strony: „Wizualizacja dokumentu z KSeF —
+// oryginałem jest plik XML.". Powód usunięcia (decyzja produktowa, NIE przeoczenie): biuro
+// rachunkowe pracuje z dokumentami z KSeF na co dzień i samo wie, że to wizualizacje — zdanie
+// tłumaczyło adresatowi coś, co już wiedział.
 //
-// ⚠️⚠️ NIE PRZYWRACAC PRZY KOLEJNEJ PRZEBUDOWIE UKLADU bez nowej, wyraznej decyzji wlasciciela.
-// To, ze kartka upodabnia sie do prawdziwej faktury (tytul „e-Faktura", nabywca, adnotacje,
-// rozbicie VAT), NIE JEST powodem, zeby to zdanie samemu przywrocic „dla bezpieczenstwa" —
-// wlasciciel widzial ten uklad i mimo to podjal te decyzje. Miejsca, w ktorych zdanie kiedys
-// stalo, sa oznaczone nizej (`stopka`, sekcja „Tytul i metryczka").
+// ⚠️⚠️ NIE PRZYWRACAĆ PRZY KOLEJNEJ PRZEBUDOWIE UKŁADU bez nowej, wyraźnej decyzji.
+// To, że kartka upodabnia się do prawdziwej faktury (tytuł „e-Faktura", nabywca, adnotacje,
+// rozbicie VAT), NIE JEST powodem, żeby to zdanie samemu przywrócić „dla bezpieczeństwa" —
+// decyzję podjęto, znając ten układ. Miejsca, w których zdanie kiedyś stało, są oznaczone
+// niżej (`stopka`, sekcja „Tytuł i metryczka").
 
 // Przypis do kwot, ktorych FA(3) NIE NIESIE i ktore wyprowadzil `dokumentZXml` (brutto pozycji
 // bez `P_11A`/`P_11Vat`, brutto w rozbiciu na stawki). Bez tego zdania ksiegowa nie ma jak
 // odroznic liczby przepisanej z dokumentu od liczby policzonej przez nas.
 //
-// ⚠️ SKROCONY 03.09.2026 NA PROSBE WLASCICIELA (byl: „* Kwota wyliczona (netto + VAT lub ze
-// stawki) — dokument źródłowy nie zawiera tego pola. Do księgowania służą kwoty z oryginalnego
-// pliku XML."). Drukuje sie WYLACZNIE wtedy, gdy na kartce stoi choc jedna gwiazdka (patrz
-// `jestWyliczone` przy uzyciu nizej) — bez gwiazdki na kartce ten przypis bylby zdaniem
-// o niczym.
+// ⚠️ PRZYPIS JEST CELOWO KRÓTKI. Drukuje się WYŁĄCZNIE wtedy, gdy na kartce stoi choć jedna
+// gwiazdka (patrz `jestWyliczone` przy użyciu niżej) — bez gwiazdki na kartce ten przypis byłby
+// zdaniem o niczym.
 const PRZYPIS_BRUTTO = '* kwota wyliczona przez panel — brak pola w dokumencie';
 
 // ⚠️⚠️ KWOTA VAT-u Z METADANYCH KSeF JEST ZAWSZE W ZLOTYCH, a netto i brutto — w walucie
-// dokumentu (regula stoi przy `czyPLN` w domain/koszt-metadane.js). Blok „Razem" drukowal
-// wszystkie trzy z ta sama waluta, czyli na fakturze Allegro w EUR podawal ksiegowej VAT
-// w euro, ktorego nikt nigdy nie policzyl. Kartka z dwiema walutami w jednym bloku sum musi
-// powiedziec, dlaczego sa dwie — inaczej wyglada na blad wydruku.
+// dokumentu (reguła stoi przy `czyPLN` w domena/koszt-metadane.js). Blok „Razem" drukujący
+// wszystkie trzy z tą samą walutą podawałby księgowej na fakturze w EUR VAT w euro, którego
+// nikt nigdy nie policzył. Kartka z dwiema walutami w jednym bloku sum musi powiedzieć,
+// dlaczego są dwie — inaczej wygląda na błąd wydruku.
 //
-// ⚠️⚠️ NOTA MUSI BYC PRAWDZIWA CO DO SLOWA — poprawka po drugiej recenzji (03.09.2026).
-// Zdanie „VAT wykazany w zlotych; netto i brutto w walucie dokumentu" PRZECZYLO TABELI
-// STAWEK STOJACEJ WYZEJ NA TEJ SAMEJ KARTCE: w rozbiciu na stawki kolumna „VAT" idzie
-// w walucie dokumentu (`P_14_*`), a zlotowki stoja dopiero w wierszu „VAT przeliczony
-// na zlote" (`P_14_*W`). W zlotych jest WYLACZNIE wiersz „Razem VAT" z metadanych KSeF —
-// i tylko o nim ta nota ma prawo mowic.
+// ⚠️⚠️ NOTA MUSI BYĆ PRAWDZIWA CO DO SŁOWA. Krótsze zdanie „VAT wykazany w złotych; netto
+// i brutto w walucie dokumentu" PRZECZYŁOBY TABELI STAWEK STOJĄCEJ WYŻEJ NA TEJ SAMEJ KARTCE:
+// w rozbiciu na stawki kolumna „VAT" idzie w walucie dokumentu (`P_14_*`), a złotówki stoją
+// dopiero w wierszu „VAT przeliczony na złote" (`P_14_*W`). W złotych jest WYŁĄCZNIE wiersz
+// „Razem VAT" z metadanych KSeF — i tylko o nim ta nota ma prawo mówić.
 const NOTA_VAT_W_PLN = 'Razem VAT w złotych (art. 106e ust. 11 ustawy o VAT); pozostałe kwoty '
   + 'w walucie dokumentu — VAT w tabeli stawek podany w walucie, przeliczenie na PLN '
   + 'w wierszu „VAT przeliczony na złote".';
@@ -153,9 +150,9 @@ const LICZBA_KWOTY = /^-?\d+(\.\d+)?$/;
 
 /**
  * Kwota na dokument — Z PRZECINKIEM, bo tak zapisuje sie kwoty po polsku i tak pokazuje je
- * zakladka KOSZTY (views/koszty.ejs).
+ * zakladka KOSZTY (widoki/koszty.ejs).
  *
- * ⚠️ PRZEZ `grosze()`/`zl()`, NIGDY PRZEZ `Number(x).toFixed(2)` (niezmiennik 4.5). Kwoty
+ * ⚠️ PRZEZ `grosze()`/`zl()`, NIGDY PRZEZ `Number(x).toFixed(2)` (reguła: pieniądze w groszach). Kwoty
  * przychodza tu NAPISAMI — kolumny `netto/vat/brutto` sa TEXT-em, a pozycje z XML-a to tekst
  * z dokumentu — i przez liczbe zmiennoprzecinkowa nie maja prawa przejsc nawet po drodze
  * na wydruk.
@@ -177,16 +174,15 @@ function kwota(surowa, waluta = '') {
  * Kwota Z TYLOMA MIEJSCAMI PO PRZECINKU, ILE NIESIE DOKUMENT — do cen jednostkowych i innych
  * kwot PRZY POZYCJI.
  *
- * ⚠️⚠️ POPRAWKA PO DRUGIEJ RECENZJI (03.09.2026): `kwota()` wyzej przepuszcza kazda liczbe
- * przez GROSZE CALKOWITE, czyli po cichu ZAOKRAGLA. FA(3) dopuszcza w `P_9A`/`P_9B` cztery
- * miejsca po przecinku (tak wystawia sie uslugi liczone od sztuki przy tysiacach sztuk),
- * wiec cena „0.4550" stawala na kartce jako „0,46" — i mnozenie w wierszu przestawalo sie
- * zgadzac: 0,455 × 1000 = 455,00, ale 0,46 × 1000 = 460,00. Ksiegowa widziala trzy liczby
- * w jednym wierszu, z ktorych dwie przecza trzeciej, i nie miala jak zgadnac, ktora zostala
- * przepisana z oryginalu.
+ * ⚠️⚠️ `kwota()` wyżej przepuszcza każdą liczbę przez GROSZE CAŁKOWITE, czyli po cichu
+ * ZAOKRĄGLA. FA(3) dopuszcza w `P_9A`/`P_9B` cztery miejsca po przecinku (tak wystawia się
+ * usługi liczone od sztuki przy tysiącach sztuk), więc cena „0.4550" stanęłaby na kartce jako
+ * „0,46" — i mnożenie w wierszu przestałoby się zgadzać: 0,455 × 1000 = 455,00, ale
+ * 0,46 × 1000 = 460,00. Księgowa widziałaby trzy liczby w jednym wierszu, z których dwie
+ * przeczą trzeciej, i nie miałaby jak zgadnąć, która została przepisana z oryginału.
  *
  * ⚠️ TO JEST WYLACZNIE FORMATOWANIE NAPISU — zadnej arytmetyki, zadnego `Number` w wyniku
- * (niezmiennik 4.5). Ogon zer przycinamy tylko PONIZEJ dwoch miejsc („0,4550" → „0,455",
+ * (reguła: pieniądze w groszach). Ogon zer przycinamy tylko PONIZEJ dwoch miejsc („0,4550" → „0,455",
  * „19,9900" → „19,99"), a krotsza kwote dopelniamy do dwoch („5" → „5,00"), zeby kolumna
  * kwot na wydruku nie mieszala „5" z „5,00". Wartosc, ktora nie jest liczba, idzie DOSLOWNIE
  * — tak samo jak w `kwota()`, bo to jest wizualizacja cudzego dokumentu.
@@ -245,11 +241,11 @@ function blokSekcja(doc, x, y, szerokosc, tytul, linieTekstu, { pierwszaGruba = 
  * sie WPROST NA WARTOSCI OBOK (ta sama pulapka, co przy `komorka()`). `lamanaEtykieta`
  * pozwala jej sie zlamac w SWOJEJ kolumnie i podnosi wysokosc wiersza o zmierzona roznice.
  *
- * ⚠️ KOLUMNA ETYKIETY MA 92 PKT I MA TAKA ZOSTAC — poszerzenie jej dla jednego wiersza
- * bylo pierwsza proba i ZEPSULO wydruk z archiwum: `DataWytworzeniaFa` ELMAS-a to
- * „2026-08-26 14:45:58.8768733+02:00", czyli 162,5 pkt ZMIERZONE, a na wartosc zostaje
- * dokladnie 163,3 pkt. Kazdy punkt zabrany tej kolumnie lamie znacznik czasu w polowie
- * ulamka sekundy. Etykieta lamie sie taniej niz wartosc.
+ * ⚠️ KOLUMNA ETYKIETY MA 92 PKT I MA TAKĄ ZOSTAĆ — poszerzenie jej dla jednego wiersza
+ * psuje wydruk: `DataWytworzeniaFa` z ułamkiem sekundy, np.
+ * „2026-08-26 14:45:58.8768733+02:00", to 162,5 pkt ZMIERZONE, a na wartość zostaje
+ * dokładnie 163,3 pkt. Każdy punkt zabrany tej kolumnie łamie znacznik czasu w połowie
+ * ułamka sekundy. Etykieta łamie się taniej niż wartość.
  */
 function para(doc, x, y, szerCalosci, etykieta, wartosc, { mocna = false, lamanaEtykieta = false } = {}) {
   const SZER_ETYKIETY = 92;
@@ -325,22 +321,21 @@ function wierszPozycji(doc, y, pozycja, lp) {
   }
 
   zwykly(doc, 8);
-  // ⚠️ W KOLUMNIE „Lp." STOI POZYCJA W TABELI, A NIE `NrWierszaFa` Z DOKUMENTU — i to jest
-  // POPRAWKA PO OBEJRZENIU WYDRUKU (03.09.2026), nie uproszczenie. OVH numeruje wiersze
-  // wlasnymi identyfikatorami (`36228820`), a `komorka()` rysuje BEZ `width`: osmiocyfrowy
-  // numer wychodzil z 16-punktowej kolumny wprost NA NAZWE TOWARU i nakladal sie na nia
-  // literami. Numeracja wystawcy nie ginie — idzie w uwadze pod tabela (patrz `uwagiPozycji`),
-  // czyli w miejscu, gdzie ma tyle miejsca, ile potrzebuje.
+  // ⚠️ W KOLUMNIE „Lp." STOI POZYCJA W TABELI, A NIE `NrWierszaFa` Z DOKUMENTU — i to nie jest
+  // uproszczenie. Niektórzy wystawcy numerują wiersze własnymi identyfikatorami (np. `12345678`),
+  // a `komorka()` rysuje BEZ `width`: ośmiocyfrowy numer wychodzi z 16-punktowej kolumny wprost
+  // NA NAZWĘ TOWARU i nakłada się na nią literami. Numeracja wystawcy nie ginie — idzie w uwadze
+  // pod tabelą (patrz `uwagiPozycji`), czyli w miejscu, gdzie ma tyle miejsca, ile potrzebuje.
   komorka(doc, `${lp}.`, KOLUMNY.lp, y);
   doc.text(nazwa, KOLUMNY.nazwa.x, y, { width: KOLUMNY.nazwa.w, align: 'left' });
   komorka(doc, napis(pozycja?.ilosc), KOLUMNY.ilosc, y);
   komorka(doc, napis(pozycja?.jednostka), KOLUMNY.jm, y);
-  // ⚠️ W KOLUMNIE „Cena netto" STOI WYLACZNIE CENA NETTO — i to jest POPRAWKA PO RECENZJI
-  // (03.09.2026). Wczesniej brak `P_9A` wpisywal tu cene BRUTTO (`P_9B`, tak wystawia Comarch
-  // ERP Optima) z dopiskiem „br.": kwota brutto stala pod naglowkiem mowiacym „netto", a caly
-  // dopisek mial dziewiec punktow szerokosci. Cena brutto nie ginie — idzie w uwage pod tabela
-  // (patrz `uwagiPozycji`), gdzie ma miejsce na pelne slowo „brutto". Dopisanie go TUTAJ nie
-  // wchodzi w gre: „19,99 (brutto)" ma 56 pkt ZMIERZONE, a kolumna 50 — wyjechaloby na J.m.
+  // ⚠️ W KOLUMNIE „Cena netto" STOI WYŁĄCZNIE CENA NETTO. Gdy brak `P_9A` (dokument niesie
+  // tylko cenę BRUTTO w `P_9B` — tak wystawia część programów księgowych), wpisanie jej tutaj
+  // z dopiskiem „br." stawiałoby kwotę brutto pod nagłówkiem mówiącym „netto", z dopiskiem
+  // na dziewięć punktów szerokości. Cena brutto nie ginie — idzie w uwagę pod tabelą
+  // (patrz `uwagiPozycji`), gdzie ma miejsce na pełne słowo „brutto". Dopisanie go TUTAJ nie
+  // wchodzi w grę: „19,99 (brutto)" ma 56 pkt ZMIERZONE, a kolumna 50 — wyjechałoby na J.m.
   //
   // ⚠️ KWOTY PRZY POZYCJI IDA PRZEZ `kwotaDokladna()`, NIE PRZEZ `kwota()` — bo tylko one
   // moga miec w FA(3) wiecej niz dwa miejsca po przecinku (patrz komentarz przy tej funkcji).
@@ -365,9 +360,9 @@ function wierszPozycji(doc, y, pozycja, lp) {
  * Stopka BIEZACEJ strony. Dolny margines zerujemy na czas pisania, bo pdfkit na tekst ponizej
  * marginesu odpowiada… dolozeniem kolejnej strony (ten sam trik, co w proforma-pdf.js).
  *
- * ⚠️ TU STALO ZDANIE ODROZNIAJACE WIZUALIZACJE OD DOKUMENTU, NA KAZDEJ STRONIE — decyzja
- * wlasciciela z 03.09.2026 je zdjela (uzasadnienie przy dawnej definicji `NAPIS_ODROZNIAJACY`
- * powyzej w pliku). NIE PRZYWRACAC bez nowej decyzji wlasciciela.
+ * ⚠️ TU STAŁO ZDANIE ODRÓŻNIAJĄCE WIZUALIZACJĘ OD DOKUMENTU, NA KAŻDEJ STRONIE — zostało
+ * świadomie zdjęte (uzasadnienie w komentarzu „ZDANIE ODRÓŻNIAJĄCE…” na początku pliku).
+ * NIE PRZYWRACAĆ bez nowej decyzji.
  */
 function stopka(doc, nrStrony, ileStron) {
   const dolny = doc.page.margins.bottom;
@@ -496,7 +491,7 @@ const dzien = (co) => napis(co).slice(0, 10);
  *                `sprzedawca_nazwa`, `sprzedawca_nip`, `data_wystawienia`, `netto`, `vat`,
  *                `brutto`, `waluta`, `rodzaj`, `ksef_number`) — ten sam ksztalt, ktory oddaje
  *                `kosztyMiesiaca` (db/koszty.js) i ktory bierze `zarchiwizuj`. Kwoty NAPISAMI.
- *   `dokument` — wynik `dokumentZXml` (domain/koszt-xml.js): komplet elementow art. 106e
+ *   `dokument` — wynik `dokumentZXml` (domena/koszt-xml.js): komplet elementow art. 106e
  *                z oryginalnego XML-a, gotowy do wydruku.
  *   `pozycje`  — pozycje do tabeli; domyslnie te z `dokument`. Osobny parametr zostaje dla
  *                wolajacych, ktorzy maja same pozycje (`pozycjeZXml`) — i dla testow ukladu.
@@ -527,11 +522,10 @@ export async function zbudujKosztPdf({ wiersz = {}, dokument = null, pozycje } =
   const waluta = napis(d.waluta) || napis(wiersz.waluta);
 
   // ── 1. Tytul i metryczka ──────────────────────────────────────────────────
-  // ⚠️ TYTUL BRZMI JAK NA FAKTURZE („e-Faktura"), bo o parytet z wydrukiem inFaktu prosil
-  // wlasciciel. Do 03.09.2026 ZARAZ POD NIM stalo zdanie odrozniajace wizualizacje od
-  // dokumentu — decyzja wlasciciela z tego samego dnia je zdjela (uzasadnienie przy dawnej
-  // definicji `NAPIS_ODROZNIAJACY` na poczatku pliku). NIE PRZYWRACAC bez nowej decyzji
-  // wlasciciela.
+  // ⚠️ TYTUŁ BRZMI JAK NA FAKTURZE („e-Faktura"), dla zgodności z wydrukiem faktury z inFaktu.
+  // ZARAZ POD NIM stało kiedyś zdanie odróżniające wizualizację od dokumentu — zostało
+  // świadomie zdjęte (uzasadnienie w komentarzu „ZDANIE ODRÓŻNIAJĄCE…” na początku pliku).
+  // NIE PRZYWRACAĆ bez nowej decyzji.
   let y = MARGINES;
   gruby(doc, 17).text(d.czyKorekta ? 'e-Faktura korygująca' : 'e-Faktura', L, y, {
     width: SZER_LEWEJ, lineBreak: false,
@@ -550,11 +544,11 @@ export async function zbudujKosztPdf({ wiersz = {}, dokument = null, pozycje } =
   // jaka na dokumencie w ogole jest. „T" ze znacznika ISO zamieniamy na spacje — to jedyna
   // typografia w tym module, a nie odczyt schemy (patrz naglowek pliku).
   //
-  // ⚠️⚠️ ETYKIETA MOWI „SYSTEM WYSTAWCY", A NIE „W KSeF" — poprawka po drugiej recenzji
-  // (03.09.2026). `DataWytworzeniaFa` jest znacznikiem czasu PROGRAMU WYSTAWCY, ustawianym
-  // zanim dokument w ogole pojedzie do Ministerstwa; moment przyjecia przez KSeF stoi
-  // w numerze KSeF, w wierszu wyzej. Stara etykieta przypisywala KSeF-owi godzine, ktorej
-  // KSeF nie nadal — czyli mowila o cudzym dokumencie cos, czego dokument nie mowi.
+  // ⚠️⚠️ ETYKIETA MÓWI „SYSTEM WYSTAWCY", A NIE „W KSeF". `DataWytworzeniaFa` jest znacznikiem
+  // czasu PROGRAMU WYSTAWCY, ustawianym, zanim dokument w ogóle pojedzie do Ministerstwa; moment
+  // przyjęcia przez KSeF stoi w numerze KSeF, w wierszu wyżej. Etykieta „w KSeF" przypisywałaby
+  // KSeF-owi godzinę, której KSeF nie nadał — czyli mówiłaby o cudzym dokumencie coś, czego
+  // dokument nie mówi.
   //
   // ⚠️ ETYKIETA LAMIE SIE NA DWIE LINIE („Data wytworzenia" / „(system wystawcy)") — ma
   // 151,5 pkt przy kolumnie 92 pkt. Lamie sie ETYKIETA, a nie wartosc: patrz `para()`.
@@ -573,10 +567,9 @@ export async function zbudujKosztPdf({ wiersz = {}, dokument = null, pozycje } =
   y += 12;
 
   // ── 2. Sprzedawca i nabywca ───────────────────────────────────────────────
-  // ⚠️ NABYWCA JEST OBOWIAZKOWYM ELEMENTEM FAKTURY (art. 106e ust. 1 pkt 3) i do 03.09.2026
-  // NIE BYLO GO NA TEJ KARTCE. Powod byl dobry — wiersz tabeli `koszty` danych nabywcy nie
-  // niesie, a dopisanie ich „z konfiguracji" byloby wstawieniem do cudzego dokumentu tresci,
-  // ktorej nikt nie sprawdzil. Rozwiazanie NIE ZNOSI tej zasady: nabywca idzie WYLACZNIE
+  // ⚠️ NABYWCA JEST OBOWIĄZKOWYM ELEMENTEM FAKTURY (art. 106e ust. 1 pkt 3). Wiersz tabeli
+  // `koszty` danych nabywcy nie niesie, a dopisanie ich „z konfiguracji" byłoby wstawieniem
+  // do cudzego dokumentu treści, której nikt nie sprawdził. Dlatego nabywca idzie WYŁĄCZNIE
   // z `Podmiot2` oryginalnego XML-a, a gdy dokumentu nie ma — pole zostaje puste.
   const linieSprzedawcy = [
     napis(d.sprzedawca?.nazwa) || napis(wiersz.sprzedawca_nazwa),
@@ -598,12 +591,12 @@ export async function zbudujKosztPdf({ wiersz = {}, dokument = null, pozycje } =
   y = Math.max(dolSprzedawcy, dolNabywcy) + 12;
 
   // ── 3. Platnosc ───────────────────────────────────────────────────────────
-  // ⚠️⚠️ KARTKA MOWI O ZAPLACIE TYLKO TYLE, ILE MOWI XML — poprawka po recenzji (03.09.2026).
-  // Przedtem kazdy dokument bez `Zaplacono` dostawal napis „Nie zapłacono", bo `zaplacono`
-  // bylo dwustanowe. To bylo WSTAWIENIE W CUDZY DOKUMENT faktu, ktorego wystawca tam nie
-  // napisal — a ksiegowa czyta te kartke zamiast XML-a. Dzis sa trzy stany (patrz
-  // `platnoscZFa` w domain/koszt-xml.js), a blok bez ANI JEDNEGO pola w ogole nie powstaje:
-  // naglowek „Płatność" nad pustka tez jest zdaniem, tylko trudniejszym do zauwazenia.
+  // ⚠️⚠️ KARTKA MÓWI O ZAPŁACIE TYLKO TYLE, ILE MÓWI XML. Napis „Nie zapłacono" na każdym
+  // dokumencie bez `Zaplacono` (gdyby `zaplacono` było dwustanowe) byłby WSTAWIENIEM W CUDZY
+  // DOKUMENT faktu, którego wystawca tam nie napisał — a księgowa czyta tę kartkę zamiast
+  // XML-a. Dlatego są trzy stany (patrz `platnoscZFa` w domena/koszt-xml.js), a blok bez ANI
+  // JEDNEGO pola w ogóle nie powstaje: nagłówek „Płatność" nad pustką też jest zdaniem, tylko
+  // trudniejszym do zauważenia.
   const p = d.platnosc ?? {};
   const czesciowe = p.zaplatyCzesciowe ?? [];
   // Dokument MOWI o zaplacie czesciowej, gdy niesie wplaty albo sam znacznik `= 1`.
@@ -618,12 +611,12 @@ export async function zbudujKosztPdf({ wiersz = {}, dokument = null, pozycje } =
     } else if (p.zaplacono === false) {
       status = 'Nie zapłacono';
     } else if (maCzesciowa) {
-      // ⚠️⚠️ STATUS MUSI ZGADZAC SIE Z KWOTAMI STOJACYMI POD NIM — poprawka po drugiej
-      // recenzji (03.09.2026). FA(3) przy zaplacie czesciowej zwykle NIE NIESIE `Zaplacono`
-      // (bo faktura nie jest zaplacona w calosci), tylko `ZnacznikZaplatyCzesciowej`
-      // i bloki `ZaplataCzesciowa`. Kartka pisala wtedy „Status: dokument nie zawiera
-      // informacji o zaplacie" DOKLADNIE NAD lista wplat, ktore wystawca na dokumencie
-      // potwierdzil — dwa sasiednie zdania, z ktorych jedno przeczy drugiemu.
+      // ⚠️⚠️ STATUS MUSI ZGADZAĆ SIĘ Z KWOTAMI STOJĄCYMI POD NIM. FA(3) przy zapłacie
+      // częściowej zwykle NIE NIESIE `Zaplacono` (bo faktura nie jest zapłacona w całości),
+      // tylko `ZnacznikZaplatyCzesciowej` i bloki `ZaplataCzesciowa`. Bez tej gałęzi kartka
+      // pisałaby „Status: dokument nie zawiera informacji o zapłacie" DOKŁADNIE NAD listą
+      // wpłat, które wystawca na dokumencie potwierdził — dwa sąsiednie zdania, z których
+      // jedno przeczy drugiemu.
       status = 'Zapłacono częściowo';
     } else {
       status = 'dokument nie zawiera informacji o zapłacie';
@@ -692,9 +685,9 @@ export async function zbudujKosztPdf({ wiersz = {}, dokument = null, pozycje } =
     yKP = para(doc, PRAWA_KOLUMNA, yKP, szerMetryczki, 'Przyczyna korekty', d.korekta.przyczyna);
     y = Math.max(yK, yKP);
 
-    // ⚠️ `TypKorekty` ROZSTRZYGA MIESIAC UJECIA korekty w ksiegach — i do 03.09.2026 nie bylo
-    // go na kartce w ogole. Opis idzie PELNA SZEROKOSCIA, bo zdanie ma 290 punktow (zmierzone)
-    // i w kolumnie na wartosc (153 pkt) lamaloby sie w polowie na dwie linie.
+    // ⚠️ `TypKorekty` ROZSTRZYGA MIESIĄC UJĘCIA korekty w księgach, więc musi stać na kartce.
+    // Opis idzie PEŁNĄ SZEROKOŚCIĄ, bo zdanie ma 290 punktów (zmierzone) i w kolumnie
+    // na wartość (153 pkt) łamałoby się w połowie na dwie linie.
     if (napis(d.korekta.typOpis) !== '') {
       const tekst = `Typ korekty: ${napis(d.korekta.typOpis)}`;
       zwykly(doc, 8);
@@ -730,11 +723,10 @@ export async function zbudujKosztPdf({ wiersz = {}, dokument = null, pozycje } =
   // widoczne — ale kazde z nich pojawia sie na garstce faktur, a siatka dziewieciu kolumn na
   // A4 jest juz pelna. Trzy dodatkowe kolumny zwezilyby nazwe towaru na KAZDEJ fakturze po to,
   // zeby na jednej na dwadziescia cos w nich stalo.
-  // ⚠️⚠️ REZERWA JEST ZMIERZONA, A NIE PRZYJETA — poprawka po recenzji (03.09.2026). Wczesniej
-  // kazda uwaga rezerwowala 22 punkty niezaleznie od tego, ile naprawde zajmie. Numeracja
-  // wystawcy przy 66 pozycjach (OVH) to OSIEM LINII: `miejsceNa` przepuszczalo ja przy dolnej
-  // krawedzi, a tekst rysowal sie WPROST NA STOPCE — litery uwagi nachodzily na zdanie
-  // odrozniajace wizualizacje od faktury. ODCZYT POWROTNY to widzi, sprawdzenie bufora nie.
+  // ⚠️⚠️ REZERWA JEST ZMIERZONA, A NIE PRZYJĘTA. Stała rezerwa (np. 22 punkty na uwagę) nie
+  // wystarcza: numeracja wystawcy przy kilkudziesięciu pozycjach to KILKA LINII, `miejsceNa`
+  // przepuszczałoby ją przy dolnej krawędzi, a tekst rysowałby się WPROST NA STOPCE — litery
+  // uwagi nachodziłyby na stopkę strony. ODCZYT POWROTNY to widzi, sprawdzenie bufora nie.
   for (const opis of uwagiPozycji(listaPozycji)) {
     zwykly(doc, 7.5, SZARY_TEKST);
     const wysUwagi = doc.heightOfString(opis, { width: R - L });
@@ -747,13 +739,13 @@ export async function zbudujKosztPdf({ wiersz = {}, dokument = null, pozycje } =
   // Trzymane RAZEM na jednej stronie: kwota oderwana od pozycji, z ktorych wyszla, to kwota
   // bez podstawy (ta sama zasada, co przy tabeli VAT w proformie).
   const stawki = d.stawki ?? [];
-  // ⚠️ WIERSZ `P_14_xW` („VAT przeliczony na złote") TEZ ZAJMUJE MIEJSCE — a rezerwa go nie
-  // liczyla. Na fakturze Allegro w EUR z trzema stawkami to trzydziesci punktow, o ktore blok
-  // sum wjezdzal w stopke. Tak samo nota o dwoch walutach pod sumami.
+  // ⚠️ WIERSZ `P_14_xW` („VAT przeliczony na złote") TEŻ ZAJMUJE MIEJSCE i rezerwa musi go
+  // liczyć. Na fakturze w EUR z trzema stawkami to trzydzieści punktów, o które blok sum
+  // wjechałby w stopkę. Tak samo nota o dwóch walutach pod sumami.
   const wierszeVatPln = stawki.filter((s) => napis(s?.vatPln) !== '').length;
   const obcaWaluta = waluta !== '' && waluta !== 'PLN';
-  // ⚠️ REZERWA NA NOTE O DWOCH WALUTACH TO DWIE LINIE, NIE JEDNA: po przeredagowaniu
-  // (03.09.2026) nota ma 190 znakow i przy 7 pkt lamie sie na dwie linie pelnej szerokosci.
+  // ⚠️ REZERWA NA NOTĘ O DWÓCH WALUTACH TO DWIE LINIE, NIE JEDNA: nota ma blisko 190 znaków
+  // i przy 7 pkt łamie się na dwie linie pełnej szerokości.
   const potrzeba = 18 + stawki.length * 13 + wierszeVatPln * 10
     + 4 * 16 + 24 + (obcaWaluta ? 32 : 0);
   y = miejsceNa(doc, stan, wiersz, y + 10, potrzeba);
@@ -772,7 +764,7 @@ export async function zbudujKosztPdf({ wiersz = {}, dokument = null, pozycje } =
     stawki.forEach((s) => {
       zwykly(doc, 8);
       komorka(doc, napis(s.etykieta), STAWKI_KOL.etykieta, y);
-      // ⚠️ KOD POLA FA IDZIE NA WYDRUK — patrz uzasadnienie w domain/koszt-xml.js. Czesc pol
+      // ⚠️ KOD POLA FA IDZIE NA WYDRUK — patrz uzasadnienie w domena/koszt-xml.js. Czesc pol
       // jest wieloznaczna z nazwy i to jest jedyny sposob, zeby ksiegowa sprawdzila kartke
       // wobec oryginalnego XML-a, zamiast wierzyc naszej etykiecie.
       zwykly(doc, 7, SZARY_TEKST);
@@ -798,7 +790,7 @@ export async function zbudujKosztPdf({ wiersz = {}, dokument = null, pozycje } =
   // nie maja jak sie rozejsc. Suma policzona tutaj bylaby drugim zrodlem tej samej prawdy.
   //
   // ⚠️⚠️ KWOTA VAT-u IDZIE Z WALUTA „PLN" NA KAZDEJ FAKTURZE W OBCEJ WALUCIE — patrz
-  // `NOTA_VAT_W_PLN` wyzej i regula przy `czyPLN` (domain/koszt-metadane.js). To nie jest
+  // `NOTA_VAT_W_PLN` wyzej i regula przy `czyPLN` (domena/koszt-metadane.js). To nie jest
   // przeliczenie: KSeF oddaje `vatAmount` w zlotych i tak go tu przepisujemy. Doklejenie
   // do tej kwoty „EUR" bylo zdaniem o pieniadzach, ktorego nikt nie policzyl.
   const sumy = [

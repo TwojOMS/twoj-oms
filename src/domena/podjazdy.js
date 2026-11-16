@@ -20,7 +20,7 @@ export function ocenKandydata({ przesylka: p, metaWza, aktywneZlecenie = null })
 
 const kluczTerminu = (t) => `${t?.date ?? ''}|${t?.minTime ?? ''}|${t?.maxTime ?? ''}`;
 
-// Od 06.10.2026 Allegro odrzuca telefon podjazdu bez prefiksu (HTTP 400, address.phone).
+// Allegro odrzuca telefon podjazdu bez prefiksu (HTTP 400, address.phone).
 // Polskie 9 cyfr i 0048 + 9 cyfr → +48; numer z `+` traci tylko białe znaki; reszta bez zmian.
 // Ta sama funkcja normalizuje adres przed wysłaniem i OBIE strony porównania odpowiedzi.
 export function normalizujTelefon(telefon, countryCode) {
@@ -59,8 +59,8 @@ function ocenOdpowiedz(odpowiedz, shipmentIds, adres) {
   if (odpowiedz.some((g) => !Array.isArray(g?.proposals))) {
     return { przyczyna: 'niezgodny-zestaw', propozycje: [] };
   }
-  // Element tablicy API nie jest identyfikatorem osobnego odbioru. Pomiar DPD
-  // 30.09.2026: trzy osobne elementy, ten sam adres i termin dla trzech paczek.
+  // Element tablicy API nie jest identyfikatorem osobnego odbioru. Pomiar DPD:
+  // trzy osobne elementy, ten sam adres i termin dla trzech paczek.
   // Łączymy wyłącznie dokładny zestaw, bez pominięć, duplikatów i obcych paczek.
   const propozycje = odpowiedz.flatMap((g) => g.proposals);
   const ids = propozycje.map((p) => p?.shipmentId);
@@ -80,7 +80,7 @@ function ocenOdpowiedz(odpowiedz, shipmentIds, adres) {
   return { przyczyna: null, propozycje };
 }
 
-// PRZ-160 P4.02: przewoźnik może nie podawać godzin (pomiar One — niezmierzony; ogólnie dla każdej usługi).
+// Przewoźnik może nie podawać godzin (pomiar One — niezmierzony; ogólnie dla każdej usługi).
 // Gdy poprawna odpowiedź ma puste `pickupTimes` dla WSZYSTKICH paczek zestawu, jedyną ofertą jest sama data
 // gotowości — zlecenie idzie z `pickupTime: { date }`, godzinę ustala przewoźnik. Puste tylko dla części
 // paczek to nadal brak wspólnego terminu (diagnoza „paczka-bez-terminu”).

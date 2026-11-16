@@ -4,9 +4,9 @@ import { idDokumentu } from './dokument-programu.js';
 
 // Okres rozliczeniowy: miesiac, ktorego zamowienia skladaja sie na JEDNA fakture.
 //
-// ⚠️ PRZYPISANIE IDZIE PO DACIE ZLOZENIA, nie po dacie wysylki (decyzja wlasciciela
-// 2026-08-01). Zamowienie z 31 lipca wyslane 2 sierpnia nalezy do LIPCA — klient dzieli
-// swoje zamowienia tak, jak je sklada, i faktura ma sie z tym zgadzac.
+// ⚠️ PRZYPISANIE IDZIE PO DACIE ZŁOŻENIA, nie po dacie wysyłki. Zamówienie z 31 lipca
+// wysłane 2 sierpnia należy do LIPCA — klient dzieli swoje zamówienia tak, jak je składa,
+// i faktura ma się z tym zgadzać.
 export const STAN = {
   OTWARTY: 'otwarty',
   ZAMKNIETY: 'zamkniety',
@@ -47,7 +47,7 @@ const WZORZEC_PREFIKSU_DATY = /^(\d{4})-(\d{2})-(\d{2})/;
  * (przy zbyt luznym dopasowaniu) przepuszcza bledne. Sama data kalendarzowa (rok-miesiac-dzien)
  * jest natomiast faktem niezaleznym od strefy — mozna ja sprawdzic bez dotykania czasu.
  *
- * ⚠️ ROK I MIESIAC LICZYMY W CZASIE WARSZAWSKIM, NIE W UTC (ustalenie recenzji 2026-08-01).
+ * ⚠️ ROK I MIESIĄC LICZYMY W CZASIE WARSZAWSKIM, NIE W UTC.
  * Miesiac rozliczeniowy to pojecie HANDLOWE: „sierpniowa faktura" znaczy tyle, co miesiac,
  * ktory widzi czlowiek w Polsce patrzacy na zegar — a nie miesiac, ktory akurat ma serwer
  * chodzacy w UTC. Kontener panelu stoi z TZ=UTC, a Polska jest o godzine (latem o dwie)
@@ -59,21 +59,21 @@ const WZORZEC_PREFIKSU_DATY = /^(\d{4})-(\d{2})-(\d{2})/;
  * odmowe przy zamowieniu, ktore dla niego jest sierpniowe, i nie mialby jak go zapisac.
  *
  * Przeliczenie idzie `dzienWarszawa` z format-daty.js — TA SAMA funkcja, ktora liczy daty
- * drukowane w tabeli i uzywana przez filtry (domain/filtry-listy.js). Drugie wlasne
+ * drukowane w tabeli i uzywana przez filtry (domena/filtry-listy.js). Drugie wlasne
  * `Intl.DateTimeFormat` tutaj znaczyloby dwie implementacje jednej reguly, ktore predzej
  * czy pozniej rozjada sie na wartosciach BEZ oznaczenia strefy (daty ze sklepu sa juz
  * w czasie Warszawy i nie wolno ich przeliczac drugi raz — to rozstrzyga format-daty.js).
  *
- * ⚠️ MA DRUGIEGO KONSUMENTA, spoza okresow rozliczeniowych. `web/routes/api-sprzedaz.js`
- * (endpoint zrodlowy dla tygodniowego raportu sprzedazy) uzywa tej funkcji WYLACZNIE jako
- * WALIDATORA daty kalendarzowej — wola ja w try/catch i patrzy tylko na to, czy rzucila,
- * zeby nie pisac trzeciej kopii reguly „V8 cicho przewija 2026-02-30 na 2 marca".
- * Skutek dla przyszlych zmian: to, CZY ta funkcja rzuca i dla jakich napisow, jest teraz
- * kontraktem publicznym, a nie szczegolem okresu rozliczeniowego. Rozluznienie walidacji
- * (np. przepuszczenie bledacego miesiaca) po cichu przesunelo by tydzien w raporcie
- * o dzien, a nie tylko wplynelo na przypisanie faktury. Zmieniajac reguly rzucania,
- * sprawdz tests/oms/api-sprzedaz.test.js. Zwracana wartosc (rok, miesiac) tamten modul
- * ignoruje, wiec jej ksztalt mozna zmieniac swobodnie.
+ * ⚠️ MA KONSUMENTÓW spoza okresów rozliczeniowych. Kilka tras raportów i kampanii (szukaj
+ * `kluczOkresu`) używa tej funkcji WYŁĄCZNIE jako WALIDATORA daty
+ * kalendarzowej — wołają ją w try/catch i patrzą tylko na to, czy rzuciła, żeby nie pisać
+ * kolejnej kopii reguły „V8 cicho przewija 2026-02-30 na 2 marca".
+ * Skutek dla przyszłych zmian: to, CZY ta funkcja rzuca i dla jakich napisów, jest
+ * kontraktem publicznym, a nie szczegółem okresu rozliczeniowego. Rozluźnienie walidacji
+ * (np. przepuszczenie błędnego miesiąca) po cichu przesunęłoby tydzień w raporcie
+ * o dzień, a nie tylko wpłynęło na przypisanie faktury. Zmieniając reguły rzucania,
+ * sprawdź tests/moduly/api-panelu/api-sprzedaz.test.js. Zwracanej wartości (rok, miesiąc)
+ * tamte moduły nie czytają, więc jej kształt można zmieniać swobodnie.
  */
 export function kluczOkresu(dataIso) {
   const d = new Date(dataIso ?? '');
@@ -114,7 +114,7 @@ export function okresPrzyjmujeZamowienia(stan) {
 }
 
 /**
- * Stan faktury OKRESU. Cienka oslona nad `stanFaktury` z domain/faktura-stan.js.
+ * Stan faktury OKRESU. Cienka oslona nad `stanFaktury` z domena/faktura-stan.js.
  *
  * ⚠️ POWOD ISTNIENIA. `stanFaktury` czyta pusty `ksef_status` jako „wystawiona", bo po
  * sukcesie inFakt oddaje tam puste `ksef_data`. Dla wiersza w tabeli `faktury` to jest
@@ -129,7 +129,7 @@ export function okresPrzyjmujeZamowienia(stan) {
  * o samym uuid-zie czytalby wiszaca rezerwacje jako „brak" i pozwolil wystawic drugi
  * dokument. Odwrotnie — sam `ksef_status` jest po sukcesie pusty, wiec i on sam nie wystarcza.
  *
- * ⚠️ STAN OKRESU ROZSTRZYGA PIERWSZY, PRZED KOLUMNAMI FAKTURY (ustalenie recenzji 2026-08-01).
+ * ⚠️ STAN OKRESU ROZSTRZYGA PIERWSZY, PRZED KOLUMNAMI FAKTURY.
  * Warunek o samych kolumnach kasowal blokade podwojnego wystawienia, gdy inFakt oddal
  * odpowiedz BEZ uuid-a i BEZ numeru: `zakonczFaktureOkresu` zapisywalo wtedy same NULL-e,
  * wiec okres byl `stan = 'zafakturowany'`, ale z pusta kolumna `ksef_status` i pustym
@@ -137,7 +137,7 @@ export function okresPrzyjmujeZamowienia(stan) {
  * oddajacej `{uuid:null, numer:null, ksefStatus:null}`: po pierwszym wystawieniu
  * `{stan:'zafakturowany', uuid:null, numer:null}` i DRUGIE wystawienie przechodzilo,
  * czyli `infakt.wystaw` szedl dwa razy. A taka odpowiedz jest realna: `zapytaj`
- * (infakt/client.js) oddaje `null` dla kazdego 2xx, ktorego ciala nie da sie sparsowac
+ * (oms/infakt/client.js) oddaje `null` dla kazdego 2xx, ktorego ciala nie da sie sparsowac
  * jako JSON — puste albo HTML-owe cialo z proxy — a dokument w inFakcie MOGL wtedy powstac.
  * `stan` jest zapisywany tym samym `UPDATE`, wiec jest rownie wiarygodny co kolumny faktury,
  * a w tym jednym przypadku jest JEDYNYM sladem, ze cokolwiek sie wydarzylo.

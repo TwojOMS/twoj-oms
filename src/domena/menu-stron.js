@@ -1,19 +1,18 @@
-// BOCZNE MENU STRON PANELU (17.08.2026).
+// BOCZNE MENU STRON PANELU.
 //
-// Do tego dnia wejscia na te ekrany istnialy WYLACZNIE jako ikony w prawym gornym rogu —
-// bez podpisow i bez zaznaczenia, gdzie sie jest. Dzis ta sama nazwana nawigacja zasila
-// wariant desktopowy i mobilny wspolnej ramy.
+// Wejscia na te ekrany to nazwana nawigacja z podpisami i zaznaczeniem, gdzie sie jest —
+// a nie same ikony w rogu. Ta sama nawigacja zasila wariant desktopowy i mobilny wspolnej ramy.
 //
-// ⚠️ LISTA JUZ NIE MIESZKA TUTAJ — od 2026-09-12 stoi w domain/ekrany.js, bo ten sam zestaw
-// ekranow rozstrzyga TAKZE o uprawnieniach (kto co widzi w strazniku). Do tego dnia stala
-// TUTAJ osobno od recznie rysowanego paska ikon w layout-oms.ejs i JUZ SIE ROZJECHALY: menu
-// mialo „Stali klienci" bez „Wiadomosci", pasek odwrotnie. Dopoki to byla nawigacja, byla to
+// ⚠️ LISTA NIE MIESZKA TUTAJ — stoi w domena/ekrany.js, bo ten sam zestaw ekranow rozstrzyga
+// TAKZE o uprawnieniach (kto co widzi w strazniku). Lista trzymana osobno od recznie
+// rysowanego paska ikon w layout-oms.ejs rozjechala sie: menu mialo „Stali klienci"
+// bez „Wiadomosci", pasek odwrotnie. Dopoki to byla nawigacja, byla to
 // kosmetyka — przy uprawnieniach ekran pominiety na liscie jest ekranem BEZ PTASZKA. Ten
 // plik zostaje przy jednej robocie: mowieniu, GDZIE JESTES (`wSekcji`, `menuStron`).
 //
-// ⚠️ BEZ LICZNIKOW W TYM PLIKU (decyzja właściciela). Menu NAZYWA strony, nie mierzy ich. Liczby przy
+// ⚠️ BEZ LICZNIKOW W TYM PLIKU. Menu NAZYWA strony, nie mierzy ich. Liczby przy
 // statusach zamowien dokladaja: lista i karta (`panelStatusow`) oraz — na pozostalych zakladkach —
-// pipeline (`licznikiStatusow`, PRZ-085).
+// pipeline (`licznikiStatusow`).
 
 import { EKRANY, ekranDlaAdresu, maDostepDoEkranu } from './ekrany.js';
 import { ETYKIETY } from './status.js';
@@ -69,12 +68,12 @@ export function nawigacjaDla({ sciezka = '/', konto = null, menu, odlozoneEkrany
     .filter(p => p.klucz === klucz && (klucz === 'faktury' || p.grupa === 'faktury'))
     .map(p => ({ ...p, etykieta: klucz === 'faktury' ? 'Wystawione' : p.etykieta, biezaca: biezaca(p) })));
   const maFaktury = pozycje.some(p => p.klucz === 'faktury');
-  // PRZ-160.P3b.01: podmenu Magazynu — Produkty, Kategorie, Marki. Strona słownika jest „page” tylko pod własnym
+  // Podmenu Magazynu — Produkty, Kategorie, Marki. Strona słownika jest „page” tylko pod własnym
   // adresem; Produkty zostają bieżące na liście i kartach, ale nie na stronach słowników.
   const adres = sciezka.split('?')[0];
   const podstronyMagazynu = p => {
     const slowniki = [{ href: '/magazyn/kategorie', etykieta: 'Kategorie' }, { href: '/magazyn/marki', etykieta: 'Marki' }]
-      // PRZ-160.E3.11: podstrona słownika (np. …/kategorie/<nazwa>/allegro) — słownik bieżący jako „true”.
+      // Podstrona słownika (np. …/kategorie/<nazwa>/allegro) — słownik bieżący jako „true”.
       .map(s => ({ ...s, biezaca: adres === s.href ? 'page' : adres.startsWith(`${s.href}/`) ? 'true' : null }));
     return [{ href: '/magazyn', etykieta: 'Produkty', biezaca: slowniki.some(s => s.biezaca) ? null : biezaca(p) }, ...slowniki];
   };
@@ -99,10 +98,9 @@ export function nawigacjaDla({ sciezka = '/', konto = null, menu, odlozoneEkrany
       })),
   })).filter((grupa) => grupa.pozycje.length);
 
-  // PRZ-102.03 (wariant C, właściciel 20.10): przy zamówieniach menu boczne niesie tylko pracę przy zamówieniach
-  // i klientach; analizy (dział `analizy-cele`) idą do górnego paska jako `analizy`. Pozycje filtruje to samo
-  // `pozycje` co wyżej (prawa i `odlozoneEkrany`), więc pusta grupa i pusty przycisk po prostu znikają.
-  // PRZ-167 (właściciel 15.11): analizy wracają z górnego paska do menu bocznego jako JEDNA pozycja „Analityka” z podmenu.
+  // Menu boczne niesie pracę przy zamówieniach i klientach oraz analizy (dział `analizy-cele`) jako JEDNĄ
+  // pozycję „Analityka” z podmenu. Pozycje filtruje to samo `pozycje` co wyżej (prawa i `odlozoneEkrany`),
+  // więc pusta grupa i pusty przycisk po prostu znikają.
   // Bieżąca podstrona po ADRESIE, nie po kluczu prawa: Podsumowanie (`/analityka`) i Raporty dzielą prawo `raporty`.
   const podAdresem = p => adres === p.href || adres.startsWith(`${p.href}/`);
   const analizy = pozycje.filter(p => p.dzial === 'analizy-cele').map(p => ({ ...p, aktywna: podAdresem(p) }));
@@ -127,8 +125,8 @@ export function nawigacjaDla({ sciezka = '/', konto = null, menu, odlozoneEkrany
           ...(p.klucz === 'magazyn' ? { podstrony: podstronyMagazynu(p) } : {}),
         })) }] : [];
     }).concat(analityka ? [{ klucz: 'wyniki', etykieta: 'Wyniki', pozycje: [analityka] }] : []),
-    // Lista podstron analiz zostaje w modelu (ekran Analityka i testy z niej korzystają); układ nie rysuje jej już
-    // ani w górnym pasku, ani jako zakładek nad treścią (PRZ-167).
+    // Lista podstron analiz zostaje w modelu (ekran Analityka i testy z niej korzystają); układ nie rysuje jej
+    // ani w górnym pasku, ani jako zakładek nad treścią.
     analizy: analizy.length ? { etykieta: 'Analityka', aktywna: analizy.some(p => p.aktywna), pozycje: analizy } : null,
     dzialy,
     // Sam adres nie włącza układu Ustawień: odmowy i 404 nie używają ich nawigacji.

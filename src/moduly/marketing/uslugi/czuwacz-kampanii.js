@@ -1,7 +1,7 @@
-// PIATY ZEGAR — DANE KAMPANII ZE ZRODEL ZEWNETRZNYCH (Etapy 1-2, 2026-08-25).
+// ZEGAR DANYCH KAMPANII ZE ZRODEL ZEWNETRZNYCH.
 //
-// Raz na godzine dociaga do lustra w bazie: wydatki reklamowe z Meta (Etap 1) i ruch
-// sklepu z GA4 (Etap 2), dzien po dniu, dla kampanii, ktore TRWAJA albo skonczyly sie
+// Raz na godzine dociaga do lustra w bazie: wydatki reklamowe z Meta i ruch
+// sklepu z GA4, dzien po dniu, dla kampanii, ktore TRWAJA albo skonczyly sie
 // niedawno. Ekran /kampania czyta WYLACZNIE lustro — dokladnie ta sama zasada, co przy
 // kosztach z KSeF: panel nie ma prawa wisiec na dostepnosci Google ani Facebooka,
 // a zamowienia i paczki nie moga zalezec od tego, czy dziala pomiar marketingu.

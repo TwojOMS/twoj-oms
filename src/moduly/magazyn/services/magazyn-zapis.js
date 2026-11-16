@@ -1,6 +1,6 @@
 // ZAPIS SKU I WYMIAROW DO SKLEPOW — jedyne miejsce w module magazynu, ktore PISZE do
-// produkcyjnego sklepu. Regula „co i gdzie" siedzi w `domain/zapis-do-sklepu.js`, ekran
-// w `web/routes/magazyn.js`; tutaj sa wylacznie zapytania i ich izolacja.
+// produkcyjnego sklepu. Regula „co i gdzie" siedzi w `domena/zapis-do-sklepu.js`, ekran
+// w `moduly/magazyn/zapis.js`; tutaj sa wylacznie zapytania i ich izolacja.
 //
 // ⚠️⚠️ SKLEPY, DO KTORYCH TO PISZE, SPRZEDAJA. Pomylka nie jest literowka na ekranie: SKU jest
 // TOZSAMOSCIA produktu (adresy, eksporty, feed do Google), a zapisu NIE DA SIE COFNAC
@@ -71,7 +71,7 @@ export async function jednostkiSklepow(sklepy, kanaly) {
  *
  * @param {object} p
  * @param {Record<string, {pobierzProdukt: Function, zapiszProdukt: Function}>} p.sklepy
- * @param {Array<{kanal, sciezka, pola, opis}>} p.zmiany zestaw z `domain/zapis-do-sklepu.js`
+ * @param {Array<{kanal, sciezka, pola, opis}>} p.zmiany zestaw z `domena/zapis-do-sklepu.js`
  * @returns {Promise<Array<{zmiana, ok: boolean, blad: string|null}>>}
  *
  * ⚠️⚠️ ZAKAZ NADPISANIA NIEPUSTEGO SKU SPRAWDZANY NA ZYWO, TUZ PRZED ZAPISEM, A NIE Z LUSTRA.
@@ -81,13 +81,12 @@ export async function jednostkiSklepow(sklepy, kanaly) {
  * wpisuje numer w WooCommerce, w srode zapis widzi w lustrze pustke i nadpisuje TOZSAMOSC
  * produktu. Odczyt jest wiec czescia zapisu, a nie sprawdzeniem na wszelki wypadek.
  *
- * ⚠️ ODCZYT, KTORY SIE NIE UDAL, ODMAWIA ZAPISU (fail closed). Nie da sie sprawdzic bariery
- * — nie ma zapisu. Odwrotna decyzja („nie wiem, wiec pisze") kasuje cala te ochrone dokladnie
- * w chwili, w ktorej sklep zachowuje sie dziwnie.
+ * ⚠️ ODCZYT, KTORY SIE NIE UDAL, ODMAWIA ZAPISU (fail closed): nie da sie sprawdzic bariery,
+ * wiec nie ma zapisu. „Nie wiem, wiec pisze" kasuje ochrone dokladnie wtedy, gdy sklep dziwnie
+ * sie zachowuje.
  *
  * ⚠️ REGULA POROWNANIA JEST TA SAMA, CO W PODGLADZIE (`czyWolnoNadpisac` z domeny). Druga
- * kopia rozjechalaby sie z pierwsza, a rozjechanie sie AKURAT TEJ reguly konczy sie
- * nadpisaniem tozsamosci produktu.
+ * kopia rozjechalaby sie z pierwsza, a to konczy sie nadpisaniem tozsamosci produktu.
  *
  * ⚠️ POZYCJE IDA PO KOLEI, nie rownolegle: rownolegly zapis uderzalby setkami zadan naraz
  * w ten sam sklep, ktory w tej chwili obsluguje kupujacych.
@@ -104,7 +103,7 @@ export async function wyslijDoSklepow({ sklepy, zmiany } = {}) {
       wyniki.push({ zmiana, ok: false, blad: BEZ_KLIENTA(zmiana?.kanal) });
       continue;
     }
-    // PRZ-149.04: sklep podłączony kluczem „Odczyt” — nie piszemy (i nie czytamy przed zapisem), tylko mówimy dlaczego.
+    // Sklep podłączony kluczem „Odczyt” — nie piszemy (i nie czytamy przed zapisem), tylko mówimy dlaczego.
     if (czyTylkoOdczyt(klient)) {
       wyniki.push({ zmiana, ok: false, blad: TYLKO_ODCZYT });
       continue;

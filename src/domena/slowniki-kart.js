@@ -1,4 +1,4 @@
-// PRZ-160.P3b.01 — słowniki kart (kategorie, marki): czyste funkcje bez bazy.
+// Słowniki kart (kategorie, marki): czyste funkcje bez bazy.
 
 const NAZWANE = { amp: '&', quot: '"', apos: "'", lt: '<', gt: '>', nbsp: ' ' };
 const ENCJA = /&(#\d{1,7}|#x[0-9a-f]{1,6}|[a-z]+);/gi;

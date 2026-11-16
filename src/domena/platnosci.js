@@ -8,7 +8,7 @@ import { odczytajKwotePobrania } from './pobranie-nadania.js';
 // DZIEN POPRZEDNI, a data „dzisiejsza” z formularza wygladalaby na wsteczna.
 import { dzienWarszawa } from './format-daty.js';
 
-// ⚠️ CALA arytmetyka wplat idzie przez `grosze()` z domain/suma-pozycji.js — TE SAMA
+// ⚠️ CALA arytmetyka wplat idzie przez `grosze()` z domena/suma-pozycji.js — TE SAMA
 // funkcje, ktora steruje bariera arytmetyczna faktury i suma pod tabela „Pozycje".
 // Druga kopia tej samej arytmetyki (choćby najprostsze `Number(a) + Number(b)`) rozjecha
 // sie z bariera przy pierwszej zmianie, a po drodze klamie: 35.65 + 35.65 + 141.60 na
@@ -38,7 +38,7 @@ export function resztaDoPobrania(z, wplaty = z?.platnosci) {
 export const brakKwoty = (kwota) => kwota === null || kwota === undefined || String(kwota).trim() === '';
 
 /**
- * PRZ-143.05 (E3-D4): najwyższe pobranie po przedpłatach, w groszach — także bez kwoty pobrania.
+ * Najwyższe pobranie po przedpłatach, w groszach — także bez kwoty pobrania.
  * Podstawa = efektywna kwota pobrania, a gdy jej brak — kwota zamówienia (`kwota_brutto`).
  * `null`, gdy brak obu: wtedy nie ma od czego liczyć i nadanie odmawia. Nigdy nie woła
  * `grosze()` na pustej kwocie (ten wyjątek mówi o „fakturze bez ceny" i wywracał ekran nadania).
@@ -59,13 +59,13 @@ export function limitPobraniaGrosze(z, wplaty = z?.platnosci) {
   return { limit: Math.max(0, podstawaGr - przedplatyPrzedPobraniem(z, wplaty)), podstawa };
 }
 
-/** Tekst (b) z planu PRZ-137 E5-D2, bez końcówki „Panel niczego nie nadał.” — dokleja ją wołający. */
+/** Tekst odmowy bez końcówki „Panel niczego nie nadał.” — dokleja ją wołający. */
 export const bladKwotyPobraniaZamowienia = (surowa) =>
   `Kwota pobrania na zamówieniu jest nieczytelna („${surowa}”) — popraw ją w „Szczegółach zamówienia” na karcie.`;
 
 /**
- * PRZ-145.01 (E5-D1): niedopłata przy pobraniu = KWOTA ZAMÓWIENIA minus przedpłaty, w groszach.
- * Wpisana kwota pobrania NIE jest niedopłatą (dziura (e): K 50, wpłata 50, zamówienie 212.90
+ * Niedopłata przy pobraniu = KWOTA ZAMÓWIENIA minus przedpłaty, w groszach.
+ * Wpisana kwota pobrania NIE jest niedopłatą (np. K 50, wpłata 50, zamówienie 212.90
  * dawało „pobierz najwyżej 0” i sklep tracił 162.90 zł).
  *
  * Podstawa: `kwota_brutto`, gdy czytelna i > 0; inaczej kwota pobrania K (dawna reguła — zero
@@ -141,7 +141,7 @@ export function brakujacaKwotaGrosze(zamowienie) {
  *
  * ⚠️ Przy pobraniu brak wpłaty jest stanem NORMALNYM, nie niedopłatą — i to jest DOKŁADNIE
  * ta sama reguła, którą od początku ma `ikonaPlatnosci` na liście („pobranie wygrywa nad
- * opłacone/nieopłacone"). Do 2026-07-31 pilnowało jej także ostrzeżenie na karcie, ale
+ * opłacone/nieopłacone"). Kiedyś pilnowało jej także ostrzeżenie na karcie, ale
  * przebudowa karty przeniosła ostrzeżenia do paska „Do załatwienia" i strażnik po drodze
  * wypadł: każde zamówienie za pobraniem zaczęło krzyczeć „NIEDOPŁATA".
  *
@@ -150,7 +150,7 @@ export function brakujacaKwotaGrosze(zamowienie) {
  *
  * Pytamy o POBRANIE (wartość EFEKTYWNA, po ręcznych korektach — `czyPobranie` czyta
  * nadpisanie, a w jego braku kolumnę), a nie o `kwota_pobrania`: to decyzja o pobraniu
- * rządzi, kwota jest jej skutkiem. Od 2026-08-01 nie pytamy też o NAZWĘ metody — pobranie
+ * rządzi, kwota jest jej skutkiem. Nie pytamy też o NAZWĘ metody — pobranie
  * jest cechą płatności i ta sama dostawa („DPD") występuje w obu wariantach.
  */
 export function platnoscPrzyOdbiorze(zamowienie) {
@@ -203,12 +203,11 @@ export function parsujWplate(body, teraz = new Date().toISOString()) {
   // po cichu zmniejszalaby saldo i mogla zdjac z zamowienia status „oplacone".
   if (kwotaGr <= 0) throw bladOperatora('Kwota wpłaty musi być większa od zera.');
   const data = parsujDateWplaty(body?.data, teraz);
-  // ⚠️ METODA JEST WYMAGANA (audyt 22.08.2026). Jako pole opcjonalne zebrala na produkcji
-  // 11 wplat bez metody na 3194,56 zl — druga pozycje po sumie — i kazde uzgodnienie
-  // z wyciagiem bankowym zaczynalo sie od zgadywania. Odmowa stoi TUTAJ, w domenie, bo
-  // widok nie jest bariera (ta sama lekcja, co przy dacie z 07.08); formularze podaja pole
-  // wyboru (METODY_WPLATY_RECZNEJ z domain/metody-platnosci.js). Sprawdzana PO dacie:
-  // zepsuta data ma dalej mowic o dacie, a nie o metodzie.
+  // ⚠️ METODA JEST WYMAGANA. Jako pole opcjonalne zbierała wpłaty bez metody i każde
+  // uzgodnienie z wyciągiem bankowym zaczynało się od zgadywania. Odmowa stoi TUTAJ, w domenie,
+  // bo widok nie jest barierą (ta sama lekcja, co przy dacie wpłaty niżej); formularze podają
+  // pole wyboru (METODY_WPLATY_RECZNEJ z domena/metody-platnosci.js). Sprawdzana PO dacie:
+  // zepsuta data ma dalej mówić o dacie, a nie o metodzie.
   const metoda = String(body?.metoda ?? '').trim();
   if (!metoda) throw bladOperatora('Wybierz metodę wpłaty — bez niej wpłaty nie da się uzgodnić z wyciągiem.');
   return {
@@ -221,8 +220,8 @@ export function parsujWplate(body, teraz = new Date().toISOString()) {
 
 // Data wplaty z formularza — `RRRR-MM-DD` z pola `type="date"`.
 //
-// ⚠️⚠️ POWSTALO Z TEGO, ZE POLE DATY ISTNIALO, ALE NIC GO NIE WALIDOWALO (07.08.2026).
-// Do tego dnia szedl tu goly `String(body.data).trim()`: co czlowiek wpisal, ladowalo
+// ⚠️⚠️ POWSTAŁO Z TEGO, ŻE POLE DATY ISTNIAŁO, ALE NIC GO NIE WALIDOWAŁO.
+// Dawniej szedł tu goły `String(body.data).trim()`: co czlowiek wpisal, ladowalo
 // w bazie ZNAK W ZNAK. A z tej daty wylicza sie `oplacone_at`, czyli odpowiedz na pytanie
 // „kiedy klient zaplacil". „5 sierpnia" albo „05.08.2026" zapisywalo sie bez mrugniecia
 // i nie dawalo sie potem sformatowac (`fmtDataCzas` oddaje wtedy PUSTY STRING), wiec data
@@ -243,7 +242,7 @@ function parsujDateWplaty(surowa, teraz) {
   }
   // „2026-02-31" przechodzi wzorzec, a Date cicho przesuwa je na 3 marca — czyli wplata
   // wyladowalaby w INNYM DNIU, niz czlowiek wskazal. Ta sama pulapka, co przy podlodze
-  // pollera (`parsujDateOd` w config.js), i domykana tak samo: porownaniem po przeliczeniu.
+  // pollera (`parsujDateOd` w moduly/kanaly/konfiguracja.ts), i domykana tak samo: porownaniem po przeliczeniu.
   const d = new Date(`${dzien}T00:00:00Z`);
   if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== dzien) {
     throw bladOperatora(`Data wpłaty „${dzien}" nie jest istniejącą datą. Panel niczego nie dopisał.`);
@@ -266,10 +265,10 @@ function parsujDateWplaty(surowa, teraz) {
 /**
  * Kwota, ktora formularz „Dodaj wplate" ma podstawic — czyli to, czego BRAKUJE.
  *
- * ⚠️ BRAKUJACA RESZTA, NIE KWOTA ZAMOWIENIA (prosba wlasciciela: „domyslnie […] cala kwota,
- * bo tak jest najczesciej"). Przy pierwszej wplacie to jedno i to samo — ale przy DOPLACIE
- * po wplacie czesciowej podstawienie pelnej kwoty znaczyloby nadplate wpisana jednym
- * klknieciem, czyli pieniadze do oddania klientowi.
+ * ⚠️ BRAKUJĄCA RESZTA, NIE KWOTA ZAMÓWIENIA. Domyślnie formularz podstawia całą kwotę, bo tak
+ * jest najczęściej. Przy pierwszej wpłacie to jedno i to samo — ale przy DOPŁACIE po wpłacie
+ * częściowej podstawienie pełnej kwoty znaczyłoby nadpłatę wpisaną jednym kliknięciem, czyli
+ * pieniądze do oddania klientowi.
  *
  * Pusty napis, gdy nie ma czego doplacac (pokryte albo nadplata) — pole zostaje puste,
  * zeby nie zapraszac do nadplaty. Liczone `saldoWplat`, czyli TA SAMA funkcja, ktora

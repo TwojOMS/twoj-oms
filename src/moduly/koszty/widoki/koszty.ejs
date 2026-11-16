@@ -1,14 +1,14 @@
 <%# Zakladka KOSZTY — faktury, na ktorych to MY jestesmy nabywca, czytane z lustra KSeF
-    w bazie panelu (db/koszty.js). Pasy w kolejnosci: wybor miesiaca · stan pobierania ·
+    w bazie panelu (oms/db/koszty.js). Pasy w kolejnosci: wybor miesiaca · stan pobierania ·
     nieprzypisane · dokumenty · rozbicie na kategorie · obca waluta · suma + kwarantanna.
 
     ⚠️ WIDOK NICZEGO NIE LICZY. Sumy, udzialy, pas nieprzypisanych i lista obcych walut
-    przychodza policzone (domain/lista-kosztow.js) — na groszach, calkowitych. Tutaj zostaje
+    przychodza policzone (domena/lista-kosztow.js) — na groszach, calkowitych. Tutaj zostaje
     wylacznie ZAPIS liczby po polsku (`kwota` nizej): to samo rozdzielenie, co w faktury.ejs
     i magazyn-lista.ejs. Druga kopia arytmetyki rozjechalaby sie z pierwsza przy pierwszej
     zmianie, a chodzi o pieniadze.
 
-    ⚠️ ANI JEDNEGO KOLORU WPISANEGO WPROST — wszystko z palety w layout-oms.ejs (paleta ma
+    ⚠️ ANI JEDNEGO KOLORU WPISANEGO WPROST — wszystko z palety w public/oms-uklad.css (paleta ma
     wariant jasny i ciemny, wiec wartosc wpisana tutaj zadzialalaby w jasnym i po cichu
     zniknela w ciemnym). Klasy sa te same, co na zakladce FAKTURY, zeby obie nie wygladaly
     jak z dwoch aplikacji. %>
@@ -16,7 +16,7 @@
 <%
   // '1234.50' → '1 234,50'. To NIE JEST arytmetyka, tylko polski zapis liczby: nic sie tu
   // nie dodaje, nie dzieli i nie zaokragla. Ulamek krotszy niz dwa znaki dopelnia sie zerami
-  // (kwoty z KSeF maja zawsze dwa — patrz `kwota` w domain/koszt-metadane.js), dluzszy
+  // (kwoty z KSeF maja zawsze dwa — patrz `kwota` w domena/koszt-metadane.js), dluzszy
   // zostaje, jaki jest: zaokraglenie w widoku bylo by juz liczeniem.
   const kwota = (napis) => {
     const s = String(napis ?? '').trim();
@@ -50,7 +50,7 @@
       <input type="month" name="miesiac" value="<%= miesiac %>">
     </label>
     <button class="btn btn--glowny" type="submit">Pokaż</button>
-    <%# Zestawienie kosztow miesiaca (PRZ-086) — ODNOSNIK, nie drugi przycisk formularza: niesie
+    <%# Zestawienie kosztow miesiaca — ODNOSNIK, nie drugi przycisk formularza: niesie
         wlasny adres z miesiacem, NA KTORY OPERATOR PATRZY (wartosc pola `Miesiac` przed
         klikniem „Pokaz" jest jeszcze nieprzeslana). Stoi ZAWSZE, bez warunku na KSeF/inFakt:
         PDF powstaje z samej bazy, wiec panel bez sekcji KSEF_* tez go ma.
@@ -81,7 +81,7 @@
     <%# ⚠️ SLAD PO OSTATNIEJ AWARII ZE ZNACZNIKIEM CZASU. Sama tresc nie mowi, czy awaria
         jest sprzed godziny, czy sprzed trzech tygodni — a to jest cala roznica miedzy „KSeF
         mial czkawke" a „panel nie pobiera kosztow od miesiaca i nikt tego nie zauwazyl".
-        Ten sam wpis niesie tez uwagi o kwarantannie (services/czuwacz-kosztow.js). %>
+        Ten sam wpis niesie tez uwagi o kwarantannie (moduly/koszty/services/czuwacz-kosztow.js). %>
     <% if (stan && stan.ostatni_blad) { %>
       <p class="pasek-blokada">
         Ostatni przebieg zostawił ślad<% if (stan.ostatni_blad_at) { %> (<%= fmtDataCzas(stan.ostatni_blad_at) %>)<% } %>:
@@ -99,7 +99,7 @@
     </div>
 
     <div class="pola-w-rzedzie">
-      <%# Formularz bez ukrytego pola z tokenem: ochrona CSRF (src/security/csrf.js) stoi
+      <%# Formularz bez ukrytego pola z tokenem: ochrona CSRF (core/bezpieczenstwo/csrf.js) stoi
           na naglowkach Origin/Referer i jest hakiem globalnym. %>
       <% if (mozliwyOdswiez) { %>
         <form method="post" action="/koszty/odswiez">
@@ -113,7 +113,7 @@
           potrafi potrwać kilka minut, nie zamykaj wtedy panelu.
         </span>
       <% } else if (typeof powodBrakuKsef !== 'undefined' && powodBrakuKsef) { %>
-        <%# PRZ-108.10 (recenzja): token KSeF jest zapisany, ale panel nie zna NIP-u firmy. %>
+        <%# Token KSeF jest zapisany, ale panel nie zna NIP-u firmy. %>
         <span class="wyjasnienie"><%= powodBrakuKsef %> <a href="/ustawienia/firma">Przejdź do Ustawień → Firma</a>.</span>
       <% } else { %>
         <span class="wyjasnienie">
@@ -192,11 +192,11 @@
                 <%# ⚠️ WIZUALIZACJA, NIE ORYGINAL. KSeF oddaje wylacznie XML, wiec ten PDF
                     rysuje panel — i dokladnie tak jest podpisany na kazdej stronie dokumentu.
                     Link pokazuje sie tylko przy podpietym KSeF: XML pobiera sie na zadanie,
-                    wiec bez niego nie ma z czego rysowac (archiwum na NAS-ie jest dodatkiem
-                    i dzis na produkcji nie dziala). %>
+                    wiec bez niego nie ma z czego rysowac (archiwum na NAS-ie jest opcjonalne
+                    i bywa wyłączone). %>
                 <%# ⚠️ Przy wierszu wpisanym RĘCZNIE przycisku nie ma i mieć nie może: takiego
                     dokumentu w KSeF NIE MA, więc nie ma z czego narysować wizualizacji
-                    (usługa odmawia tego wprost — services/wizualizacja-kosztu.js). %>
+                    (usługa odmawia tego wprost — moduly/koszty/services/wizualizacja-kosztu.js). %>
                 <% if (mozliwyPdf && w.zrodlo !== 'reczne') { %>
                   <div class="wiersz-szczegoly">
                     <a href="/koszty/<%= encodeURIComponent(w.ksef_number) %>/pdf" target="_blank" rel="noopener noreferrer"
@@ -345,7 +345,7 @@
         </tbody>
       </table>
     </div>
-    <%# ⚠️ MIANOWNIK TO SUMA SKATEGORYZOWANA, nie suma miesiaca (domain/lista-kosztow.js) —
+    <%# ⚠️ MIANOWNIK TO SUMA SKATEGORYZOWANA, nie suma miesiaca (domena/lista-kosztow.js) —
         i ekran ma o tym POWIEDZIEC, bo inaczej kolumna „Udział" nie zgadza sie z suma nizej. %>
     <p class="wyjasnienie">
       Udział liczy się względem kosztów, <strong>które mają kategorię</strong> — dokumenty
@@ -373,7 +373,7 @@
               <tr>
                 <td>
                   <strong><%= d.numerDokumentu %></strong>
-                  <%# ⚠️ Koszt wpisany ręcznie jest od 13.08.2026 ZAWSZE w PLN (formularz nie ma
+                  <%# ⚠️ Koszt wpisany ręcznie jest ZAWSZE w PLN (formularz nie ma
                       już pola waluty — kwota jest jedna i w złotówkach), więc tutaj trafić nie
                       powinien. Odnośnik zostaje dla wierszy wpisanych PRZED tym uproszczeniem:
                       bez niego wiersz w USD byłby z panelu nie do ruszenia, a to jedyne

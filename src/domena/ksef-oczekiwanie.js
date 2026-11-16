@@ -3,10 +3,10 @@ import { umiejetnosciZamowienia, kanalyAllegro } from './moduly-kanalow.ts';
 import { anulowaneEfektywnie } from './status-reczny.js';
 import { idDokumentu, idDokumentuSql } from './dokument-programu.js';
 
-// JEDNA definicja „faktury czekającej na KSeF" — dla czuwacza (services/czuwacz-ksef.js)
-// i dla paska spraw na karcie (domain/sprawy-karty.js).
+// JEDNA definicja „faktury czekającej na KSeF" — dla czuwacza (moduly/faktury/services/czuwacz-ksef.js)
+// i dla paska spraw na karcie (domena/sprawy-karty.js).
 //
-// ⚠️ POWSTAŁA Z ROZJAZDU, KTÓRY JUŻ SIĘ WYDARZYŁ (recenzja Partii 2, W4+W5). Czuwacz pytał
+// ⚠️ POWSTAŁA Z ROZJAZDU, KTÓRY JUŻ SIĘ WYDARZYŁ. Czuwacz pytał
 // wyłącznie o faktury z numerem dokumentu i UUID-em; pasek zapalał blokadę przy każdej
 // fakturze „wystawionej" — czyli TAKŻE przy wierszu bez numeru (inFakt potrafi oddać sukces
 // bez pola `number`; widok ma na to osobny przypadek). O taki wiersz czuwacz nie zapyta
@@ -15,14 +15,14 @@ import { idDokumentu, idDokumentuSql } from './dokument-programu.js';
 // jedną nieprawdziwą („kupujący jej jeszcze nie ma", choć nic nie kupił).
 //
 // Dwie kopie warunku rozjeżdżają się przy pierwszej zmianie reguły, więc tu jest jedna —
-// w dwóch postaciach (SQL i predykat), a test tests/oms/ksef-oczekiwanie.test.js pilnuje,
+// w dwóch postaciach (SQL i predykat), a test tests/moduly/faktury/ksef-oczekiwanie.test.js pilnuje,
 // że dają IDENTYCZNĄ odpowiedź na całym zestawie granicznych przypadków.
 
 /**
  * Część WSPÓLNA obu gałęzi: dokument istnieje, numeru KSeF nie ma, a zamówienie żyje.
  * Aliasy: `f` = faktury, `z` = zamowienia.
  *
- * ⚠️ PRZ-126.F03: ŻĄDANIA FAKTURY (`z.chce_fakture = 1`) TU NIE MA — siedzi wyłącznie w gałęzi
+ * ⚠️ ŻĄDANIA FAKTURY (`z.chce_fakture = 1`) TU NIE MA — siedzi wyłącznie w gałęzi
  * Allegro (`warunekCzekaNaKsefSql`). Panel może wystawić fakturę do zamówienia, przy którym klient
  * o nią nie prosił („faktura do każdego zamówienia"), a dokument wysłany przez panel do KSeF musi
  * dostać numer bez względu na żądanie — inaczej zakładka „FAKTURY" pokazuje „brak KSeF" na zawsze.
@@ -50,10 +50,10 @@ const WSPOLNE_SQL = `
  *
  * ⚠️ `ESCAPE` JEST OBOWIĄZKOWY. Podkreślnik w `LIKE` jest znakiem wieloznacznym, więc bez
  * niego wzorzec `allegro_%` przestaje być PREFIKSEM, a staje się WZORCEM — i łapie także
- * sklep o kluczu `allegrowy` (zmierzone w node:sqlite 06.08.2026).
+ * sklep o kluczu `allegrowy` (zmierzone w node:sqlite).
  */
 const GALAZ_PREFIKSU_ALLEGRO_SQL = `z.sklep LIKE 'allegro\\_%' ESCAPE '\\'`;
-// PRZ-101.08: druga galaz predykatu `czyKanalAllegro` — klucze kanalow `typ: 'allegro'` z konfiguracji.
+// Druga galaz predykatu `czyKanalAllegro` — klucze kanalow `typ: 'allegro'` z konfiguracji.
 // Klucz przeszedl WZOR_KLUCZA (`[a-z0-9_-]`), apostrof podwajamy mimo to. Pusty zbior = SQL sprzed zmiany.
 // `IN` porownuje dokladnie (wielkosc liter), wiec filtr na wyniku zostaje tylko dla `LIKE`. Klucze z prefiksem
 // lapie juz `LIKE`, wiec do `IN` ida tylko pozostale — instalacja z samymi `allegro_*` ma SQL sprzed zmiany.
@@ -64,16 +64,16 @@ function galazAllegroSql(klucze) {
 }
 
 /**
- * ⚠️⚠️ GAŁĄŹ 2 (od 06.08.2026): DOKUMENT, KTÓREGO WYSYŁKĘ DO KSeF ZLECIŁ PANEL. Do tego dnia
- * czuwacz pytał WYŁĄCZNIE o kanały Allegro, bo tylko tam numer miał komu służyć; faktura
- * sklepowa nie miała DOKĄD pojechać, więc jej `ksef_numer` zostawał NULL-em na zawsze i pytanie
- * o niego byłoby setkami wywołań miesięcznie bez odbiorcy. Zakładka „FAKTURY" to zmieniła:
+ * ⚠️⚠️ GAŁĄŹ 2: DOKUMENT, KTÓREGO WYSYŁKĘ DO KSeF ZLECIŁ PANEL. Sama gałąź Allegro
+ * wystarcza tylko tam, gdzie numer ma komu służyć; faktura sklepowa nie ma DOKĄD pojechać,
+ * więc pytanie o jej `ksef_numer` bez powodu byłoby setkami wywołań miesięcznie bez odbiorcy.
+ * Zakładka „FAKTURY” daje taki powód:
  * panel sam wysyła dokumenty do KSeF (ze świadomego zatwierdzenia człowieka,
- * services/wysylka-ksef.js), więc bez tej gałęzi zakładka pokazywałaby „brak KSeF" przy
+ * moduly/faktury/services/wysylka-ksef.js), więc bez tej gałęzi zakładka pokazywałaby „brak KSeF" przy
  * dokumencie, który właśnie stamtąd wyszedł — i pokazywałaby to już zawsze.
  *
  * ⚠️⚠️ ROZPOZNAJEMY TO PO WIERSZU W `wysylki_ksef`, A NIE PO TREŚCI WPISU W LOGU. Wiersz jest
- * FAKTEM zapisanym PRZED wywołaniem (rezerwacja, db/wysylki-ksef.js), kluczem jest `uuid`
+ * FAKTEM zapisanym PRZED wywołaniem (rezerwacja, moduly/faktury/db/wysylki-ksef.js), kluczem jest `uuid`
  * dokumentu w inFakcie — dokładnie to, co trzyma `faktury.infakt_uuid`. Zdanie w logu jest
  * tekstem DLA CZŁOWIEKA: wolno je przeredagować bez uprzedzenia, a `LIKE` po nim zawęziłby
  * wtedy zakres czuwacza do zera — bez błędu i bez śladu.
@@ -85,9 +85,9 @@ function galazAllegroSql(klucze) {
  * ⚠️⚠️ ZNANA LUKA: FAKTURA OKRESU (dokument zbiorczy klienta dropshippingowego) TĄ GAŁĘZIĄ NIE
  * WCHODZI, choć panel naprawdę ją do KSeF wysyła. Warunek żyje w zapytaniu
  * `FROM faktury f JOIN zamowienia z`, a dokument okresu nie ma ANI
- * wiersza w `faktury`, ANI zamówienia: leży w `okresy_rozliczeniowe` (db/okresy.js), która nie
+ * wiersza w `faktury`, ANI zamówienia: leży w `okresy_rozliczeniowe` (oms/db/okresy.js), która nie
  * ma nawet kolumny `ksef_numer` — więc nie ma dokąd zapisać odpowiedzi. Skutek: numer KSeF dla
- * faktury okresu widać wyłącznie na zakładce „FAKTURY", prosto z inFaktu (services/faktury-widok.js),
+ * faktury okresu widać wyłącznie na zakładce „FAKTURY", prosto z inFaktu (moduly/faktury/services/faktury-widok.js),
  * i panel go u siebie NIE MA. Domknięcie tego wymaga osobnego zadania (kolumna na okresie
  * i druga ścieżka odczytu w czuwaczu) — NIE DA SIĘ tego załatwić poszerzeniem warunku tutaj.
  */
@@ -95,15 +95,15 @@ const GALAZ_ZLECONA_Z_PANELU_SQL = `EXISTS (SELECT 1 FROM wysylki_ksef w WHERE w
 
 /**
  * Warunek do klauzuli WHERE — część wspólna ORAZ jedna z dwóch gałęzi:
- * `(kanał Allegro AND chce_fakture = 1) OR zlecona przez panel` (PRZ-126.F03).
+ * `(kanał Allegro AND chce_fakture = 1) OR zlecona przez panel`.
  *
  * ⚠️ ŻĄDANIE FAKTURY TYLKO W GAŁĘZI ALLEGRO: tam numer służy do wysyłki faktury na Allegro, a ta
- * idzie wyłącznie na żądanie kupującego (domain/allegro-faktura.js, `wolnoWyslacDoAllegro`).
+ * idzie wyłącznie na żądanie kupującego (domena/allegro-faktura.js, `wolnoWyslacDoAllegro`).
  * Gałąź panelu o żądanie nie pyta — dokument, który panel wysłał do KSeF, zawsze ma dostać numer.
  * Allegro bez żądania, ale zlecone przez panel, wchodzi gałęzią panelu i dostaje numer; na Allegro
  * i tak nie pojedzie, bo zatrzymuje je `wolnoWyslacDoAllegro`. Predykat `czekaNaKsef` — identycznie.
  *
- * ⚠️ FUNKCJA, NIE STAŁA (PRZ-101.08): klucze Allegro z konfiguracji znane są dopiero po budowie
+ * ⚠️ FUNKCJA, NIE STAŁA: klucze Allegro z konfiguracji znane są dopiero po budowie
  * aplikacji, a stała liczyłaby się przy imporcie modułu — z pustym zbiorem.
  */
 export function warunekCzekaNaKsefSql(klucze = kanalyAllegro()) {
@@ -146,11 +146,11 @@ export function czyWierszWZakresieKsef(wiersz) {
  *
  * ⚠️ DWIE GAŁĘZIE, TAK SAMO JAK W SQL-u WYŻEJ. „Panel zlecił wysyłkę do KSeF" przychodzi tu
  * jako `faktura.ksef_zlecona_at` — kolumna `zlecona_at` z `wysylki_ksef`, dokładana przy
- * odczycie zamówienia (db/zamowienia.js), tak samo jak `chce_fakture` przychodzi ze swojej.
+ * odczycie zamówienia (oms/db/zamowienia.js), tak samo jak `chce_fakture` przychodzi ze swojej.
  * Obiekt bez tego pola (fikstura, wywołanie z widoku) zachowuje się jak przed zmianą: znaczy
  * „panel tego dokumentu nie wysyłał".
  *
- * ⚠️ PRZ-126.F03: `chce_fakture` należy WYŁĄCZNIE do gałęzi Allegro — tak samo jak w SQL-u wyżej.
+ * ⚠️ `chce_fakture` należy WYŁĄCZNIE do gałęzi Allegro — tak samo jak w SQL-u wyżej.
  * Gałąź „panel zlecił wysyłkę" nie pyta o żądanie faktury.
  */
 export function czekaNaKsef(zamowienie) {
@@ -166,41 +166,38 @@ export function czekaNaKsef(zamowienie) {
 }
 
 /**
- * Doba, bo wlasciciel wysyla dokumenty do KSeF w ciagu dnia: 24 h mijaja dopiero wtedy,
- * gdy cos NAPRAWDE stanelo. Prog stal do 06.08.2026 wylacznie w `domain/sprawy-karty.js`;
- * od Zadania 11 pyta o to samo takze karta (przycisk „bez numeru KSeF"), a dwie kopie
- * liczby rozjechalyby sie tak samo, jak rozjechaly sie dwie kopie warunku (recenzja
- * Partii 2, W4+W5) — z tym, ze tu rozjazd znaczy przycisk do operacji NIEODWRACALNEJ
- * pokazany wczesniej, niz mowi sprawa, ktora go zapowiada.
+ * Doba, bo dokumenty wysyła się do KSeF w ciągu dnia pracy: 24 h mijają dopiero wtedy,
+ * gdy coś NAPRAWDĘ stanęło. Próg stoi tutaj, obok definicji, a nie w `domena/sprawy-karty.js`:
+ * dwie kopie liczby rozjechałyby się tak samo, jak rozjechały się dwie kopie warunku
+ * (nagłówek pliku).
  */
 export const PROG_CZEKANIA_NA_KSEF_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Czy faktura czeka na numer KSeF DLUZEJ NIZ DOBE. Ten sam zakres, co `czekaNaKsef`,
- * plus uplyw czasu liczony od ZDARZENIA WEJSCIOWEGO tej galezi.
+ * Czy faktura czeka na numer KSeF DŁUŻEJ NIŻ DOBĘ. Ten sam zakres, co `czekaNaKsef`,
+ * plus upływ czasu liczony od ZDARZENIA WEJŚCIOWEGO tej gałęzi.
  *
- * ⚠️⚠️ NIE ZAWSZE OD WYSTAWIENIA DOKUMENTU — i to jest poprawka z recenzji calosci (Finding 2).
- * Do niej stalo tu golo `utworzona_at`, a galaz „panel zlecil wysylke" ma wlasne zdarzenie
- * wejsciowe: WYSYLKE (`ksef_zlecona_at`, kolumna `zlecona_at` z `wysylki_ksef`). Zakladka
- * „FAKTURY" jest MIESIECZNA, wiec wysylanie dokumentow z zeszlego miesiaca to zwykly tryb
- * pracy wlasciciela — faktura wystawiona 1 lipca i wyslana 5 sierpnia o 10:05 dostawala
- * CZERWONA BLOKADE („zgloszenie utknelo albo organ je odrzucil") juz przy pierwszym tyknieciu
- * czuwacza, o 10:07. Dwie minuty po najzupelniej normalnej wysylce — i tak przy WIEKSZOSCI
- * wysylek. To DOKLADNIE ta sama asymetria, ktora dla podlogi czuwacza zamknal commit e690379
- * (services/czuwacz-ksef.js, `PODLOGA_DNI`); prog doby zostal wtedy nietkniety.
+ * ⚠️⚠️ NIE ZAWSZE OD WYSTAWIENIA DOKUMENTU. Gałąź „panel zlecił wysyłkę” ma własne zdarzenie
+ * wejściowe: WYSYŁKĘ (`ksef_zlecona_at`, kolumna `zlecona_at` z `wysylki_ksef`). Zakładka
+ * „FAKTURY” jest MIESIĘCZNA, więc wysyłanie dokumentów z zeszłego miesiąca to zwykły tryb
+ * pracy — faktura wysłana kilka tygodni po wystawieniu, liczona od `utworzona_at`, dostałaby
+ * CZERWONĄ BLOKADĘ („zgłoszenie utknęło albo organ je odrzucił”) już przy pierwszym tyknięciu
+ * czuwacza, minuty po najzupełniej normalnej wysyłce. To DOKŁADNIE ta sama asymetria, którą
+ * zamyka podłoga czuwacza (moduly/faktury/services/czuwacz-ksef.js, `PODLOGA_DNI`).
  *
- * ⚠️ BIERZEMY STEMPEL PÓŹNIEJSZY Z DWOCH, a nie „ten wlasciwy dla galezi", i to jest celowe:
- * wiersz moze nalezec do OBU galezi naraz (faktura allegrowa, ktorej wysylke zlecil panel),
- * a wtedy zdarzeniem, na ktore czekamy, jest to, ktore zaszlo PÓŹNIEJ. Podloga czuwacza robi
- * lustrzana rzecz (`OR` na dwoch stemplach = wystarczy MLODSZY), i z tego samego powodu:
- * czekanie ma sie liczyc od momentu, w ktorym cos naprawde zaczelo czekac.
+ * ⚠️ BIERZEMY STEMPEL PÓŹNIEJSZY Z DWÓCH, a nie „ten właściwy dla gałęzi”, i to jest celowe:
+ * wiersz może należeć do OBU gałęzi naraz (faktura allegrowa, której wysyłkę zlecił panel),
+ * a wtedy zdarzeniem, na które czekamy, jest to, które zaszło PÓŹNIEJ. Podłoga czuwacza robi
+ * lustrzaną rzecz (`OR` na dwóch stemplach = wystarczy MŁODSZY), i z tego samego powodu:
+ * czekanie ma się liczyć od momentu, w którym coś naprawdę zaczęło czekać.
  *
- * ⚠️ NIGDY nie rzuca i nie zna sie na `ksef_odczyt` — to jest ROZNICA MERYTORYCZNA wobec
- * sprawy w pasku (domain/sprawy-karty.js), a nie przeoczenie. Sprawa OSKARZA czlowieka
- * („wyslij ten dokument do KSeF"), wiec musi stac na dowodzie od czuwacza; przycisk niczego
- * nie zarzuca, tylko OFERUJE wyjscie. Gdyby wymagal odpowiedzi czuwacza, znikalby dokladnie
- * wtedy, gdy czuwacz jest zdechly albo inFakt niedostepny — czyli w jedynej sytuacji, w ktorej
- * naprawde nie ma innego wyjscia ze stanu (niezmiennik 4.9).
+ * ⚠️ NIGDY nie rzuca i nie zna się na `ksef_odczyt` — to nie przeoczenie. Dowód od czuwacza
+ * (`ksef_odczyt === 'ok'`) dokłada wywołujący: sprawa w pasku (domena/sprawy-karty.js)
+ * OSKARŻA człowieka („wyślij ten dokument do KSeF”), więc musi stać na dowodzie. Sama
+ * definicja czekania ma zostać od czuwacza wolna: coś, co niczego nie zarzuca, tylko OFERUJE
+ * wyjście, a wymagałoby odpowiedzi czuwacza, znikałoby dokładnie wtedy, gdy czuwacz jest
+ * zdechły albo inFakt niedostępny — czyli w jedynej sytuacji, w której naprawdę nie ma innego
+ * wyjścia ze stanu (reguła: każdy stan ma wyjście).
  */
 export function czekaNaKsefDluzejNizDobe(zamowienie, teraz = Date.now()) {
   if (!czekaNaKsef(zamowienie)) return false;

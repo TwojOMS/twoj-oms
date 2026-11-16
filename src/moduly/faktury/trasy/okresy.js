@@ -30,25 +30,23 @@ import { programWysylaDoKsef } from '../services/wysylka-ksef.js';
 import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
 // Trasy ROZLICZENIA ZBIORCZEGO: miesiac klienta, ktorego kilkadziesiat zamowien skalda sie
-// na JEDNA fakture. Osobny plik z tego samego powodu, co routes/panel.js — routes/zamowienia.js
-// ma juz dwa tysiace linii, a tutaj przedmiotem jest okres, nie zamowienie.
+// na JEDNA fakture. Osobny plik, bo przedmiotem jest okres, nie zamówienie.
 //
-// ⚠️ TRZY TRASY W TYM PLIKU SA WYJSCIAMI AWARYJNYMI i istnieja dlatego, ze poprzednie zadania
-// zostawily stany, z ktorych KOD potrafi wyjsc, a CZLOWIEK nie mial jak (jedynym wyjsciem byl
-// SQL na produkcyjnej bazie):
+// ⚠️ CZTERY TRASY W TYM PLIKU SĄ WYJŚCIAMI AWARYJNYMI: moduł ma stany, z których KOD potrafi
+// wyjść, a CZŁOWIEK bez tych tras nie miałby jak (jedynym wyjściem byłby ręczny SQL w bazie):
 //   • /otworz          — zamkniety miesiac odmawia przyjecia zamowienia komunikatem, ktory
 //                        obiecuje operatorowi decyzje („korekta albo zmiana daty");
 //   • /faktura/odblokuj — po zerwanej probie wystawienia okres siada w `do_wyjasnienia`;
-//   • /wplata/:id/usun  — wplata wpisana pomylkowo przewraca saldo calego miesiaca.
-// Kazda z nich zmienia stan, wiec kazda jest POST-em z przekierowaniem (wzorzec
-// z routes/zamowienia.js), a nie odnosnikiem.
+//   • /wplata/:id/usun  — wplata wpisana pomylkowo przewraca saldo calego miesiaca;
+//   • /zamowienia/:zamId/odepnij — literówka w NIP-ie przypina zamówienie do niewłaściwego okresu.
+// Każda z nich zmienia stan, więc każda jest POST-em z przekierowaniem, a nie odnośnikiem.
 
 /**
  * Rozliczenie okresu do pokazania na ekranie: kwota faktury, suma wplat i saldo.
  *
- * ⚠️ OWINIETE W `try`, DOKLADNIE JAK `saldoWplat` w domain/platnosci.js — i z tego samego
- * powodu. `saldoOkresuGrosze` RZUCA, gdy ktoras wplata ma kwote nie do sparsowania (a od
- * Zadania 8 czyta wplaty takze PRZED faktura, wiec rzuci rowniez wtedy); tak samo rzuca
+ * ⚠️ OWINIETE W `try`, DOKLADNIE JAK `saldoWplat` w domena/platnosci.js — i z tego samego
+ * powodu. `saldoOkresuGrosze` RZUCA, gdy ktoras wplata ma kwote nie do sparsowania (a czyta
+ * wpłaty także PRZED fakturą, więc rzuci również wtedy); tak samo rzuca
  * `sumaOczekiwanaOkresuGrosze` na uszkodzonej kwocie zamowienia. Uszkodzona kwota nie ma
  * prawa wywalic calego ekranu okresu — ale MA sie pokazac jako blad, nigdy jako ciche
  * „wszystko gra". Stan 'blad' jest tu dokladnym odpowiednikiem tamtego.
@@ -58,8 +56,8 @@ import { zProgramu } from '../../../integracje/program-fakturowy.ts';
  * z wlasnego sumowania. Jedno zrodlo arytmetyki dla bariery, faktury i salda.
  *
  * ⚠️ WPLATY IDA JAKO WIERSZE, nie jako gotowe grosze: konwersja TEXT→liczba po stronie
- * wolajacego byla druga kopia arytmetyki wplat i wlasnie ja usunieto w Zadaniu 8 (naglowek
- * domain/platnosci.js tlumaczy, jak taka kopia klamie: 35.65 + 35.65 + 141.60 na floatach
+ * wołającego byłaby druga kopia arytmetyki wpłat (nagłówek
+ * domena/platnosci.js tlumaczy, jak taka kopia klamie: 35.65 + 35.65 + 141.60 na floatach
  * daje falszywa NIEDOPLATE).
  */
 function rozliczenieOkresu(zamowienia, wplaty) {
@@ -104,7 +102,7 @@ function rozliczenieOkresu(zamowienia, wplaty) {
  * zapisany w chwili przypisania pierwszego zamowienia; NIP moze sie w karcie zmienic
  * (poprawka literowki), a okres ma dalej wskazywac tego samego nabywce.
  *
- * ⚠️ Do 2026-08-24 czytalo to `OMS_KLIENCI_ZBIORCZY`. Zrodlem jest teraz tabela `klienci`.
+ * ⚠️ Źródłem jest tabela `klienci`, nie zmienna środowiskowa.
  */
 const klientOkresu = (db, okres) => umowaZbiorcza(klientPoKluczu(db, okres.klient_klucz));
 
@@ -113,10 +111,10 @@ const klientOkresu = (db, okres) => umowaZbiorcza(klientPoKluczu(db, okres.klien
  *
  * ⚠️ KWOTY LICZA SIE Z TEGO SAMEGO ZBIORU, CO FAKTURA — podzial idzie
  * `podzialZamowienOkresu` (services/faktura-okresu.js), czyli DOKLADNIE tym warunkiem,
- * ktorym `wystaw` odsiewa zamowienia od pozycji dokumentu. Do 2026-08-01 ekran liczyl
- * z wszystkich zamowien okresu, a faktura bez anulowanych: karta obiecywala „Razem do
- * zafakturowania 140.00 zł" tam, gdzie do inFaktu szlo 100,00, zaplata co do grosza
- * wygladala na NIEDOPLATE, a nadplata do zwrotu nie pojawiala sie nigdzie. Druga definicja
+ * ktorym `wystaw` odsiewa zamowienia od pozycji dokumentu. Gdyby ekran liczył
+ * ze wszystkich zamówień okresu, a faktura bez anulowanych, karta obiecywałaby „Razem do
+ * zafakturowania 140.00 zł" tam, gdzie do inFaktu szłoby 100,00, zapłata co do grosza
+ * wyglądałaby na NIEDOPŁATĘ, a nadpłata do zwrotu nie pojawiałaby się nigdzie. Druga definicja
  * tego, co wchodzi na fakture, jest tu bledem o pieniadze, nie o wyglad.
  *
  * ⚠️ ...ale ANULOWANE JADA DALEJ jako `wszystkieZamowienia`. Zamowienie usuniete z ekranu
@@ -140,14 +138,14 @@ function daneOkresu(db, config, okres) {
     wplaty,
     // ⚠️ STAN FAKTURY CZYTAMY `stanFakturyOkresu`, a NIE wnioskujemy go z salda ani z samych
     // kolumn. Swiezy okres ma puste kolumny faktury, wiec `stanFaktury` uznalby go za
-    // „wystawiona" (patrz komentarz nad ta funkcja w domain/okres-rozliczeniowy.js).
+    // „wystawiona" (patrz komentarz nad ta funkcja w domena/okres-rozliczeniowy.js).
     stanFaktury: stanFakturyOkresu(okres),
     rozliczenie: rozliczenieOkresu(zamowienia, wplaty),
   };
 }
 
 export function registerOkresyRoutes(app, { db, config = {}, proba = false, infakt: program = null, vies = null, wyborProgramu = null }) {
-  // PRZ-152.G13f4: odmowy z formularzy karty okresu w układzie OMS (status i tekst bez zmian).
+  // Odmowy z formularzy karty okresu w układzie OMS (status i tekst bez zmian).
   // Powrót na ekran okresu, z którego przyszedł formularz; okres.ejs nie ma paska z `?blad`, więc strona odmowy.
   const odmowaOkresu = (reply, okres, status, komunikat, tytul) => stronaOdmowy(reply, status, komunikat, {
     tytul, wroc: `/okresy/${encodeURIComponent(okres.id)}`, napisWroc: 'Wróć do okresu',
@@ -186,10 +184,10 @@ export function registerOkresyRoutes(app, { db, config = {}, proba = false, infa
       title: `Okres ${okres.rok}-${String(okres.miesiac).padStart(2, '0')}`,
       okruszki: [{ tekst: 'Okresy', href: '/okresy' }, { tekst: `Okres ${okres.rok}-${String(okres.miesiac).padStart(2, '0')}` }],
       ...dane,
-      // Ta sama lista nazw miesiecy, ktorej uzywa komunikat odmowy (domain/okres-rozliczeniowy.js).
+      // Ta sama lista nazw miesiecy, ktorej uzywa komunikat odmowy (domena/okres-rozliczeniowy.js).
       MIESIACE,
       // Opcje wymaganego pola „Metoda" wplaty okresu — ten sam slownik, co na karcie
-      // zamowienia (domain/metody-platnosci.js), jeden jezyk uzgodnien z wyciagiem.
+      // zamowienia (domena/metody-platnosci.js), jeden jezyk uzgodnien z wyciagiem.
       metodyWplaty: METODY_WPLATY_RECZNEJ,
       // ⚠️ TABELA POKAZUJE WSZYSTKIE zamowienia okresu, takze ANULOWANE — z flaga, po ktorej
       // widok je oznaczy i wyjmie z sumy. Sumy licza sie z `dane.zamowienia` (bez anulowanych),
@@ -203,8 +201,8 @@ export function registerOkresyRoutes(app, { db, config = {}, proba = false, infa
       // ⚠️ ZNACZNIK „anulowane" PRZY WIERSZU CZYTA WYNIK `podzialZamowienOkresu`
       // (`dane.anulowane`, przez `anulowaneId`), a NIE liczy `Boolean(z.anulowane)` po raz
       // drugi. Dzis oba dadza ten sam wynik, ale druga definicja tego samego warunku jest
-      // dokladnie tym bledem, ktory recenzja Zadania 9 uznala za krytyczny (ekran liczyl
-      // sume z innego zbioru niz faktura) — gdyby regula podzialu kiedys urosla o kolejny
+      // dokładnie tym błędem, przez który ekran liczyłby
+      // sumę z innego zbioru niż faktura — gdyby regula podzialu kiedys urosla o kolejny
       // warunek, znacznik przy wierszu i suma w „Razem" znow by sie rozjechaly.
       wierszeZamowien: dane.wszystkieZamowienia.map((z) => ({
         z,
@@ -219,12 +217,12 @@ export function registerOkresyRoutes(app, { db, config = {}, proba = false, infa
       // co `mozliwaFaktura` na karcie zamowienia).
       mozliwaFaktura: Boolean(program),
       wbudowany: program?.opis?.wbudowany === true,
-      // PRZ-168.01b: zdanie o wysyłce do KSeF po wystawieniu — przycisk i automat tylko, gdy program wysyła z OMS-u.
+      // Zdanie o wysyłce do KSeF po wystawieniu — przycisk i automat tylko, gdy program wysyła z OMS-u.
       // Usługa `infakt` bywa surowym klientem inFaktu (bez `opis`) — owinięta tak samo jak w services/wysylka-ksef.js.
       wysylaZOms: programWysylaDoKsef(zProgramu({ infakt: program })),
-      // PRZ-118.09: nazwa i ekran programu fakturowego w zdaniach karty okresu (bez programu — inFakt, jak dotąd).
+      // Nazwa i ekran programu fakturowego w zdaniach karty okresu (bez programu — inFakt, jak dotąd).
       nazwaProgramu: odmianaNazwyProgramu(program), ekranProgramu: ekranProgramu(program), gdzieProgramu: gdzieDokument(program),
-      // PRZ-121.03a: zdanie „faktury wyłączone” (tylko przy jawnym „brak”); `null` = stary akapit z widoku.
+      // Zdanie „faktury wyłączone” (tylko przy jawnym „brak”); `null` = stary akapit z widoku.
       zdanieBraku: zdanieBrakuProgramu(wyborProgramu),
       // Czy okres w ogole przyjmuje jeszcze zamowienia — steruje przyciskiem „Zamknij".
       otwarty: okresPrzyjmujeZamowienia(okres.stan),
@@ -257,7 +255,7 @@ export function registerOkresyRoutes(app, { db, config = {}, proba = false, infa
     try {
       // `vies` i NIP sprzedawcy jada do uslugi dla galezi WDT (klient okresu z numerem
       // VAT-UE) — dla klienta krajowego usluga ich nie dotyka.
-      // PRZ-108.10: NIP sprzedawcy funkcją — plik albo Ustawienia → Firma, czytany przy wystawieniu.
+      // NIP sprzedawcy funkcją — plik albo Ustawienia → Firma, czytany przy wystawieniu.
       await createFakturaOkresu({
         db, infakt: program, vies, nipSprzedawcy: () => nipSprzedawcyLubBrak(config),
       }).wystaw(okres.id, klient);
@@ -282,7 +280,7 @@ export function registerOkresyRoutes(app, { db, config = {}, proba = false, infa
   // NA ZAWSZE (a `zawieszona` powstaje przy zwyklym restarcie panelu w trakcie wywolania
   // inFaktu). Panel NICZEGO w inFakcie nie kasuje i nie sprawdza: to odnotowanie faktu, ktory
   // czlowiek stwierdzil poza panelem. Odmowa dla faktury WYSTAWIONEJ siedzi
-  // w `odblokujFaktureOkresu` (db/okresy.js) — tu tylko przenosimy ja na ekran.
+  // w `odblokujFaktureOkresu` (oms/db/okresy.js) — tu tylko przenosimy ja na ekran.
   app.post('/okresy/:id/faktura/odblokuj', async (req, reply) => {
     const okres = okresZadania(req, reply);
     if (!okres) return reply;
@@ -330,7 +328,7 @@ export function registerOkresyRoutes(app, { db, config = {}, proba = false, infa
   });
 
   // DROGA POWROTNA po zamknieciu. Zamkniety okres odmawia przyjecia zamowienia komunikatem,
-  // ktory obiecuje operatorowi decyzje („korekta albo zmiana daty" — domain/okres-rozliczeniowy.js:
+  // ktory obiecuje operatorowi decyzje („korekta albo zmiana daty" — domena/okres-rozliczeniowy.js:
   // opisOdmowy), a do tej pory panel nie mial ani tej decyzji, ani drogi powrotu.
   app.post('/okresy/:id/otworz', async (req, reply) => {
     const okres = okresZadania(req, reply);
@@ -338,7 +336,7 @@ export function registerOkresyRoutes(app, { db, config = {}, proba = false, infa
     if (okresPrzyjmujeZamowienia(okres.stan)) {
       return odmowaOkresu(reply, okres, 400, 'Ten okres jest już otwarty — nie ma czego otwierać.', 'Nie udało się otworzyć okresu');
     }
-    // ⚠️ STRAZ, KTOREJ NIE MA W BAZIE, I TO JEST SWIADOME. `otworzOkresPonownie` (db/okresy.js)
+    // ⚠️ STRAZ, KTOREJ NIE MA W BAZIE, I TO JEST SWIADOME. `otworzOkresPonownie` (oms/db/okresy.js)
     // to goly UPDATE — otwarcie okresu z WYSTAWIONA faktura wpusciloby nowe zamowienia do
     // miesiaca, za ktory klient juz dostal dokument (poprawia sie go wtedy wylacznie korekta),
     // a przy okazji skasowaloby stan „zafakturowany", czyli blokade drugiej faktury.
@@ -361,7 +359,7 @@ export function registerOkresyRoutes(app, { db, config = {}, proba = false, infa
 
   // ---------------------------------------------------------------------------------
   // WPLATY OKRESU. Klient zbiorczy placi RAZ, po fakturze — wplata nalezy do MIESIACA,
-  // nie do zadnego pojedynczego zamowienia (db/platnosci.js, tabela `platnosci_okresu`).
+  // nie do zadnego pojedynczego zamowienia (oms/db/platnosci.js, tabela `platnosci_okresu`).
   // ---------------------------------------------------------------------------------
 
   app.post('/okresy/:id/wplata', async (req, reply) => {
@@ -369,7 +367,7 @@ export function registerOkresyRoutes(app, { db, config = {}, proba = false, infa
     if (!okres) return reply;
     let wplata;
     try {
-      // ⚠️ KWOTA IDZIE PRZEZ `parsujWplate` (domain/platnosci.js), a NIE prosto z `req.body`
+      // ⚠️ KWOTA IDZIE PRZEZ `parsujWplate` (domena/platnosci.js), a NIE prosto z `req.body`
       // do bazy. Przecinek dziesietny jest tym, co czlowiek w Polsce naprawde wpisuje —
       // '500,00' oddane bazie surowo odbijalo sie od `grosze()` jako „kwota nie jest liczbą".
       // Ta sama funkcja pilnuje kwoty > 0 i uzupelnia puste pole daty biezacym czasem
@@ -392,7 +390,7 @@ export function registerOkresyRoutes(app, { db, config = {}, proba = false, infa
   // ⚠️ Adres niesie OBA identyfikatory i `usunWplateOkresu` szuka wiersza po PARZE
   // (okres, wplata). To zakres wlasnosci, nie ozdoba: w swiezej bazie liczniki AUTOINCREMENT
   // roznych tabel zbiegaja sie, wiec sam `id` wplaty pozwolilby skasowac wplate nalezaca
-  // do innego okresu (przewodnik OMS, sekcja 6, punkt 3).
+  // do innego okresu.
   app.post('/okresy/:id/wplata/:platnoscId/usun', async (req, reply) => {
     const okres = okresZadania(req, reply);
     if (!okres) return reply;
@@ -404,9 +402,9 @@ export function registerOkresyRoutes(app, { db, config = {}, proba = false, infa
     return reply.redirect(`/okresy/${okres.id}`);
   });
 
-  // ⚠️ WYJSCIE Z JEDYNEJ POMYLKI MODULU, KTORA NIE MIALA WYJSCIA (niezmiennik 4.9).
-  // Zamowienie trafia do okresu po NIP-ie przy zakladaniu; literowka znaczyla, ze wypada
-  // i z faktury miesiecznej, i z raportu — a jedynym ratunkiem byl SQL na produkcji.
+  // ⚠️ WYJŚCIE Z POMYŁKI, KTÓRA INACZEJ NIE MIAŁABY WYJŚCIA (reguła: każdy stan ma wyjście).
+  // Zamówienie trafia do okresu po NIP-ie przy zakładaniu; literówka znaczy, że wypada
+  // i z faktury miesięcznej, i z raportu — a jedynym ratunkiem byłby ręczny SQL w bazie.
   //
   // ⚠️ BARIERA JEST TUTAJ, NIE W SZABLONIE. Widok chowa przycisk przy zafakturowanym okresie,
   // ale zadanie ze starej, otwartej karty omija widok w calosci — i to wlasnie ono zmienialoby

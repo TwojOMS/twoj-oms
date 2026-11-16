@@ -4,7 +4,7 @@ import { sledzeniePrzesylki } from '../../domena/sledzenie-przesylki.js';
 // Idempotentne porządkowanie osadu przy starcie — zamrożony bootstrap 5b9cd765.
 // Paczek WZA nie czyścimy hurtowo, gdy istnieje któraś rzeczywista droga śledzenia.
 export function sprzatnijOsadStatusu(db, kurierzy, log) {
-  // PRZ-092: DPD bez kanału DPD Info (`bezSledzenia`) nie jest drogą śledzenia paczek WzA.
+  // DPD bez kanału DPD Info (`bezSledzenia`) nie jest drogą śledzenia paczek WzA.
   const dpdSledzi = Boolean(kurierzy.dpd && !kurierzy.dpd.bezSledzenia);
   const bezSledzenia = Object.entries(kurierzy)
     .filter(([nazwa, k]) => k?.bezSledzenia && !(nazwa === 'allegro_wza' && (dpdSledzi || kurierzy.allegro)))

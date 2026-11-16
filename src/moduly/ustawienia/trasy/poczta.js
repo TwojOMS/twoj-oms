@@ -1,5 +1,5 @@
-// PRZ-094.04: Ustawienia → Integracje → Poczta wychodząca. Wzór: wysylka/trasy/ustawienia-dpd.js (PRZ-092) i
-// faktury/trasy/ustawienia-infakt.js (PRZ-093.10).
+// Ustawienia → Integracje → Poczta wychodząca. Wzór: wysylka/trasy/ustawienia-dpd.js i
+// faktury/trasy/ustawienia-infakt.js.
 //
 // Dwie niezależne części, każda z własnym „plik wygrywa”: serwer SMTP (SMTP_* w .env) i adres panelu do linków
 // w mailach (OMS_ADRES_PANELU). Część ustawiona w pliku jest na ekranie tylko opisana, a jej zapis = 409.
@@ -30,7 +30,7 @@ export const TEMAT_PROBNEJ = 'Wiadomość próbna z panelu';
 
 /**
  * @param {any} app
- * PRZ-102.10: `podpis` — usługa wiadomosci.podpisMaili (marka i stopka maili do klientów) albo null bez modułu wiadomości.
+ * `podpis` — usługa wiadomosci.podpisMaili (marka i stopka maili do klientów) albo null bez modułu wiadomości.
  * @param {{ db: any, adresPaneluZEnv: string | null, poczta: () => any, mailer: () => any, podpis?: () => any, log?: (...t: string[]) => void }} opcje
  */
 export function registerUstawieniaPocztyRoutes(app, { db, adresPaneluZEnv, poczta, mailer, podpis = () => null, log = () => {} }) {
@@ -55,7 +55,7 @@ export function registerUstawieniaPocztyRoutes(app, { db, adresPaneluZEnv, poczt
       pola: { ...PUSTY, ...Object.fromEntries(Object.entries(zapisane).map(([k, v]) => [k, String(v ?? '')])), ...(wpisane ?? {}) },
       moznaProbowac: Boolean(mailer()),
       adresProby: adresProby ?? emailKonta(db, req.konto?.id ?? -1) ?? '',
-      // PRZ-094.10: tylko do podpowiedzi przy pustym polu — link z tokenem liczy wyłącznie trasa admina (konta.js).
+      // Tylko do podpowiedzi przy pustym polu — link z tokenem liczy wyłącznie trasa admina (konta.js).
       adresDomyslny: adresPaneluZZadania(req),
       adresZEnv: adresPaneluZEnv, adresZapisany, zapisAdresu: zapisAdresu ? { kontoLogin: zapisAdresu.kontoLogin, zmienionoAt: zapisAdresu.zmienionoAt } : null,
       wpisanyAdres: wpisanyAdres ?? adresZapisany ?? '',
@@ -74,7 +74,7 @@ export function registerUstawieniaPocztyRoutes(app, { db, adresPaneluZEnv, poczt
   const kto = (req) => (req.konto ? { id: req.konto.id ?? null, login: req.konto.login ?? null } : null);
 
   const widokGet = async (req, reply) => {
-    // PRZ-102.10: „Podgląd” podpisu to GET z wpisanymi polami — niczego nie zapisuje (jak podgląd szablonu wiadomości).
+    // „Podgląd” podpisu to GET z wpisanymi polami — niczego nie zapisuje (jak podgląd szablonu wiadomości).
     const usl = podpis();
     if (req.query?.podglad === undefined || !usl) return widok(req, reply);
     const wpisane = {};
@@ -104,7 +104,7 @@ export function registerUstawieniaPocztyRoutes(app, { db, adresPaneluZEnv, poczt
       // Wpisana wartość wraca do pola tylko wtedy, gdy da się ją bezpiecznie pokazać (EJS i tak ją escapuje).
       return widok(req, reply, { bledyAdresu: [blad], wpisanyAdres: String(req.body?.adres ?? '').slice(0, 200) });
     }
-    // PRZ-094.10: puste pole = bez zapisu, linki prowadzą pod adres domyślny (ten, z którego korzysta admin).
+    // Puste pole = bez zapisu, linki prowadzą pod adres domyślny (ten, z którego korzysta admin).
     if (!adres) {
       const byl = Boolean(wczytajKonfiguracjeIntegracji(db, 'adres_panelu'));
       usunKonfiguracjeIntegracji(db, 'adres_panelu');
@@ -138,7 +138,7 @@ export function registerUstawieniaPocztyRoutes(app, { db, adresPaneluZEnv, poczt
       : `Wysłano wiadomość próbną na ${adres}. Sprawdź skrzynkę, także folder ze spamem.` } });
   });
 
-  // PRZ-102.10: podpis maili do klientów. Pole ustawione w pliku (OMS_MAIL_MARKA / OMS_MAIL_STOPKA) = 409, jak reszta ekranu.
+  // Podpis maili do klientów. Pole ustawione w pliku (OMS_MAIL_MARKA / OMS_MAIL_STOPKA) = 409, jak reszta ekranu.
   app.post(`${EKRAN_POCZTY}/podpis`, async (req, reply) => {
     const usl = podpis();
     if (!usl) return stronaOdmowy(reply, 404, 'Podpis maili wymaga modułu wiadomości.', WROC_PODPIS);

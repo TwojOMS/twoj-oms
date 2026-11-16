@@ -1,9 +1,9 @@
-// PRZ-093.09 — kurier InPost (paczkomaty, API ShipX) skonfigurowany w Ustawieniach. Wzór: DPD z PRZ-092
+// Kurier InPost (paczkomaty, API ShipX) skonfigurowany w Ustawieniach. Wzór: DPD
 // (domena/konfiguracja-dpd.js).
 //
 // Dla instalacji klientów Twojego OMS-u: token API ShipX i numer organizacji wpisuje się na ekranie zamiast do
 // oms.env. ⚠️ Gdy InPost jest w .env (INPOST_TOKEN), .env WYGRYWA i formularz tylko to pokazuje — instalacja
-// skonfigurowana plikiem nie zmienia zachowania po tej zmianie.
+// skonfigurowana plikiem nie zmienia zachowania.
 //
 // Adres API NIE jest polem formularza: zawsze produkcyjny ShipX. Dowolny adres z ekranu znaczyłby, że konto
 // z dostępem do Ustawień może wysłać token pod obcy adres. Inny adres (np. testowy) nadal da się ustawić
@@ -14,7 +14,7 @@
 export const ADRES_INPOST = 'https://api-shipx-pl.easypack24.net/v1';
 
 /**
- * PRZ-094.15 — kod punktu nadawczego (`custom_attributes.dropoff_point` = „dropoff point name”, ShipX) po
+ * Kod punktu nadawczego (`custom_attributes.dropoff_point` = „dropoff point name”, ShipX) po
  * przycięciu i zamianie na wielkie litery. To `name` punktu z API Points: paczkomat (KRA02APP, ABC01M) albo
  * PaczkoPunkt, którego `name` ma prefiks z myślnikiem (POP-WAW206). Człony A-Z0-9 rozdzielone pojedynczymi
  * myślnikami, 2–20 znaków. Plik (INPOST_PACZKOMAT_NADAWCZY) nie sprawdza kodu wcale — ekran nie może być

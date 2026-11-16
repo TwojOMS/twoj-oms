@@ -1,41 +1,41 @@
 import { bladOperatora } from './bledy.js';
 import { znormalizujNip } from './gus.js';
 
-// JEDYNE miejsce, w ktorym ksztalt odpowiedzi KSeF zamienia sie w ksztalt panelu. Druga kopia
-// tego mapowania rozjedzie sie z pierwsza przy pierwszej zmianie schematu FA — a schema FA
-// zmienia sie decyzja Ministerstwa, nie nasza.
+// JEDYNE miejsce, w którym kształt odpowiedzi KSeF zamienia się w kształt panelu. Druga kopia
+// tego mapowania rozjedzie się z pierwszą przy pierwszej zmianie schematu FA — a schemat FA
+// zmienia się decyzją Ministerstwa, nie naszą.
 //
-// ⚠️⚠️ KWOTY WYCHODZA STAD JAKO NAPISY, nie jako liczby — i tu jest jedyne miejsce, w ktorym
-// wolno je zamienic. KSeF oddaje `netAmount`/`vatAmount`/`grossAmount` jako liczby JSON-a
-// (1067.0, 245.41), a kolumny `netto/vat/brutto` sa TEXT-em, bo pieniadze w tym repo liczy
-// sie na liczbach CALKOWITYCH przez `grosze()` (niezmiennik 4.5) — nigdy na floatach.
+// ⚠️⚠️ KWOTY WYCHODZĄ STĄD JAKO NAPISY, nie jako liczby — i tu jest jedyne miejsce, w którym
+// wolno je zamienić. KSeF oddaje `netAmount`/`vatAmount`/`grossAmount` jako liczby JSON-a
+// (1067.0, 245.41), a kolumny `netto/vat/brutto` są TEXT-em, bo pieniądze w tym repo liczy
+// się na liczbach CAŁKOWITYCH przez `grosze()` — nigdy na floatach.
 //
 // `toFixed(2)`, a NIE `String(v)`:
 //   • `String(1067.0)` daje '1067' — przez `grosze()` przejdzie poprawnie, ale w bazie
-//     lezalaby kwota zapisana inaczej niz wszystkie pozostale, a porownanie dwoch napisow
-//     tej samej kwoty przestaloby cokolwiek znaczyc.
-//   • `toString()` liczby po JAKIEJKOLWIEK arytmetyce zmiennoprzecinkowej potrafi oddac
-//     '0.30000000000000004', czyli napis, ktory juz nie jest kwota. Wartosci z KSeF przychodza
-//     wprost z parsera JSON i maja najwyzej dwa miejsca po przecinku, wiec zaokraglenie do
-//     dwoch miejsc jest tu WIERNE, a nie „prawie wierne".
-// Zero i kwota ujemna (korekta) ida ta sama droga: '0.00' i '-36.90'.
+//     leżałaby kwota zapisana inaczej niż wszystkie pozostałe, a porównanie dwóch napisów
+//     tej samej kwoty przestałoby cokolwiek znaczyć.
+//   • `toString()` liczby po JAKIEJKOLWIEK arytmetyce zmiennoprzecinkowej potrafi oddać
+//     '0.30000000000000004', czyli napis, który już nie jest kwotą. Wartości z KSeF przychodzą
+//     wprost z parsera JSON i mają najwyżej dwa miejsca po przecinku, więc zaokrąglenie do
+//     dwóch miejsc jest tu WIERNE, a nie „prawie wierne”.
+// Zero i kwota ujemna (korekta) idą tą samą drogą: '0.00' i '-36.90'.
 //
-// ⚠️⚠️ BRAK KWOTY RZUCA — TUTAJ, U ZRODLA, A NIE DOPIERO PRZY ZAPISIE (recenzja, K1).
+// ⚠️⚠️ BRAK KWOTY RZUCA — TUTAJ, U ŹRÓDŁA, A NIE DOPIERO PRZY ZAPISIE.
 //
-// `Number(null)` i `Number('')` daja ZERO, wiec samo `Number(n).toFixed(2)` zamienialo brak
-// kwoty w napis '0.00': faktura, ktorej KSeF kwoty nie podal, lezala w bazie jako koszt
-// zerowy, wygladala poprawnie i wchodzila do sumy miesiaca. A poniewaz zapis idzie przez
-// `INSERT OR IGNORE`, taki wiersz NIGDY BY SIE SAM NIE POPRAWIL — kazdy nastepny przebieg
-// czuwacza widzi, ze dokument o tym numerze KSeF juz jest, i przechodzi obok.
-// Przed zmiana kwot na TEXT chronilo przed tym `grosze(null)` („Brak kwoty"); ta oslona
-// zostala wylaczona u zrodla i wraca w to samo miejsce, w tym samym ksztalcie.
+// `Number(null)` i `Number('')` dają ZERO, więc samo `Number(n).toFixed(2)` zamieniłoby brak
+// kwoty w napis '0.00': faktura, której KSeF kwoty nie podał, leżałaby w bazie jako koszt
+// zerowy, wyglądałaby poprawnie i wchodziłaby do sumy miesiąca. A ponieważ zapis idzie przez
+// `INSERT OR IGNORE`, taki wiersz NIGDY BY SIĘ SAM NIE POPRAWIŁ — każdy następny przebieg
+// czuwacza widzi, że dokument o tym numerze KSeF już jest, i przechodzi obok.
+// Kwoty idą do bazy jako napisy, bez `grosze()` (który na brak odpowiada „Brak kwoty”),
+// więc ta osłona musi stać tutaj.
 //
 // DLACZEGO RZUCENIE, A NIE `NOT NULL` W BAZIE. Odmowa bazy przy `INSERT OR IGNORE` jest
-// CICHA (to jest usterka W1 obok) — i nawet po jej naprawie mowilaby wylacznie „wiersza
-// nie ma", bez wskazania, ktorej kwoty zabraklo. Poza tym `NOT NULL` w ogole by tu nie
-// zadzialal: do bazy szedl napis '0.00', czyli wartosc jak najbardziej NIE-NULL. Straznik
-// musi wiec stac PRZED mapowaniem na wiersz, w jedynym miejscu styku ksztaltu KSeF
-// z ksztaltem panelu.
+// CICHA — a nawet głośna mówiłaby wyłącznie „wiersza
+// nie ma”, bez wskazania, której kwoty zabrakło. Poza tym `NOT NULL` w ogóle by tu nie
+// zadziałał: do bazy szedłby napis '0.00', czyli wartość jak najbardziej NIE-NULL. Strażnik
+// musi więc stać PRZED mapowaniem na wiersz, w jedynym miejscu styku kształtu KSeF
+// z kształtem panelu.
 //
 // ZERO TO NIE BRAK: `0` przechodzi i daje '0.00'. Kwota ujemna (korekta) tak samo.
 const kwota = (n, pole) => {
@@ -60,19 +60,19 @@ export function naWiersz(m) {
   return {
     ksefNumber: m.ksefNumber,
     numerDokumentu: m.invoiceNumber,
-    // ⚠️ NIP ZNORMALIZOWANY, bo to po nim (i nigdy po nazwie) dobiera sie kategoria kosztu.
-    // KSeF potrafi oddac ten sam NIP jako '525-267-47-98' i '5252674798', a `kategorie_kosztow`
-    // trzyma go w KLUCZU GLOWNYM — dwa zapisy to dwa wiersze dla jednego podatnika, i chybiony
-    // odczyt wygladajacy na „ten NIP nie ma jeszcze kategorii". TA SAMA funkcja, co przy GUS-ie.
-    // Pusty wynik to NULL, nie pusty napis: pusty napis bylby KLUCZEM i skleilby ze soba
-    // wszystkich sprzedawcow bez NIP-u.
+    // ⚠️ NIP ZNORMALIZOWANY, bo to po nim (i nigdy po nazwie) dobiera się kategoria kosztu.
+    // KSeF potrafi oddać ten sam NIP jako '525-267-47-98' i '5252674798', a `kategorie_kosztow`
+    // trzyma go w KLUCZU GŁÓWNYM — dwa zapisy to dwa wiersze dla jednego podatnika, i chybiony
+    // odczyt wyglądający na „ten NIP nie ma jeszcze kategorii”. TA SAMA funkcja, co przy GUS-ie.
+    // Pusty wynik to NULL, nie pusty napis: pusty napis byłby KLUCZEM i skleiłby ze sobą
+    // wszystkich sprzedawców bez NIP-u.
     //
-    // ⚠️ U4 (druga runda recenzji): `znormalizujNip` (domain/gus.js) to goly
-    // `replace(/\D+/g,'')` bez kontroli dlugosci — sprzedawca zagraniczny z NIP-em
-    // 'DE123456789' dostaje tu klucz '123456789', czyli napis WYGLADAJACY jak polski NIP
-    // (10 cyfr), ktorym NIE JEST. Ten klucz sluzy WYLACZNIE grupowaniu kosztow po sprzedawcy
-    // (kategorie_kosztow.nip) — nie jest walidowanym polskim NIP-em i nie wolno go tak czytac
-    // na ekranie operatora (np. wklejac wprost do wyszukiwarki GUS/Bialej Listy).
+    // ⚠️ `znormalizujNip` (domena/gus.js) to zdjęcie przedrostka „PL” i goły
+    // `replace(/\D+/g,'')` bez kontroli długości — sprzedawca zagraniczny z NIP-em
+    // 'DE123456789' dostaje tu klucz '123456789', czyli same cyfry WYGLĄDAJĄCE jak polski NIP,
+    // którym NIE SĄ. Ten klucz służy WYŁĄCZNIE grupowaniu kosztów po sprzedawcy
+    // (kategorie_kosztow.nip) — nie jest walidowanym polskim NIP-em i nie wolno go tak czytać
+    // na ekranie operatora (np. wklejać wprost do wyszukiwarki GUS/Białej Listy).
     sprzedawcaNip: znormalizujNip(m.seller?.nip) || null,
     sprzedawcaNazwa: m.seller?.name ?? null,
     dataWystawienia: m.issueDate,

@@ -1,4 +1,4 @@
-// PRZ-069: jednorazowe linki do ustawienia hasła. W bazie wyłącznie SHA-256 tokenu; ważność 48 h.
+// Jednorazowe linki do ustawienia hasła. W bazie wyłącznie SHA-256 tokenu; ważność 48 h.
 // Nowy link unieważnia wcześniejsze nieużyte linki konta; użycie linku unieważnia pozostałe.
 import { randomBytes, createHash } from 'node:crypto';
 import { ustawHashHasla } from '../../core/bezpieczenstwo/konta.js';
@@ -11,7 +11,7 @@ export const skrotTokenu = (token) => createHash('sha256').update(String(token))
 export const poprawnyKsztaltTokenu = (t) => typeof t === 'string' && /^[A-Za-z0-9_-]{43}$/.test(t);
 
 /**
- * Wydaje link. `zastapPoprzednie: false` (recenzja D8 r1, P3-2) — wysyłka mailem: poprzedni link zostaje
+ * Wydaje link. `zastapPoprzednie: false` — wysyłka mailem: poprzedni link zostaje
  * aktywny, dopóki mail nie wyjdzie (`zastapPoprzednieLinki` po sukcesie, `wycofajLink` po błędzie SMTP).
  */
 export function wydajLink(db, { kontoId, cel, utworzylKontoId = null, teraz, zastapPoprzednie = true }) {
@@ -51,7 +51,7 @@ export function aktywnyLink(db, token, teraz) {
 }
 
 export function uzyjLinku(db, { token, haslo, teraz }) {
-  // Recenzja D8 r1, P3-8: scrypt PRZED BEGIN IMMEDIATE — blokada zapisu bazy nie trwa tyle co haszowanie.
+  // Scrypt PRZED BEGIN IMMEDIATE — blokada zapisu bazy nie trwa tyle co haszowanie.
   const hashHasla = zahaszuj(haslo);
   return wTransakcji(db, () => {
     const link = aktywnyLink(db, token, teraz);
@@ -59,7 +59,7 @@ export function uzyjLinku(db, { token, haslo, teraz }) {
     const iso = teraz().toISOString();
     ustawHashHasla(db, link.kontoId, hashHasla);
     db.prepare('UPDATE linki_hasla SET uzyte_at = ? WHERE id = ?').run(iso, link.id);
-    // Żywe, nie martwe (recenzja D8 r1, P3-5): w oknie wysyłki maila konto ma dwa aktywne linki naraz.
+    // Żywe, nie martwe: w oknie wysyłki maila konto ma dwa aktywne linki naraz.
     db.prepare('UPDATE linki_hasla SET uniewaznione_at = ? WHERE konto_id = ? AND id <> ? AND uzyte_at IS NULL AND uniewaznione_at IS NULL')
       .run(iso, link.kontoId, link.id);
     return { login: link.login };

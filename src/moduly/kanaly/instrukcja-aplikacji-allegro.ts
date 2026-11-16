@@ -19,7 +19,7 @@ export const OPISY_UPRAWNIEN:Readonly<Record<string,string>>=Object.freeze({
  'allegro:api:messaging':'wiadomości od kupujących',
  'allegro:api:disputes':'dyskusje i reklamacje — odczyt',
  'allegro:api:profile:read':'profil konta — login i numer konta',
- // PRZ-160 E3.02: opcjonalne — tylko do wystawiania ofert.
+ // Opcjonalne — tylko do wystawiania ofert.
  'allegro:api:sale:offers:write':'oferty — wystawianie i zmiana',
  'allegro:api:sale:settings:read':'ustawienia sprzedaży — odczyt',
 });

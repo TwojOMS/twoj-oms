@@ -2,19 +2,18 @@
 // instance_id, nigdy po tytule" przy WooCommerce. Nazwa metody to tekst, ktory Allegro
 // zmieni bez pytania nas o zdanie.
 //
-// Identyfikatory zmierzone 04.08.2026 na 60 prawdziwych zamowieniach (notatka
-// 2026-08-04-allegro-rozpoznanie.md, sekcja 4) — liczebnosc w komentarzu przy wierszu.
+// Identyfikatory zmierzone na prawdziwych zamówieniach z Allegro.
 const ZNANE = {
-  '03f26351-f683-4db2-8895-f2c599280e3c': ['allegro_dpd', 'Allegro Kurier DPD'], // 42
-  '13f26351-26fb-48d4-b5dd-f2c599280e3c': ['allegro_dpd', 'Allegro Kurier DPD'], // 4 (pobranie)
-  '2488f7b7-5d1c-4d65-b85c-4cbcf253fd93': ['allegro_paczkomat', 'Allegro Paczkomat InPost'], // 6
-  '09164667-daa5-42dc-8087-33d7485790ac': ['allegro_punkt', 'Allegro Automat ORLEN Paczka'], // 2
-  '0560b75e-88c3-4b79-bcf7-62331a20b5b2': ['allegro_punkt', 'Allegro Odbiór w Punkcie DHL'], // 3
-  '0fe5b4af-9f09-443d-9d49-62331a20b5b2': ['allegro_punkt', 'Allegro Automat DHL BOX 24/7'], // 1
-  '0d83955a-4297-4169-adef-9790d53b11ff': ['allegro_kurier', 'Allegro One Kurier'], // 1
-  '0b9bed2c-0bc1-4e1f-9694-29bb39ebb483': ['allegro_punkt', 'Allegro One Box'], // 1
-  // ⚠️ POBRANIOWY WARIANT PACZKOMATU MA WLASNY IDENTYFIKATOR (dopisane 27.08.2026, zam. 1233).
-  // Slownik znal do tego dnia wylacznie wariant bez pobrania (`2488f7b7-…`), wiec pierwsze
+  '03f26351-f683-4db2-8895-f2c599280e3c': ['allegro_dpd', 'Allegro Kurier DPD'],
+  '13f26351-26fb-48d4-b5dd-f2c599280e3c': ['allegro_dpd', 'Allegro Kurier DPD'], // pobranie
+  '2488f7b7-5d1c-4d65-b85c-4cbcf253fd93': ['allegro_paczkomat', 'Allegro Paczkomat InPost'],
+  '09164667-daa5-42dc-8087-33d7485790ac': ['allegro_punkt', 'Allegro Automat ORLEN Paczka'],
+  '0560b75e-88c3-4b79-bcf7-62331a20b5b2': ['allegro_punkt', 'Allegro Odbiór w Punkcie DHL'],
+  '0fe5b4af-9f09-443d-9d49-62331a20b5b2': ['allegro_punkt', 'Allegro Automat DHL BOX 24/7'],
+  '0d83955a-4297-4169-adef-9790d53b11ff': ['allegro_kurier', 'Allegro One Kurier'],
+  '0b9bed2c-0bc1-4e1f-9694-29bb39ebb483': ['allegro_punkt', 'Allegro One Box'],
+  // ⚠️ POBRANIOWY WARIANT PACZKOMATU MA WLASNY IDENTYFIKATOR.
+  // Slownik znał początkowo wyłącznie wariant bez pobrania (`2488f7b7-…`), wiec pierwsze
   // takie zamowienie wpadlo do `allegro_inne` — a to znaczy: panel zada wskazania kuriera,
   // przy pobraniu na paczce nr 1 zostawia do wyboru SAM DPD (kurier-nadania.js), czyli
   // jedyna klikalna droga byl kurier pod adres domowy przy dostawie oplaconej jako paczkomat.
@@ -23,18 +22,18 @@ const ZNANE = {
   // `GET /shipment-management/delivery-services` oddaje dla tego id `owner: CLIENT`
   // i `credentialsId: null`, czyli Allegro tej etykiety NIE SPRZEDAJE. Paczka jedzie na
   // NASZEJ umowie InPostu, dokladnie tak samo jak wariant bez pobrania.
-  'b20ef9e1-faa2-4f25-9032-adbea23e5cb9': ['allegro_paczkomat', 'Allegro Paczkomat InPost pobranie'], // 1
+  'b20ef9e1-faa2-4f25-9032-adbea23e5cb9': ['allegro_paczkomat', 'Allegro Paczkomat InPost pobranie'],
 };
 
 // ⚠️ TA LISTA MA BYC ROWNA zbiorowi wartosci wystepujacych w ZNANE (plus `allegro_inne`) I MA
-// SIE ZAWIERAC w METODY_WYSYLKI (domain/wysylka.js) — pilnuje tego tests/oms/allegro-dostawa.
+// SIE ZAWIERAC w METODY_WYSYLKI (domena/wysylka.js) — pilnuje tego tests/oms/allegro-dostawa.
 // Metoda wpisana do slownika, a nieznana panelowi, wyladowalaby w kolumnie `metoda_wysylki`
 // jako wartosc, ktorej nie zna ani filtr listy, ani bramka recznej zmiany metody.
 export const METODY_ALLEGRO = ['allegro_dpd', 'allegro_paczkomat', 'allegro_punkt', 'allegro_kurier', 'allegro_inne'];
 
 /**
- * ⚠️ NIEZNANE `id` TO PRZYPADEK NORMALNY, NIE BRZEGOWY: osiem roznych metod w probce
- * szescdziesieciu zamowien. Slownik nigdy nie bedzie kompletny, wiec wpis jest WYGODA,
+ * ⚠️ NIEZNANE `id` TO PRZYPADEK NORMALNY, NIE BRZEGOWY: kilka różnych metod trafiło się już w
+ * próbce kilkudziesięciu zamówień. Słownik nigdy nie będzie kompletny, więc wpis jest WYGODĄ,
  * a nie warunkiem poprawnosci — i nieznana metoda NIE MA PRAWA niczego blokowac.
  *
  * To odwrotnosc reguly dla sklepow, gdzie „nieznana metoda" MUSI blokowac nadanie. Roznica
@@ -54,7 +53,7 @@ export function metodaZId(id, nazwa) {
 }
 
 /**
- * PELNA NAZWA DOSTAWY OD ALLEGRO, oczyszczona do pokazania czlowiekowi (25.08.2026).
+ * PELNA NAZWA DOSTAWY OD ALLEGRO, oczyszczona do pokazania czlowiekowi.
  *
  * ⚠️ TO JEST NAZWA DO WYSWIETLENIA, NIGDY DO DECYZJI. Zachowaniem steruje `metoda_wysylki`
  * (kubelek liczony PO `delivery.method.id`) — i tak ma zostac: filtry listy i bramka zmiany

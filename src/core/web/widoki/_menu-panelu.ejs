@@ -4,7 +4,7 @@
       <% if (!locals.zwiniete || mobilna) { %><h2><%= grupa.etykieta %></h2><% } %>
       <ul>
         <% grupa.pozycje.forEach(function(p) { %>
-          <%# PRZ-102.03: pozycja ze statusami dostaje klasę — na telefonie zajmuje cały wiersz siatki dwóch kolumn. %>
+          <%# Pozycja ze statusami dostaje klasę — na telefonie zajmuje cały wiersz siatki dwóch kolumn. %>
           <% const zeStatusami = p.klucz === 'zamowienia' && (statusyMenu ?? []).length > 0; %>
           <%_ const podmenu = zeStatusami || p.klucz === 'magazyn' || p.podmenu?.length;
              const idPodmenu = `oms-podmenu-${p.klucz}-${mobilna ? 'mobile' : 'desktop'}`;
@@ -14,7 +14,7 @@
             <%_ if (podmenu) { _%>
               <button type="button" class="oms-podmenu-przycisk" data-podmenu="<%= p.klucz %>" aria-expanded="<%= domyslnie %>" aria-controls="<%= idPodmenu %>" aria-label="<%= zeStatusami ? 'Pokaż/ukryj statusy zamówień' : p.klucz === 'magazyn' ? 'Pokaż/ukryj podmenu Magazynu' : p.klucz === 'faktury' ? 'Pokaż/ukryj podmenu Faktur' : `Pokaż/ukryj podmenu ${p.etykieta}` %>" hidden></button>
             <%_ } _%>
-            <%# PRZ-066: statusy wracają do bocznego menu, pod „Zamówienia” (prośba właściciela 13.10). %>
+            <%# Statusy stoją w bocznym menu, pod „Zamówienia”. %>
             <%# `data-status` tylko w wersji komputerowej — menu telefonowe stoi w tym samym HTML, %>
             <%# a licznik ma mieć w dokumencie jedno źródło (test demo liczy wystąpienia). %>
             <%_ if (zeStatusami) { _%>
@@ -27,7 +27,7 @@
             <%_ } _%>
             <%_ if (p.klucz === 'magazyn') { _%>
               <ul class="oms-podmenu-lista" id="<%= idPodmenu %>" data-podmenu-lista="magazyn" data-podmenu-domyslnie="<%= domyslnie %>" aria-label="Magazyn">
-                <%# PRZ-160.P3b.01: Kategorie i Marki działają — odnośniki z nawigacjaDla (podstrony). %>
+                <%# Podstrony Magazynu (np. Kategorie i Marki) pochodzą z nawigacjaDla (domena/menu-stron.js). %>
                 <% (p.podstrony ?? []).forEach(function(d) { %>
                   <li><a href="<%= d.href %>"<%- d.biezaca ? ` aria-current="${d.biezaca}"` : '' %>><%= d.etykieta %></a></li>
                 <% }); %>
@@ -45,8 +45,8 @@
       </ul>
     </section>
   <% }); %>
-  <%# PRZ-167: analizy są pozycją „Analityka” w grupach wyżej — także na telefonie (dawniej zwinięta grupa tutaj). %>
-  <%# PRZ-167 (właściciel 15.11): Ustawienia także na dole menu bocznego; ikona w górnym pasku na razie zostaje. %>
+  <%# Analizy są pozycją „Analityka” w grupie „Wyniki” menu bocznego — także na telefonie. %>
+  <%# Ustawienia także na dole menu bocznego; ikona w górnym pasku też zostaje. %>
   <% if (nawigacja.ustawienia) { %>
     <section class="oms-menu-grupa oms-menu-ustawienia" aria-label="Ustawienia">
       <ul><li><a href="<%= nawigacja.ustawienia.href %>"<%_ if ((locals.zwiniete || locals.ikony) && !mobilna) { _%> title="Ustawienia"<%_ } _%><%- nawigacja.ustawienia.aktywna ? ' aria-current="page"' : '' %>><%- include('_ikona-panelu.ejs', {klucz:'ustawienia'}) %><span><%= nawigacja.ustawienia.etykieta %></span></a></li></ul>

@@ -1,10 +1,10 @@
-// Nazwy metod, jakie umie rozpoznac ten modul. Eksportowane, zeby config.js mogl
-// walidowac wpisy z env bez duplikowania tej listy.
+// Nazwy metod, jakie umie rozpoznać ten moduł. Eksportowane, żeby konfiguracja kanałów
+// (moduly/kanaly/konfiguracja.ts) mogła walidować wpisy z env bez duplikowania tej listy.
 //
-// `odbior_osobisty` NIE MA kuriera i to jest jego cala tresc — patrz kurierzy/index.js.
-// Metoda istnieje po to, zeby sprzedaz na miejscu dalo sie odroznic od wysylkowej
-// (sprzedaz na miejscu, spec Etap 3, punkt 6.2), a nie zeby cokolwiek nadawac.
-// ⚠️ ROZDZIELENIE DOSTAWY I POBRANIA (2026-08-01, decyzja wlasciciela). Do tej pory
+// `odbior_osobisty` NIE MA kuriera i to jest jego cała treść — patrz oms/kurierzy/index.js.
+// Metoda istnieje po to, żeby sprzedaż na miejscu dało się odróżnić od wysyłkowej,
+// a nie żeby cokolwiek nadawać.
+// ⚠️ ROZDZIELENIE DOSTAWY I POBRANIA. Dawniej
 // „za pobraniem" bylo OSOBNA METODA WYSYLKI (`dpd_pobranie`) i dzialalo, dopoki kurier
 // byl jeden. Przy dwoch lista podwaja sie (`inpost_kurier`, `inpost_kurier_pobranie`,
 // `inpost_paczkomat`, `inpost_paczkomat_pobranie`), przy Allegro rozjezdza sie zupelnie.
@@ -18,26 +18,26 @@
 // Dlatego sa teraz DWIE niezalezne wartosci: RODZAJ DOSTAWY (ta lista) i `pobranie` (0/1,
 // kolumna obok). Dolozenie kuriera to jeden wpis w rejestrze `moduly-kurierow.ts`, nie dwa.
 //
-// `inpost_paczkomat` doszedl 2026-08-01 (Etap 2, paczkomaty). Jest tu WYLACZNIE rodzajem
+// `inpost_paczkomat` jest tu WYŁĄCZNIE rodzajem
 // dostawy — pobranie paczkomatowe jest flaga obok, dokladnie jak przy DPD, a nie osobna
 // nazwa. Kuriera InPost na umowie NIE MA (rozpoznanie ShipX: carriers to `inpost_locker`
 // i `inpost_letter`), wiec nie ma go tez na tej liscie: metoda, ktorej panel nie umie
 // nadac, bylaby obietnica bez pokrycia.
 //
-// ⚠️ METODY ALLEGRO (2026-08-04). Sa tu, zeby panel umial je NAZWAC i po nich filtrowac —
-// a NIE po to, zeby cokolwiek nadawac. Zadna z nich nie ma i nie ma miec wpisu w `DLA_METODY`
-// (kurierzy/index.js): paczki tego kanalu nadaje sie w panelu Allegro, wiec nadanie z OMS-u
-// znaczyloby DRUGA, platna przesylke do tego samego klienta — i tego nie da sie cofnac.
-// Brak wpisu w mapie kurierow JEST tu mechanizmem odmowy, dokladnie jak przy
-// `odbior_osobisty`; slownik identyfikatorow siedzi w domain/allegro-dostawa.js.
+// ⚠️ METODY ALLEGRO. Są tu, żeby panel umiał je NAZWAĆ i po nich filtrować. Żadna nie ma kuriera
+// na WŁASNEJ umowie w rejestrze `moduly-kurierow.ts` (`kurierDlaMetody`, opis w oms/kurierzy/index.js):
+// cztery (`allegro_dpd`, `allegro_punkt`, `allegro_kurier`, `allegro_inne`) nadaje „Wysyłam z Allegro”
+// (kurier `allegro_wza`), a `allegro_paczkomat` panel przepina na nasz InPost przez `NADAJEMY_SAMI`
+// (domena/kurier-nadania.js). Nadanie paczki opłaconej u Allegro własnym kurierem znaczyłoby DRUGĄ,
+// płatną przesyłkę do tego samego klienta — i tego nie da się cofnąć. Brak takiego kuriera w rejestrze
+// JEST tu mechanizmem odmowy, dokładnie jak przy `odbior_osobisty`; słownik identyfikatorów siedzi
+// w domena/allegro-dostawa.js.
 //
 // `allegro_inne` NIE JEST tym samym, co `nieznana`. „Nieznana" znaczy „metoda DO WYJASNIENIA,
 // popraw ja na karcie"; `allegro_inne` znaczy „Allegro dolozylo usluge, ktorej jeszcze nie
-// nazwalismy" — i nie ma z tym zadnej roboty, bo tego kanalu i tak nie nadajemy.
-// (Stan z 04.08. Od 11.08 cztery z nich nadaje „Wysylam z Allegro" — kurier `allegro_wza`
-// w rejestrze `moduly-kurierow.ts`, ktory od PRZ-135.04a zastepuje mape `DLA_METODY`.)
+// nazwalismy" — i nie ma z tym roboty na karcie, bo nadaje je „Wysyłam z Allegro”.
 //
-// PRZ-135.04a (D4): na poczatku metody kurierow na WLASNEJ umowie, czytane z rejestru;
+// Na początku metody kurierów na WŁASNEJ umowie, czytane z rejestru;
 // za nimi stala lista metod kanalu bez wlasnego kuriera (odbior osobisty i metody Allegro).
 const METODY_KANALU = [
   'odbior_osobisty',
@@ -64,16 +64,17 @@ export const METODY_WYSYLKI = metodyWysylki();
  * Kolumna `sklep` jest trwala — ustawia ja poller kanalu przy zapisie i nic z panelu jej
  * nie zmienia (nie ma jej na liscie pol zadnego formularza).
  *
- * Klucze kanalow (np. `allegro_a`, `allegro_b`) sa w konfiguracji kanalow, stala KANALY.
+ * Klucze kanałów (np. `allegro_a`, `allegro_b`) pochodzą z pliku (`OMS_KANALY`) albo z Ustawień (tabela
+ * `kanaly_sprzedazy`; kanał dodany w panelu dostaje klucz `allegro_<id>`).
  * Sprawdzamy PREFIKS, a nie liste: dolozenie trzeciego konta Allegro to jeden wpis tam
  * i nic tutaj. Podkreslnik w prefiksie jest istotny — sklep o kluczu „allegrowy" nie jest
  * kanalem Allegro (ta sama pulapka, co przy metodach w masowe.js).
  *
- * PRZ-101.08: klucz kanalu jest dowolny (`OMS_KANALY`), a demo ma `allegro` i `allegro-outlet`.
+ * Klucz kanalu z pliku jest dowolny (`OMS_KANALY`), a demo ma `allegro` i `allegro-outlet`.
  * Dlatego DRUGA galaz: klucz kanalu o `typ: 'allegro'` z konfiguracji. Zbior ustawia modul kanalow
  * raz przy budowie aplikacji (`ustawKanalyAllegro`); bez niego (testy domeny, skrypty) zostaje sam
- * prefiks — zachowanie sprzed zmiany. Prefiks WYGRYWA: sklep `allegro_x` z `typ: 'woo'` dalej jest
- * brany za Allegro (strażnik PRZ-062 alarmuje o takim kluczu w instalacji klienta).
+ * prefiks. Prefiks WYGRYWA: sklep `allegro_x` z `typ: 'woo'` dalej jest brany za Allegro
+ * (bezpiecznik kanałów, moduly/zdrowie/bezpiecznik-kanalow.ts, alarmuje o takim kluczu).
  */
 import { umiejetnosciZamowienia } from './moduly-kanalow.ts';
 import { MODULY_KURIEROW, metodyNaUmowie, metodaKuriera, metodyKurierow } from './moduly-kurierow.ts';
@@ -86,7 +87,7 @@ export { ustawKanalyAllegro, kanalyAllegro, czyKanalAllegro } from './moduly-kan
 // opisane inaczej niz wybrana pozycja listy. 'nieznana' JEST tu, bo to realna wartosc
 // kolumny (metoda, ktorej panel nie rozpoznal), a nie brak danych.
 //
-// PRZ-135.04a: nazwy metod KURIEROW („Kurier DPD" — prosba właściciela 25.08.2026 — i brzmienie
+// Nazwy metod KURIERÓW („Kurier DPD” i brzmienie
 // metod Allegro, razem z powodami) stoja w rejestrze `moduly-kurierow.ts` (`metoda.etykieta`).
 // Tu zostaja tylko metody kanalu bez kuriera. Metoda bez etykiety = wyjatek przy imporcie.
 const ETYKIETY_KANALU = {
@@ -109,7 +110,7 @@ export function etykietyWysylki(rejestr = MODULY_KURIEROW) {
     if (!etykieta) throw new Error(`Metoda wysylki ${m} nie ma etykiety`);
     wynik[m] = etykieta;
   }
-  // PRZ-157.07e: metoda kuriera spoza METODY_WYSYLKI (Przesyłki Erli — wybiera ją droga nadania ERLI,
+  // Metoda kuriera spoza METODY_WYSYLKI (Przesyłki Erli — wybiera ją droga nadania ERLI,
   // nie operator ani filtr) też ma nazwę dla człowieka, z rejestru — ekran nadania i karta mówią jednym brzmieniem.
   for (const m of metodyKurierow(rejestr)) wynik[m.klucz] ??= m.etykieta;
   wynik.nieznana = 'Nieznana metoda';
@@ -127,12 +128,12 @@ export const ETYKIETY_WYSYLKI = etykietyWysylki();
  * ze kurier ma cos zainkasowac.
  */
 export function etykietaWysylki(metoda, czyPobranie, nazwaDokladna = null) {
-  // PRZ-157.07e: metoda kuriera spoza metod zamówienia (Przesyłki Erli wybiera droga kanału, nie operator)
+  // Metoda kuriera spoza metod zamówienia (Przesyłki Erli wybiera droga kanału, nie operator)
   // też ma nazwę z rejestru — inaczej ekran nadania pokazywał klucz `erli_przesylki`.
   const nazwa = String(nazwaDokladna ?? '').trim() || ETYKIETY_WYSYLKI[metoda] || metoda;
   if (!czyPobranie) return nazwa;
-  // ⚠️⚠️ NAZWA ALLEGRO DLA POBRANIA JUZ MOWI „pobranie" („Allegro Kurier DPD pobranie (AD)"
-  // — 10 zamowien w probce z 25.08). Bezwarunkowy dopisek dawalby „…pobranie (pobranie)"
+  // ⚠️⚠️ NAZWA ALLEGRO DLA POBRANIA JUŻ MÓWI „pobranie” („Allegro Kurier DPD pobranie (AD)”).
+  // Bezwarunkowy dopisek dawalby „…pobranie (pobranie)"
   // na karcie, w mailu do klienta i na specyfikacji drukowanej do paczki.
   if (/pobrani/i.test(nazwa)) return nazwa;
   return `${nazwa} (pobranie)`;
@@ -166,7 +167,7 @@ export function nazwaDostawy(z) {
  * bo ma dwóch czytelników: `nazwaDostawy` (kolumna „Dostawa", karta, mail, specyfikacja)
  * i `uslugaDostawy` (rozkład przewoźników w zakładce STATYSTYKI). Druga kopia tego warunku
  * rozjechałaby się przy pierwszej zmianie — a rozjazd tych dwóch wyglądałby dokładnie jak
- * wada, którą recenzja 13.09.2026 tu znalazła.
+ * wada opisana niżej przy `uslugaDostawy`.
  */
 function nazwaAllegroAktualna(z) {
   const nadpisane = metodaWysylki(z) !== metodaZeSklepu(z) || czyPobranie(z) !== pobranieZeSklepu(z);
@@ -176,7 +177,7 @@ function nazwaAllegroAktualna(z) {
 /**
  * NAZWA USŁUGI DOSTAWY BEZ DOPISKU O POBRANIU — dla rozkładu przewoźników.
  *
- * ⚠️⚠️ POWSTAŁA Z WADY WAŻNEJ Z RECENZJI 13.09.2026. Zakładka STATYSTYKI wołała
+ * ⚠️⚠️ POWSTAŁA Z WADY WAŻNEJ. Zakładka STATYSTYKI wołała
  * `etykietaWysylki(z.metoda_wysylki, false, z.metoda_wysylki_nazwa)` na SUROWYCH kolumnach,
  * więc omijała obie ręczne poprawki: zamówienie przychodzące jako `inpost_paczkomat`
  * i poprawione na karcie na `dpd` pokazywało się na liście jako „Kurier DPD", a w statystyce
@@ -185,18 +186,17 @@ function nazwaAllegroAktualna(z) {
  * ⚠️ `czyPobranie = false` JEST TU TREŚCIĄ, nie skrótem, i dlatego ta funkcja istnieje osobno
  * od `nazwaDostawy`: pobranie NIE ROZDZIELA usługi na dwa wiersze rozkładu („Kurier DPD"
  * i „Kurier DPD (pobranie)" nie są dwiema usługami tego samego przewoźnika). Pobranie jest
- * cechą PŁATNOŚCI (niezmiennik z 1.08.2026) i liczy się w sekcji płatności. To świadoma
+ * cechą PŁATNOŚCI i liczy się w sekcji płatności. To świadoma
  * decyzja z własnym testem — a nazwa od Allegro unieważnia się przy zmianie pobrania TAK SAMO,
  * bo opisuje wybór kupującego, nie sposób liczenia.
  */
 /**
  * ⚠️⚠️ DOPISEK „pobranie" SCHODZI Z NAZWY USŁUGI — ale WYŁĄCZNIE w rozkładzie statystyk.
  *
- * Prośba właściciela z 13.09.2026 wprost: „Allegro Kurier DPD pobranie policz razem z Allegro
- * Kurier DPD, tak samo Allegro Paczkomaty InPost pobranie". Allegro sprzedaje pobranie jako
- * OSOBNĄ USŁUGĘ o własnej nazwie, więc te same paczki tego samego kuriera stały w rozkładzie
- * jako dwie pozycje — zmierzone na produkcji: 13 zamówień „Allegro Kurier DPD pobranie"
- * obok 43 „Allegro Kurier DPD" i 1 „Allegro Paczkomaty InPost pobranie" obok 11.
+ * Reguła: „Allegro Kurier DPD pobranie” liczy się razem z „Allegro Kurier DPD”, tak samo
+ * „Allegro Paczkomaty InPost pobranie”. Allegro sprzedaje pobranie jako OSOBNĄ USŁUGĘ
+ * o własnej nazwie, więc bez tego te same paczki tego samego kuriera stałyby w rozkładzie
+ * jako dwie pozycje.
  *
  * To DRUGA droga rozdzielenia usługi, niezależna od flagi `pobranie` (tę zdejmuje już
  * `czyPobranie = false` niżej): nasze własne DPD za pobraniem ma `metoda_wysylki_nazwa`
@@ -205,7 +205,7 @@ function nazwaAllegroAktualna(z) {
  * ⚠️ OBCINAMY TYLKO DOPISEK NA KOŃCU — wymagane `\s+` przed słowem. Nazwa, w której
  * „pobranie" jest TREŚCIĄ usługi (hipotetyczne „Pobranie kurierem po Polsce"), zostaje
  * nietknięta; bez tego warunku zniknęłaby cała. Przyrostek po słowie też schodzi, bo
- * zmierzony 25.08.2026 wariant brzmiał „Allegro Kurier DPD pobranie (AD)" — Allegro dokłada
+ * spotykany wariant brzmi „Allegro Kurier DPD pobranie (AD)" — Allegro dokłada
  * takie ogonki bez pytania nas o zdanie.
  *
  * ⛔ `nazwaDostawy` (kolumna „Dostawa", karta, mail, specyfikacja) tego NIE robi i nie ma
@@ -232,7 +232,7 @@ export function uslugaDostawy(z) {
 export function rozpoznajMetodeWysylki(zamowienie, mapa) {
   const linie = zamowienie?.shipping_lines;
   if (!Array.isArray(linie) || linie.length === 0) return 'nieznana';
-  // Patrzymy WYLACZNIE na linie[0]: ten sklep oferuje jedna metode wysylki na zamowienie.
+  // Patrzymy WYŁĄCZNIE na linię[0]: zakładamy jedną metodę wysyłki na zamówienie.
   // Sklep, ktory dopusci kilka linii wysylki w jednym zamowieniu, wymaga przemyslenia tego od nowa.
   const id = Number(linie[0].instance_id);
   if (!Number.isFinite(id)) return 'nieznana';
@@ -243,7 +243,7 @@ export function rozpoznajMetodeWysylki(zamowienie, mapa) {
 // RECZNE NADPISANIE METODY WYSYLKI (kolumna `zamowienia.wysylka_reczna_json`)
 //
 // ⚠️ TO NIE JEST TO SAMO CO `dostawa_reczna_json`. Tamta kolumna trzyma poprawiony ADRES
-// odbiorcy (domain/dane-reczne.js); ta trzyma METODE i kwote pobrania. Rozdzielone
+// odbiorcy (domena/dane-reczne.js); ta trzyma METODE i kwote pobrania. Rozdzielone
 // CELOWO: „Przywroc dane ze sklepu" przy adresie nie ma prawa po cichu cofac decyzji
 // o pobraniu, a zapis adresu (ktory podmienia CALY JSON) skasowalby metode przy kazdym
 // kliknieciu „Zapisz dane do wysylki".
@@ -253,7 +253,7 @@ export function rozpoznajMetodeWysylki(zamowienie, mapa) {
 // zasada, co przy `oplacone_at` + `oplacone_recznie` i przy `zwrot_at` + `zwrot_powod`.
 //
 // Ochrona przed pollerem: kolumny NIE MA na liscie pol w UPDATE zapiszZamowienie
-// (db/zamowienia.js) — i to jest cala jej ochrona, dokladnie jak przy danych klienta.
+// (oms/db/zamowienia.js) — i to jest cała jej ochrona, dokładnie jak przy danych klienta.
 // ---------------------------------------------------------------------------------
 
 // Wszystkie funkcje ponizej sa IDEMPOTENTNE — wolno je wywolac na surowym wierszu z bazy
@@ -296,7 +296,7 @@ export const nadpisanieWysylki = (z) => odczytajNadpisanie(z?.wysylka_reczna_jso
 /**
  * Czy zamowienie jedzie ZA POBRANIEM — wartosc efektywna (nadpisanie wygrywa z kolumna).
  *
- * ⚠️ Osobna od rodzaju dostawy od 2026-08-01. Wczesniej odpowiedz brzmiala
+ * ⚠️ Osobna od rodzaju dostawy. Wcześniej odpowiedź brzmiała
  * „metoda === dpd_pobranie" i byla rozsiana po dwunastu plikach; teraz jest jedna
  * i kazdy, kto pyta o pieniadze do zainkasowania, pyta wlasnie tutaj.
  */
@@ -320,7 +320,7 @@ export function metodaWysylki(z) {
  * warunek jest cala tresc tej funkcji. Zamowienie zlozone jako pobranie ma kwote w kolumnie
  * ze sklepu; przelaczenie go recznie na zwykla wysylke (klient dokonal przedplaty) MUSI te
  * kwote przestac uwzgledniac, inaczej kurier zainkasowalby ja od klienta DRUGI RAZ.
- * Zwracamy null, a nie '0.00': kurierzy/dpd.js rozroznia „brak pobrania" (nie ma <cod>)
+ * Zwracamy null, a nie '0.00': oms/kurierzy/dpd.js rozroznia „brak pobrania" (nie ma <cod>)
  * od kwoty niemozliwej do odczytania (odmowa) i to rozroznienie musi zostac.
  */
 export function kwotaPobrania(z) {
@@ -335,9 +335,9 @@ export function kwotaPobrania(z) {
 // Kod przychodzi ze sklepu w `meta_data` zamowienia (`_parcel_machine_id`, np. „WRO10B")
 // i lezy we WLASNEJ kolumnie `zamowienia.punkt_odbioru` — bo to fakt sklepu, ktory poller
 // ma odswiezac. Reczna korekta idzie tam, gdzie wszystkie korekty wysylki: do
-// `wysylka_reczna_json`, obok metody i pobrania. Powod jest ten sam co zawsze: poller
-// nadpisuje dane sklepu co dwie minuty, wiec poprawka wpisana wprost do kolumny znikaloby
-// przy najblizszej synchronizacji (przewodnik OMS, 4.7).
+// `wysylka_reczna_json`, obok metody i pobrania. Powód jest ten sam co zawsze: poller
+// nadpisuje dane sklepu przy każdej synchronizacji, więc poprawka wpisana wprost do kolumny
+// znikałaby przy najbliższej (reguła: dane ręczne obok danych sklepu).
 //
 // Korekta jest potrzebna z zycia: klient bywa, ze poda kod paczkomatu w uwagach zamiast
 // wybrac go w checkoucie — wtedy w kolumnie nie ma nic, a nadac trzeba.
@@ -396,7 +396,7 @@ export const metodaZmienionaRecznie = (z) => metodaWysylki(z) !== metodaZeSklepu
  * Zwraca `{ nadpisanie, blad }` — dokladnie jak parsujPaczke i parsujAdresOdbiorcy,
  * bo to ta sama klasa sprawy: bledny formularz, a nie awaria czegokolwiek.
  *
- * ⚠️ TRZY ARGUMENTY OD 2026-08-01, bo pobranie przestalo byc nazwa metody. Formularz na
+ * ⚠️ TRZY ARGUMENTY, bo pobranie przestało być nazwą metody. Formularz na
  * karcie oddaje teraz dwie niezalezne decyzje — dostawe i pobranie — i obie musza przejsc
  * przez TE SAMA bramke. Zgadywanie pobrania z nazwy metody (`metoda === 'dpd_pobranie'`)
  * przy drugim kurierze przepuscilo by `inpost_kurier` jako „bez pobrania" i paczka
@@ -405,11 +405,11 @@ export const metodaZmienionaRecznie = (z) => metodaWysylki(z) !== metodaZeSklepu
  * Pobranie i kwota lezą w JEDNYM obiekcie razem z metoda — patrz niezmiennik opisany
  * wyzej: nie da sie zapisac pobrania bez kwoty ani kwoty bez decyzji o pobraniu.
  *
- * ⚠️ CZWARTY ARGUMENT OD 2026-08-01 (paczkomaty): kod punktu odbioru. Jest OPCJONALNY
+ * ⚠️ CZWARTY ARGUMENT: kod punktu odbioru. Jest OPCJONALNY
  * i zapisuje sie DOKLADNIE tak, jak kwota pobrania — wylacznie przy metodzie, ktora go
  * w ogole ma. Kod zostawiony przy przelaczeniu na DPD bylby smieciem udajacym adres.
  *
- * ⚠️ PIATY ARGUMENT OD 2026-08-04 (Allegro): CALE ZAMOWIENIE, po to i tylko po to, zeby
+ * ⚠️ PIĄTY ARGUMENT: CAŁE ZAMÓWIENIE, po to i tylko po to, żeby
  * bramka znala KANAL. Bez niego funkcja widzi wylacznie nazwe metody, a nazwa metody jest
  * tym, co ten formularz wlasnie zmienia — rozstrzyga umiejętność kanału. Argument jest
  * OPCJONALNY (wywolanie bez niego zachowuje sie jak dotad), bo nie kazdy wolajacy ma
@@ -425,9 +425,10 @@ export function sprawdzZmianeMetody(metoda, czyPobranieWybrane, surowaKwota, sur
   // do klienta, ktory swoja juz dostal; `podzielDoNadania` czyta wartosc EFEKTYWNA, wiec
   // takie zamowienie poszloby hurtem, bez ani jednego pytania.
   //
-  // Odmawiamy KAZDEJ metody spoza kanalu, a nie tylko tych z wpisem w `DLA_METODY`. Warunek
-  // „ktore panel umie nadac" trzeba by trzymac w zgodzie z tamta mapa, a pierwszy dolozony
-  // kurier (inpost_kurier, Etap 4) otworzylby te furtke z powrotem — po cichu. Poprawka
+  // Odmawiamy KAŻDEJ metody spoza kanału, a nie tylko tych z kurierem w rejestrze
+  // (`kurierDlaMetody`). Warunek „które panel umie nadać” trzeba by trzymać w zgodzie
+  // z rejestrem, a pierwszy dołożony kurier (np. inpost_kurier) otworzyłby tę furtkę
+  // z powrotem — po cichu. Poprawka
   // metody W OBREBIE kanalu (allegro_inne → allegro_paczkomat) zostaje mozliwa, bo to jest
   // jedyna reczna korekta, ktora przy tym kanale ma sens.
   if (umiejetnosciZamowienia(zamowienie).wysylkaPlatformy && !metoda.startsWith('allegro_')) {
@@ -440,7 +441,7 @@ export function sprawdzZmianeMetody(metoda, czyPobranieWybrane, surowaKwota, sur
   }
   // ⚠️ Odbior osobisty z pobraniem to sprzecznosc, nie wariant: inkasuje KURIER, a przy
   // odbiorze na miejscu kuriera nie ma (ta sama odmowa, co przy zakladaniu zamowienia —
-  // domain/nowe-zamowienie.js). Wczesniej byla niewyrazalna, bo „odbior_osobisty" i
+  // domena/nowe-zamowienie.js). Wczesniej byla niewyrazalna, bo „odbior_osobisty" i
   // „dpd_pobranie" byly jedna wartoscia; po rozdzieleniu da sie ja kliknac, wiec musi
   // dostac odmowe TUTAJ.
   if (czyPobranieWybrane && metoda === 'odbior_osobisty') {
@@ -453,7 +454,7 @@ export function sprawdzZmianeMetody(metoda, czyPobranieWybrane, surowaKwota, sur
   // Kod paczkomatu doklejamy do KAZDEGO wariantu ponizej — i tylko przy metodzie, ktora
   // punkt odbioru w ogole ma. Wielkie litery, bo tak wygladaja kody InPostu na etykietach
   // i w API („wro10b" przepisane z uwag klienta zostaloby odrzucone przez ShipX); to ta
-  // sama rodzina normalizacji, co telefon bez `+48` (domain/telefon.js).
+  // sama rodzina normalizacji, co telefon bez `+48` (domena/telefon.js).
   const punkt = metodaKuriera(metoda)?.punktOdbioru ? String(surowyPunkt ?? '').trim().toUpperCase() : '';
   const zPunktem = (o) => (punkt ? { ...o, punkt_odbioru: punkt } : o);
 

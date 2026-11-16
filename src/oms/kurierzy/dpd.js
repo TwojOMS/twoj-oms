@@ -63,12 +63,12 @@ export const LIMIT_ZAPYTANIA_STATUS_MS = 5000;
 export const LIMIT_NADANIA_MS = 60 * 1000;
 
 // Nadanie to TRZY zadania po kolei: generatePackagesNumbersV10 (numer listu), potem DWA
-// wywolania generateSpedLabelsV4 — PDF (etykieta „ludzka") i ZPL (Zebra GK420t na
-// komputerze produkcyjnym, patrz etykieta() nizej i deploy/drukarka/czuwacz-etykiet.ps1).
+// wywolania generateSpedLabelsV4 — PDF (etykieta „ludzka") i ZPL (drukarka etykiet Zebra,
+// patrz etykieta() niżej i deploy/drukarka/czuwacz-etykiet.ps1).
 // Caly przebieg moze wiec trwac do TRZECH limitow.
 const ZADANIA_NADANIA = 3;
 
-// Straznik przy wczytaniu modulu — ten sam wzorzec i ten sam niezmiennik co przy inFakcie:
+// Strażnik przy wczytaniu modułu — ten sam wzorzec co przy inFakcie:
 // „przesylka starsza od progu" MUSI znaczyc „nic juz nie leci". Gdyby limit (albo suma
 // limitow) dosiegnal progu, panel moglby uznac ZYWE nadanie za osierocone, operator
 // odblokowalby je w trakcie, a DPD dostaloby druga paczke do tego samego zamowienia.
@@ -80,7 +80,7 @@ if (ZADANIA_NADANIA * LIMIT_NADANIA_MS >= PROG_ZAWIESZONEGO_NADANIA_MS) {
   );
 }
 
-// PRZ-092: format strony etykiety PDF z formularza DPD w Ustawieniach. ZPL zawsze LBL_PRINTER (Zebra).
+// Format strony etykiety PDF z formularza DPD w Ustawieniach. ZPL zawsze LBL_PRINTER (Zebra).
 export const FORMATY_ETYKIETY_DPD = Object.freeze(['LBL_PRINTER', 'A4']);
 
 /** @param {import('../../integracje/opcje.ts').OpcjeDpd} opcje */
@@ -109,7 +109,7 @@ export function createDpdClient({ url, login, haslo, fid, nadawca, infoUrl, chan
   // Komunikat trafia do bazy i do logu, więc poświadczenia (login, hasło, FID, kanał)
   // wycinamy, powód zostawiamy. Puste/nieustawione poświadczenie pomijamy — String.split('')
   // na pustym stringu tnie tekst na pojedyncze znaki i rozsypuje cały komunikat.
-  // `channel` dochodzi tu razem ze statusPrzesylki (Zadanie 13): usługa zdarzeń autoryzuje
+  // `channel` jest na liście ze względu na statusPrzesylki: usługa zdarzeń autoryzuje
   // się kanałem, nie masterFid-em, więc bez niego na liście kanał wyciekałby do logu.
   const maskuj = (t, wartosc) => (wartosc ? t.split(wartosc).join('***') : t);
   const oczysc = (t) => [login, haslo, fid, channel].reduce((acc, w) => maskuj(acc, w), String(t ?? ''));
@@ -122,7 +122,7 @@ export function createDpdClient({ url, login, haslo, fid, nadawca, infoUrl, chan
     + (a.email ? `<email>${esc(a.email)}</email>` : '');
 
   // DPDServices i DPDInfoServices to DWIE OSOBNE usługi pod dwoma adresami, z dwoma
-  // różnymi namespace'ami (patrz notatka z Zadania 8) — koperta jest jedynym, co mają
+  // różnymi namespace'ami — koperta jest jedynym, co mają
   // wspólnego, więc tylko tyle wydzielamy. Adres i namespace zostają parametrami wołania,
   // nie stałymi w środku — inaczej statusPrzesylki (usługa zdarzeń) po cichu pytałoby
   // usługę nadań.
@@ -182,9 +182,9 @@ export function createDpdClient({ url, login, haslo, fid, nadawca, infoUrl, chan
 
   // Wolno użyć WYŁĄCZNIE getEventsForWaybillV1. Rodzina getEventsForCustomerV* czyta
   // kolejkę WSPÓLNĄ dla całego konta DPD i wymaga potwierdzania zdarzeń
-  // (markEventsAsProcessedV1) — gdybyśmy potwierdzali je u siebie, Apilo mogłoby ich
-  // nigdy nie zobaczyć. To jedyne miejsce w całej integracji, gdzie wspólne dane DPD dla
-  // Apilo i panelu naprawdę kolidują (patrz notatka z Zadania 8).
+  // (markEventsAsProcessedV1) — gdybyśmy potwierdzali je u siebie, inny system pracujący
+  // na tym samym koncie DPD mógłby ich nigdy nie zobaczyć. To jedyne miejsce w całej
+  // integracji, gdzie wspólne dane konta DPD naprawdę kolidują.
   async function statusPrzesylki(numerListu) {
     // authDataV1 usługi zdarzeń ma channel (NIE masterFid) — ta sama nazwa elementu co
     // w usłudze nadań, inna zawartość. Pomylenie daje INCORRECT_LOGIN_OR_PASSWORD.
@@ -202,10 +202,10 @@ export function createDpdClient({ url, login, haslo, fid, nadawca, infoUrl, chan
     const lista = zdarzenia(odp);
     if (!lista.length) return null;
 
-    // ⚠️ ZDARZENIA-NOTYFIKACJE POMIJAMY PRZY WYBORZE (zmierzone na produkcji 23.08):
-    // „Powiadomienie mail"/„Powiadomienie SMS" to wpis o wyslaniu wiadomosci do odbiorcy,
-    // nie o paczce — a bywa NAJNOWSZY w historii i przykrywal faktyczne „Przesyłka
-    // doręczona" (24 z 62 nadanych paczek pokazywaly notyfikacje jako status). Gdy poza
+    // ⚠️ ZDARZENIA-NOTYFIKACJE POMIJAMY PRZY WYBORZE (zmierzone na prawdziwych paczkach):
+    // „Powiadomienie mail"/„Powiadomienie SMS" to wpis o wysłaniu wiadomości do odbiorcy,
+    // nie o paczce — a bywa NAJNOWSZY w historii i przykrywał faktyczne „Przesyłka
+    // doręczona" (spora część paczek pokazywała notyfikację jako status). Gdy poza
     // notyfikacjami nie ma NICZEGO, oddajemy najnowsza notyfikacje — lepsza niz falszywe
     // „brak zdarzen".
     const fizyczne = lista.filter((z) => !/^powiadomienie (mail|sms)/i.test(String(z.opis ?? '').trim()));
@@ -227,12 +227,12 @@ export function createDpdClient({ url, login, haslo, fid, nadawca, infoUrl, chan
   // fragment XML-a z obiektu adresu — nazwanie parametru `adres` przesłoniłoby ją
   // wewnątrz nadaj() i nadaj() przestałoby dać się wywołać (TypeError: adres is not
   // a function). Stąd `adresPrzekazany`, mimo że na zewnątrz woła się go `adres`.
-  // ⚠️ `kwotaPobrania` (Z4): kwota POPRAWIONA na ekranie nadania, wzorem `adres` wyzej.
+  // ⚠️ `kwotaPobrania`: kwota POPRAWIONA na ekranie nadania, wzorem `adres` wyżej.
   // Opcjonalna — wywolania spoza formularza (nadanie zbiorcze, testy, zadania wsadowe) jej
   // nie podaja i wtedy zrodlem zostaje `zamowienie.kwota_pobrania`, dokladnie jak dotad.
   // Nadpisanie wchodzi jako WARTOSC i NIGDY jako obejscie warunku „tylko paczka nr 1"
   // nizej — patrz komentarz przy nim.
-  // ⚠️ `pobranieNaTejPaczce` (04.09.2026): CZY pobranie ma wyjechać na TEJ paczce. Domyślnie
+  // ⚠️ `pobranieNaTejPaczce`: CZY pobranie ma wyjechać na TEJ paczce. Domyślnie
   // `kolejnosc === 1`, czyli DOKŁADNIE dawne zachowanie — każdy wołający, który tego nie
   // poda (nadanie zbiorcze, testy, zadania wsadowe), dostaje to samo, co przed tą zmianą.
   // Jawne `true` przy paczce N > 1 to DECYZJA OPERATORA, opisana przy warunku niżej.
@@ -283,7 +283,7 @@ export function createDpdClient({ url, login, haslo, fid, nadawca, infoUrl, chan
     // bo tylko tu widac cala koperte i tylko tu da sie zagwarantowac, ze <cod> nie
     // wyjedzie inna droga.
     //
-    // ⚠️⚠️ WYJATEK OD 04.09.2026 (decyzja wlasciciela, zamowienie 1385): paczka N > 1 bywa
+    // ⚠️⚠️ WYJĄTEK: paczka N > 1 bywa
     // ZAMIENNIKIEM pierwszej, a nie dosylka OBOK niej. Klient domawia towar telefonicznie po
     // wydrukowaniu etykiety, etykieta idzie do kosza i paczka nr 1 NIGDY nie pojedzie —
     // wygasnie u DPD. Ponowne nadanie jako paczka nr 1 jest niemozliwe (DPD zna juz gola
@@ -295,10 +295,10 @@ export function createDpdClient({ url, login, haslo, fid, nadawca, infoUrl, chan
     // w koszu. Wie to wylacznie czlowiek, wiec decyzja przychodzi Z ZEWNATRZ, jest domyslnie
     // WYLACZONA i zostaje w logu (services/nadanie.js) — to jedyne miejsce, w ktorym po
     // miesiacu widac, ile kurier mial zainkasowac i z czyjej decyzji.
-    // ⚠️ Nadpisanie z ekranu nadania (Z4) jest WARTOSCIA, nie obejsciem warunku ponizej:
+    // ⚠️ Nadpisanie z ekranu nadania jest WARTOŚCIĄ, nie obejściem warunku poniżej:
     // podmienia WYLACZNIE to, ile kurier ma zainkasowac, a nie to, CZY <cod> w ogole
     // wyjedzie. Odmowa dla kwoty pustej, zerowej i nieczytelnej pada wczesniej, w trasie
-    // POST (domain/pobranie-nadania.js) — tutaj zostaja te same straznikami, co dotad,
+    // POST (domena/pobranie-nadania.js) — tutaj zostaja te same straznikami, co dotad,
     // bo ta funkcja musi bronic sie takze przed wolajacym spoza formularza.
     const surowaKwotaPobrania = kwotaPrzekazana ?? zamowienie.kwota_pobrania;
     let cod = '';
@@ -401,7 +401,7 @@ export function createDpdClient({ url, login, haslo, fid, nadawca, infoUrl, chan
   }
 
   async function etykieta({ sessionId, numerListu, odpNumery }) {
-    // ⚠️ `LBL_PRINTER`, NIE `A4` (zmiana 2026-07-31 na prośbę właściciela). DPD w formacie
+    // ⚠️ Domyślnie `LBL_PRINTER`, NIE `A4`. DPD w formacie
     // A4 wkleja etykietę w róg pustej strony — na drukarce etykiet (Zebra 100×150 mm) trzeba
     // ją wtedy przycinać albo skalować, a wydruk wychodzi przesunięty. `LBL_PRINTER` daje PDF
     // o rozmiarze SAMEJ etykiety, czyli „na całą stronę", i tak samo dobrze drukuje się
@@ -410,7 +410,7 @@ export function createDpdClient({ url, login, haslo, fid, nadawca, infoUrl, chan
     // To jest ten sam format strony, o który prosimy przy ZPL-u niżej — różni się wyłącznie
     // typem dokumentu. Etykiety pobrane WCZEŚNIEJ zostają na dysku takie, jakie były (A4):
     // panel niczego nie przegenerowuje, bo DPD odmawia powtórnego nadania tej samej paczki.
-    // PRZ-092: instalacja bez drukarki etykiet wybiera w Ustawieniach „A4” — tylko ten PDF, ZPL niżej bez zmian.
+    // Instalacja bez drukarki etykiet wybiera w Ustawieniach „A4” — tylko ten PDF, ZPL niżej bez zmian.
     const odpEtykieta = await soap(cialoEtykietyV4(sessionId, 'PDF', formatEtykiety));
 
     // V4 odpowiada camelCase'em i tez potrafi oddac 200 z bledem.
@@ -423,9 +423,9 @@ export function createDpdClient({ url, login, haslo, fid, nadawca, infoUrl, chan
       throw bladOperatora('DPD nie oddało etykiety.', { surowa: oczysc(odpEtykieta) });
     }
 
-    // Drugie żądanie: ta sama etykieta w ZPL, dla Zebry GK420t na komputerze produkcyjnym
+    // Drugie żądanie: ta sama etykieta w ZPL, dla drukarki etykiet Zebra
     // (kolejka druku, patrz deploy/drukarka/czuwacz-etykiet.ps1). W TYM MIEJSCU numer listu
-    // JUŻ ISTNIEJE po stronie DPD (patrz komentarz w nadaj() niżej) — nieudane pobranie ZPL
+    // JUŻ ISTNIEJE po stronie DPD (patrz komentarz w nadaj() wyżej) — nieudane pobranie ZPL
     // NIE MOŻE więc wywalić całego nadania, dokładnie tak samo, jak nie wywala go awaria
     // zapisu pliku PDF na dysk (services/nadanie.js). Operator dostaje PDF i fakt „druku
     // na Zebrze nie będzie" (zapisany przez nadanie.js), a nie wyjątek blokujący cały
@@ -454,7 +454,7 @@ export function createDpdClient({ url, login, haslo, fid, nadawca, infoUrl, chan
     };
   }
 
-  // PRZ-092 — „Sprawdź połączenie” z formularza DPD. findPostalCodeV1 niczego nie zakłada po stronie DPD
+  // „Sprawdź połączenie” z formularza DPD. findPostalCodeV1 niczego nie zakłada po stronie DPD
   // (bez numeru listu, etykiety, protokołu), a wymaga tego samego authDataV1 co nadanie — więc odrzucone
   // logowanie wychodzi tu, a nie przy pierwszej płatnej paczce. Sukces = brak faultu i <return> w odpowiedzi;
   // status kodu pocztowego nadawcy nie rozstrzyga o logowaniu, więc go nie oceniamy.

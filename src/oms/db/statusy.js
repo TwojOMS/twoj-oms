@@ -7,9 +7,9 @@ const pamiecZadania = new AsyncLocalStorage();
 const rozpoznaniaTabeli = new WeakMap();
 const KLUCZ = 'statusy.konfiguracja';
 const kanalyIndywidualne = new WeakMap();
-// ⚠️ „Czy są zamówienia indywidualne” NIE jest pytaniem na żądanie (PRZ-102.15b): kolumna nie ma
+// ⚠️ „Czy są zamówienia indywidualne” NIE jest pytaniem na żądanie: kolumna nie ma
 // indeksu, więc przy braku takich zamówień EXISTS przechodzi CAŁĄ tabelę zamówień — przy każdym
-// żądaniu, wbrew strażnikowi PRZ-051 (tests/prz051/lista-http.test.js). Odpowiedź zapada raz na
+// żądaniu, wbrew strażnikowi wydajności listy (tests/prz051/lista-http.test.js). Odpowiedź zapada raz na
 // połączenie, a dalej dopisuje ją wyzwalacz TEMP (jak oms/db/sledzenie-listy.js, bez migracji) przy
 // KAŻDYM zapisie tym połączeniem: poller, zamówienie ręczne, uzupełnienia startowe. Flaga jest
 // jednokierunkowa — skasowanie ostatniego takiego zamówienia albo wycofana transakcja zostawiają
@@ -35,7 +35,7 @@ function sledzHistorieIndywidualnych(db) {
 }
 export function ustawKanalIndywidualnyStatusow(db, wlaczony) {
   kanalyIndywidualne.set(db, wlaczony);
-  // Kanał włączony (produkcja): status i tak aktywny — zero zapytań, zero wyzwalaczy.
+  // Kanał włączony: status i tak aktywny — zero zapytań, zero wyzwalaczy.
   if (wlaczony !== true && !historieIndywidualne.has(db)) sledzHistorieIndywidualnych(db);
 }
 function konfiguracjaZJson(db, wartosc) {

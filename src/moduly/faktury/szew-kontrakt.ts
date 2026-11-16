@@ -1,7 +1,7 @@
-// PRZ-122.ZGODA-TFc: kontrakt szwu TwojeFaktury (plik WSPÓLNY — zostaje w kopii bez modułu TwojeFaktury).
+// Kontrakt szwu TwojeFaktury (plik WSPÓLNY — zostaje w kopii bez modułu TwojeFaktury).
 // Cały kod TF wchodzi do OMS-u jednym plikiem rejestracji `szew-twojefaktury.ts`, ładowanym w `wczytaj-szew.ts`.
 // Brak szwu = `null`: moduł faktur składa się bez programu wbudowanego, tras, migracji i usług TF.
-// Nowe trasy i usługi TF rejestruje się WYŁĄCZNIE w szwie (plan PRZ-122, ZGODA-TF decyzja 4).
+// Nowe trasy i usługi TF rejestruje się WYŁĄCZNIE w szwie.
 import type { ModulOms } from '../../core/kontrakty.ts';
 
 type Funkcja = (...a: any[]) => any;

@@ -23,7 +23,7 @@ export function createModulRaporty(definicje: readonly DefinicjaKanalu[]): Modul
     { klucz: 'finanse', etykieta: 'Finanse', role: ['administrator'] },
   ],
   menu: [
-    // PRZ-167: ekran wejściowy Analityki pod prawem Raportów — konta z ptaszkiem Raporty widzą go bez nowego ptaszka.
+    // Ekran wejściowy Analityki pod prawem Raportów — konta z ptaszkiem Raporty widzą go bez nowego ptaszka.
     { dzial: 'analizy-cele', grupa: 'analizy-cele', etykieta: 'Podsumowanie', adres: '/analityka', uprawnienie: 'raporty', kolejnosc: 5 },
     { dzial: 'analizy-cele', grupa: 'analizy-cele', etykieta: 'Raporty', adres: '/raporty', uprawnienie: 'raporty', kolejnosc: 10 },
     { dzial: 'analizy-cele', grupa: 'analizy-cele', etykieta: 'Statystyki', adres: '/statystyki', uprawnienie: 'statystyki', kolejnosc: 20 },

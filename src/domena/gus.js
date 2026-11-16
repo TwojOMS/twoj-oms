@@ -145,7 +145,7 @@ function koperta(akcja, cialo, adresUslugi) {
 }
 
 // Komunikat po nieudanym zapytaniu — wspólny dla trzech przycisków „Pobierz z GUS” (karta, nowe zamówienie,
-// Stali klienci). PRZ-083: atrapa GUS w demo (deploy/proba/atrapy/gus.mjs) rzuca błąd z `wylaczoneWDemo` —
+// Stali klienci). Atrapa GUS w demo (deploy/proba/atrapy/gus.mjs) rzuca błąd z `wylaczoneWDemo` —
 // jego treść idzie wprost, bo „spróbuj za chwilę” obiecywałoby, że kiedyś zadziała.
 export function komunikatAwariiGus(e) {
   if (e?.wylaczoneWDemo) return e.message;

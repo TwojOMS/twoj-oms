@@ -3,9 +3,9 @@ import { wartoscPozycjiGrosze } from './suma-pozycji.js';
 // Obsługa doklejana do zamówienia stałego klienta. Kurierska zostaje dla historii.
 //
 // ⚠️ TO JEST ZWYKLA POZYCJA RECZNA, nie nowy byt. Dzieki temu widac ja na karcie,
-// jedzie na fakture bez ani jednej linii kodu w services/faktura.js, poller jej nie
+// jedzie na fakture bez ani jednej linii kodu w moduly/faktury/services/faktura.js, poller jej nie
 // kasuje (rusza tylko `zrodlo = 'sklep'`), a POPRAWIENIE jej przez operatora to
-// zwykla edycja wiersza — czyli „automat z furtka", ktorego chcial wlasciciel.
+// zwykla edycja wiersza — czyli „automat z furtka": sprzedawca moze go poprawic.
 export const NAZWA_OBSLUGI = 'Obsługa zamówienia';
 export const NAZWA_KURIERA = 'Usługa kurierska';
 

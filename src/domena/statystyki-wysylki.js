@@ -1,4 +1,4 @@
-// STATYSTYKI WYSYŁKI — czyste agregacje nad listą z domain/statystyki-okresu.js.
+// STATYSTYKI WYSYŁKI — czyste agregacje nad listą z domena/statystyki-okresu.js.
 // Ten moduł nie dotyka bazy i nie zna zegara.
 import { uslugaDostawy } from './wysylka.js';
 import {
@@ -14,10 +14,10 @@ export const udzialProcent = (ile, zCzego) => (zCzego
 /**
  * Rozkład zamówień po USŁUDZE DOSTAWY, którą wybrał klient.
  *
- * ⚠️⚠️ ETYKIETA POCHODZI Z `uslugaDostawy` (domain/wysylka.js) — TEJ SAMEJ reguły, którą
+ * ⚠️⚠️ ETYKIETA POCHODZI Z `uslugaDostawy` (domena/wysylka.js) — TEJ SAMEJ reguły, którą
  * rysuje kolumna „Dostawa" na liście zamówień, karta, mail i specyfikacja do paczki.
- * Do 13.09.2026 stało tu `etykietaWysylki(z.metoda_wysylki, false, z.metoda_wysylki_nazwa)`
- * na SUROWYCH kolumnach i recenzja nazwała to wprost: zamówienie przychodzące jako
+ * Wcześniej stało tu `etykietaWysylki(z.metoda_wysylki, false, z.metoda_wysylki_nazwa)`
+ * na SUROWYCH kolumnach, co było błędem: zamówienie przychodzące jako
  * `inpost_paczkomat` i poprawione przez operatora na karcie na `dpd` pokazywało się na liście
  * jako „Kurier DPD", a w tym rozkładzie liczyło się jako „InPost Paczkomat". Metoda i pobranie
  * są wartościami EFEKTYWNYMI (ręczna korekta leży w `wysylka_reczna_json`), a ręczna zmiana
@@ -25,11 +25,11 @@ export const udzialProcent = (ile, zCzego) => (zCzego
  * kupującego, nie to, czym paczka naprawdę jedzie.
  *
  * ⚠️ POBRANIE DALEJ NIE ROZDZIELA USŁUGI na dwa wiersze — `uslugaDostawy` woła
- * `etykietaWysylki` z `czyPobranie = false` i to jest osobna, świadoma decyzja z 1.08.2026
+ * `etykietaWysylki` z `czyPobranie = false` i to jest osobna, świadoma decyzja
  * (pobranie jest cechą PŁATNOŚCI i liczy się w sekcji płatności). Ma własny test.
  *
- * ⚠️ LICZYMY PER ZAMÓWIENIE, NIE PER PACZKA. Na produkcji 7 zamówień ma dwie paczki, więc
- * liczenie per paczka dałoby sumę 165 przy 158 wysłanych zamówieniach — liczbę, której nie
+ * ⚠️ LICZYMY PER ZAMÓWIENIE, NIE PER PACZKA. Zamówienia z dwiema paczkami zawyżyłyby
+ * przy liczeniu per paczka sumę ponad liczbę wysłanych zamówień — liczbę, której nie
  * da się zestawić z RAPORTAMI ani z licznikiem na liście.
  */
 export function rozkladUslug(zamowienia) {
@@ -73,8 +73,8 @@ const kubelekCzasu = (dniRobocze, tenSamDzien) => {
  * Terminowość wysyłki: dwa procenty, rozkład czasów i TRZY WYŁĄCZENIA.
  *
  * ⚠️⚠️ WYŁĄCZENIA SĄ CZĘŚCIĄ WYNIKU, NIE ŚMIECIEM DO WYRZUCENIA. Procent bez widocznego
- * mianownika jest nieweryfikowalny, a każde z tych trzech ma na produkcji niezerową liczbę
- * (13.09.2026: 6 niewysłanych, 15 wysłanych przed wpłatą). Wliczone do licznika kłamałyby
+ * mianownika jest nieweryfikowalny, a każde z tych trzech zwykle ma niezerową liczbę.
+ * Wliczone do licznika kłamałyby
  * w najlepszą stronę: `Number(null)` daje 0, czyli „tego samego dnia" — najlepszy możliwy
  * wynik dla zamówienia, które w ogóle nie umie odpowiedzieć na to pytanie.
  *
@@ -102,7 +102,7 @@ export function agregatorTerminowosci() {
     // ⚠️ KOLEJNOŚĆ TYCH DWÓCH WARUNKÓW JEST TREŚCIĄ. Brak startu (nieopłacona przedpłata)
     // sprawdzamy PRZED wysłaniem przed wpłatą — inaczej zamówienie bez `oplacone_at`
     // wpadłoby do „wysłane przed wpłatą", czyli do kubełka opisującego CO INNEGO.
-    // PRZ-104: termin z samej ręcznej daty (bez wpłaty) też nie ma startu — czasu realizacji
+    // Termin z samej ręcznej daty (bez wpłaty) też nie ma startu — czasu realizacji
     // nie zmierzymy, więc zostaje w tym samym wyłączeniu.
     const termin = terminZamowienia(z);
     if (!termin?.start) { wylaczenia.bezStartu += 1; return; }

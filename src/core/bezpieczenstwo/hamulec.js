@@ -5,10 +5,10 @@
 // NIE MA — jest polem tekstowym, do ktorego skrypt wrzuca tysiac hasel na minute. Bez
 // hamulca zamiana okienka na ekran logowania byloby wiec ulatwieniem takze dla zgadujacego.
 //
-// Dlaczego w pamieci, a nie w bazie. Liczniki logowania wygasają po 15 minutach
-// bezczynności i nie mają znaczenia po restarcie —
-// zapis do SQLite przy KAZDEJ nieudanej probie dokladalby operacje dyskowa dokladnie w tym
-// miejscu, w ktorym zgadujacy chcialby nam jej narobic najwiecej.
+// Dlaczego w pamięci, a nie w bazie. Liczniki logowania wygasają po 15 minutach
+// bezczynności i nie mają znaczenia po restarcie. Zapis do SQLite przy KAŻDEJ nieudanej
+// próbie dokładałby operację dyskową dokładnie w tym miejscu, w którym zgadujący
+// chciałby nam jej narobić najwięcej.
 
 import { createHash } from 'node:crypto';
 import { setTimeout as czekajDomyslnie } from 'node:timers/promises';
@@ -26,11 +26,13 @@ export const KARA_MS = 60_000;
 export function utworzHamulec({ limit = LIMIT_PROB, karaMs = KARA_MS, wygasanieMs = null, maksKluczy = null, oknoMs = null } = {}) {
   const liczniki = new Map();
 
-  // PRZ-069 (recenzja D8 r1, P3-3): OPCJONALNE wygasanie i limit kluczy — dla /haslo/:token. Bez opcji
-  // (logowanie) zachowanie jak dotad: licznik zyje do udanego logowania, a po karze kazda kolejna pomylka
-  // od razu zapala nastepna. Z `wygasanieMs` wpis bez kary, ktorego ostatnia proba jest starsza niz
-  // `wygasanieMs`, znika — licznik startuje od zera. `maksKluczy` przycina mape: najpierw martwe wpisy,
-  // potem najdawniej uzywane (Map trzyma kolejnosc wstawienia, a kazdy blad przesuwa wpis na koniec).
+  // OPCJONALNE wygasanie i limit kluczy — używa ich m.in. /haslo/:token oraz hamulec logowania.
+  // Bez opcji zachowanie jest podstawowe: licznik żyje do udanego logowania, a po karze każda
+  // kolejna pomyłka od razu zapala następną. Z `wygasanieMs` wpis bez kary, którego ostatnia
+  // próba jest starsza niż `wygasanieMs`, znika — licznik startuje od zera. `oknoMs` kasuje
+  // wpis bez kary po upływie okna liczonego od pierwszej próby. `maksKluczy` przycina mapę:
+  // najpierw martwe wpisy, potem najdawniej używane (Map trzyma kolejność wstawienia, a każdy
+  // błąd przesuwa wpis na koniec).
   const martwy = (wpis, teraz) => wpis.doKiedy <= teraz && (
     (wygasanieMs !== null && teraz - wpis.ostatnia >= wygasanieMs)
     || (oknoMs !== null && teraz - wpis.poczatek >= oknoMs));
@@ -85,12 +87,11 @@ export function utworzHamulec({ limit = LIMIT_PROB, karaMs = KARA_MS, wygasanieM
     /**
      * Czy TERAZ nalezy zapisac do dziennika logowan wpis „zablokowane” dla tej kary.
      *
-     * ⚠️⚠️ N1 (druga fala, recenzja 2026-09-12): PRZED ta funkcja logowanie.js pisalo jeden
-     * taki wiersz na KAZDE zadanie, ktore trafialo na juz trwajaca kare — a trwa ona 60 s,
-     * wiec pukanie skryptem dawalo setki wierszy na jedna kare (zmierzone: 291 zadan w 2 s =
-     * 291 wierszy). Prawda WYLACZNIE dla pierwszego zadania po zapaleniu kary; kazde kolejne,
-     * az do jej wygasniecia, dostaje `false` i nic nie zapisuje. Wolac WYLACZNIE gdy
-     * `sprawdz` juz powiedzial `wolno: false` — inaczej nie ma czego oznaczac.
+     * ⚠️⚠️ Bez tej funkcji logowanie.js i strażnik (blokada Basic) pisałyby jeden taki wiersz na KAŻDE żądanie, które
+     * trafia na już trwającą karę — a trwa ona domyślnie 60 s, więc pukanie skryptem dawałoby
+     * setki wierszy na jedną karę. Prawda WYŁĄCZNIE dla pierwszego żądania po zapaleniu kary;
+     * każde kolejne, aż do jej wygaśnięcia, dostaje `false` i nic nie zapisuje. Wołać
+     * WYŁĄCZNIE gdy `sprawdz` już powiedział `wolno: false` — inaczej nie ma czego oznaczać.
      */
     zapiszBlokadeRaz(klucz, teraz = Date.now()) {
       const wpis = liczniki.get(klucz);
@@ -116,7 +117,7 @@ export function utworzHamulec({ limit = LIMIT_PROB, karaMs = KARA_MS, wygasanieM
       return liczniki.get(klucz)?.proby ?? 0;
     },
 
-    /** Dla testow — liczba kluczy w pamieci (PRZ-069: przycinanie przy `maksKluczy`). */
+    /** Dla testow — liczba kluczy w pamieci (przycinanie przy `maksKluczy`). */
     rozmiar() {
       return liczniki.size;
     },

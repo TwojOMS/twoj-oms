@@ -1,6 +1,6 @@
 import type { Migracja } from '../../../core/kontrakty.ts';
 
-// PRZ-051 — indeks listy zamówień i dwa indeksy, bez których start i lista rosły kwadratowo.
+// Indeks listy zamówień i dwa indeksy, bez których start i lista rosły kwadratowo.
 //
 // ⚠️ `lista_stan` TO NIE DRUGA KOPIA REGUŁ, tylko zapisane odpowiedzi reguł domeny dla
 // każdego zamówienia (domena/klasyfikacja-listy.js) — z nich liczniki zakładek liczy COUNT,
@@ -9,7 +9,7 @@ import type { Migracja } from '../../../core/kontrakty.ts';
 //
 // ⚠️ `przesylki(zamowienie_id)` i `platnosci(zamowienie_id)`: obie tabele miały dotąd tylko
 // indeksy CZĘŚCIOWE (`WHERE status <> 'blad'`, `WHERE zrodlo = 'sklep'`), których planista
-// SQLite nie użyje dla warunku bez tego samego predykatu. Pomiar PRZ-051 na 15 000 zamówień:
+// SQLite nie użyje dla warunku bez tego samego predykatu. Pomiar na 15 000 zamówień:
 // uzupełnienie `wyslane_at` przy starcie 32,5 s, przeniesienie wpłat 4,0 s — każde
 // niewysłane zamówienie przeglądało całą tabelę paczek. Indeksy zwykłe, nie unikalne:
 // migracja tylko dokłada (strażnik migracji).
@@ -17,9 +17,9 @@ import type { Migracja } from '../../../core/kontrakty.ts';
 // ⚠️ `zamowienia(metoda_platnosci)`: pole wyboru „Płatność" nad listą bierze metody z bazy
 // (`metodyPlatnosciWBazie`, DISTINCT). Kolumna leży w wierszu ZA `surowe_json`, więc bez
 // indeksu każde otwarcie listy czytało strony przepełnienia całej tabeli — 15 000 zamówień:
-// 129–157 ms; z indeksem 3–5 ms (pomiar PRZ-051).
+// 129–157 ms; z indeksem 3–5 ms.
 //
-// ⚠️ `zamowienia(julianday(utworzone_at), sklep)` — indeks na dacie złożenia z planu PRZ-051,
+// ⚠️ `zamowienia(julianday(utworzone_at), sklep)` — indeks na dacie złożenia,
 // w POSTACI, KTÓREJ UŻYWA ZAPYTANIE: bezpiecznik kanałów (moduł zdrowia, każde /health i każde
 // otwarcie listy) porównuje `julianday(utworzone_at)` z oknem 30 dni. Zwykły indeks na kolumnie
 // nie obsłuży wyrażenia. Pomiar na 50 000 zamówień ze 100 dni: 230 ms → 4 ms. (Przy 30 dniach

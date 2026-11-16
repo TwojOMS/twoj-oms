@@ -42,9 +42,9 @@ export const modulRdzen: ModulOms<{ sprzedawca: DaneSprzedawcy }> = {
     migracjaStanowOtwarciaLustra,
   ],
   uprawnienia: [], menu: [],
-  // PRZ-102.20: `rachunekFirmy` — JEDNO źródło rachunku i banku dla maili, proform i WzA: plik (OMS_RACHUNEK/OMS_BANK)
+  // `rachunekFirmy` — JEDNO źródło rachunku i banku dla maili, proform i WzA: plik (OMS_RACHUNEK/OMS_BANK)
   // → Ustawienia → Firma → brak, czytane przy każdym użyciu. `sprzedawca.rachunek` to wyłącznie wartość z pliku.
-  // PRZ-108.10: `nipBdoFirmy` — to samo dla NIP-u i BDO (każde pole osobno: plik → Ustawienia → Firma → brak).
+  // `nipBdoFirmy` — to samo dla NIP-u i BDO (każde pole osobno: plik → Ustawienia → Firma → brak).
   // `sprzedawca.nip` / `.bdo` to wyłącznie wartości z pliku (null, gdy pusto).
   zbuduj: (ctx) => ({ uslugi: { sprzedawca: ctx.konfiguracja.sprzedawca,
     rachunekFirmy: zrodloRachunkuFirmy({ db: ctx.db, zPliku: ctx.konfiguracja.sprzedawca }),

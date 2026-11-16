@@ -1,8 +1,8 @@
-// PRZ-102.09: Finanse → Kompletność danych — daty, od których raporty mają pełne dane, ustawiane w panelu.
+// Finanse → Kompletność danych — daty, od których raporty mają pełne dane, ustawiane w panelu.
 //
 // Dostęp: strażnik po prefiksie `/finanse` wpuszcza tylko konto z uprawnieniem „finanse”, gościa demo zatrzymuje
 // na każdym POST-cie. Zapis tylko administrator — reszta widzi wartości i prośbę do administratora.
-// Plik konfiguracji wygrywa (jak kurier DPD w PRZ-092): ekran pokazuje wartość i skąd pochodzi, zapis daje 409.
+// Plik konfiguracji wygrywa (jak konfiguracja kuriera DPD): ekran pokazuje wartość i skąd pochodzi, zapis daje 409.
 import { POLA_POKRYCIA, konfiguracjaZPokryciem, zapiszPokrycie } from '../pokrycie.js';
 import { ekranOdmowyRaportu } from './odmowa-raportu.js';
 

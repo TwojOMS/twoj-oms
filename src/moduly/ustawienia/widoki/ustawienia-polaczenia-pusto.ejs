@@ -1,4 +1,4 @@
-<%# PRZ-136.08: stan pusty „Moje połączenia” (U12) — trzy kroki; adresy konfiguratorów z katalogu integracji. %>
+<%# Stan pusty „Moje połączenia” (U12) — trzy kroki; adresy konfiguratorów z katalogu integracji. %>
 <% const usluga = (id) => wszystkieUslugi.find(u => u.id === id) || {};
    const adres = (id) => usluga(id).href || '/ustawienia/integracje/katalog';
    const nazwa = (id) => usluga(id).nazwa || id;

@@ -1,5 +1,5 @@
-// ZDANIA O PŁATNOŚCI W MAILACH DO KLIENTA (PRZ-102.17, zlecenie właściciela 20.10.2026: „gdzie to się ustawia" — i chce
-// móc je zmienić). Ustawienia → Szablony wiadomości → sekcja „Zdania o płatności".
+// ZDANIA O PŁATNOŚCI W MAILACH DO KLIENTA — edytowalne w Ustawieniach → Szablony wiadomości → sekcja
+// „Zdania o płatności".
 //
 // Moduł czysty: lista zdań, teksty domyślne, opisy „kiedy pada" i reguły treści. Nie czyta bazy i nie wysyła.
 //
@@ -7,14 +7,12 @@
 // dwa nagłówki bloku `{dane_platnosci}` i dwa zdania o załącznikach. Danych w bloku (kwota, odbiorca, rachunek, tytuł,
 // termin) nikt tu nie zmienia — liczy je kod (blok-platnosci.js).
 //
-// PRZ-102.19 (właściciel 20.10: „szablony nie mają sensu, jeżeli część danych jest zapisana w kodzie") dołożył drugą część
-// sekcji, „Etykiety i stałe teksty" (`etykieta: true`, do 30 znaków): etykiety wierszy przelewu i dopisek „brutto",
-// nagłówki, kolumny i stałe teksty bloków zamówienia ({pozycje}, {sposob_platnosci}, {wysylka}, {dane_do_faktury})
-// oraz „Pozdrawiamy," z bloku {podpis}. Ten sam zapis, ten sam formularz, te same reguły przy zapisie i przy odczycie.
+// Druga część sekcji, „Etykiety i stałe teksty" (`etykieta: true`, do 30 znaków): etykiety wierszy przelewu
+// i dopisek „brutto", nagłówki, kolumny i stałe teksty bloków zamówienia ({pozycje}, {sposob_platnosci},
+// {wysylka}, {dane_do_faktury}) oraz „Pozdrawiamy," z bloku {podpis}. Ten sam zapis, ten sam formularz, te same reguły przy zapisie i przy odczycie.
 // Wartości (kwota, rachunek, tytuł, termin, pozycje, adres) dalej liczy kod — z panelu zmienia się tylko napis obok.
 //
-// ⚠️ BRAK ZAPISU = DZISIEJSZY MAIL CO DO ZNAKU. Teksty domyślne niżej to dosłowne zdania, które do PRZ-102.17/19 stały
-// na sztywno w rendererach maili; test porównuje maile z wzorcem zapisanym przed zmianą
+// ⚠️ BRAK ZAPISU = MAIL Z TEKSTAMI DOMYŚLNYMI CO DO ZNAKU. Test porównuje maile z zapisanym wzorcem
 // (tests/moduly/wiadomosci/zdania-platnosci-rownosc-prz102-17.test.js).
 
 export const KLUCZ_ZDAN = 'wiadomosci.zdania_platnosci';
@@ -29,7 +27,7 @@ export const POLE_NUMERU_PROFORMY = '{numer_proformy}';
 // Bez polskich znaków też („doreczeniu"), bo klient przeczyta to tak samo.
 const RE_POBRANIE = /kurier|dor[eę]czeni/iu;
 
-// ——— Prośba o zapłatę (recenzja PRZ-102.17: pierwsza wersja przepuszczała „Prosimy o zapłatę 476 zł.") ————————
+// ——— Prośba o zapłatę (np. „Prosimy o zapłatę 476 zł." ma odpaść) ————————
 //
 // Tekst sprawdzamy po sprowadzeniu do małych liter BEZ polskich znaków (`plaski`), więc „Zapłać", „ZAPLAC" i „zapłać"
 // to jedno i `\b` działa (same litery ASCII). Najpierw wycinamy ZAPRZECZENIA zapłaty („nie trzeba nic przelewać",
@@ -87,8 +85,8 @@ export function drugiKanalZaplaty(tekst) {
 }
 
 /**
- * Zdania w kolejności ekranu. `grupa`: 'zamkniecie' (warianty `{zamkniecie}`), 'blok' (`{dane_platnosci}`), a od
- * PRZ-102.19 'przelew' (etykiety wierszy przelewu i „brutto"), 'zamowienie' (stałe teksty bloków zamówienia) i 'podpis'.
+ * Zdania w kolejności ekranu. `grupa`: 'zamkniecie' (warianty `{zamkniecie}`), 'blok' (`{dane_platnosci}`),
+ * 'przelew' (etykiety wierszy przelewu i „brutto"), 'zamowienie' (stałe teksty bloków zamówienia) i 'podpis'.
  * `kiedy` — po ludzku, kiedy zdanie pada w mailu; `uwaga` — reguła treści widoczna przy polu.
  */
 export const ZDANIA = Object.freeze([
@@ -121,7 +119,7 @@ export const ZDANIA = Object.freeze([
   { klucz: 'zalacznik_wywozu', grupa: 'blok', kiedy: 'Gdy do faktury dla firmy z UE (WDT) panel dołącza „Potwierdzenie wywozu towarów”.',
     domyslne: 'W załączeniu również „Potwierdzenie wywozu towarów" (WDT) — prosimy o podpis i odesłanie skanu po przewiezieniu towarów na miejsce.' },
 
-  // ——— PRZ-102.19: etykiety i stałe teksty (`etykieta: true` — jedno krótkie pole, do MAKS_ZDAN.etykieta znaków) ————
+  // ——— Etykiety i stałe teksty (`etykieta: true` — jedno krótkie pole, do MAKS_ZDAN.etykieta znaków) ————
   // `kiedy` bez apostrofów, `&`, `<` i `>` — ekran escapuje je inaczej niż cudzysłów, a test szuka opisu na ekranie.
   { klucz: 'etykieta_odbiorca', grupa: 'przelew', etykieta: true,
     kiedy: 'Etykieta wiersza z nazwą odbiorcy przelewu (proforma, faktura, przypomnienie). Nazwę wstawia panel z Ustawienia → Firma.',
@@ -193,20 +191,20 @@ export const ETYKIETY_PRZELEWU = Object.freeze(['etykieta_odbiorca', 'etykieta_r
 /** Etykiety, po których kod sam stawia dwukropek („Rachunek: …", „RAZEM: …") — wpisany dwukropek obcina `sprawdzZdanie`. */
 export const ETYKIETY_Z_DWUKROPKIEM = Object.freeze([...ETYKIETY_PRZELEWU, 'etykieta_razem']);
 
-// Recenzja PRZ-102.19 (W3b): napisy przy kwocie brutto, sumie, cenie i wartości nie mogą mówić „netto" — kwoty w mailu
+// Napisy przy kwocie brutto, sumie, cenie i wartości nie mogą mówić „netto" — kwoty w mailu
 // SĄ brutto, a „476,00 zł netto" to klient, który dopłaci VAT albo zakwestionuje fakturę.
 const BEZ_NETTO = new Set(['dopisek_brutto', 'etykieta_razem', 'kolumna_cena', 'kolumna_wartosc']);
 const RE_NETTO = /netto|bez\s*vat|net\b/iu;
 
-// Recenzja PRZ-102.19 (W2, homoglify): etykieta to litery łacińskie (polskie też są łacińskie), cyfry, spacje i zwykła
+// Homoglify: etykieta to litery łacińskie (polskie też są łacińskie), cyfry, spacje i zwykła
 // interpunkcja. Cyrylickie „а" w „Rаchunek" wygląda jak „a", ale nie jest nim — porównanie etykiet by go nie złapało.
 const RE_ZNAKI_ETYKIETY = /^[\p{Script=Latin}0-9 .,:;!?()/'"„”‚’«»…&%+–—-]*$/u;
-// W3a: ciąg 6+ cyfr (także ze spacjami i myślnikami między nimi) to numer konta albo telefonu, nie etykieta — inaczej
+// Ciąg 6+ cyfr (także ze spacjami i myślnikami między nimi) to numer konta albo telefonu, nie etykieta — inaczej
 // do tabeli przelewu da się wpisać drugi numer rachunku obok prawdziwego.
 const RE_CIAG_CYFR = /\d(?:[\s\-–—]?\d){5,}/u;
 
 /**
- * Rdzeń napisu do porównań (recenzja PRZ-102.19, W2): NFKC, tylko litery i cyfry, małe litery — „Tytuł-przelewu",
+ * Rdzeń napisu do porównań: NFKC, tylko litery i cyfry, małe litery — „Tytuł-przelewu",
  * „TYTUŁ PRZELEWU!" i „Tytuł przelewu" to jedno.
  */
 export const rdzenEtykiety = (s) => String(s ?? '').normalize('NFKC').replace(/[^\p{L}\p{N}]/gu, '').toLocaleLowerCase('pl-PL');
@@ -219,7 +217,7 @@ export const POWOD_FAKTURY = '„Tak — wystawimy na:” i „Nie” w bloku fa
  * Komplet, a nie sam formularz: „Termin" przemianowane na „Rachunek" zderza się z NIEZMIENIONYM „Rachunek".
  *   • etykieta przelewu równa (po `rdzenEtykiety`) innej etykiecie przelewu ALBO domyślnej etykiecie innego wiersza
  *     (zamiana Rachunek↔Tytuł przelewu = dwie kolizje) — tabela z dwoma „Rachunkami" to przelew z rachunkiem w tytule;
- *   • „Tak — wystawimy na:" równe „Nie" (D2).
+ *   • „Tak — wystawimy na:" równe „Nie".
  */
 export function kolizjeEtykiet(teksty) {
   const wynik = {};
@@ -281,7 +279,7 @@ export function regulaTresci(klucz, tekst) {
       ? `Klamry służą tu tylko do ${POLE_NUMERU_PROFORMY} — inne trafiłyby do klienta dosłownie.`
       : 'Klamry nie tworzą tu żadnego pola i trafiłyby do klienta dosłownie — usuń je.';
   }
-  // Recenzja PRZ-102.19 (W2, W3, D2) — tylko krótkie etykiety; zdania z PRZ-102.17 mają swoje reguły niżej.
+  // Tylko krótkie etykiety; zdania mają swoje reguły niżej.
   if (z.etykieta) {
     if (!RE_ZNAKI_ETYKIETY.test(tekst)) {
       return 'Etykieta może zawierać tylko litery alfabetu łacińskiego (z polskimi), cyfry, spacje i zwykłą interpunkcję — bez znaczników i liter z innych alfabetów, które udają łacińskie.';
@@ -316,7 +314,7 @@ export const zdanieProformy = (szablon, numer) => String(szablon).split(POLE_NUM
 export const naglowekTekstu = (n) => String(n).toLocaleUpperCase('pl-PL');
 
 /**
- * Komplet tekstów modelu maila (PRZ-102.19): `m.teksty` z `modelWiadomosci`/`modelZamowienia` (zapisane w panelu
- * + domyślne). Model złożony bez nich (starsze wywołania, testy) = brzmienie domyślne, to samo co przed zmianą.
+ * Komplet tekstów modelu maila: `m.teksty` z `modelWiadomosci`/`modelZamowienia` (zapisane w panelu
+ * + domyślne). Model złożony bez nich (starsze wywołania, testy) = brzmienie domyślne.
  */
 export const tekstyModelu = (m) => m?.teksty ?? DOMYSLNE_ZDANIA;

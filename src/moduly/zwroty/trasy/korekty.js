@@ -21,7 +21,7 @@ import { ktoKlikal } from '../../zamowienia/wspolne.js';
 import { createWspolne } from './wspolne.js';
 export function registerKorektyRoutes(app, { db, korekta = null, definicje, infakt: programFaktur = null, wyborProgramu = null }) {
   const { powrotKarty, adresKarty, adresZwrotu, zamowienieAlbo404, slad, decyzja, pokazKrok1 } = createWspolne({ db, korekta, definicje, infakt: programFaktur });
-  // PRZ-118.09: nazwa programu w odmowach korekty (bez programu — inFakt, jak dotąd).
+  // Nazwa programu w odmowach korekty (bez programu — inFakt, jak dotąd).
   const nazwaProgramu = odmianaNazwyProgramu(programFaktur), gdzieProgramu = gdzieDokument(programFaktur);
   app.post('/zamowienia/:id/zwroty/:zwrotId/korekta', async (req, reply) => {
     const z = zamowienieAlbo404(req, reply);
@@ -46,26 +46,26 @@ export function registerKorektyRoutes(app, { db, korekta = null, definicje, infa
       + `${po?.korekta_referencja ? `, referencja ${po.korekta_referencja}` : ''}`
       + `${po?.korekta_numer ? `, numer ${po.korekta_numer}` : ' — numer pojawi się po przetworzeniu'}.`,
     ));
-    // ⚠️ Rozbieznosc z briefem: `reply.redirect(302, url)` NIE ISTNIEJE od Fastify 5
+    // ⚠️ `reply.redirect(302, url)` NIE ISTNIEJE od Fastify 5
     // (w v4 bylo FSTDEP021; sygnatura to `redirect(url, code)`), a caly ten plik
     // uzywa jednoargumentowego wywolania (302 jest domyslnym kodem). Ta sama forma tutaj.
-    // PRZ-147.03 (decyzja 9): ekran zwrotu, nie karta — tylko on pokazuje stan zlecenia,
+    // Ekran zwrotu, nie karta — tylko on pokazuje stan zlecenia,
     // a jego przeladowanie odczytuje status.
     return reply.redirect(adresZwrotu(req, z.id));
   });
 
   // ---------------------------------------------------------------------------------
-  // ⚠️⚠️ DWA WYJSCIA ZE ZLECENIA KOREKTY, KTORE PRZEPADLO (recenzja 2026-08-15, C2).
+  // ⚠️⚠️ DWA WYJSCIA ZE ZLECENIA KOREKTY, KTORE PRZEPADLO.
   //
   // Zmierzone na zywym koncie: inFakt oddaje `201` NAWET NA PUSTE CIALO i odrzuca tresc
-  // dopiero w przetwarzaniu w tle. Po progu ekran pisal „zlecenie zostało odrzucone" — i na
-  // tym sie konczylo: przycisku „Wystaw korektę" juz nie bylo, skasowania zwrotu odmawial
-  // `powodOdmowyUsunieciaZwrotu`, a zwrot zostawal NIEROZLICZONY NA ZAWSZE, trzymajac
-  // zamowienie na liscie roboczej. Jedynym wyjsciem byl `UPDATE` na produkcyjnej bazie.
+  // dopiero w przetwarzaniu w tle. Bez tych tras po progu ekran pisałby „zlecenie zostało
+  // odrzucone" — i na tym by się kończyło: przycisku „Wystaw korektę" już nie ma, skasowania
+  // zwrotu odmawia `powodOdmowyUsunieciaZwrotu`, a zwrot zostałby NIEROZLICZONY NA ZAWSZE,
+  // trzymając zamówienie na liście roboczej. Jedynym wyjściem byłby `UPDATE` na bazie.
   //
   // Obie trasy CELOWO nie wymagaja skonfigurowanego inFaktu i CELOWO niczego tam nie wolaja —
   // dokladnie jak `/zamowienia/:id/faktura/odblokuj` i `/zamowienia/:id/faktura/skasowana`
-  // (routes/zamowienia.js), ta sama konwencja i ten sam ksztalt wpisu w logu. Decyzje
+  // (moduly/faktury/trasy/dokumenty.js), ta sama konwencja i ten sam ksztalt wpisu w logu. Decyzje
   // podejmuje CZLOWIEK, ktory sprawdzil w inFakcie; log ma zapamietac, ze to byla decyzja,
   // a nie automat.
   // ---------------------------------------------------------------------------------

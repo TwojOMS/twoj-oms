@@ -22,7 +22,7 @@ export const MODUL_WOO = {
       'W polu „Uprawnienia” wybierz „Zapis/odczyt”. Kliknij „Wygeneruj klucz API”.',
       'Tajny konsumenta WooCommerce pokazuje tylko raz — skopiuj oba klucze, zanim opuścisz stronę.',
     ],
-    // PRZ-149.04 (C8): „Odczyt” — OMS tylko pobiera zamówienia (statusu, notatki ani SKU/wymiarów nie zapisuje).
+    // „Odczyt” — OMS tylko pobiera zamówienia (statusu, notatki ani SKU/wymiarów nie zapisuje).
     wybor: {
       pole: { id: 'uprawnienia', etykieta: 'Jakie uprawnienia ma klucz?', rodzaj: 'wybor', wymagane: true, domyslna: 'zapis', opcje: [
         { wartosc: 'odczyt', etykieta: 'Odczyt (OMS tylko pobiera zamówienia)' },
@@ -48,7 +48,7 @@ export const MODUL_WOO = {
       ],
     } },
     { id: 'stan', numer: 5, tytul: 'Stan', widok: 'woo-stan' },
-    // PRZ-160 E4.10 (D61): krok 6 „Stany” zawsze w szkielecie; bez stanów magazynowych nic nie robi.
+    // Krok 6 „Stany” zawsze w szkielecie; bez stanów magazynowych nic nie robi.
     { id: 'stany', numer: 6, tytul: 'Stany', widok: 'woo-stany' },
   ] },
 } as const satisfies OpisKanalu;

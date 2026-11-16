@@ -1,15 +1,15 @@
 import { PALETA_STATUSOW, domyslneStatusy } from '../../domena/statusy-konfiguracja.js';
 const DOMYSLNE_KOLORY = Object.fromEntries(domyslneStatusy().map(s => [s.klucz, s.kolor]));
-// KOLOR STATUSU — czysta prezentacja, dlatego mieszka w web/, a nie w domain/. Domena
-// (domain/status.js) rozstrzyga, JAKI status ma zamowienie; tutaj rozstrzyga sie tylko,
-// jak go pomalowac, i sama zmiana barwy nie ma prawa niczego znaczyc.
+// KOLOR STATUSU — czysta prezentacja, dlatego mieszka w core/web/, a nie w domenie. Domena
+// (domena/status.js) rozstrzyga, JAKI status ma zamówienie; tutaj rozstrzyga się tylko,
+// jak go pomalować, i sama zmiana barwy nie ma prawa niczego znaczyć.
 //
-// Wspolne dla listy i karty zamowienia (przez `defaultContext` w web/server.js), bo ten
-// sam status musi wygladac tak samo w obu miejscach — dwie kopie mapy rozjechalyby sie
-// przy pierwszej zmianie palety i „Wyslane" bylo by zielone na liscie, a szare na karcie.
+// Wspólne dla listy i karty zamówienia (przez `defaultContext` w core/web/pipeline.js), bo ten
+// sam status musi wyglądać tak samo w obu miejscach — dwie kopie mapy rozjechałyby się
+// przy pierwszej zmianie palety i „Wysłane” byłoby zielone na liście, a szare na karcie.
 //
-// ⚠️ Klucze musza byc te same, co w ETYKIETY. Status bez wpisu dostaje wyglad NEUTRALNY,
-// a nie wyjatek: dolozenie statusu w domenie nie moze wywalic ekranu, najwyzej zostawic
+// ⚠️ Klucze muszą być te same, co w ETYKIETY (domena/status.js). Status bez wpisu dostaje wygląd
+// NEUTRALNY, a nie wyjątek: dołożenie statusu w domenie nie może wywalić ekranu, najwyżej zostawić
 // nowy stan szarym do czasu dobrania mu barwy.
 const KLASY = {
   nowe: 'znacznik--nowe',

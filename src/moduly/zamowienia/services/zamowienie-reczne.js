@@ -11,7 +11,7 @@ import { klientPoNip } from '../../../oms/db/klienci.js';
  * `okresId` ustala wołający przed nadaniem numeru, `znacznik` jest jednym odczytem zegara.
  * `naliczajOplate: false` zachowuje kwoty zaakceptowane w ofercie panelu indywidualnego.
  */
-// PRZ-122.B07c: `zw` (program wbudowany, trasa podaje z kontekstu) — pozycje i opłata ze stawką „zw”; bez flagi jak dotąd.
+// `zw` (program wbudowany, trasa podaje z kontekstu) — pozycje i opłata ze stawką „zw”; bez flagi jak dotąd.
 export function zalozZamowienieReczne({ db, dane, znacznik, okresId = null, naliczajOplate = true, zw = false }) {
   const id = utworzZamowienieReczne(db, { ...dane, utworzone_at: znacznik }, okresId);
   try {
@@ -61,7 +61,7 @@ function dokoncz({ db, dane, id, naliczajOplate, zw }) {
     zamowienieId: id,
     nip: dane.nip,
     // Etykieta klienta = paczke nadaje klient na SWOIM koncie kurierskim; operator
-    // zaznacza to w formularzu (domain/nowe-zamowienie.js).
+    // zaznacza to w formularzu (domena/nowe-zamowienie.js).
     etykietaKlienta: dane.etykietaKlienta,
     // Odbiór osobisty ma pierwszeństwo przed własną etykietą.
     bezWysylki: dane.metoda_wysylki === 'odbior_osobisty',
@@ -76,7 +76,7 @@ function dokoncz({ db, dane, id, naliczajOplate, zw }) {
   // z bariera arytmetyczna zablokowana OD RAZU.
   przeliczKwoteRecznego(db, id);
   // Osobny e-mail do faktury idzie ta sama droga, co poprawka tego pola na karcie —
-  // patrz komentarz przy nadpisaniaFaktury w domain/nowe-zamowienie.js.
+  // patrz komentarz przy nadpisaniaFaktury w domena/nowe-zamowienie.js.
   if (dane.nadpisaniaFaktury) zapiszNadpisaniaFaktury(db, id, dane.nadpisaniaFaktury, null);
   return { id, numer: pobierzZamowienie(db, id).numer, oplata };
 }

@@ -1,4 +1,4 @@
-// PRZ-108.10 — NIP i BDO firmy z Ustawień: wiersze „nip_firmy” i „bdo_firmy” w tabeli konfiguracja_integracji (migracja
+// NIP i BDO firmy z Ustawień: wiersze „nip_firmy” i „bdo_firmy” w tabeli konfiguracja_integracji (migracja
 // rdzenia 6, bez nowej migracji). Jawne ustawienia, puste sekrety — NIP i BDO stoją na każdym dokumencie.
 import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji, usunKonfiguracjeIntegracji }
   from './konfiguracja-integracji.js';

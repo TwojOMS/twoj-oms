@@ -14,7 +14,7 @@
     <% if (konto?.admin === true && !podgladDemo) { %>
       <form class="ust-formularz" method="post" enctype="multipart/form-data" action="/ustawienia/firma/logo">
         <label for="logo-plik">Plik PNG</label>
-        <%# PRZ-108.03b: strefa przeciągania obejmuje to samo pole pliku; bez skryptu (public/logo-przeciaganie.js) %>
+        <%# Strefa przeciągania obejmuje to samo pole pliku; bez skryptu (public/logo-przeciaganie.js) %>
         <%# zostaje zwykły wybór z dysku. Napis i komunikaty czyta czytnik ekranu (role=status), klawiatura używa pola. %>
         <div class="logo-strefa" data-logo-strefa role="group" aria-labelledby="logo-strefa-opis">
           <p class="logo-strefa-opis" id="logo-strefa-opis">Przeciągnij plik PNG tutaj albo wybierz z dysku</p>
@@ -118,7 +118,7 @@
 
 <% } %>
 <% if (sekcja === 'rejestrowe') { %>
-<%# PRZ-108.10: NIP i BDO sprzedawcy — zapisuje tylko administrator; plik wygrywa dla swojego pola. %>
+<%# NIP i BDO sprzedawcy — zapisuje tylko administrator; plik wygrywa dla swojego pola. %>
 <section class="ust-sekcja" id="dane-rejestrowe">
   <h2>Numery rejestrowe</h2>
 <div class="ust-rejestrowe-pole" id="nip-stan">
@@ -146,7 +146,7 @@
         <div><input id="nip-numer" name="nip" value="<%= nipBdo.pola.nip %>" maxlength="20" inputmode="numeric" autocomplete="off" required>
           <p class="ust-pomoc">10 cyfr. Przedrostek PL, spacje i myślniki są dozwolone — OMS sprawdza cyfrę kontrolną.</p></div>
         <% if (nipBdo.biezace.nip) { %>
-          <%# PRZ-108.10 (recenzja D2): faktury (inFakt) i proformy (plik) mają NIP z chwili wystawienia; specyfikację %>
+          <%# Faktury i proformy już wystawione mają NIP z chwili wystawienia; specyfikację %>
           <%# i potwierdzenie wywozu panel składa przy każdym pobraniu i mailu — z bieżącym NIP-em. %>
           <p class="ust-pelna pas-uprzedzenie">Wystawione faktury i proformy zostają z poprzednim NIP-em; specyfikacja i potwierdzenie wywozu pobrane ponownie pokażą nowy NIP.</p>
         <% } %>
@@ -196,7 +196,7 @@
 
 <% } %>
 <% if (sekcja === 'vat') { %>
-<%# PRZ-105: domyślna stawka VAT — zapisuje tylko administrator; bez wpisu 23. %>
+<%# Domyślna stawka VAT — zapisuje tylko administrator; bez wpisu 23. %>
 <section class="ust-sekcja" id="stawka-vat">
   <h2>Domyślna stawka VAT</h2>
   <% if (stawkaVat.bledy.length) { %>
@@ -219,7 +219,7 @@
   <% } %>
 </section>
 
-<%# PRZ-122.B07b: zwolnienie z VAT — tylko przy TwojeFaktury (trasa podaje `zwolnienie` = null przy innym programie). %>
+<%# Zwolnienie z VAT — tylko przy TwojeFaktury (trasa podaje `zwolnienie` = null przy innym programie). %>
 <% if (zwolnienie) { const zp = zwolnienie.pola; %>
 <section class="ust-sekcja" id="zwolnienie-vat">
   <h2>Zwolnienie z VAT</h2>
@@ -262,7 +262,7 @@
 
 <% } %>
 <% if (sekcja === 'rachunek') { %>
-<%# PRZ-102.20: rachunek bankowy firmy — zapisuje tylko administrator; plik (OMS_RACHUNEK / OMS_BANK) wygrywa. %>
+<%# Rachunek bankowy firmy — zapisuje tylko administrator; plik (OMS_RACHUNEK / OMS_BANK) wygrywa. %>
 <section class="ust-sekcja" id="rachunek-stan">
   <h2>Rachunek bankowy</h2>
   <% if (rachunek.bledy.length) { %>

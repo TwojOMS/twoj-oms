@@ -1,8 +1,8 @@
-// PRZ-118.04 — identyfikator dokumentu w programie fakturowym: JEDYNE miejsce w `src/`, które czyta
+// Identyfikator dokumentu w programie fakturowym: JEDYNE miejsce w `src/`, które czyta
 // kolumnę `infakt_uuid` (strażnik: tests/core/straznik-infakt-uuid-prz118.test.js).
 //
 // Od migracji rdzen/0008 wiersz `faktury` / `okresy_rozliczeniowe` niesie `program` + `dokument_id`.
-// `infakt_uuid` zostaje ZAPASEM odczytu, nie źródłem: wiersz zapisany przez obraz sprzed PRZ-118 PO
+// `infakt_uuid` zostaje ZAPASEM odczytu, nie źródłem: wiersz zapisany przez wcześniejszy obraz aplikacji PO
 // migracji (okno wycofania) ma tylko `infakt_uuid` — i ma działać bez naprawy przy starcie.
 // Zapis trzech kolumn naraz robią wyłącznie `zakonczFakture` (moduly/faktury/db/faktury.js)
 // i `zakonczFaktureOkresu` (oms/db/okresy.js).
@@ -31,7 +31,7 @@ export function programDokumentu(f) {
 /**
  * Numer KSeF z wyniku `pobierzFakture` albo `null`. Adapter inFaktu oddaje go jako `ksefNumer`, program wbudowany
  * (TwojeFaktury) w kształcie v3 jako `ksef_number` (core/kontrakty.ts `WierszDokumentu`) — czuwacz i karta czytają
- * oba, inaczej przy TwojeFaktury `faktury.ksef_numer` nie powstaje nigdy (PRZ-123.CZUWACZ-NUMER). Pusty napis = brak.
+ * oba, inaczej przy TwojeFaktury `faktury.ksef_numer` nie powstaje nigdy. Pusty napis = brak.
  */
 export function numerKsefDokumentu(dane) {
   return dane?.ksefNumer || dane?.ksef_number || null;
@@ -52,7 +52,7 @@ export function idDokumentuSql(alias) {
 }
 
 /**
- * PRZ-121.01 — ten sam odczyt co `programDokumentu` w SQL: `NULL`, gdy wiersz nie ma identyfikatora (nawet przy
+ * Ten sam odczyt co `programDokumentu` w SQL: `NULL`, gdy wiersz nie ma identyfikatora (nawet przy
  * zapisanym `program`), a identyfikator bez `program` (wiersz starego obrazu) = 'infakt'. Alias jak w `idDokumentuSql`.
  */
 export function programDokumentuSql(alias) {
@@ -62,7 +62,7 @@ export function programDokumentuSql(alias) {
 }
 
 // Program wołającego: identyfikator modułu ('infakt', 'test'…), obiekt programu z `opis.id`, surowy klient bez opisu
-// (w etapie A jedyny wykonawca — inFakt, jak w domena/nazwa-programu.js) albo `null` = moduł faktur „Brak”.
+// (traktowany jak inFakt, tak samo jak w domena/nazwa-programu.js) albo `null` = moduł faktur „Brak”.
 const idProgramu = (program) => {
   if (typeof program === 'string') return program;
   if (!program) return 'brak';
@@ -95,7 +95,7 @@ export function idDokumentuDla(f, program) {
 }
 
 /**
- * PRZ-148.03 (recenzja): podgląd faktury przy renderowaniu karty i ekranu zwrotu — z własnym krótkim terminem.
+ * Podgląd faktury przy renderowaniu karty i ekranu zwrotu — z własnym krótkim terminem.
  * Zawieszony program fakturowy nie może trzymać strony do limitu klienta (inFakt: 60 s); po terminie albo przy
  * błędzie → `null`, czyli ekran zachowuje się jak bez odczytu (przycisk zostaje, odmowę da usługa korekty).
  */

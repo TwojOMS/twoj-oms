@@ -1,4 +1,4 @@
-// PRZ-126.C05a: komputery z drukarką faktur (czuwacz deploy/drukarka/czuwacz-faktur.ps1) zgłaszają się przy każdym
+// Komputery z drukarką faktur (czuwacz deploy/drukarka/czuwacz-faktur.ps1) zgłaszają się przy każdym
 // odpytaniu `GET /kolejka-druku-faktur?stanowisko=…`. Zgłoszenia leżą w tabeli `ustawienia` jako mapa
 // { "<stanowisko>": "<ISO>" } (db/stanowiska-druku.js). Tu tylko czyste reguły — `teraz` zawsze z argumentu.
 

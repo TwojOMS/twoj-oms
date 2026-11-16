@@ -1,56 +1,56 @@
 import { czyKanalAllegro } from './wysylka.js';
 
-// CZY TE PACZKE WOLNO NADAC Z OMS-U PRZEZ „Wysylam z Allegro" (WzA).
+// CZY TĘ PACZKĘ WOLNO NADAĆ Z OMS-U PRZEZ „Wysyłam z Allegro" (WzA).
 //
-// To jest JEDYNA bariera miedzy kliknieciem czlowieka a KUPIONYM PRZEWOZEM. Allegro nie
-// odmowi nam nic: token niesie `allegro:api:shipments:write` (zmierzone 05.08 i 10.08.2026),
-// nie ma trybu probnego, nie ma sandboxa, a kupionej etykiety nie cofa sie kliknieciem.
-// Dlatego decyzja jest CZYSTA — bez sieci i bez bazy — zeby dala sie przetestowac
-// wyczerpujaco, i dlatego kazde „nie wiem" znaczy tutaj ODMOWE.
+// To jest JEDYNA bariera między kliknięciem człowieka a KUPIONYM PRZEWOZEM. Allegro nie
+// odmówi nam nic: token niesie `allegro:api:shipments:write` (sprawdzone pomiarem),
+// nie ma trybu próbnego, nie ma sandboxa, a kupionej etykiety nie cofa się kliknięciem.
+// Dlatego decyzja jest CZYSTA — bez sieci i bez bazy — żeby dała się przetestować
+// wyczerpująco, i dlatego każde „nie wiem" znaczy tutaj ODMOWĘ.
 
-// ⚠️ TU WOLNO WPISAC WYLACZNIE USLUGI O `owner: ALLEGRO`.
+// ⚠️ TU WOLNO WPISAĆ WYŁĄCZNIE USŁUGI O `owner: ALLEGRO`.
 //
-// `GET /shipment-management/delivery-services` oddaje przy kazdej usludze pole `owner`.
-// Zmierzone 10.08.2026 na koncie `allegro_a`: 298 uslug, z tego 292 ma
-// `owner: ALLEGRO` (umowa Allegro — my nie mamy z przewoznikiem nic wspolnego) i 6 ma
-// `owner: CLIENT`. Te szesc to WYLACZNIE InPost: Kurier24, miniKurier24 i Paczkomaty,
-// kazda w wariancie zwyklym i „pobranie".
+// `GET /shipment-management/delivery-services` oddaje przy każdej usłudze pole `owner`.
+// Zmierzone w katalogu: prawie wszystkie usługi (kilkaset) mają `owner: ALLEGRO` (umowa
+// Allegro — my nie mamy z przewoźnikiem nic wspólnego), a sześć ma `owner: CLIENT`. Te sześć
+// to WYŁĄCZNIE InPost: Kurier24, miniKurier24 i Paczkomaty, każda w wariancie zwykłym
+// i „pobranie".
 //
-// ⚠️ DOPISANIE TU METODY INPOSTOWEJ ZNACZY PACZKE NA NASZEJ UMOWIE — czyli DRUGI, PLATNY
-// przewoz do klienta, ktory swoj ma juz oplacony w cenie dostawy. To ta sama rodzina bledu,
-// przed ktora broni brak wpisu `odbior_osobisty` w `DLA_METODY` (kurierzy/index.js).
-// Allegro takiego zadania NIE ODRZUCI — sprawdzi wylacznie, czy mamy `credentialsId`.
+// ⚠️ DOPISANIE TU METODY INPOSTOWEJ ZNACZY PACZKĘ NA NASZEJ UMOWIE — czyli DRUGI, PŁATNY
+// przewóz do klienta, który swój ma już opłacony w cenie dostawy. To ta sama rodzina błędu,
+// przed którą broni brak wpisu `odbior_osobisty` w mapie „metoda → kurier” (`metody` kurierów
+// w rejestrze `MODULY_KURIEROW`, domena/moduly-kurierow.ts).
+// Allegro takiego żądania NIE ODRZUCI — sprawdzi wyłącznie, czy mamy `credentialsId`.
 //
 // Identyfikatory zmierzone, nie przepisane z dokumentacji. Mapowanie idzie PO
-// `delivery.method.id`, NIGDY po nazwie — nazwa to tekst, ktory Allegro zmieni bez pytania
-// nas o zdanie (ta sama regula, co w domain/allegro-dostawa.js).
-// ⚠️ `wymagaKonta` ODPOWIADA POLU `cashOnDelivery.forceRequireIban` USLUGI — zmierzone
-// 11.08.2026 (`GET /shipment-management/delivery-services`):
+// `delivery.method.id`, NIGDY po nazwie — nazwa to tekst, który Allegro zmieni bez pytania
+// nas o zdanie (ta sama reguła, co w domena/allegro-dostawa.js).
+// ⚠️ `wymagaKonta` ODPOWIADA POLU `cashOnDelivery.forceRequireIban` USŁUGI — zmierzone
+// w `GET /shipment-management/delivery-services`:
 //   „Allegro Kurier DPD (AD)"          cashOnDelivery: null
 //   „Allegro Kurier DPD pobranie (AD)" cashOnDelivery: {"limit":6000,"currency":"PLN",
 //                                        "paymentType":"WALLET_TRANSFER","forceRequireIban":false}
-// `WALLET_TRANSFER` = gotowke inkasuje ALLEGRO i rozlicza przez portfel sprzedawcy, a NIE
-// przewoznik na nasz rachunek. Gdyby Allegro kiedys podnioslo to na `true`, panel wysle
-// przesylke bez konta i dostanie GLOSNY blad — a nie po cichu zle rozliczone pobranie.
-// ⚠️⚠️ OSIEM USLUG PUNKTOWYCH I KURIERSKICH DOSZLO 18.09.2026 (zgloszenie właściciela: „nie da sie
-// nadac orlena i DHL z OMS"). Ograniczenie bylo NASZE, nie Allegro: biala lista miala dwa
-// wpisy przy 299 uslugach na umowie Allegro.
+// `WALLET_TRANSFER` = gotówkę inkasuje ALLEGRO i rozlicza przez portfel sprzedawcy, a NIE
+// przewoźnik na nasz rachunek. Gdyby Allegro kiedyś podniosło to na `true`, panel wyśle
+// przesyłkę bez konta i dostanie GŁOŚNY błąd — a nie po cichu źle rozliczone pobranie.
+// ⚠️⚠️ BIAŁA LISTA JEST OGRANICZENIEM NASZYM, NIE ALLEGRO: usługa, której tu nie ma, nie nada
+// się z OMS-u, choć Allegro by ją przyjęło. Usługa spotykana w zamówieniach wymaga wpisu.
 //
-// ⚠️ IDENTYFIKATORY ZMIERZONE, NIE PRZEPISANE Z KATALOGU PO NAZWIE. Zrodlo: `delivery.method.id`
-// z SUROWYCH zamowien produkcyjnych, zestawione z `GET /shipment-management/delivery-services`
-// (18.09.2026: 305 uslug, 299 `owner: ALLEGRO`, 6 `owner: CLIENT`). Dopasowanie po nazwie jest
-// zawodne i dlatego go nie uzyto: „Allegro Kurier DPD" daje w katalogu CZTERY trafienia,
-// a uslugi DHL z naszych zamowien nie pasuja do katalogu wcale — tam nosza sufiks „(AD)".
+// ⚠️ IDENTYFIKATORY ZMIERZONE, NIE PRZEPISANE Z KATALOGU PO NAZWIE. Źródło: `delivery.method.id`
+// z SUROWYCH prawdziwych zamówień, zestawione z `GET /shipment-management/delivery-services`.
+// Dopasowanie po nazwie jest zawodne i dlatego go nie użyto: „Allegro Kurier DPD" daje
+// w katalogu CZTERY trafienia, a usługi DHL z zamówień nie pasują do katalogu wcale — tam noszą
+// sufiks „(AD)".
 //
-// ⚠️ PUNKT ODBIORU PRZECHODZI SAM i to nie jest zalozenie: `delivery-proposals` oddaje
-// `receiver.point` rowny naszej kolumnie `punkt_odbioru` (zmierzone 18.09 na zamowieniu
-// z automatem ORLEN: `point: "849019"`), a adapter WzA rozlewa cala podpowiedz przez `...p`.
-// Gdyby Allegro tego pola kiedys nie przyslalo, paczka pojechalaby pod adres DOMOWY
-// kupujacego zamiast do automatu — dlatego zmiana tego rozlania wymaga ponownego pomiaru.
+// ⚠️ PUNKT ODBIORU PRZECHODZI SAM i to nie jest założenie: `delivery-proposals` oddaje
+// `receiver.point` równy naszej kolumnie `punkt_odbioru` (zmierzone na zamówieniu
+// z automatem ORLEN), a adapter WzA rozlewa całą podpowiedź przez `...p`.
+// Gdyby Allegro tego pola kiedyś nie przysłało, paczka pojechałaby pod adres DOMOWY
+// kupującego zamiast do automatu — dlatego zmiana tego rozlania wymaga ponownego pomiaru.
 //
-// ⚠️ WSZYSTKIE OSIEM SA BEZPOBRANIOWE (`cashOnDelivery: null` w katalogu). `pobranie: false`
-// znaczy tu „usluga nie inkasuje", a nie „zamowienie jest przedplacone" — zamowienie
-// za pobraniem na takiej usludze odbija sie o `pobranieDoWysylki`, i tak ma zostac.
+// ⚠️ USŁUGI Z `pobranie: false` NIE INKASUJĄ — przy zmierzonych `cashOnDelivery` jest `null`.
+// `pobranie: false` znaczy tu „usługa nie inkasuje", a nie „zamówienie jest przedpłacone" — zamówienie
+// za pobraniem na takiej usłudze odbija się o `pobranieDoWysylki`, i tak ma zostać.
 export const METODY_WZA = {
   '03f26351-f683-4db2-8895-f2c599280e3c': { nazwa: 'Allegro Kurier DPD (AD)', pobranie: false, wymagaKonta: false },
   '13f26351-26fb-48d4-b5dd-f2c599280e3c': { nazwa: 'Allegro Kurier DPD pobranie (AD)', pobranie: true, wymagaKonta: false },
@@ -62,16 +62,16 @@ export const METODY_WZA = {
   '0fe5b4af-9f09-443d-9d49-62331a20b5b2': { nazwa: 'Allegro Automat DHL BOX 24/7 (AD)', pobranie: false, wymagaKonta: false },
   '0560b75e-88c3-4b79-bcf7-62331a20b5b2': { nazwa: 'Allegro Odbiór w Punkcie DHL (AD)', pobranie: false, wymagaKonta: false },
   '0b257488-c85d-4507-b967-9b45ffbfa2e8': { nazwa: 'Allegro One Box, DPD', pobranie: false, wymagaKonta: false },
-  // PRZ-124 (28.10.2026, zam. #1508). Zmierzone w katalogu: owner ALLEGRO, credentialsId null,
+  // Zmierzone w katalogu: owner ALLEGRO, credentialsId null,
   // cashOnDelivery {"limit":6000,"currency":"PLN","paymentType":"WALLET_TRANSFER","forceRequireIban":false}
-  // — ten sam profil pobrania, co „Kurier DPD pobranie (AD)". `delivery-proposals` #1508 oddalo
-  // `receiver.point` rowny `punkt_odbioru` i kwote pobrania rowna kwocie zamowienia.
-  // Wariant bez pobrania (`06af1169-…`) jest w katalogu, ale nie w zadnym zamowieniu — nie wpisany.
+  // — ten sam profil pobrania, co „Kurier DPD pobranie (AD)". `delivery-proposals` prawdziwego zamówienia
+  // oddało `receiver.point` równy `punkt_odbioru` i kwotę pobrania równą kwocie zamówienia.
+  // Wariant bez pobrania (`06af1169-…`) jest w katalogu, ale nie w żadnym zamówieniu — nie wpisany.
   '16af1169-db74-4e94-a16d-f2c599280e3c': { nazwa: 'Allegro Odbiór w Punkcie DPD Pickup pobranie (AD)', pobranie: true, wymagaKonta: false },
 };
 
-// Uslugi InPostu, ktore Allegro wystawia na umowie NADAWCY (`owner: CLIENT`, zmierzone 18.09.2026).
-// Sluza WYLACZNIE do brzmienia odmowy — o zgodzie rozstrzyga `METODY_WZA`, nie ta lista.
+// Usługi InPostu, które Allegro wystawia na umowie NADAWCY (`owner: CLIENT`, zmierzone w katalogu).
+// Służą WYŁĄCZNIE do brzmienia odmowy — o zgodzie rozstrzyga `METODY_WZA`, nie ta lista.
 const INPOST_UMOWA_NADAWCY = new Set([
   '2488f7b7-5d1c-4d65-b85c-4cbcf253fd93', // Allegro Paczkomaty InPost
   'b20ef9e1-faa2-4f25-9032-adbea23e5cb9', // Allegro Paczkomaty InPost pobranie
@@ -84,10 +84,10 @@ const nie = (powod) => ({ wolno: false, powod });
  * @param zamowienie wiersz z tabeli `zamowienia`
  * @param deliveryMethodIdZywy `delivery.method.id` z ZADANIA, ktore wlasnie wrocilo z Allegro
  *
- * ⚠️ `deliveryMethodIdZywy` MUSI pochodzic z zywego odczytu, nigdy z kolumny w bazie.
- * Allegro NIE PODBIJA `updatedAt` przy zmianach w zamowieniu (zmierzone 05.08.2026 na
- * 10 zamowieniach, 5 rozjechanych), wiec nasza kopia bywa nieswieza Z DEFINICJI, a nie
- * przez usterke pollera. Decyzja o wydaniu pieniedzy podjeta na takiej kopii to decyzja
+ * ⚠️ `deliveryMethodIdZywy` MUSI pochodzić z żywego odczytu, nigdy z kolumny w bazie.
+ * Allegro NIE PODBIJA `updatedAt` przy zmianach w zamówieniu (zmierzone: w próbce rozjechała
+ * się mniej więcej połowa zamówień), więc nasza kopia bywa nieświeża Z DEFINICJI, a nie
+ * przez usterkę pollera. Decyzja o wydaniu pieniędzy podjęta na takiej kopii to decyzja
  * na danych sprzed doby.
  */
 export function wolnoNadacZOms(zamowienie, { deliveryMethodIdZywy } = {}) {
@@ -108,10 +108,10 @@ export function wolnoNadacZOms(zamowienie, { deliveryMethodIdZywy } = {}) {
 
   const usluga = METODY_WZA[deliveryMethodIdZywy];
   if (!usluga) {
-    // Rozdzielamy dwa POWODY, bo prowadza do dwoch roznych rzeczy po stronie czlowieka:
-    // przy InPoscie paczke nadaje sie jak dotad, przy metodzie nieznanej trzeba sprawdzic,
-    // co Allegro dolozylo do slownika. Do PRZ-124 obie dostawaly tekst o InPoscie — takze
-    // DPD Pickup na umowie Allegro (zam. #1508), co odsylalo czlowieka w zla strone.
+    // Rozdzielamy dwa POWODY, bo prowadzą do dwóch różnych rzeczy po stronie człowieka:
+    // przy InPoście paczkę nadaje się jak dotąd, przy metodzie nieznanej trzeba sprawdzić,
+    // co Allegro dołożyło do słownika. Wspólny tekst o InPoście dostałaby też usługa innego
+    // przewoźnika na umowie Allegro, której brak na liście — i odesłałby człowieka w złą stronę.
     if (INPOST_UMOWA_NADAWCY.has(deliveryMethodIdZywy)) {
       return nie(
         'Tej metody dostawy panel nie nada przez „Wysyłam z Allegro". Metody InPostu Allegro '
@@ -137,19 +137,20 @@ export function wolnoNadacZOms(zamowienie, { deliveryMethodIdZywy } = {}) {
   };
 }
 
-// ⚠️⚠️ POBRANIE — PIENIADZE KUPUJACEGO. Osobna, czysta regula, bo tu KAZDY blad kosztuje
-// gotowke, a nie tylko przesylke.
+// ⚠️⚠️ POBRANIE — PIENIĄDZE KUPUJĄCEGO. Osobna, czysta reguła, bo tu KAŻDY błąd kosztuje
+// gotówkę, a nie tylko przesyłkę.
 //
-// Zmierzone 11.08.2026 na zamowieniu #1148 (`13f26351-…`, „Allegro Kurier DPD pobranie (AD)"):
+// Zmierzone na zamówieniu za pobraniem (`13f26351-…`, „Allegro Kurier DPD pobranie (AD)"):
 //   payment.type                     : "CASH_ON_DELIVERY"
 //   summary.totalToPay               : 83.99 PLN
 //   suggestedInput.cashOnDelivery    : {"amount":"83.99","currency":"PLN","ownerName":null,"iban":null}
 //   deliveryOptions[].limits.cashOnDelivery : 6000 PLN
 //
 // ⚠️ KWOTA IDZIE Z PODPOWIEDZI ALLEGRO, NIGDY Z NASZEJ KOLUMNY. `zamowienia.kwota_pobrania`
-// nadpisuje poller co dwie minuty (4.7), a operator moze ja nadpisac z ekranu nadania BEZ
-// gornego progu — literowka „8399" zamiast „83,99" pojechalaby do kuriera taka, jaka jest.
-// Allegro zna kwote, ktora kupujacy ZOBOWIAZAL SIE zaplacic, i to ona ma trafic na etykiete.
+// nadpisuje poller przy każdej synchronizacji (reguła: dane ręczne obok danych sklepu), a operator
+// może ją nadpisać z ekranu nadania BEZ górnego progu — literówka „8399" zamiast „83,99"
+// pojechałaby do kuriera taka, jaka jest. Allegro zna kwotę, którą kupujący ZOBOWIĄZAŁ SIĘ
+// zapłacić, i to ona ma trafić na etykietę.
 const GROSZE = (kwota) => Math.round(Number(String(kwota ?? '').replace(',', '.')) * 100);
 const IBAN_PL = /^(PL)?\d{26}$/;
 
@@ -191,21 +192,21 @@ export function pobranieDoWysylki({
     );
   }
 
-  // ⚠️⚠️ NASZEGO RACHUNKU TU NIE MA I MIEC NIE MOZE — poprawka po zgloszeniu wlasciciela
-  // 11.08.2026: „pobranie idzie na konto allegro a nie na nasze".
+  // ⚠️⚠️ NASZEGO RACHUNKU TU NIE MA I MIEĆ NIE MOŻE: pobranie idzie na konto Allegro,
+  // a nie na nasze.
   //
-  // Zmierzone na uslugze `13f26351-…`:
+  // Zmierzone na usłudze `13f26351-…`:
   //   cashOnDelivery: {"limit":6000,"currency":"PLN","paymentType":"WALLET_TRANSFER",
   //                    "forceRequireIban":false}
   //
-  // `WALLET_TRANSFER` znaczy, ze gotowke od kupujacego inkasuje ALLEGRO i rozlicza ja przez
-  // portfel sprzedawcy — nie przewoznik na nasz rachunek. `forceRequireIban: false` mowi
-  // wprost, ze konta podawac NIE TRZEBA. Pierwsza wersja tej reguly WYMAGALA naszego IBAN-u
-  // i bez niego odmawiala; wartosc ta w najlepszym razie bylaby ignorowana, a w najgorszym
-  // kazalaby przewoznikowi wyslac pieniadze droga, ktorej nikt nie uzgodnil.
+  // `WALLET_TRANSFER` znaczy, że gotówkę od kupującego inkasuje ALLEGRO i rozlicza ją przez
+  // portfel sprzedawcy — nie przewoźnik na nasz rachunek. `forceRequireIban: false` mówi
+  // wprost, że konta podawać NIE TRZEBA. Wymaganie tu naszego IBAN-u (i odmowa bez niego)
+  // byłoby błędem: wartość ta w najlepszym razie byłaby ignorowana, a w najgorszym
+  // kazałaby przewoźnikowi wysłać pieniądze drogą, której nikt nie uzgodnił.
   //
-  // ⚠️ Pole zostaje OBSLUGIWANE, bo `forceRequireIban` bywa `true` przy innych uslugach —
-  // wtedy konto jest warunkiem i jego brak MA byc odmowa. Rozstrzyga USLUGA, nie my.
+  // ⚠️ Pole zostaje OBSŁUGIWANE, bo `forceRequireIban` bywa `true` przy innych usługach —
+  // wtedy konto jest warunkiem i jego brak MA być odmową. Rozstrzyga USŁUGA, nie my.
   if (!wymaganeKonto) {
     return { wolno: true, cashOnDelivery: { amount: String(cashOnDelivery.amount), currency: 'PLN' } };
   }

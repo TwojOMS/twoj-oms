@@ -13,7 +13,7 @@ import { czyPozycjaWysylki } from './pozycje-niesprzedazowe.js';
 // Suma linii BRUTTO do wyswietlenia w kolumnie „Suma" — liczona TA SAMA funkcja, ktora
 // wchodzi do sumy sprawdzanej przez podsumowaniePozycji() nizej, do bariery arytmetycznej
 // faktury i do `gross_price` pozycji wysylanej do inFaktu (wartoscPozycjiGrosze
-// w domain/suma-pozycji.js). Wczesniej ta regula istniala tutaj w osobnej kopii — jedna
+// w domena/suma-pozycji.js). Wczesniej ta regula istniala tutaj w osobnej kopii — jedna
 // funkcja jest cala roznica miedzy „tabela i bariera pokazuja to samo" a „rozjada sie przy
 // pierwszej zmianie".
 //
@@ -27,26 +27,26 @@ function sumaLiniiBrutto(p) {
   }
 }
 
-// Netto W KOLUMNIE „Cena netto". Dwie regulz, i roznica miedzy nimi jest calym sednem
-// przewodnika 4.5:
+// Netto W KOLUMNIE „Cena netto”. Dwie reguły, i różnica między nimi jest całym sednem
+// reguły: netto ze źródła.
 //
 //  - POZYCJA ZE SKLEPU, nietknieta: netto bierzemy WPROST ze zrodla (Woo, przez
-//    domain/mapowanie.js). Brak danych (wiersz sprzed dolozenia kolumny) pokazuje sie jako
+//    domena/mapowanie.js). Brak danych (wiersz sprzed dolozenia kolumny) pokazuje sie jako
 //    „brak danych" (null) i NIGDY nie jest zgadywany dzieleniem brutta przez 1,23 — to
 //    dzielenie produkowalo rozjazd o grosze, o ktory panel sam sie rozbijal.
 //  - POZYCJA DOPISANA albo PRZECENIONA RECZNIE: netto ze sklepu albo nie istnieje, albo juz
 //    nie pasuje do linii. Wartoscia ZRODLOWA jest tu brutto, ktore wpisal operator, wiec
-//    netto wolno pokazac jako wyliczone ze stawki VAT — patrz komentarz w domain/vat.js.
+//    netto wolno pokazac jako wyliczone ze stawki VAT — patrz komentarz w domena/vat.js.
 //    WYLACZNIE do pokazania: do inFaktu i tak idzie brutto.
-// PRZ-105: netto naszej ceny liczone stawką TEJ pozycji (przy WDT 0 — netto = brutto), nie stałym 23.
+// Netto naszej ceny liczone stawką TEJ pozycji (przy WDT 0 — netto = brutto), nie stałym 23.
 export function nettoWiersza(p, stawka, opcje) {
   if (p.cena_netto != null && String(p.cena_netto).trim() !== '') return p.cena_netto;
   return naszaCena(p) ? nettoZBruttoDoPokazania(p.cena_brutto, stawka, opcje) : null;
 }
 
-// PRZ-105: stawka wiersza — ta sama reguła, którą wybiera ją faktura (domain/pozycje-faktury.js).
-// PRZ-122.B07a: „zw” (tylko z flagą `zw`) opisana bez znaku procentu — to nie jest stawka procentowa.
-// PRZ-122.B07f: `zwolniona` (firma zwolniona z VAT, liczy wołający: `sprzedawcaZwolniony`) — numer UE nabywcy to nie WDT.
+// Stawka wiersza — ta sama reguła, którą wybiera ją faktura (domena/pozycje-faktury.js).
+// „zw” (tylko z flagą `zw`) opisana bez znaku procentu — to nie jest stawka procentowa.
+// `zwolniona` (firma zwolniona z VAT, liczy wołający: `sprzedawcaZwolniony`) — numer UE nabywcy to nie WDT.
 const wdtZamowienia = (z, zwolniona) => czyWdt(daneFaktury(z ?? {}).nip, { zwolniona });
 const opisStawki = (stawka, wdt, zw = false) => {
   if (wdt) return '0% — WDT';
@@ -60,7 +60,7 @@ const naszaCena = (p) => Boolean(p.reczna) || p.zrodlo === 'reczna'
   || (p.polaZmienione ?? []).some((pole) => pole === 'ilosc' || pole === 'cena_brutto');
 
 // Wiersz wysylki, na rowni z pozycjami — patrz wierszePozycji nizej. Ceny ida WPROST
-// z wartosci EFEKTYWNEJ (domain/wysylka-kwota.js), nigdy dzieleniem brutto przez 1,23:
+// z wartosci EFEKTYWNEJ (domena/wysylka-kwota.js), nigdy dzieleniem brutto przez 1,23:
 // `?? null`, NIE `|| ...`, bo prawdziwa darmowa dostawa ma w bazie STRING '0.00' (prawdziwy,
 // niepusty) i nie ma prawa go zgubic — jedynie NULL (stara baza sprzed przeliczenia) ma
 // pokazac brak danych.
@@ -69,13 +69,11 @@ const naszaCena = (p) => Boolean(p.reczna) || p.zrodlo === 'reczna'
 // wchodzi do sumy tak samo jak reszta i tak samo trafia na fakture — udawanie, ze jest czyms
 // mniej, mylilo przy czytaniu karty.
 //
-// ⚠️ WIERSZ MA `klucz` OD 07.08.2026 I TO JEST CALA ZMIANA (prosba wlasciciela: „wysylka
-// powinna byc edytowalna tak samo jak produkty. Ilosc oraz cena"). Do tego dnia `klucz` byl
-// tu `null` z komentarzem „kosztu wysylki CELOWO nie da sie edytowac: nikt o to nie prosil" —
-// i to wlasnie `null` sprawial, ze widok pomijal ten wiersz w trybie edycji. Druga polowa
-// tamtego zdania („kazde dodatkowe pole dotykajace kwoty to kolejne miejsce, w ktorym mozna
-// sie pomylic o pieniadze") zostaje w mocy: poprawka jedzie przez TA SAMA barierę
-// arytmetyczną, przez ten sam czlon roznicowy i przez te same walidatory, co pozycje.
+// ⚠️ WIERSZ MA `klucz`, BO WYSYŁKA JEST EDYTOWALNA tak samo jak produkty (ilość i cena).
+// `klucz: null` sprawiłby, że widok pominie ten wiersz w trybie edycji. Każde pole dotykające
+// kwoty to kolejne miejsce, w którym można się pomylić o pieniądze, dlatego poprawka jedzie
+// przez TĘ SAMĄ barierę arytmetyczną, przez ten sam człon różnicowy i przez te same
+// walidatory, co pozycje.
 function wierszWysylki(zamowienie, lp, { stawka, wdt, zw = false }) {
   const w = wysylkaEfektywna(zamowienie);
   return {
@@ -92,10 +90,10 @@ function wierszWysylki(zamowienie, lp, { stawka, wdt, zw = false }) {
     // wartosc sklepowa do tej linii nie pasuje (wysylkaEfektywna zeruje ja wtedy sama)
     // i netto liczy sie ze stawki VAT — WYLACZNIE do pokazania, dokladnie jak przy
     // przecenionej pozycji wyzej. Do inFaktu i tak jedzie brutto.
-    // PRZ-105: przy zamówieniu RĘCZNYM netto ze sklepu nie istnieje nigdy — liczymy je tak samo, do pokazania.
+    // Przy zamówieniu RĘCZNYM netto ze sklepu nie istnieje nigdy — liczymy je tak samo, do pokazania.
     cenaNetto: w.cena_netto ?? ((w.polaZmienione.length || zamowienie?.sklep === 'reczne')
       ? nettoZBruttoDoPokazania(w.cena_brutto, stawka, { zw }) : null),
-    // PRZ-105: dostawa ma stawkę domyślną (przy WDT 0) — tak jak linia „Dostawa” na fakturze.
+    // Dostawa ma stawkę domyślną (przy WDT 0) — tak jak linia „Dostawa” na fakturze.
     stawka,
     stawkaOpis: opisStawki(stawka, wdt, zw),
     cenaBrutto: w.cena_brutto ?? null,
@@ -111,7 +109,7 @@ function wierszWysylki(zamowienie, lp, { stawka, wdt, zw = false }) {
     // tabeli mial ten sam ksztalt i widok nie musial pytac, ktory to rodzaj wiersza.
     zdjecie: null,
     // Ta sama zasada co przy zdjeciu: brak identyfikatora — zeby odnosnikPozycji
-    // (domain/link-pozycji.js) mial z czego skorzystac bez pytania widoku, ktory to wiersz.
+    // (domena/link-pozycji.js) mial z czego skorzystac bez pytania widoku, ktory to wiersz.
     // OBA identyfikatory naraz, bo wiersz wysylki wystepuje w KAZDYM kanale.
     produktId: null,
     ofertaId: null,
@@ -167,15 +165,14 @@ function wierszPodsumowania(podsumowanie) {
 }
 
 // Czy transport przyszedl JUZ JAKO POZYCJA, a nasz syntetyczny wiersz „Wysylka" bylby jego
-// drugim, pustym odbiciem (21.08.2026, zgloszenie wlasciciela z zam. 1184 / nr 28216:
-// „zobacz co tu sie stalo z wysylka").
+// drugim, pustym odbiciem.
 //
 // Zamowienie zlozone Z OFERTY (wtyczka panelu indywidualnego) przychodzi ze sklepu BEZ
-// `shipping_lines` — wysylka jest w nim zwykla POZYCJA („wysylka kurierem DPD", 19 zl).
-// Karta rysowala wtedy transport DWA RAZY: raz prawdziwy, jako produkt, i raz wlasny wiersz
-// „Wysylka 0,00" — czyli twierdzila, ze dostawa jest darmowa, majac 19 zl w wierszu obok.
-// Kwoty byly przez caly czas dobre (suma sie zgadza, faktura pomija zerowa dostawe sama —
-// domain/pozycje-faktury.js); klamal wylacznie obraz.
+// `shipping_lines` — wysylka jest w nim zwykla POZYCJA (np. „wysyłka kurierem”).
+// Bez tej funkcji karta rysowałaby transport DWA RAZY: raz prawdziwy, jako produkt, i raz
+// własny wiersz „Wysyłka 0,00” — czyli twierdziłaby, że dostawa jest darmowa, mając kwotę
+// w wierszu obok. Kwoty są przy tym dobre (suma sie zgadza, faktura pomija zerowa dostawe sama —
+// domena/pozycje-faktury.js); kłamałby wyłącznie obraz.
 //
 // TRZY WARUNKI NARAZ i kazdy z nich odpowiada za inna granice:
 //
@@ -183,7 +180,7 @@ function wierszPodsumowania(podsumowanie) {
 //     jest sprawa dla czlowieka, a nie do schowania.
 //  2. Nikt jej recznie nie ruszal. Wysylka WYZEROWANA RECZNIE musi zostac na ekranie —
 //     inaczej operator, ktory wpisal 0, traci jedyne miejsce, w ktorym da sie to cofnac.
-//  3. Wsrod pozycji JEST transport (domain/pozycje-niesprzedazowe.js — ta sama regula, ktora
+//  3. Wsrod pozycji JEST transport (domena/pozycje-niesprzedazowe.js — ta sama regula, ktora
 //     trzyma wysylke poza rankingiem produktow w raportach). Bez tego warunku zniknalby tez
 //     wiersz darmowej dostawy ze zwyklego koszyka, gdzie zero jest PRAWDA o transporcie.
 //
@@ -202,21 +199,22 @@ function wysylkaJestJuzPozycja(zamowienie, wiersze) {
 // Wiersze tabeli „Pozycje" GOTOWE do wyswietlenia: lp, nazwa, sku, ilosc, netto, brutto,
 // suma — plus wysylka jako pelnoprawny wiersz i suma jako WIERSZ OSTATNI. Widok niczego
 // z tego nie liczy sam — ta sama zasada, co przy stanie przesylki i sprawach do zalatwienia
-// (routes/zamowienia.js).
+// (moduly/zamowienia/kontekst.js).
 //
 // Pozycje wchodza tu JUZ EFEKTYWNE (po nadpisaniach recznych) — naklada je warstwa odczytu
-// (nalozNadpisaniaPozycji, wolane w zLinii w db/zamowienia.js), a nie ten plik. Dzieki temu
+// (nalozNadpisaniaPozycji, wolane w zLinii w oms/db/zamowienia.js), a nie ten plik. Dzieki temu
 // tabela, suma, saldo wplat, bariera i faktura widza DOKLADNIE te same liczby.
-// PRZ-105: `stawkaDomyslna` z Ustawień podaje karta (kontekst.js) i ekran nadania (pokazuje netto). Maile,
+// `stawkaDomyslna` z Ustawień podaje karta (moduly/zamowienia/kontekst.js) i ekran nadania
+// (moduly/wysylka/trasy/nadanie.js, pokazuje netto). Maile,
 // które czytają wyłącznie brutto, wołają bez opcji — wbudowana stawka nie zmienia żadnej kwoty, którą czytają.
-// PRZ-122.B07a: `zw: true` (program wbudowany) — stawka „zw” w wierszu, netto = brutto; bez flagi jak dotąd.
+// `zw: true` (program wbudowany) — stawka „zw” w wierszu, netto = brutto; bez flagi jak dotąd.
 export function wierszePozycji(zamowienie, { stawkaDomyslna = STAWKA_VAT, zw = false, zwolniona = false } = {}) {
-  // ⚠️ ZAMÓWIENIE RĘCZNE NIE OZNACZA NICZEGO JAKO „ręczne" (07.08.2026, prośba właściciela).
+  // ⚠️ ZAMÓWIENIE RĘCZNE NIE OZNACZA NICZEGO JAKO „ręczne".
   // Oba znaczniki — „dopisana ręcznie" przy wierszu i „zmienione: …" przy polach — odpowiadają
   // na pytanie „czym to się różni od tego, co przysłał SKLEP". Przy zamówieniu telefonicznym
   // sklepu nie ma: KAŻDA pozycja jest dopisana ręcznie, więc znacznik stał przy każdej i nie
   // niósł ani jednej informacji. Ta sama zasada, co przy `saNadpisania` i przy oznaczeniach
-  // danych klienta (routes/zamowienia.js: daneKarty).
+  // danych klienta (moduly/zamowienia/wspolne.js: daneKarty).
   //
   // ⚠️ `reczna` ZOSTAJE PRAWDĄ i zostać musi — to ona rządzi przyciskiem „Usuń" przy wierszu
   // i tym, że pozycja zapisuje się wprost, a nie jako różnica wobec sklepu. Gaśnie WYŁĄCZNIE
@@ -226,21 +224,19 @@ export function wierszePozycji(zamowienie, { stawkaDomyslna = STAWKA_VAT, zw = f
   const stawkaWiersza = (p) => (wdt ? '0' : stawkaPozycji(p, stawkaDomyslna, { zw }));
   const wiersze = (zamowienie?.pozycje ?? []).map((p, i) => ({
     lp: i + 1,
-    // Trwaly identyfikator pozycji (domain/pozycje-reczne.js) — to on jedzie w adresie
+    // Trwaly identyfikator pozycji (domena/pozycje-reczne.js) — to on jedzie w adresie
     // formularza edycji/usuniecia. NIGDY nasze `pozycje.id`: poller kasuje i wstawia pozycje
     // sklepowe co dwie minuty, wiec `id` na otwartej karcie potrafi byc juz nieaktualne.
     klucz: p.klucz ?? null,
     nazwa: p.nazwa,
-    // ⚠️⚠️ `sku` NIESIE PRAWDĘ, `skuDoPokazania` DECYDUJE O NAPISIE — i ten podział kosztował
-    // jedną regresję na produkcji (21.08.2026, tego samego dnia).
+    // ⚠️⚠️ `sku` NIESIE PRAWDĘ, `skuDoPokazania` DECYDUJE O NAPISIE.
     //
-    // Pierwsza wersja tej poprawki gasiła SKU zaślepki WPROST w `sku`. Napis faktycznie
-    // znikał, ale razem z nim znikała jedyna przesłanka, po której `odnosnikPozycji`
-    // (domain/link-pozycji.js) rozpoznaje pozycję z oferty — i każda taka pozycja dostała
-    // odnośnik do UKRYTEGO produktu-zaślepki. Zgłoszone słowami „dlaczego te produkty są
-    // linkami?": na zam. 1184 obie pozycje prowadziły pod ten sam adres `p=28040`.
+    // Zgaszenie SKU zaślepki WPROST w `sku` usunęłoby napis, ale razem z nim jedyną
+    // przesłankę, po której `odnosnikPozycji` (domena/link-pozycji.js) rozpoznaje pozycję
+    // z oferty — i każda taka pozycja dostałaby odnośnik do UKRYTEGO produktu-zaślepki
+    // (wszystkie pod ten sam adres).
     //
-    // Wniosek do przewodnika: wiersz karty jest CZYTANY NIE TYLKO PRZEZ WIDOK. Pole, które
+    // Wniosek: wiersz karty jest CZYTANY NIE TYLKO PRZEZ WIDOK. Pole, które
     // wygląda na „to, co widać", bywa jednocześnie daną, na której stoi reguła — więc
     // wygaszanie napisu robi się OBOK wartości, nigdy na niej.
     sku: p.sku || null,
@@ -249,16 +245,16 @@ export function wierszePozycji(zamowienie, { stawkaDomyslna = STAWKA_VAT, zw = f
     // ekspres). Dla czytającego kartę nie znaczy nic, a stał pod nazwą KAŻDEJ pozycji.
     skuDoPokazania: czyPozycjaPlaceholdera(p.sku) ? null : (p.sku || null),
     // Zdjecie produktu ze sklepu. Wiersz niesie ADRES ORYGINALU, a nie miniatury — wariant
-    // 150x150 wylicza `domain/miniatury.js` dopiero w widoku, dokladnie tak jak na liscie
+    // 150x150 wylicza `domena/miniatury.js` dopiero w widoku, dokladnie tak jak na liscie
     // zamowien. Gdyby tabela liczyla go u siebie, istnialyby dwie reguly na to samo i przy
     // pierwszej zmianie karta pokazywalaby inny rozmiar niz lista.
     zdjecie: p.zdjecie_url ?? null,
     // Identyfikator produktu w sklepie — wylacznie dla odnosnika z pozycji
-    // (domain/link-pozycji.js). Sam adres sklada TRASA, bo tylko ona zna `baseUrl`.
+    // (domena/link-pozycji.js). Sam adres składa karta (moduly/zamowienia/kontekst.js), bo tylko ona zna `baseUrl`.
     produktId: p.produkt_id ?? null,
     // ...i jego odpowiednik dla Allegro: identyfikator OFERTY. Osobne pole, a nie wspolne
-    // „id u zrodla", bo to sa dwie rozne rzeczy o dwoch roznych typach — patrz komentarz
-    // przy `pozycje.oferta_id` w db/schema.sql. Wiersz niesie OBA, a ktory z nich cokolwiek
+    // „id u zrodla", bo to sa dwie rozne rzeczy o dwoch roznych typach (w tabeli `pozycje`
+    // `produkt_id` to INTEGER, a `oferta_id` to TEXT). Wiersz niesie OBA, a ktory z nich cokolwiek
     // znaczy, rozstrzyga kanal — i rozstrzyga to domena, nie widok.
     ofertaId: p.oferta_id ?? null,
     ilosc: p.ilosc,
@@ -269,8 +265,8 @@ export function wierszePozycji(zamowienie, { stawkaDomyslna = STAWKA_VAT, zw = f
     // edycja zbiorcza pokazuje wtedy opcję „domyślna (X%)”, żeby sam zapis nie zamroził stawki.
     stawkaWlasna: (p.zrodlo === 'reczna' || p.reczna) && czyStawkaVat(p.vat, { zw }) ? String(p.vat).trim() : null,
     cenaBrutto: p.cena_brutto,
-    // ⚠️ CENA SPRZED RABATU — POKAZYWANA WYLACZNIE WTEDY, GDY ROZNI SIE OD CENY PLACONEJ
-    // (21.08.2026). Przy rabacie zerowym obie sa identyczne i wypisanie ich obok siebie
+    // ⚠️ CENA SPRZED RABATU — POKAZYWANA WYLACZNIE WTEDY, GDY ROZNI SIE OD CENY PLACONEJ.
+    // Przy rabacie zerowym obie sa identyczne i wypisanie ich obok siebie
     // („74,90 → 74,90") byloby szumem przy kazdej pozycji kazdego zamowienia z magazynu.
     //
     // ⚠️ TO NIE JEST DRUGA CENA DO ZAPLATY. Zadna suma, zadna faktura i zaden mail jej nie
@@ -280,7 +276,7 @@ export function wierszePozycji(zamowienie, { stawkaDomyslna = STAWKA_VAT, zw = f
       ? p.cena_katalogowa
       : null,
     suma: sumaLiniiBrutto(p),
-    // PRZ-101.04: numer zamówienia, z którego pozycja przyszła — tylko w wierszach grupy scalonej
+    // Numer zamówienia, z którego pozycja przyszła — tylko w wierszach grupy scalonej
     // (`zamowienieGrupy`); przy zwykłym zamówieniu `null`, więc widok nic nie dopisuje.
     zZamowienia: p.z_zamowienia ?? null,
     wysylka: false,
@@ -290,7 +286,7 @@ export function wierszePozycji(zamowienie, { stawkaDomyslna = STAWKA_VAT, zw = f
     // NAPIS „dopisana ręcznie", nie fakt ręczności — patrz komentarz nad funkcją.
     oznaczReczna: zeSklepu && (Boolean(p.reczna) || p.zrodlo === 'reczna'),
     // ⚠️ WARUNEK `zeSklepu` JEST TU DZIŚ SEMANTYCZNIE PUSTY i wie o tym weryfikacja mutacyjna
-    // (usunięcie go nie wywala żadnego testu — sprawdzone 07.08.2026). Powód: zamówienie
+    // (usunięcie go nie wywala żadnego testu). Powód: zamówienie
     // ręczne ma WYŁĄCZNIE pozycje o źródle 'reczna', a `nalozNadpisaniaPozycji` daje takim
     // wierszom `polaZmienione: []` zawsze (nadpisania ich nie dotyczą, bo edytuje się je
     // wprost w wierszu). Zostaje jako druga siatka — symetrycznie do `oznaczReczna` wyżej
@@ -310,11 +306,11 @@ export function wierszePozycji(zamowienie, { stawkaDomyslna = STAWKA_VAT, zw = f
 // Podsumowanie do wiersza „Razem" i do ostrzezenia pod tabela: suma WSZYSTKICH pozycji
 // (razem z dopisanymi recznie) plus wysylka, porownana z KWOTA OCZEKIWANA OD KLIENTA —
 // na liczbach calkowitych w groszach, TA SAMA funkcja co bariera arytmetyczna faktury
-// (services/faktura.js, przez domain/suma-pozycji.js).
+// (sprawdzSumeDokumentu w domena/pozycje-faktury.js, przez domena/suma-pozycji.js).
 //
 // ⚠️ Druga strona porownania to `kwotaOczekiwanaGrosze`, a NIE `kwota_brutto`: kwota ze
 // sklepu nie rosnie od naszych dopiskow (bo wplata sklepowa podaza za nia — patrz
-// db/platnosci.js), wiec porownywanie z nia kazaloby panelowi krzyczec o rozjezdzie przy
+// oms/db/platnosci.js), wiec porownywanie z nia kazaloby panelowi krzyczec o rozjezdzie przy
 // KAZDYM zamowieniu z dopisana pozycja.
 //
 // Nigdy nie rzuca: uszkodzona/pusta kwota nie ma prawa wywalic karty, ale MA sie pokazac
@@ -330,7 +326,7 @@ export function podsumowaniePozycji(zamowienie) {
 }
 
 /**
- * PRZ-105 — podsumowanie netto / VAT / brutto pod pozycjami karty.
+ * Podsumowanie netto / VAT / brutto pod pozycjami karty.
  *
  * Liczone z TYCH SAMYCH linii, które jadą na fakturę (`pozycjeDokumentu`: pozycje efektywne, dostawa, stawka
  * każdej linii, 0 przy WDT), i TĄ SAMĄ regułą, którą liczy inFakt (`podsumowanieWierszami`). Druga droga
@@ -338,13 +334,13 @@ export function podsumowaniePozycji(zamowienie) {
  *
  * Nie rzuca — karta nie ma prawa paść na uszkodzonej cenie (zasada `podsumowaniePozycji`): przy błędzie
  * liczby są `null`, a `blad` mówi dlaczego.
- * `zeroKrajowe` — któraś linia ma 0% u nabywcy krajowego (decyzja właściciela 21.10: dozwolone z ostrzeżeniem).
- * PRZ-122.B07a: `zw: true` (program wbudowany) — linie „zw” liczone netto = brutto, VAT 0 (nie „0% krajowe”).
+ * `zeroKrajowe` — któraś linia ma 0% u nabywcy krajowego (dozwolone, ale z ostrzeżeniem).
+ * `zw: true` (program wbudowany) — linie „zw” liczone netto = brutto, VAT 0 (nie „0% krajowe”).
  */
 export function podsumowanieVatKarty(zamowienie, { stawkaDomyslna = STAWKA_VAT, regula = 'wierszami', zw = false, zwolniona = false } = {}) {
   const wdt = wdtZamowienia(zamowienie, zwolniona);
   try {
-    // PRZ-118.09: reguła VAT programu fakturowego (`opis.regulaVat`). Zaimplementowana jest tylko „wierszami”
+    // Reguła VAT programu fakturowego (`opis.regulaVat`). Zaimplementowana jest tylko „wierszami”
     // (inFakt); inna reguła to błąd podsumowania na karcie — jak każdy błąd ceny — a nie cicho inna liczba.
     if (regula !== 'wierszami') {
       throw new Error(`Program fakturowy liczy VAT regułą „${regula}”, której panel nie zna — podsumowanie VAT nie powstało.`);

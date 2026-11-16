@@ -2,10 +2,10 @@ import { polaczenia, stanPolaczenia } from '../../../oms/db/reklamy.js';
 import type {PolaczenieAllegro} from '../../kanaly/kontrakty-allegro.ts';
 import { KATALOG_INTEGRACJI, type KategoriaIntegracji } from '../../../domena/katalog-integracji.ts';
 
-/** PRZ-136.07: „blad” — stan dla widoku (czerwony wiersz); źródła danych jeszcze go nie ustawiają. */
+/** „blad” — stan dla widoku (czerwony wiersz); źródła danych jeszcze go nie ustawiają. */
 type Stan = 'blad' | 'dziala' | 'uwaga' | 'niesprawdzone' | 'wylaczone';
 type Zrodlo = 'panel' | 'serwer' | 'konto_allegro';
-/** PRZ-136.06: cztery grupy z kategorii katalogu (decyzja planu: poczta + reklamy razem) i wstrzymane na końcu. */
+/** Cztery grupy z kategorii katalogu (decyzja planu: poczta + reklamy razem) i wstrzymane na końcu. */
 export type GrupaPolaczen = 'sprzedaz' | 'wysylka' | 'faktury' | 'poczta' | 'wstrzymane';
 type Akcja = { etykieta: string; href: string; glowna: boolean };
 type Odnosnik = { etykieta: string; href: string };
@@ -59,7 +59,7 @@ export function polaczeniaIntegracji({ db, kanaly = {}, stanyKanalow = [], integ
   };
   const maDiagnostyke=Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='kanaly_diagnostyka'").get());
   const sklepyPanelu=sklepyWoo; // lista z repozytorium kanałów przychodzi parametrem (modul.ts), DTO bez kluczy WooCommerce
-  // PRZ-134.PT7: sklep z panelu jest na liście także przed udanym połączeniem — inaczej szkic z odrzuconymi kluczami
+  // Sklep z panelu jest na liście także przed udanym połączeniem — inaczej szkic z odrzuconymi kluczami
   // znikał, a jego adres blokował ponowne dodanie.
   for (const [typ, mapa] of [['allegro', kanaly.kanaly ?? {}], ['woocommerce', kanaly.sklepy ?? {}]] as const) {
     for (const klucz of new Set([...Object.keys(mapa),...(typ==='allegro'?polaczeniaAllegro.map(p=>p.klucz):sklepyPanelu.filter(p=>p.zrodlo==='panel').map(p=>p.klucz))])) {
@@ -67,7 +67,7 @@ export function polaczeniaIntegracji({ db, kanaly = {}, stanyKanalow = [], integ
       const konto = stanyKanalow.find(k => k.kanal === klucz);
       const p=typ==='allegro'?polaczeniaAllegro.find(p=>p.klucz===klucz):undefined;
       const sklep=typ==='woocommerce'?sklepyPanelu.find(p=>p.klucz===klucz&&p.zrodlo==='panel'):undefined;
-      const szkic=sklep&&!(klucz in mapa)?sklep:undefined; // PRZ-134.PT7: z panelu, jeszcze nie pobiera
+      const szkic=sklep&&!(klucz in mapa)?sklep:undefined; // Z panelu, jeszcze nie pobiera
       const test=p&&maDiagnostyke?db.prepare('SELECT ostatni_sukces_at,blad FROM kanaly_diagnostyka WHERE kanal=?').get(klucz):null;
       const ostatniSukcesAt = data(test?.ostatni_sukces_at)??(stan && !stan.ostatni_blad ? data(stan.ostatni_przebieg_at) : null);
       const nazwa = p?.nazwa??sklep?.nazwa??kanaly.definicje?.find((d: any) => d.klucz === klucz)?.etykieta ?? klucz;

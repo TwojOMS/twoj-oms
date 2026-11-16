@@ -1,6 +1,6 @@
 import type { Migracja } from '../../../core/kontrakty.ts';
 
-// PRZ-101.04 — scalanie zamówień (decyzje właściciela 18.10.2026; reguły: domena/scalanie.js).
+// Scalanie zamówień (reguły: domena/scalanie.js).
 //
 // ⚠️ DWIE KOLUMNY, OBIE NASZE (poller ich nie zna — UPDATE w `zapiszZamowienie` wymienia kolumny
 // z nazwy, więc synchronizacja ich nie ruszy):

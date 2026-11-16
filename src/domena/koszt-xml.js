@@ -1,40 +1,40 @@
 import { grosze, zl } from './kwoty.js';
 
-// Pozycje faktury KOSZTOWEJ wyjete z oryginalnego XML-a z KSeF (FA (3), schema 1-0E,
-// przestrzen http://crd.gov.pl/wzor/2025/06/25/13775/ — ksztalt ZMIERZONY na zywym API
-// 12.08.2026, Zadanie 0, a nie odczytany z dokumentacji).
+// Pozycje faktury KOSZTOWEJ wyjęte z oryginalnego XML-a z KSeF (FA (3), schema 1-0E,
+// przestrzeń http://crd.gov.pl/wzor/2025/06/25/13775/ — kształt ZMIERZONY na żywym API,
+// a nie odczytany z dokumentacji).
 //
 // ⚠️ TO JEST JEDYNE MIEJSCE, W KTORYM KSZTALT XML-a FA ZAMIENIA SIE W KSZTALT PANELU —
-// dokladnie ta sama zasada, co przy `naWiersz` (domain/koszt-metadane.js) dla metadanych
-// JSON-owych. Generator PDF-a (pdf/koszt-pdf.js) nie zna ani jednej nazwy wezla FA i ma
+// dokladnie ta sama zasada, co przy `naWiersz` (domena/koszt-metadane.js) dla metadanych
+// JSON-owych. Generator PDF-a (moduly/koszty/pdf/koszt-pdf.js) nie zna ani jednej nazwy wezla FA i ma
 // jej nie poznac: schema FA zmienia sie decyzja Ministerstwa, nie nasza, wiec drugie
 // mapowanie rozjechaloby sie z pierwszym przy pierwszej takiej zmianie.
 //
 // ⚠️ PARSER JEST WLASNY I MA TAKI ZOSTAC. Repo nie ma zadnej biblioteki XML (patrz
 // package.json), a odczyt kilku plaskich wezlow z dokumentu, ktory sami przed chwila
 // pobralismy z KSeF, nie jest powodem do dolozenia zaleznosci. Ta sama droga, co przy
-// odpowiedzi GUS-a (domain/gus.js) — tam tez czytamy XML wyrazeniem regularnym.
+// odpowiedzi GUS-a (domena/gus.js) — tam tez czytamy XML wyrazeniem regularnym.
 //
 // ⚠️ SUM DOKUMENTU TU SIE NIE LICZY. Zadnego sumowania pozycji, zadnego skladania sumy
 // miesiaca: kwoty dokumentu (netto/VAT/brutto) sa juz w tabeli `koszty`, wprost z metadanych
 // KSeF. Suma pozycji policzona tutaj byla drugim zrodlem tej samej prawdy i przy pierwszym
 // rabacie albo zaokragleniu rozeszlaby sie z pierwszym.
 //
-// ⚠️ WYJATEK, KTORY MA BYC WYJATKIEM (2026-09-03, `dokumentZXml`): BRUTTO, ktorego FA(3)
+// ⚠️ WYJATEK, KTORY MA BYC WYJATKIEM (`dokumentZXml`): BRUTTO, ktorego FA(3)
 // w danym miejscu NIE NIESIE, jest tu WYPROWADZANE — brutto pozycji z `P_11 + P_11Vat`
 // (albo ze stawki, gdy VAT-u pozycji nie ma) i brutto w rozbiciu na stawki z `P_13_x + P_14_x`.
 // Trzy warunki czynia z tego wyswietlenie, a nie druga ksiegowosc:
-//   1. liczy sie WYLACZNIE na groszach calkowitych (`grosze`/`zl` z domain/kwoty.js,
-//      niezmiennik 4.5) — nigdy na liczbach zmiennoprzecinkowych,
+//   1. liczy sie WYLACZNIE na groszach calkowitych (`grosze`/`zl` z domena/kwoty.js)
+//      — nigdy na liczbach zmiennoprzecinkowych,
 //   2. kazda taka kwota niesie znacznik `bruttoWyliczone`, a wydruk oznacza ja przypisem,
 //   3. NIE WCHODZI do zadnej sumy panelu: suma miesiaca i kwoty na wydruku „Razem" biora sie
 //      z metadanych KSeF (tabela `koszty`), a nie stad.
 // Powod jest prosty: ksiegowa dostaje kartke z kolumna „Wartosc brutto", ktorej wystawca
 // czesto nie wypelnia — pusta kolumna wyglada jak brak danych, a nie jak brak pola w schemie.
 
-// Nazwa wezla moze przyjsc z przedrostkiem przestrzeni nazw — na produkcji WIDZIELISMY
-// `tns:` (Subiekt GT), `ns1:` (TERG) i brak przedrostka (wiekszosc). To ustawienie WYSTAWCY,
-// nie nasze, wiec kazdy odczyt musi znosic oba warianty.
+// Nazwa węzła może przyjść z przedrostkiem przestrzeni nazw — zależnie od programu wystawcy
+// bywa `tns:`, `ns1:` albo (najczęściej) brak przedrostka. To ustawienie WYSTAWCY,
+// nie nasze, więc każdy odczyt musi znosić oba warianty.
 const znacznik = (nazwa) => `(?:[A-Za-z0-9_.-]+:)?${nazwa}`;
 
 // Encje XML-a rozpakowane RECZNIE: `&amp;` w nazwie towaru („Papier &amp; spolka") wydrukowany
@@ -84,12 +84,12 @@ const stawka = (napis) => (/^-?\d+([.,]\d+)?$/.test(napis) ? `${napis}%` : napis
  * Pozycje dokumentu z XML-a FA(3) — w kolejnosci, w jakiej stoja w dokumencie.
  *
  * Kazda pozycja to `{ lp, nazwa, jednostka, ilosc, cenaNetto, wartoscNetto, stawkaVat }`,
- * wszystko NAPISAMI: kwoty w tym repo nie zamieniaja sie w liczby zmiennoprzecinkowe
- * (niezmiennik 4.5), a tutaj nie sa nawet dodawane — tylko przepisywane na dokument.
+ * wszystko NAPISAMI: kwoty w tym repo nie zamieniaja sie w liczby zmiennoprzecinkowe,
+ * a tutaj nie sa nawet dodawane — tylko przepisywane na dokument.
  *
  * ⚠️ BRAK POZYCJI ODDAJE PUSTA LISTE, A NIE WYJATEK. Wizualizacja ma powstac takze dla
  * dokumentu, ktorego pozycji nie da sie odczytac — kwoty i sprzedawca ida wtedy z tabeli
- * `koszty`, a sam PDF mowi wprost, ze pozycji nie bylo (patrz pdf/koszt-pdf.js). Odmowa
+ * `koszty`, a sam PDF mowi wprost, ze pozycji nie bylo (patrz moduly/koszty/pdf/koszt-pdf.js). Odmowa
  * zabralaby operatorowi caly podglad dokumentu przez jeden nieznany ksztalt tabeli pozycji.
  */
 export function pozycjeZXml(xml) {
@@ -110,15 +110,14 @@ export function pozycjeZXml(xml) {
 // CALY DOKUMENT — komplet elementow art. 106e ust. 1 ustawy o VAT plus adnotacje FA(3)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Powstalo 2026-09-03 z pytania wlasciciela: „czy te wizualizacje XML nadaja sie do
-// dostarczenia do biura?". Do tego dnia NIE nadawaly sie — kartka nie niosla nabywcy,
-// adresu sprzedawcy, daty sprzedazy, rozbicia VAT na stawki, brutta pozycji, podstawy
-// zwolnienia jako POLA (a nie przypadkowego zdania w nazwie pozycji), adnotacji ani
-// informacji o platnosci. Ksiegowa dostawala kartke, ktorej nie da sie sprawdzic.
+// Wizualizacja ma się nadawać do dostarczenia do biura rachunkowego, więc kartka niesie
+// nabywcę, adres sprzedawcy, datę sprzedaży, rozbicie VAT na stawki, brutto pozycji, podstawę
+// zwolnienia jako POLE (a nie przypadkowe zdanie w nazwie pozycji), adnotacje i informację
+// o płatności. Bez nich księgowa dostaje kartkę, której nie da się sprawdzić.
 //
 // ⚠️ TO WCIAZ JEST TO SAMO JEDYNE MIEJSCE ZNAJACE NAZWY WEZLOW FA. Wynik jest GOTOWY DO
 // DRUKU: etykiety stawek, „Tak"/„Nie" adnotacji i forma platnosci slownie powstaja TUTAJ,
-// zeby pdf/koszt-pdf.js dalej nie znal ani jednej nazwy z FA(3). Schema FA zmienia sie
+// zeby moduly/koszty/pdf/koszt-pdf.js dalej nie znal ani jednej nazwy z FA(3). Schema FA zmienia sie
 // decyzja Ministerstwa — drugie mapowanie w generatorze rozjechaloby sie z pierwszym.
 //
 // ⚠️ KODU POLA (`P_13_1`, `P_19`, …) NIE UKRYWAMY — idzie na wydruk obok etykiety. Czesc
@@ -139,7 +138,7 @@ function wierszeFa(xml) {
  * Blok o podanej nazwie razem ze znacznikami (`<Podmiot1>…</Podmiot1>`) albo pusty napis.
  *
  * ⚠️ ODCZYT PRZEZ BLOK, A NIE Z CALEGO DOKUMENTU — i to nie jest porzadkowanie kodu.
- * `Podmiot2` na fakturze P4 niesie `Adres` ORAZ `AdresKoresp`, a oba maja w srodku `AdresL1`.
+ * `Podmiot2` na części faktur niesie `Adres` ORAZ `AdresKoresp`, a oba mają w środku `AdresL1`.
  * Odczyt `AdresL1` z calego podmiotu trafia w ten, ktory stoi wyzej — czyli raz w siedzibe,
  * a raz w adres korespondencyjny, zaleznie od wystawcy. Na fakturze ma stac SIEDZIBA.
  */
@@ -153,7 +152,7 @@ function blok(xml, nazwa) {
 /**
  * Czy wezel w ogole w dokumencie STOI (takze pusty albo samozamykajacy sie).
  *
- * ⚠️ OBECNOSC TO CO INNEGO NIZ WARTOSC. `P_13_2` z wartoscia `0` (tak wystawia HURTEL) to
+ * ⚠️ OBECNOŚĆ TO CO INNEGO NIŻ WARTOŚĆ. `P_13_2` z wartością `0` (tak wystawiają niektórzy) to
  * zdanie wystawcy „stawka obnizona: zero", a brak wezla to „tej stawki na fakturze nie ma".
  * Gdyby o wydruku wiersza decydowala niepusta wartosc, oba przypadki wygladalyby tak samo.
  */
@@ -172,7 +171,7 @@ function nagrosze(napis) {
 }
 
 /**
- * Brutto = netto + VAT, na GROSZACH CALKOWITYCH (niezmiennik 4.5). Pusty napis, gdy
+ * Brutto = netto + VAT, na GROSZACH CALKOWITYCH. Pusty napis, gdy
  * ktorejkolwiek strony nie da sie odczytac jako kwoty — „0,00" byloby zdaniem o pieniadzach,
  * ktorego wystawca nie napisal.
  */
@@ -253,8 +252,8 @@ const ADNOTACJE = [
  * Odczyt ze slownika opisow — WYLACZNIE po kluczu WLASNYM.
  *
  * ⚠️⚠️ KLUCZ POCHODZI Z CUDZEGO DOKUMENTU, a zwykle `slownik[klucz]` siega po LANCUCH
- * PROTOTYPOW (poprawka po drugiej recenzji, 03.09.2026). Wystawca — albo pomylka w jego
- * generatorze — wpisujacy w `FormaPlatnosci` napis „constructor" dostawal na kartce
+ * PROTOTYPÓW. Wystawca — albo pomyłka w jego
+ * generatorze — wpisujący w `FormaPlatnosci` napis „constructor” dostałby na kartce
  * `function Object() { [native code] }` w miejscu formy zaplaty. `??` tego NIE LAPIE:
  * wartosc odziedziczona nie jest `undefined`. To jest jedyne miejsce, w ktorym napis
  * z XML-a staje sie kluczem, wiec straznik stoi tutaj, a nie w trzech miejscach z osobna.
@@ -276,16 +275,15 @@ const FORMY_PLATNOSCI = {
 };
 
 // Typy korekty z FA(3) opisane po ludzku. `TypKorekty` ROZSTRZYGA, W JAKIM MIESIACU korekta
-// wchodzi do ksiag — sam kod („2") nie mowi ksiegowej niczego, a wizualizacja go do 03.09.2026
-// w ogole nie drukowala. Kod spoza slownika idzie doslownie (jak przy formie platnosci).
+// wchodzi do ksiąg — sam kod („2”) nie mówi księgowej niczego, dlatego wizualizacja drukuje
+// go opisem. Kod spoza słownika idzie dosłownie (jak przy formie płatności).
 //
-// ⚠️ TYP 3 NIE DOSTAJE PRZYKLADU („np. uzgodnienia") i NIE DOSTAJE DATY — poprawka po drugiej
-// recenzji (03.09.2026). FA(3) nie ma ANI JEDNEGO wezla, ktory by te „inna date" niosl:
+// ⚠️ TYP 3 NIE DOSTAJE PRZYKŁADU („np. uzgodnienia”) i NIE DOSTAJE DATY.
+// FA(3) nie ma ANI JEDNEGO węzła, który by tę „inną datę” niósł:
 // dane korekty to `PrzyczynaKorekty`, `TypKorekty` i `DaneFaKorygowanej/*` (numer, data
-// wystawienia i numer KSeF faktury korygowanej) — sprawdzone w schemie i w archiwum
-// kosztowym, w ktorym na 102 dokumenty nie ma ani jednej korekty. Data, w ktorej korekta
-// skutkuje, stoi wiec — o ile w ogole — w tresci `PrzyczynaKorekty`, a ta idzie na wydruk
-// osobno i doslownie. Dopisanie przykladu podpowiadalo ksiegowej powod korekty, ktorego
+// wystawienia i numer KSeF faktury korygowanej) — sprawdzone w schemie. Data, w której korekta
+// skutkuje, stoi więc — o ile w ogóle — w treści `PrzyczynaKorekty`, a ta idzie na wydruk
+// osobno i dosłownie. Dopisany przykład podpowiadałby księgowej powód korekty, którego
 // na cudzym dokumencie nie ma.
 const TYPY_KOREKTY = {
   1: 'korekta skutkująca w dacie ujęcia faktury pierwotnej',
@@ -411,13 +409,13 @@ function zaplatyCzesciowe(platnosc) {
 /**
  * Informacja o zaplacie — status, data, termin, forma slownie, rachunek, wplaty czesciowe.
  *
- * ⚠️⚠️ `zaplacono` MA TRZY STANY, NIE DWA (poprawka po recenzji 2026-09-03):
- *   `true`  — `Zaplacono` = 1, wystawca potwierdza zaplate,
- *   `false` — `Zaplacono` = 2, wystawca MOWI, ze nie zaplacono,
- *   `null`  — wezla NIE MA, czyli dokument o zaplacie NIE MOWI NIC.
- * Do tej poprawki brak wezla i „2" dawaly to samo `false`, a wydruk stawial na cudzym
- * dokumencie napis „Nie zapłacono" — czyli WSTAWIAL FAKT, ktorego wystawca tam nie napisal.
- * Blok `Platnosc` bez `Zaplacono` (sama forma i termin) jest w archiwum czestszy niz z nim.
+ * ⚠️⚠️ `zaplacono` MA TRZY STANY, NIE DWA:
+ *   `true`  — `Zaplacono` = 1, wystawca potwierdza zapłatę,
+ *   `false` — `Zaplacono` = 2, wystawca MÓWI, że nie zapłacono,
+ *   `null`  — węzła NIE MA, czyli dokument o zapłacie NIE MÓWI NIC.
+ * Gdyby brak węzła i „2” dawały to samo `false`, wydruk stawiałby na cudzym
+ * dokumencie napis „Nie zapłacono” — czyli WSTAWIAŁBY FAKT, którego wystawca tam nie napisał.
+ * Blok `Platnosc` bez `Zaplacono` (sama forma i termin) bywa częstszy niż z nim.
  */
 function platnoscZFa(fa) {
   const p = blok(fa, 'Platnosc');
@@ -516,8 +514,8 @@ export function dokumentZXml(xml) {
     dataWystawienia: tresc(fa, 'P_1'),
     miejsceWystawienia: tresc(fa, 'P_1M'),
     dataSprzedazy: tresc(fa, 'P_6'),
-    // Okres zamiast jednej daty — tak wystawia OVH, P4 i Allegro (abonamenty i rozliczenia
-    // miesieczne). Bez tego kartka nie miala ANI JEDNEJ daty sprzedazy.
+    // Okres zamiast jednej daty — tak wystawiają dostawcy abonamentów i rozliczeń
+    // miesięcznych. Bez tego kartka takiej faktury nie miałaby ANI JEDNEJ daty sprzedaży.
     okresOd: tresc(blok(fa, 'OkresFa'), 'P_6_Od'),
     okresDo: tresc(blok(fa, 'OkresFa'), 'P_6_Do'),
     rodzajFaktury,

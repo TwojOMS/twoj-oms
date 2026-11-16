@@ -27,7 +27,7 @@ export function createModulKanaly(definicje:readonly DefinicjaKanalu[],niekomple
    return konfiguracjaKanalow(definicje,env,niekompletneJakoAlarm);
   },
   zbuduj:ctx=>{
-   // PRZ-148.07: w trybie próby transport Allegro odmawia hosta poza jawnym profilem Sandbox. Wyjątek: atrapa
+   // W trybie próby transport Allegro odmawia hosta poza jawnym profilem Sandbox. Wyjątek: atrapa
    // autoryzacji razem z wstrzykniętym transportem (cały ruch Allegro idzie do atrapy, nie do sieci).
    const atrapaAllegro=Boolean(o.autoryzacjaAtrapy&&o.fetchImpl);
    const przykladowySklep=(adres:string)=>Object.values(ctx.usluga<any>('kanaly','config').sklepy??{}).some((s:any)=>s?.atrapa===true&&s.baseUrl===adres);
@@ -39,7 +39,7 @@ export function createModulKanaly(definicje:readonly DefinicjaKanalu[],niekomple
    const uslugi=zbudujUslugiKanalow(ctx,definicje,opcje);
    const envSklepy=definicje.filter(d=>d.typ==='woo').map(d=>({klucz:d.klucz,nazwa:d.etykieta??d.klucz,adres:uslugi.config.sklepy[d.klucz]?.baseUrl??'',od:uslugi.config.sklepy[d.klucz]?.od??'',mapowanie:uslugi.config.sklepy[d.klucz]?.mapowanie??{instancje:{}}}));
    const sklepyWoo=createSklepyWoo({db:ctx.db,repozytorium:uslugi.repozytoriumKanalow,envSklepy,teraz:ctx.teraz,tryb,przykladowySklep,
-    // PRZ-150.01: adres atrapy nie istnieje w sieci — w próbie kreator rozmawia ze sklepem przykładowym bez sieci.
+    // Adres atrapy nie istnieje w sieci — w próbie kreator rozmawia ze sklepem przykładowym bez sieci.
     klient:d=>tryb==='proba'&&przykladowySklep(d.baseUrl)?klientSklepuPrzykladowego(d):createWooClient({...d,fetchImpl:o.fetchImpl,tylkoTenSamOrigin:true}),poAktywacji:k=>{
      let odbiorca:((kanal:typeof k)=>void)|undefined;
      try{odbiorca=ctx.usluga('raporty','poAktywacjiKanalu');}catch(e){if(!(e instanceof Error)||!e.message.includes('raporty.poAktywacjiKanalu')||!e.message.includes('nie istnieje'))throw e;}
@@ -51,7 +51,7 @@ export function createModulKanaly(definicje:readonly DefinicjaKanalu[],niekomple
     zegary:[{nazwa:'poller',odstepMs:uslugi.config.odstepMs,przebieg:async()=>{try{await uslugi.poller.przebieg();}catch(e){ctx.log('poller:',e instanceof Error?e.message:String(e));}}}],
     zdrowie:()=>{
      const nieznane=nieznaneKanalyZamowien();
-     // PRZ-157.00: zamówienie z kluczem spoza rejestru kanałów — obsłużone po staremu, ale widoczne w diagnostyce (sam klucz).
+     // Zamówienie z kluczem spoza rejestru kanałów — obsłużone po staremu, ale widoczne w diagnostyce (sam klucz).
      const uwagaKanalow=nieznane.length?[`Zamówienia z kanałów spoza rejestru kanałów (${nieznane.slice(0,10).join(', ')}${nieznane.length>10?', …':''}) — obsługiwane jak dotąd: Allegro po kluczu, pozostałe jak sklep.`]:[];
      const stany=uslugi.poller.stany();
      const uwagiErli=stany.flatMap((s:any)=>{

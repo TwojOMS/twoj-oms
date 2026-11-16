@@ -17,7 +17,7 @@ const wymagane = (env: Srodowisko, klucz: string): string => {
 };
 
 export function wczytajKurierow(env: Srodowisko) {
-  // PRZ-135 (D5): strażnik startu — błędny opis kuriera zatrzymuje start, zanim powstanie jakikolwiek klient.
+  // Strażnik startu — błędny opis kuriera zatrzymuje start, zanim powstanie jakikolwiek klient.
   sprawdzOpisyKurierow();
   skonfigurowanyUrl(env.DPD_URL, 'DPD_URL');
   skonfigurowanyUrl(env.DPD_INFO_URL, 'DPD_INFO_URL');
@@ -41,7 +41,7 @@ export function wczytajKurierow(env: Srodowisko) {
       token: wymagane(env, 'INPOST_TOKEN'), organizacja, nadawca: nadawca!,
       paczkomatNadawczy: env.INPOST_PACZKOMAT_NADAWCZY?.trim().toUpperCase() || null };
   }
-  // PRZ-093.08: adres dla DPD z Ustawień nie siedzi już tutaj — moduł bierze go ze wspólnego źródła adresu firmy
+  // Adres dla DPD z Ustawień nie siedzi już tutaj — moduł bierze go ze wspólnego źródła adresu firmy
   // (plik → Ustawienia → Firma), czytanego przy każdej paczce.
   return { dpd, inpost, adresFirmyZPliku: adresFirmyZEnv(env), pobranieNadawca: { nazwa: nadawca?.nazwa,
     rachunek: env.OMS_RACHUNEK?.trim() } };
@@ -51,12 +51,12 @@ type ZapisDpd = { ustawienia: Record<string, string>; sekrety: Record<string, st
 type KlientDpd = KurierNadania & { sprawdzPolaczenie?: () => Promise<unknown> };
 
 /**
- * PRZ-092 — kurier DPD skonfigurowany w Ustawieniach. Każde wywołanie czyta BIEŻĄCY zapis z bazy, więc zmiana
+ * Kurier DPD skonfigurowany w Ustawieniach. Każde wywołanie czyta BIEŻĄCY zapis z bazy, więc zmiana
  * hasła albo typu etykiety działa od następnej paczki, bez ponownego uruchomienia OMS-u. Klienta DPD budujemy
  * od nowa tylko, gdy zapis się zmienił — porównanie całej treści, nie znacznika czasu: dwa zapisy w tej samej
  * milisekundzie nie mogą zostawić starego hasła.
  * `bezSledzenia` jest getterem: bez kanału DPD Info czuwacz nie pyta DPD o statusy (domena/sledzenie-przesylki.js).
- * PRZ-093.08: `nadawca` to funkcja — adres firmy czytany przy każdej paczce (plik → Ustawienia → Firma);
+ * `nadawca` to funkcja — adres firmy czytany przy każdej paczce (plik → Ustawienia → Firma);
  * zmiana adresu na ekranie też buduje nowego klienta (adres wchodzi do porównania).
  */
 export function kurierDpdZUstawien({ wczytaj, nadawca, fabryka }: {
@@ -90,7 +90,7 @@ type KlientInpost = { nadaj: KurierNadania['nadaj']; sprawdzPrzesylke?: (id: str
   sprawdzPolaczenie?: () => Promise<unknown> };
 
 /**
- * PRZ-093.09 — kurier InPost skonfigurowany w Ustawieniach; wzór: kurierDpdZUstawien wyżej. Każde wywołanie czyta
+ * Kurier InPost skonfigurowany w Ustawieniach; wzór: kurierDpdZUstawien wyżej. Każde wywołanie czyta
  * BIEŻĄCY zapis z bazy i bieżący adres firmy; nowy klient ShipX tylko, gdy zmieniła się treść zapisu albo adres.
  * Różnice wobec DPD wynikają z klienta InPost:
  *  • `sprawdzPrzesylke` przekazuje WYŁĄCZNIE identyfikator — jak klient z pliku w zbudujKurierow (drugi argument
@@ -145,11 +145,11 @@ export type MapaKurierow = Partial<Record<string, KurierNadania | KurierSledzeni
   allegro?: KurierSledzenia;
 };
 
-// PRZ-157.11b: punkt nadania Przesyłek Erli z konfiguratora sklepu (krok 4), czytany przy każdej paczce.
+// Punkt nadania Przesyłek Erli z konfiguratora sklepu (krok 4), czytany przy każdej paczce.
 type KonfigKurierow = ReturnType<typeof wczytajKurierow> & { punktNadaniaErliDla?: (z: any) => number | null };
 type Skladanie = { config: KonfigKurierow; klienciAllegro: Record<string, any>; fabryki: FabrykiKurierow };
 
-// PRZ-135: jak z konfiguracji powstaje adapter każdego kuriera z metodami. Typ z kluczy rejestru — nowy kurier
+// Jak z konfiguracji powstaje adapter każdego kuriera z metodami. Typ z kluczy rejestru — nowy kurier
 // z metodami bez wpisu tutaj (i w FABRYKI_KURIEROW) to błąd tsc. `null` = kurier nieskonfigurowany w pliku.
 const SKLADANIE: { [K in KluczKurieraNadania]: (s: Skladanie) => KurierNadania | null } = {
   dpd: ({ config, fabryki }) => config.dpd ? (fabryki.createDpd ?? FABRYKI_KURIEROW.dpd)(config.dpd) : null,

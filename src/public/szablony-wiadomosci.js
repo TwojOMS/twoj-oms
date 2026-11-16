@@ -1,4 +1,4 @@
-// PRZ-101.03: „Wstaw szablon" w odpowiedzi na wątek Allegro — treść szablonu (już z podstawionymi polami,
+// „Wstaw szablon" w odpowiedzi na wątek Allegro — treść szablonu (już z podstawionymi polami,
 // policzona przez serwer w <template>) wchodzi w miejsce kursora, bez przeładowania strony, więc wybrane
 // załączniki i wpisany tekst zostają. Bez tego skryptu formularz idzie zwykłym GET-em z ?szablon=.
 (() => {

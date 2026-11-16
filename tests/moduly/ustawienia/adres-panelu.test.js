@@ -15,9 +15,11 @@ describe('PRZ-069 OMS_ADRES_PANELU', () => {
   it.each(['https://panel.example.test/oms', 'https://panel.example.test/?a=1', 'https://panel.example.test/#x', 'ftp://panel.example.test', ' https://panel.example.test', 'https://u:p@panel.example.test', 'panel.example.test'])('odmawia %s z nazwą zmiennej', (w) => {
     expect(() => adresPaneluZEnv(w)).toThrow('OMS_ADRES_PANELU');
   });
+  // Konfiguracja niesie też adres firmy z pliku (`nadawca`) — ekran logowania bierze z niego nazwę firmy.
   it('konfiguracja modułu ustawienia niesie adres', () => {
-    expect(modulUstawienia.konfiguracja({ OMS_ADRES_PANELU: 'https://panel.example.test' })).toEqual({ adresPanelu: 'https://panel.example.test' });
-    expect(modulUstawienia.konfiguracja({})).toEqual({ adresPanelu: null });
+    expect(modulUstawienia.konfiguracja({ OMS_ADRES_PANELU: 'https://panel.example.test' }).adresPanelu).toBe('https://panel.example.test');
+    expect(modulUstawienia.konfiguracja({}).adresPanelu).toBeNull();
+    expect(modulUstawienia.konfiguracja({ DPD_NADAWCA_NAZWA: 'Lampy Zenit' }).nadawca.nazwa).toBe('Lampy Zenit');
   });
   it('strażnik konfiguracji zna zmienną, właściciel ustawienia; .env.example ma zakomentowaną linię', () => {
     const r = spawnSync(process.execPath, ['scripts/straznik-konfiguracji.mjs'], { encoding: 'utf8' });

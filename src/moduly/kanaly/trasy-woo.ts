@@ -41,7 +41,7 @@ export function registerTrasyWoo(app:FastifyInstance,o:{db:DatabaseSync;repozyto
   if(e)return {klucz:k,typ:'woo',nazwa:e.nazwa,zrodlo:'env',odUtc:e.od,wersja:0,generacja:0,generacjaImportu:0,autoryzacja:'polaczone',pobieranie:'wlaczone',srodowisko:'produkcja',kontoId:null,login:null,raport:k.toUpperCase(),aplikacja:null};
   return repo.listaTypu('woo').find(s=>s.klucz===k)??null;
  }
- // PRZ-149.04: czy mail o wysyłce wysyła OMS (włączona reguła z szablonem „wyslane” dla tego sklepu). null = skład bez
+ // Czy mail o wysyłce wysyła OMS (włączona reguła z szablonem „wyslane” dla tego sklepu). null = skład bez
  // modułu automatyzacji — wtedy nie ma do czego odsyłać. Tylko odczyt: nic się tu nie włącza.
  const mailWyslane=(sklep:string|undefined):boolean|null=>{
   if(!app.hasRoute({method:'GET',url:'/ustawienia/automatyzacje/:id'}))return null;
@@ -53,7 +53,7 @@ export function registerTrasyWoo(app:FastifyInstance,o:{db:DatabaseSync;repozyto
   const d=k&&!e?db.prepare('SELECT adres,ustawienia_json,sprawdzono_at FROM kanaly_sklepy WHERE klucz=?').get(k.klucz):null;
   let metody:Metoda[]=[],mapowanie:any=e?.mapowanie??(d?JSON.parse(String(d.ustawienia_json)).mapowanie:null)??{instancje:{}};
   let bladMetod:string|null=null;
-  // PRZ-134.PT9: przed udanym sprawdzeniem kluczy szkic nie pyta sklepu o metody — krok 3 i tak nie jest widoczny.
+  // Przed udanym sprawdzeniem kluczy szkic nie pyta sklepu o metody — krok 3 i tak nie jest widoczny.
   if(k?.zrodlo==='panel'&&k.autoryzacja!=='odlaczone'&&(k.autoryzacja==='polaczone'||d?.sprawdzono_at)){
    const w=await woo.metodyWysylki(k.klucz);
    if(w.ok){metody=Array.isArray(w.dane.metody)?w.dane.metody as Metoda[]:[];mapowanie=w.dane.mapowanie;extra={bramki:w.dane.bramki,bladBramek:w.dane.bladBramek,...extra};}else{bladMetod=w.komunikat;extra={mapowanieBezSklepu:true,...extra};}
@@ -70,14 +70,14 @@ export function registerTrasyWoo(app:FastifyInstance,o:{db:DatabaseSync;repozyto
    wartosci:{ck:Boolean(d&&k?.autoryzacja!=='odlaczone'),cs:Boolean(d&&k?.autoryzacja!=='odlaczone'),od:k?.odUtc?new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Warsaw'}).format(new Date(k.odUtc)):dzis(),
     uprawnienia:d?uprawnieniaSklepu(JSON.parse(String(d.ustawienia_json))):k?'zapis':uprawnieniaZFormularza(extra.uprawnienia)??'zapis'},
    mailWyslane:mailWyslane(k?.klucz),
-   // PRZ-160 E4.10 (D48, D61): krok 6 „Stany” — ustawienia stanów sklepu (domyślnie wstrzymane) i bufor/próg konta.
+   // Krok 6 „Stany” — ustawienia stanów sklepu (domyślnie wstrzymane) i bufor/próg konta.
    // Ustawienia czytamy tylko przy włączonych kiedyś stanach — bez nich krok niczego nie pokazuje.
    ...(()=>{const s=stanyKiedysWlaczone(db);return {stanyKiedys:s,ustawieniaStanow:k&&s?ustawieniaOfertKonta(db,k.klucz):null};})(),
    bladStanow:null,wartosciStanow:null,
    formularzId:'',metody,mapowanie,metodyOms:METODY_WYSYLKI.filter(m=>!m.startsWith('allegro_')),etykiety:ETYKIETY_WYSYLKI,
    stan:k?db.prepare('SELECT ostatni_przebieg_at,zsynchronizowane_do,ostatni_blad FROM stan_pollera WHERE sklep=?').get(k.klucz):null,
    moznaUsunac:Boolean(k&&k.zrodlo==='panel'&&woo.blokadaUsuniecia(k.klucz)===null),
-   // PRZ-150.01: w piaskownicy jedyny działający adres to sklep przykładowy z konfiguracji — mówimy jaki.
+   // W piaskownicy jedyny działający adres to sklep przykładowy z konfiguracji — mówimy jaki.
    adresPrzykladowy:o.tryb==='proba'?(Object.values(configListy().sklepy??{}) as any[]).find(s=>s?.atrapa===true&&s.baseUrl)?.baseUrl??null:null,
    blad:bladMetod,komunikat:d?.sprawdzono_at?'Połączenie ze sklepem działa.':null,...extra,
   });
@@ -105,7 +105,7 @@ export function registerTrasyWoo(app:FastifyInstance,o:{db:DatabaseSync;repozyto
  });
  trasa('GET','/:kanal',(req,reply)=>{
   const k=kanal(klucz(req));if(k)return widok(req,reply,k);
-  // PRZ-148.04: sklep przykładowy piaskownicy jest tylko w konfiguracji (atrapa) — ekran bez akcji; reszta to 404 w układzie panelu.
+  // Sklep przykładowy piaskownicy jest tylko w konfiguracji (atrapa) — ekran bez akcji; reszta to 404 w układzie panelu.
   const kl=klucz(req);let przykladowe=false;try{przykladowe=Boolean(configListy().sklepy?.[kl]?.atrapa);}catch{}
   const nazwa=przykladowe?(configListy().definicje??[]).find((d:any)=>d?.klucz===kl)?.etykieta:null;
   return reply.code(przykladowe?200:404).view('woo-przykladowe.ejs',{przykladowe,
@@ -118,7 +118,7 @@ export function registerTrasyWoo(app:FastifyInstance,o:{db:DatabaseSync;repozyto
   if(s.klucz)return powrot(reply,s.klucz);
   if(s.praca){await s.praca;return s.klucz?powrot(reply,s.klucz):odmowa(req,reply,409,'Odśwież konfigurator.');}
   const pola=polaZFormularza(konfigurator.kroki[1],b),ck=pola.ck??'',cs=pola.cs??'';
-  // PRZ-134.PT8: najpierw sklep musi przyjąć klucze; odmowa zostawia konfigurator na kroku kluczy i NIC w bazie.
+  // Najpierw sklep musi przyjąć klucze; odmowa zostawia konfigurator na kroku kluczy i NIC w bazie.
   const proba=await (s.praca=woo.sprawdzNowe({adres:s.adres,ck,cs}));s.praca=undefined;
   const uprawnienia=tekst(b.uprawnienia)||undefined;
   if(!proba.ok)return widok(req,reply.code(status(proba)),undefined,{formularzId:id,blad:proba.komunikat,uprawnienia});
@@ -129,7 +129,7 @@ export function registerTrasyWoo(app:FastifyInstance,o:{db:DatabaseSync;repozyto
   const sprawdzenie=await (s.praca=woo.sprawdz(s.klucz));
   return sprawdzenie.ok?powrot(reply,s.klucz):blad(req,reply,sprawdzenie,kanal(s.klucz)!);
  }
- // PRZ-160 E4.10: zapis kroku 6 „Stany”. Nie zmienia wersji sklepu (to ustawienia konta w kanaly_oferty_ustawienia).
+ // Zapis kroku 6 „Stany”. Nie zmienia wersji sklepu (to ustawienia konta w kanaly_oferty_ustawienia).
  const STANY_WYLACZONE='Stany magazynowe są wyłączone — ten krok nic nie robi.';
  const TYLKO_ODCZYT_STANOW='Klucz tylko do odczytu — stanów nie zapiszemy.';
  const liczbaStanow=(v:unknown)=>typeof v==='string'&&/^-?\d+$/.test(v.trim())?Number(v.trim()):NaN;
@@ -157,7 +157,7 @@ export function registerTrasyWoo(app:FastifyInstance,o:{db:DatabaseSync;repozyto
   let w;
   switch(operacja){
    case 'klucze':{const p=polaZFormularza(konfigurator.kroki[1],b);let v2=v;
-    // PRZ-149.04: wybór „Jakie uprawnienia ma klucz?” zapisujemy przed kluczami; brak pola (stary formularz) = bez zmiany.
+    // Wybór „Jakie uprawnienia ma klucz?” zapisujemy przed kluczami; brak pola (stary formularz) = bez zmiany.
     if(b.uprawnienia!==undefined){
      const zapisane=uprawnieniaSklepu(JSON.parse(String((db.prepare('SELECT ustawienia_json FROM kanaly_sklepy WHERE klucz=?').get(k.klucz) as any)?.ustawienia_json??'{}')));
      if(tekst(b.uprawnienia)!==zapisane||!uprawnieniaZFormularza(b.uprawnienia)){const u=woo.ustawUprawnienia(k.klucz,tekst(b.uprawnienia),v,a);if(!u.ok){w=u;break;}v2=u.dane.wersja;}
@@ -167,7 +167,7 @@ export function registerTrasyWoo(app:FastifyInstance,o:{db:DatabaseSync;repozyto
     w=woo.zmienKlucze(k.klucz,{ck:p.ck??'',cs:p.cs??''},v2,a);if(w.ok)w=await woo.sprawdz(k.klucz);break;}
    case 'sprawdz':w=await woo.sprawdz(k.klucz);break;
    case 'mapowanie':{
-    // PRZ-134: ukryte pole = formularz z decyzją o pobraniu; stary formularz (bez niego) niczego nie zapisuje.
+    // Ukryte pole = formularz z decyzją o pobraniu; stary formularz (bez niego) niczego nie zapisuje.
     if(tekst(b.pobranie_decyzja)!=='1')return blad(req,reply,{ok:false,kod:'walidacja',komunikat:'Odśwież ekran i zapisz mapowanie jeszcze raz.'},k);
     const instancje=Object.fromEntries(Object.entries(b).filter(([id,val])=>/^instancja_\d+$/.test(id)&&tekst(val)).map(([id,val])=>[id.slice(10),{metoda:tekst(val),...(b['pobranie_'+id.slice(10)]==='tak'?{pobranie:true}:{})}]));
     const zPol=(Array.isArray(b.bramki)?b.bramki:[b.bramki]).map(tekst);
@@ -180,7 +180,7 @@ export function registerTrasyWoo(app:FastifyInstance,o:{db:DatabaseSync;repozyto
    case 'nazwa':w=woo.zmienNazwe(k.klucz,tekst(b.nazwa),v,a);break;
    case 'odlacz':if(b.potwierdz!=='tak')return blad(req,reply,{ok:false,kod:'walidacja',komunikat:'Potwierdź odłączenie sklepu.'},k);w=woo.odlacz(k.klucz,v,a);break;
    case 'usun':{
-    // PRZ-134.PT9: po udanym usunięciu sklepu już nie ma — wracamy na listę integracji.
+    // Po udanym usunięciu sklepu już nie ma — wracamy na listę integracji.
     if(b.potwierdz!=='tak')return blad(req,reply,{ok:false,kod:'walidacja',komunikat:'Potwierdź usunięcie sklepu.'},k);
     const u=woo.usun(k.klucz,v,a);
     if(u.ok)return reply.code(303).redirect('/ustawienia/integracje?zapisano=usunieto_sklep');

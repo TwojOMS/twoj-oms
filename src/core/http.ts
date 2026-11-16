@@ -135,13 +135,13 @@ export function utworzHttp(o: OpcjeHttp = {}): (adres: string, init?: RequestIni
       try {
         odpowiedz = await fetchImpl(adres, { ...init, signal });
       } catch (przyczyna) {
-        // PRZ-148.07: odmowa hosta zapada przed siecią — komunikat dla operatora, bez ponowień.
+        // Odmowa hosta zapada przed siecią — komunikat dla operatora, bez ponowień.
         if (przyczyna instanceof Error && przyczyna.name === 'OdmowaHosta') throw przyczyna;
         // Nie logujemy błędu transportu ani cause: mogą zawierać URL i nagłówki.
         const blad = init.signal?.aborted ? anulowane()
           : new Error(`${url.host}: ${limit.aborted ? 'limit czasu' : 'błąd sieci'}`);
         metadaneBledu(blad, limit.aborted ? limit.reason : przyczyna);
-        // PRZ-117: sam kod systemowy (już przefiltrowany w metadaneBledu) rozstrzyga DNS czy połączenie.
+        // Sam kod systemowy (już przefiltrowany w metadaneBledu) rozstrzyga DNS czy połączenie.
         const kod = (blad as Error & { code?: string }).code;
         log(`HTTP ${metoda} ${bezpiecznyAdres}: ${blad.message}${kod ? ` (${kod})` : ''}`);
         if (init.signal?.aborted || !moznaPonawiac || proba >= ponowien) throw blad;

@@ -1,4 +1,4 @@
-// PRZ-119.05 — Fakturownia (faktury sprzedaży) skonfigurowana w Ustawieniach. Wzór: domena/konfiguracja-infakt.js.
+// Fakturownia (faktury sprzedaży) skonfigurowana w Ustawieniach. Wzór: domena/konfiguracja-infakt.js.
 //
 // Zapis w `konfiguracja_integracji`, wiersz `fakturownia`: domena konta jawnie (`ustawienia.domena`), token API jako
 // sekret (`sekrety.token`). ⚠️ Gdy Fakturownia jest w .env (FAKTUROWNIA_API_TOKEN + FAKTUROWNIA_DOMENA), .env WYGRYWA

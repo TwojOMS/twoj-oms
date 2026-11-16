@@ -1,17 +1,17 @@
-// Zapytania o konta, uprawnienia i dziennik logowan (spec 2026-09-12).
+// Zapytania o konta, uprawnienia i dziennik logowań.
 //
-// ⚠️ TA WARSTWA NIE ZNA ROL — zna wylacznie ptaszki. Rola jest presetem rozstrzyganym
-// w domain/ekrany.js i etykieta zapisana w kolumnie `rola`. Gdyby zapytania czytaly role,
-// zmiana skladu roli przestawialaby uprawnienia ISTNIEJACYM kontom, w ktorych ktos
-// swiadomie poprawil ptaszki.
+// ⚠️ TA WARSTWA NIE ZNA RÓL — zna wyłącznie ptaszki. Rola jest presetem rozstrzyganym
+// w domena/ekrany.js i etykietą zapisaną w kolumnie `rola`. Gdyby zapytania czytały role,
+// zmiana składu roli przestawiałaby uprawnienia ISTNIEJĄCYM kontom, w których ktoś
+// świadomie poprawił ptaszki.
 
 import { zahaszuj } from '../../domena/hasla.js';
 import { ekranyRoli } from '../../domena/ekrany.js';
 
 const teraz = () => new Date().toISOString();
 
-// PRZ-069 (recenzja D8 r1, P3-8): `hashHasla` — gotowy zapis scrypt policzony PRZED transakcja wolajacego,
-// zeby scrypt (dziesiatki ms) nie trzymal blokady zapisu bazy (BEGIN IMMEDIATE). Bez niego — jak dotad.
+// `hashHasla` — gotowy zapis scrypt policzony PRZED transakcją wołającego, żeby scrypt
+// (dziesiątki ms) nie trzymał blokady zapisu bazy (BEGIN IMMEDIATE). Bez niego hasło jest haszowane tutaj.
 export function zalozKonto(db, { login, imie, haslo, rola, admin = false, ekrany = null, hashHasla = null }) {
   const info = db.prepare(
     'INSERT INTO konta (login, imie, hash_hasla, rola, czynne, admin, utworzone_at) VALUES (?,?,?,?,1,?,?)',
@@ -58,19 +58,19 @@ export function zmienHaslo(db, kontoId, haslo) {
   ustawHashHasla(db, kontoId, zahaszuj(haslo));
 }
 
-/** PRZ-069 (P3-8): to samo co zmienHaslo, ale z gotowym zapisem scrypt — do uzycia wewnatrz transakcji. */
+/** To samo co zmienHaslo, ale z gotowym zapisem scrypt — do użycia wewnątrz transakcji. */
 export function ustawHashHasla(db, kontoId, hashHasla) {
   db.prepare('UPDATE konta SET hash_hasla = ?, wersja_hasla = wersja_hasla + 1 WHERE id = ?').run(hashHasla, kontoId);
 }
 
 /**
- * ⚠️ TO JEST PRZELACZNIK DEGRADACJI KONTA Z `.env` (straznik, Zadanie 4). Dopoki oddaje
- * `false`, haslo z pliku jest pelnym adminem — bo inaczej pierwszy start na pustej bazie
- * (takze u kupujacego „Twoj OMS") konczylby sie ekranem logowania, do ktorego nikt nie ma
- * klucza. Od pierwszego CZYNNEGO admina oddaje `true` i brama sie zamyka.
+ * ⚠️ TO JEST PRZELACZNIK DEGRADACJI KONTA Z `.env` (strażnik). Dopóki oddaje
+ * `false`, hasło z pliku jest pełnym adminem — bo inaczej pierwszy start na pustej bazie
+ * (także u kupującego „Twój OMS") kończyłby się ekranem logowania, do którego nikt nie ma
+ * klucza. Od pierwszego CZYNNEGO admina oddaje `true` i brama się zamyka.
  */
-// PRZ-069: konto „zaproszone” (bez zapisu scrypt) nie zamyka bramy degradacji — zaproszony
-// administrator, którego link zginął, nie może odciąć właściciela od panelu (plan Review Focus 1).
+// Konto „zaproszone” (bez zapisu scrypt) nie zamyka bramy degradacji — zaproszony
+// administrator, którego link zginął, nie może odciąć właściciela od panelu.
 export function czyIstniejeCzynnyAdmin(db) {
   const w = db.prepare("SELECT 1 FROM konta WHERE admin = 1 AND czynne = 1 AND hash_hasla LIKE 'scrypt$%' LIMIT 1").get();
   return Boolean(w);
@@ -92,12 +92,12 @@ export function uprawnieniaKonta(db, kontoId) {
   );
 }
 
-// ⚠️⚠️ N1 (druga fala, recenzja 2026-09-12): `login` w dzienniku pochodzi wprost
-// z `req.body.uzytkownik` w logowanie.js, bez zadnego ograniczenia dlugosci. Pukanie
-// loginem 100 kB do zapalonej kary dawalo (zmierzone) 291 wierszy w 2 s, po 100 kB kazdy —
-// 29,1 MB w samej tej kolumnie, 14,6 MB/s. Przycinanie siedzi TUTAJ, w jednym miejscu dla
-// WSZYSTKICH trzech wywolan w logowanie.js (udane/nieudane/zablokowane), a nie w trasie —
-// nowe miejsce piszace do dziennika dostaje limit za darmo, zamiast musiec o nim pamietac.
+// ⚠️⚠️ `login` w dzienniku pochodzi wprost z `req.body.uzytkownik` w logowanie.js, bez żadnego
+// ograniczenia długości. Pukanie loginem 100 kB do zapalonej kary dawało setki wierszy na
+// sekundę, po 100 kB każdy — dziesiątki megabajtów w samej tej kolumnie. Przycinanie siedzi
+// TUTAJ, w jednym miejscu dla WSZYSTKICH wywołań w logowanie.js (udane/nieudane/zablokowane),
+// a nie w trasie — nowe miejsce piszące do dziennika dostaje limit za darmo, zamiast musieć
+// o nim pamiętać.
 export const MAKS_DLUGOSC_LOGINU_W_DZIENNIKU = 64;
 
 export function dopiszLogowanie(db, { login, usluga, ip = null, wynik }) {

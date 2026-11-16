@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { PROG_UWAGI_KOPII_H } from '../../domena/ostrzezenia.js';
 
-// PRZ-059: nadzór kopii instalacji klienta. Czyta wyłącznie daty plików w katalogach kopii
+// Nadzór kopii instalacji klienta. Czyta wyłącznie daty plików w katalogach kopii
 // (lokalnym i na nośniku zewnętrznym) — nie zależy od procesu, który kopie robi: martwy kontener
 // kopii też kończy się alarmem, bo pliki się starzeją.
 export const PROG_KOPII_H = 48;
@@ -19,11 +19,11 @@ function najnowsza(katalog: string): { nazwa: string; mtimeMs: number } | null {
   return wynik;
 }
 
-// PRZ-122.B16a: próg uwagi (26 h) — jedno źródło z tabelką ostrzeżeń (domena). Alarm zostaje przy 48 h.
+// Próg uwagi (26 h) — jedno źródło z tabelką ostrzeżeń (domena). Alarm zostaje przy 48 h.
 export { PROG_UWAGI_KOPII_H };
 
 /**
- * PRZ-122.B16a: jedno miejsce reguły „program wbudowany (faktury tylko w bazie OMS-u) wymaga nadzoru kopii”.
+ * Jedno miejsce reguły „program wbudowany (faktury tylko w bazie OMS-u) wymaga nadzoru kopii”.
  * W próbie kopii nie wymagamy (bez Dockera OMS działa tylko jako próba).
  */
 export function nadzorKopiiWymagany(o: { wbudowany: boolean; proba: boolean }): boolean {
@@ -49,7 +49,7 @@ function ocen(opis: string, katalog: string, teraz: Date, alarmy: string[], uwag
 
 /**
  * Alarmy i uwagi o kopiach; pusta `zewnetrzna` = celu nie ustawiono (uwaga, nie cisza).
- * PRZ-122.B16a: `ostatnia`, `katalogDostepny`, `zewnetrzna` (cel ustawiony) — pola dla panelu, nie dla /health.
+ * `ostatnia`, `katalogDostepny`, `zewnetrzna` (cel ustawiony) — pola dla panelu, nie dla /health.
  */
 export function stanKopii(o: { katalog: string; zewnetrzna: string; teraz: Date; urzadzenie?: (p: string) => number | bigint }): StanKopii {
   const urzadzenie = o.urzadzenie ?? ((p: string) => fs.statSync(p).dev);

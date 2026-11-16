@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 const klasyPrzycisku = new Set([
   'btn', 'oms-menu-toggle', 'oms-theme-button', 'oms-podmenu-przycisk',
-  'logowanie-wyslij', 'ust-przelacznik', 'ust-uchwyt', 'm-filter', 'poza-okiem',
+  'logowanie-wyslij', 'lg-przycisk', 'ust-przelacznik', 'ust-uchwyt', 'm-filter', 'poza-okiem',
 ]);
 const kontenery = new Set(['szukajka', 'wydruki-menu', 'menu-uzytkownika-panel']);
 const pusteTagi = new Set('area base br col embed hr img input link meta param source track wbr'.split(' '));

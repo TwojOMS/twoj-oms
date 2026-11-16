@@ -1,18 +1,18 @@
 // Z JAKIM KONTEM ALLEGRO KANAL JEST NAPRAWDE ZWIAZANY.
 //
-// ⚠️⚠️ POWOD ISTNIENIA. 28.08.2026 wlasciciel kliknal „Polacz z Allegro" przy kanale
-// `allegro_b`, bedac zalogowanym w przegladarce na konto A. Device flow
+// ⚠️⚠️ POWOD ISTNIENIA. Operator kliknal „Polacz z Allegro" przy kanale `allegro_b`,
+// bedac zalogowanym w przegladarce na konto A. Device flow
 // zrobil dokladnie to, o co go poproszono, i zwiazal kanal z cudzym kontem. Panel nie mial
-// jak tego zauwazyc: kanal byl polaczony, bez bledu, z kompletem osmiu zakresow i 89 dniami
-// waznosci — ZDROWY wedle kazdego sita, jakie mial (kanal-stan.js).
+// jak tego zauwazyc: kanal byl polaczony, bez bledu, z kompletem zakresow i waznym tokenem —
+// ZDROWY wedle kazdego sita, jakie mial (kanal-stan.js).
 //
-// Przez ~40 minut poller ciagnal cudze zamowienia pod nazwa allegro_b: 6 zdublowanych
-// zamowien, 5 zdublowanych PLATNOSCI (przychod policzony dwa razy w raportach), 18 watkow
-// i 59 wiadomosci w lustrze, a na koniec PRZESTAWIONY KURSOR POLLERA — ten ostatni po cichu
+// Przez kilkadziesiat minut poller ciagnal cudze zamowienia pod nazwa allegro_b: zdublowane
+// zamowienia, zdublowane PLATNOSCI (przychod policzony dwa razy w raportach), watki i wiadomosci
+// w lustrze, a na koniec PRZESTAWIONY KURSOR POLLERA — ten ostatni po cichu
 // pomijalby prawdziwe zamowienia allegro_b z calego okna. Wyszlo to na jaw dopiero po
 // tym, jak czlowiek zobaczyl ten sam watek dwa razy na ekranie.
 //
-// ⚠️ IDENTYFIKATOR KONTA NIE JEST POSWIADCZENIEM (niezmiennik 4.10 dotyczy tokenow i hasel).
+// ⚠️ IDENTYFIKATOR KONTA NIE JEST POSWIADCZENIEM (reguła: sekrety nie wychodzą — dotyczy tokenow i hasel).
 // Wolno go pokazac — i trzeba, bo to JEDYNA rzecz, po ktorej czlowiek pozna, ze przewiazal
 // kanal na zle konto. Sam token nie opuszcza tego modulu.
 

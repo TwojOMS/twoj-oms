@@ -1,8 +1,6 @@
-// src/oms/domain/ustawienia-formulki.js
-//
 // Znaczenie kluczy autorespondera. Tabela `ustawienia` jest glupia (klucz -> tekst); regula
 // i wartosci domyslne siedza TUTAJ, zeby dalo sie je przetestowac bez bazy — ten sam podzial,
-// co w domain/ustawienia-panelu.js.
+// co w domena/ustawienia-panelu.js.
 
 // ⚠️ LIMIT ALLEGRO, nie nasz wybor. Odmowa przy ZAPISIE, a nie przy wysylce: przekroczenie
 // wychodzi wtedy przy formularzu, gdzie czlowiek moze skrocic tekst, a nie w nocy z czuwacza,

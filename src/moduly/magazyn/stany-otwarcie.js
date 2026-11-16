@@ -28,7 +28,7 @@ function powiazania(db) {
 }
 
 // D56: efektywne pozycje tylko tej karty i tego konta. Domena odfiltruje statusy i czas odczytu.
-// Jedno zapytanie o pozycje (PRZ-091), z górnym ograniczeniem czasu najpóźniejszego odczytu.
+// Jedno zapytanie o pozycje, z górnym ograniczeniem czasu najpóźniejszego odczytu.
 function sprzedaz(db, granica, doChwili) {
   const lustro = kartyLustraZ(db);
   const wynik = new Map();

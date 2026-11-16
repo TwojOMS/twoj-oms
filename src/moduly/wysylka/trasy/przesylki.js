@@ -1,6 +1,6 @@
-// ZAKLADKA /przesylki (pomysl właściciela 23.08, razem z zegarem sledzenia). Jedna lista paczek
+// ZAKLADKA /przesylki (razem z zegarem sledzenia). Jedna lista paczek
 // zamiast otwierania kart po kolei: kurier, numer, ETAP z dniami w drodze, ostatni ruch
-// i filtr „bez ruchu" (>3 dni robocze — prog z domain/etap-przesylki.js, wspolny ze sprawa
+// i filtr „bez ruchu" (>3 dni robocze — prog z domena/etap-przesylki.js, wspolny ze sprawa
 // na pasku „Do zalatwienia" karty).
 //
 // Etap liczy TA SAMA regula, co pastylka na karcie i selekcja czuwacza — zadnej drugiej
@@ -68,7 +68,7 @@ function parseFiltry(source = {}) {
   };
 }
 
-// PRZ-066 (zgoda właściciela 13.10): domyślnie „Utworzone” — paczki czekające na odbiór kuriera.
+// Domyślnie „Utworzone” — paczki czekające na odbiór kuriera.
 const DOMYSLNY_POKAZ = 'utworzone';
 
 function adresPrzesylki({ pokaz = DOMYSLNY_POKAZ, od = null, do: doDnia = null, kurier = null, sklep = null }) {
@@ -86,7 +86,7 @@ function adresPrzesylki({ pokaz = DOMYSLNY_POKAZ, od = null, do: doDnia = null, 
 //
 // ⚠️ Liczone przez `Date.UTC` z samych skladowych dnia i z powrotem — bez godziny, wiec
 // zmiana czasu nie ma tu czego zepsuc. Odejmowanie 6×24 h od znacznika DAWALOBY zly dzien
-// w dobe przestawienia zegara (25.10.2026 ma 25 godzin), a skrot „ostatnie 7 dni" pokazalby
+// w dobe przestawienia zegara (przestawienie na czas zimowy daje dobe z 25 godzinami), a skrot „ostatnie 7 dni" pokazalby
 // wtedy osiem albo szesc.
 function przesunDni(dzien, oIle) {
   const [rok, miesiac, dzienMiesiaca] = dzien.split('-').map(Number);
@@ -99,14 +99,14 @@ function pasujeNaFiltr(d, filtry) {
     // ⚠️ `utworzona_at`, a NIE caly wiersz. Podanie wiersza wywala zakladke bledem
     // „Cannot convert object to primitive value" — nie pusta lista, tylko 500, i to na
     // kazdym uzyciu filtra daty. Dzien liczy `dzienWarszawa`, ta sama funkcja co przy
-    // filtrach listy zamowien (niezmiennik 4.13b): znaczniki przesylek sa w UTC, a operator
+    // filtrach listy zamowien (reguła: dzień po warszawsku): znaczniki przesylek sa w UTC, a operator
     // filtruje dniami warszawskimi — paczka z 23:30 UTC nalezy juz do nastepnego dnia.
     const dzien = dzienWarszawa(d.utworzona_at);
     if (!dzien) return false;
     if (filtry.od && dzien < filtry.od) return false;
     if (filtry.do && dzien > filtry.do) return false;
   }
-  // PRZ-067: filtr po PRAWDZIWYM przewozniku (klucz z domena/przewoznik-przesylki.js), a nie po
+  // Filtr po PRAWDZIWYM przewozniku (klucz z domena/przewoznik-przesylki.js), a nie po
   // kodzie drogi nadania. „DPD" ma pokazac tez paczki Allegro jadace DPD. Nieznany klucz (np.
   // stara zakladka `?kurier=allegro_wza`) nie pasuje do niczego — widok mowi o tym wprost.
   if (filtry.kurier && d.przewoznik?.klucz !== filtry.kurier) return false;
@@ -158,14 +158,14 @@ export function registerPrzesylkiRoutes(app, { db, kurierzy = {} }) {
     `).all().map((z) => [z.id, z]));
 
     // ⚠️ SUROWE trzymamy osobno, bo listy rozwijane filtrow musza pochodzic z PELNEGO
-    // zbioru, a nie z tego, co zostalo po zawezeniu (niezmiennik 4.13b — lista wartosci
+    // zbioru, a nie z tego, co zostalo po zawezeniu (listy filtrów z pełnego zbioru — lista wartosci
     // filtra nigdy nie jest wpisana na sztywno ani przyciete do biezacego wyniku).
     // Lista budowana po filtrze zatrzaskuje operatora: wybral DPD, wiec w rozwijanym
     // zostal sam DPD i jedyne wyjscie to „Wyczysc filtry", czyli utrata reszty filtrow.
     const surowe = przesylkiDoSledzenia(db, bazaOdIso);
 
-    // PRZ-067: przewoznik liczony RAZ na wiersz, PRZED filtrem — filtr i lista rozwijana pytaja
-    // o niego, a lista musi powstac z pelnego zbioru (niezmiennik 4.13b, akapit wyzej).
+    // Przewoznik liczony RAZ na wiersz, PRZED filtrem — filtr i lista rozwijana pytaja
+    // o niego, a lista musi powstac z pelnego zbioru (akapit wyzej).
     const zPrzewoznikiem = surowe.map((p) => {
       const zamowienie = numery.get(p.zamowienie_id) ?? null;
       return { ...p, zamowienie, przewoznik: przewoznikWiersza(p, zamowienie) };
@@ -178,7 +178,7 @@ export function registerPrzesylkiRoutes(app, { db, kurierzy = {} }) {
       const stoi = bezRuchu({
         etap, statusKurieraAt: p.status_kuriera_at, nadanaAt: p.utworzona_at, teraz,
       });
-      // ⚠️ TA SAMA FUNKCJA, CO NA KARCIE (domain/przesylka-stan.js). Ukrycie dzialajace
+      // ⚠️ TA SAMA FUNKCJA, CO NA KARCIE (domena/przesylka-stan.js). Ukrycie dzialajace
       // w zakladce, ale nie w sprawach karty, zostawialoby zamowienie na liscie roboczej
       // z odznaka, ktorej juz nic nie zdejmie — czyli sprzatanie bylo by polsrodkiem.
       const ukryta = przesylkaUkryta(p);
@@ -199,7 +199,7 @@ export function registerPrzesylkiRoutes(app, { db, kurierzy = {} }) {
         maProtokol: !!p.id_przesylki_kuriera && typeof kurierzy[p.kurier]?.protokolOdbioru === 'function',
         kurierEtykieta,
         usluga: zAllegro && zamowienie ? kurierEtykieta : null,
-        // PRZ-152.G7: ta sama funkcja co karta zamowienia i mail „Zamowienie wyslane".
+        // Ta sama funkcja co karta zamowienia i mail „Zamowienie wyslane".
         adresSledzenia: linkSledzeniaPaczki(p, zamowienie),
         etap,
         kategoria: kategoriaPrzesylki(p, etap),
@@ -251,8 +251,8 @@ export function registerPrzesylkiRoutes(app, { db, kurierzy = {} }) {
       przewozcy,
       kurierNieznany,
       sklepy,
-      // GOTOWE PRZEDZIALY (zgloszenie właściciela 18.09). Dzien biezacy liczy `dzienWarszawa`,
-      // ta sama funkcja co filtr (niezmiennik 4.104) — skrot ustawiajacy „dzis" wedlug UTC
+      // GOTOWE PRZEDZIALY. Dzien biezacy liczy `dzienWarszawa`,
+      // ta sama funkcja co filtr (reguła: dzień po warszawsku) — skrot ustawiajacy „dzis" wedlug UTC
       // wskazywalby wczoraj przez pierwsze dwie godziny doby czasu warszawskiego.
       //
       // ⚠️ Skroty NIOSA `pokaz` i pozostale filtry. Skrot, ktory przy okazji kasuje
@@ -284,7 +284,7 @@ export function registerPrzesylkiRoutes(app, { db, kurierzy = {} }) {
 
   // UKRYCIE I PRZYWROCENIE — dwie trasy, jeden ksztalt.
   //
-  // ⚠️ Formularze w widoku ida BEZ ukrytego pola z tokenem: ochrona CSRF (src/security/csrf.js)
+  // ⚠️ Formularze w widoku ida BEZ ukrytego pola z tokenem: ochrona CSRF (src/core/bezpieczenstwo/csrf.js)
   // stoi na naglowku `Origin`, tak samo jak przy formularzach magazynu i kosztow.
   //
   // ⚠️ WPIS DO LOGU ZAMOWIENIA, a nie tylko kolumna. Ukrycie zdejmuje zamowienie z listy

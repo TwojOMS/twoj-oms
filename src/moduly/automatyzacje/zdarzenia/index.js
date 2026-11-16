@@ -1,6 +1,5 @@
-// PRZ-108.07 (zmiana B planu automatyzacji): rejestr zdarzeń, które silnik umie wykryć.
-// PRZ-108.08 (zmiana C1): „Paczka nadana” i „Status zamówienia zmienił się na”. PRZ-108.09 (C2): „Kurier odebrał
-// paczkę”. PRZ-110.02 (D1): „Nowe zamówienie”. Dalej: D kolejne (plan, sekcja 8).
+// Rejestr zdarzeń, które silnik umie wykryć: „Paczka nadana”, „Status zamówienia zmienił się na”, „Kurier odebrał
+// paczkę” i „Nowe zamówienie”.
 //
 // Kontrakt wpisu: { klucz, etykieta, opis, pomoc? (zdanie pod opisem w kreatorze), grupa ('przesylka' | 'zamowienie' | 'dokumenty'),
 //   kandydaci(db, { granica, od, po, parametr, limit, kanaly, regula_id })
@@ -12,7 +11,7 @@
 //   odcina zdarzenia sprzed granicy.
 // • `od` (ISO) = kursor − 5 min zakładki, nigdy sprzed granicy: tylko `zdarzenie_at >= od`.
 // • `po` = null albo { at, id } — kontynuacja po obciętej liście: tylko wiersze ŚCIŚLE po (at, id), czyli
-//   `zdarzenie_at > po.at OR (zdarzenie_at = po.at AND id > po.id)` (PRZ-108.07, recenzja 07, usterka 3).
+//   `zdarzenie_at > po.at OR (zdarzenie_at = po.at AND id > po.id)`.
 // • Wiersze POSORTOWANE rosnąco po (zdarzenie_at, id), najwyżej `limit` — silnik bierze ostatni wiersz za kursor.
 // • `id` = jednoznaczny klucz sortowania w obrębie zdarzenia (id zamówienia albo przesyłki); bez niego silnik bierze
 //   `zamowienie_id`.

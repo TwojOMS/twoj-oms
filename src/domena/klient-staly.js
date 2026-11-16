@@ -9,8 +9,8 @@ import { DOSTAWY, PLATNOSCI } from './nowe-zamowienie.js';
 import { parsujRabat } from './rabat.js';
 import { parsujTerminZamowienia, ETYKIETY_TERMINU } from './termin-platnosci.js';
 
-// BAZA STAŁYCH KLIENTÓW — czysta reguła (21.08.2026, prośba właściciela: „przy dodawaniu
-// nowego zamówienia muszę za każdym razem wpisywać ich dane do FV oraz wysyłki").
+// BAZA STAŁYCH KLIENTÓW — czysta reguła, żeby przy dodawaniu nowego zamówienia nie wpisywać
+// za każdym razem danych klienta do faktury i wysyłki.
 //
 // Przy zamówieniu telefonicznym albo mailowym to jest dwanaście pól przepisywanych z pamięci
 // albo z poprzedniej faktury — przy słuchawce, pod presją czasu. Ten sam mechanizm, który
@@ -31,7 +31,7 @@ export const POLA_WYSYLKI = Object.freeze(['nazwa', 'firma', 'ulica', 'kod', 'mi
 
 /**
  * Pola bloku fakturowego — te same nazwy, co pola `f_*` formularza I co klucze oddawane
- * przez GUS (`domain/gus.js`).
+ * przez GUS (`domena/gus.js`).
  *
  * ⚠️ ZGODNOŚĆ Z GUS-EM NIE JEST PRZYPADKIEM: oba wypełniają te same pola na tym samym
  * ekranie, więc rozjazd nazw znaczyłby, że „Pobierz z GUS" i „Wstaw dane klienta" wpisują
@@ -89,12 +89,12 @@ export function znormalizujKlienta(body = {}) {
   // odczyt z „NIP na fakturze" NIGDY się nie uruchamiał. A pole fakturowe jest tym, które
   // człowiek wypełnia najczęściej, bo to przy nim stoi przycisk „Pobierz z GUS".
   // Skutek był cichy: karta zapisywała się BEZ NIP-u, a bez niego panel nie wskaże
-  // nabywcy faktury okresowej (web/routes/okresy.js) ani nie dopasuje zamówień.
+  // nabywcy faktury okresowej (moduly/faktury/trasy/okresy.js) ani nie dopasuje zamówień.
   const surowyNip = String(body.nip ?? '').trim() || String(faktura.nip ?? '').trim();
   const nip = normalizujNip(surowyNip);
 
-  // ⚠️ ODMOWA ZAMIAST OKROJENIA. Do 26.08.2026 normalizacja kasowała wszystko, co nie jest
-  // cyfrą, więc „SK1234567890" zapisywało się jako „1234567890" — dziesięć cyfr, czyli
+  // ⚠️ ODMOWA ZAMIAST OKROJENIA. Normalizacja kasująca wszystko, co nie jest cyfrą,
+  // zapisałaby „SK1234567890" jako „1234567890" — dziesięć cyfr, czyli
   // numer WYGLĄDAJĄCY NA POLSKI NIP. Taki numer poszedłby na fakturę i nikt by się nie
   // zorientował, bo na ekranie wygląda poprawnie. Numer nierozpoznany ma zatrzymać zapis.
   if (surowyNip && !nipRozpoznany(surowyNip)) {
@@ -104,12 +104,12 @@ export function znormalizujKlienta(body = {}) {
     );
   }
 
-  // ⚠️ PUSTA DOSTAWA TO „NIE USTALONO”, NIE DPD (PRZ-102.24) — i pusty koszt razem z nią.
+  // ⚠️ PUSTA DOSTAWA TO „NIE USTALONO”, NIE DPD — i pusty koszt razem z nią.
   // Koszt z karty klienta trafia do nowych zamówień: cichy „dpd” z 0,00 to darmowa wysyłka,
   // której nikt nie ustalił.
-  // ⚠️ PUSTE POLE KOSZTU TO TEŻ „NIE USTALONO”, także przy WYBRANEJ dostawie (decyzja
-  // kierownika pętli, PRZ-102.24). Do tej poprawki puste pole znaczyło 0,00, więc poprawka
-  // samego adresu u klienta z pustym kosztem robiła z niego „wysyłka gratis”. Darmowa wysyłka
+  // ⚠️ PUSTE POLE KOSZTU TO TEŻ „NIE USTALONO”, także przy WYBRANEJ dostawie. Gdyby puste
+  // pole znaczyło 0,00, poprawka samego adresu u klienta z pustym kosztem robiłaby
+  // z niego „wysyłka gratis”. Darmowa wysyłka
   // powstaje tylko z wpisanego wprost „0”; pusty koszt jest bezpieczny, bo „Wstaw dane”
   // podstawia kwotę domyślną z Ustawień.
   const metodaWysylki = wybor(body.metoda_wysylki, DOSTAWY, 'sposobu dostawy', '');
@@ -162,16 +162,15 @@ function scalBlok(stary, nowy, adres) {
  * z zamówienia → wiersz do `zapiszKlienta`.
  *
  * ⚠️⚠️ Z ZAMÓWIENIA PRZECHODZĄ TYLKO DANE NABYWCY — NIP, blok faktury, blok wysyłki (i nazwa
- * na pustą kartę). Reszta wiersza to `istniejacy` (PRZ-102.07). `zapiszKlienta` pisze KOMPLET
- * kolumn, a trasa budowała wiersz przez `znormalizujKlienta` bez pól umowy zbiorczej — więc
- * klient z umową po jednym kliknięciu miał `rozliczenie_zbiorcze = 0` i kwoty NULL, a jego
- * zamówienia szły na pojedyncze faktury zamiast do okresu. Kolumny umowy doszły 24.08 i nikt
- * nie dopisał ich do tej trasy; lista „czego nie ruszać” zawiodłaby tak samo przy następnej
- * kolumnie. Umowa i jej kwoty, B2B, rabat, termin, płatność, dostawa i jej koszt, „chce
+ * na pustą kartę). Reszta wiersza to `istniejacy`. `zapiszKlienta` pisze KOMPLET
+ * kolumn, więc wiersz zbudowany przez `znormalizujKlienta` (bez pól umowy zbiorczej) dałby
+ * klientowi z umową po jednym kliknięciu `rozliczenie_zbiorcze = 0` i kwoty NULL, a jego
+ * zamówienia szłyby na pojedyncze faktury zamiast do okresu. Lista „czego nie ruszać”
+ * zawiodłaby tak samo przy następnej kolumnie. Umowa i jej kwoty, B2B, rabat, termin, płatność, dostawa i jej koszt, „chce
  * fakturę”, notatka, aktywność i klucz zostają takie, jak w bazie.
  *
  * ⚠️⚠️ PUSTE Z ZAMÓWIENIA ZNACZY „NIE PODANO”, NIE „SKASUJ”. Zamówienie telefoniczne bez adresu
- * na fakturze kasowało adres, który karta klienta już miała. Przechodzą więc tylko wartości
+ * na fakturze skasowałoby adres, który karta klienta już miała. Przechodzą więc tylko wartości
  * niepuste (null, '' i same spacje zostawiają kartę); świadome czyszczenie pola zostaje
  * w formularzu Stałych klientów. NAZWA przechodzi tylko na pustą kartę: krótka nazwa nadana
  * ręcznie („Pracownia Przykładowa”) to nazwa własna z listy, a nie dana z faktury — pełna
@@ -256,8 +255,8 @@ export function wstawKlientaDoFormularza(formularz = {}, klient) {
     f_chce_fakture: klient.chce_fakture ? 'on' : '',
     b2b: klient.b2b ? 'on' : '',
     dostawa: klient.metoda_wysylki ?? METODA_DOMYSLNA,
-    // ⚠️ PUSTY KOSZT = DOSTAWA NIEUSTALONA (klient z zamówienia z nierozpoznaną dostawą,
-    // PRZ-102.24), a nie „gratis”. Puste pole zapisałoby zamówienie z 0,00; `undefined` zostawia
+    // ⚠️ PUSTY KOSZT = DOSTAWA NIEUSTALONA (klient z zamówienia z nierozpoznaną dostawą),
+    // a nie „gratis”. Puste pole zapisałoby zamówienie z 0,00; `undefined` zostawia
     // ekranowi kwotę domyślną z Ustawień dla wybranej dostawy.
     koszt_dostawy_brutto: tekst(klient.koszt_dostawy_brutto) ?? undefined,
     platnosc: klient.platnosc ?? 'przelew',
@@ -278,11 +277,11 @@ export function opisKlienta(klient, { zwolniona = false } = {}) {
   if (!klient) return '';
   const czesci = [klient.nazwa];
   if (klient.nip) czesci.push(`NIP ${klient.nip}`);
-  // Nabywca z numerem VAT-UE = dokumenty WDT 0% i kwoty NETTO w zamowieniu — operator
-  // ma to zobaczyc ZANIM zacznie wpisywac ceny, dokladnie jak „wysylka gratis" nizej.
-  // Pozycje z magazynu panel przelicza sam (rabat → ÷1,23, od 26.08 wieczor); dopisek
-  // zostaje dla cen wpisywanych RECZNIE — te trzeba podac juz w netto.
-  // PRZ-122.B07h: firma zwolniona z VAT (flagę liczy wołający: `sprzedawcaZwolniony`) — numer UE to nie WDT.
+  // Nabywca z numerem VAT-UE = dokumenty WDT 0% i kwoty NETTO w zamówieniu — operator
+  // ma to zobaczyć ZANIM zacznie wpisywać ceny, dokładnie jak „wysyłka gratis" niżej.
+  // Pozycje z magazynu panel przelicza sam (rabat → ÷1,23); dopisek
+  // zostaje dla cen wpisywanych RĘCZNIE — te trzeba podać już w netto.
+  // Firma zwolniona z VAT (flagę liczy wołający: `sprzedawcaZwolniony`) — numer UE to nie WDT.
   if (czyWdt(klient.nip, { zwolniona })) czesci.push('WDT 0% — magazyn liczy ÷1,23 sam, ceny ręczne wpisuj w NETTO');
   if (klient.b2b) czesci.push('B2B');
   if (klient.rabat_procent) czesci.push(`rabat ${klient.rabat_procent}%`);

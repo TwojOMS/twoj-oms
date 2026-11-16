@@ -1,11 +1,11 @@
 import { mapujZamowienieAllegro } from '../../domena/allegro-mapowanie.js';
 import { metodaZId } from '../../domena/allegro-dostawa.js';
 
-// Adapter kanalu Allegro — TEN SAM kontrakt, co woo/adapter.js, wiec poller nie wie, z kim
-// rozmawia (Zadanie 1). Reguly przebiegu (podloga po dacie zlozenia, jeden przebieg naraz,
-// kursor za najpozniejsza PRZETWORZONA modyfikacja) zostaja przez to JEDNE dla wszystkich
-// kanalow; ich druga kopia rozjechalaby sie po cichu, a pierwsza wersja wciagnela
-// kilka tysiecy zamowien naraz.
+// Adapter kanału Allegro — TEN SAM kontrakt, co woo/adapter.js, więc poller nie wie, z kim
+// rozmawia. Reguły przebiegu (podłoga po dacie złożenia, jeden przebieg naraz,
+// kursor za najpóźniejszą PRZETWORZONĄ modyfikacją) zostają przez to JEDNE dla wszystkich
+// kanałów; ich druga kopia rozjechałaby się po cichu, a pierwsza wersja wciągnęła
+// kilka tysięcy zamówień naraz.
 /** @param {import('../../integracje/opcje.ts').OpcjeAdapteraAllegro} opcje */
 export function createAllegroAdapter({ klient }) {
   return {
@@ -14,7 +14,7 @@ export function createAllegroAdapter({ klient }) {
     // roznymi filtrami (`updatedAt.gte` albo `lineItems.boughtAt.gte` z sortowaniem) i musi
     // widziec PRAWDZIWY brak kursora. Podstawiona tu podloga znaczylaby, ze na pustym stanie
     // zawsze trafiamy w galaz „mam kursor" i pytamy o wszystko zmodyfikowane od daty
-    // startowej — czyli o cale archiwum konta (775 zamowien w chwili rozpoznania).
+    // startowej — czyli o całe archiwum konta.
     pobierzStrone: ({ od, kursor, strona }) => klient.pobierzZamowienia({ od, kursor, strona }),
     // ⚠️ `updatedAt` jest w UTC ze znacznikiem `Z` — pulapka stref czasu, ktora przy Woo
     // omal nie zgubila zamowien przy zmianie czasu (`date_modified` lokalne cofa sie
@@ -25,7 +25,7 @@ export function createAllegroAdapter({ klient }) {
     // znaczy dla pollera „podloga nie obowiazuje", wiec pomylka w tym polu jest CICHA:
     // panel wciaga archiwum i nie zglasza zadnego bledu.
     zlozoneZ: (surowe) => surowe?.lineItems?.[0]?.boughtAt ?? null,
-    // Slownik metod jest WSTRZYKIWANY do mapowania (domain/allegro-dostawa.js): mapowanie nie
+    // Slownik metod jest WSTRZYKIWANY do mapowania (domena/allegro-dostawa.js): mapowanie nie
     // ma prawa go znac, bo slownik sie zmienia, a regula mapowania nie.
     mapuj: (surowe) => mapujZamowienieAllegro(surowe, { metodaZId }),
   };

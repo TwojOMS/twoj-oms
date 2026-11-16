@@ -1,22 +1,22 @@
-<%# Zakladka RAPORTY — dane reczne miesiaca: ZUS, PIT-5, VAT-7 (Zadanie 13).
+<%# Zakładka FINANSE, ekran „Dane miesiąca": ręczne dane miesiąca — ZUS, PIT-5, VAT-7.
 
-    Panel liczy sprzedaz sam (sprzedaz-okresu.js) i koszty sam (lustro KSeF, db/koszty.js).
-    Skladek ZUS, zaplaconej zaliczki PIT-5 i zaplaconego VAT-7 nie odda zadne API — inFakt
-    trzyma je poza planem taryfowym — wiec to jedyne trzy liczby, ktore wlasciciel wpisuje
-    recznie, raz na miesiac. Zapis, odczyt i migracja startowa siedza w db/dane-miesieczne.js
-    (Zadanie 12); rachunek zarzadczy, ktory te dane skonsumuje, powstaje w Zadaniach 14–16.
+    Panel liczy sprzedaż sam (domena/sprzedaz-okresu.js) i koszty sam (lustro KSeF, oms/db/koszty.js).
+    Składek ZUS, zapłaconej zaliczki PIT-5 i zapłaconego VAT-7 nie odda żadne API — inFakt
+    trzyma je poza planem taryfowym — więc te dane operator wpisuje ręcznie, raz na miesiąc.
+    Zapis, odczyt i jawny import danych startowych siedzą w oms/db/dane-miesieczne.js;
+    wpisane dane konsumuje rachunek zarządczy na ekranie Finanse.
 
     ⚠️ WIDOK NICZEGO NIE LICZY. Rozjazd skladnikow i przelewu przychodzi POLICZONY z trasy
-    (rozjazdZus w db/dane-miesieczne.js) — tutaj zostaje wylacznie ZAPIS liczby po polsku,
+    (rozjazdZus w oms/db/dane-miesieczne.js) — tutaj zostaje wylacznie ZAPIS liczby po polsku,
     tak jak w raporty.ejs i koszty.ejs. Druga kopia arytmetyki rozjechalaby sie z pierwsza
     przy pierwszej zmianie, a chodzi o pieniadze.
 
-    ⚠️ POLA IDA DO `.pola`/`.pola--siatka`, NIGDY DO `.rzad` — tamta klasa nie styluje listy
-    rozwijanej w ogole i zweza pola do 6 rem (patrz uzasadnienie w raporty.ejs).
+    ⚠️ POLA IDĄ DO `.pola`/`.pola--siatka`, NIGDY DO `.rzad` — tamta klasa nie styluje listy
+    rozwijanej w ogóle i zawęża pola do 6 rem (public/oms-uklad.css).
 
-    ⚠️ ODNOSNIKI IDA NA `--link`, NIGDY `--marka` — w jasnym motywie kontrast `--marka` na tle
-    wynosi 2,07 (zmierzone), czyli napis jest praktycznie niewidoczny; `--link` daje 7,00
-    (patrz layout-oms.ejs).
+    ⚠️ ODNOŚNIKI IDĄ NA `--link`, NIGDY `--marka` — `--link` jest kolorem tekstu (w ciemnym
+    motywie jasnym), a `--marka` kolorem tła elementów marki; w jasnym motywie oba mają dziś
+    tę samą barwę (paleta w public/oms-uklad.css).
 
     ⚠️⚠️ KWOT ZUS NIGDY NIE ZGADUJEMY — ani ze sredniej, ani z poprzedniego miesiaca. Brak
     wiersza ma dac PUSTA SEKCJE I OSTRZEZENIE w rachunku zarzadczym, nigdy ciche zero: zero
@@ -34,13 +34,13 @@
     const grosze = ulamek.length >= 2 ? ulamek : ulamek.padEnd(2, '0');
     return `${minus ? '-' : ''}${calosc.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')},${grosze}`;
   };
-  // ⚠️ GROSZE NA ZLOTOWKI PRZELICZA `zl` Z DOMENY (domain/kwoty.js), podane przez trase —
+  // ⚠️ GROSZE NA ZLOTOWKI PRZELICZA `zl` Z DOMENY (domena/kwoty.js), podane przez trase —
   // widok NIE DZIELI pieniedzy przez sto u siebie.
   const zlote = (gr) => kwota(zl(gr ?? 0));
   // Wartosc kolumny do pola formularza — pusta, gdy miesiac jeszcze nie ma wiersza ALBO
   // dane pole nikt jeszcze nie wypelnil. Kwota idzie DOSLOWNIE w postaci z bazy ('246.00'),
-  // nie po polsku: to jest pole do POPRAWIENIA, a nie liczba do przeczytania (ta sama zasada,
-  // co przy kwocie w koszt-reczny.ejs).
+  // nie po polsku: to jest pole do POPRAWIENIA, a nie liczba do przeczytania.
+  // Dzięki temu zapis oddaje do bazy dokładnie to, co z niej przyszło.
   // Po odmowie wracają surowe wpisy, także puste i niepoprawne — operator może je poprawić.
   const w = (kolumna, pole) => wpisane ? (wpisane[pole] ?? '') : (dane?.[kolumna] ?? '');
 
@@ -58,10 +58,10 @@
 <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Dane miesiąca", opisHtml: include('_naglowek-opis-finanse-dane.ejs')}) %>
 
 <%# ——— PASEK MIESIECY ROKU ————————————————————————————————————————————————————
-    ⚠️⚠️ PO CO TO JEST: brak wpisu za JEDEN miesiac wylacza „zostaje" w CALYM rachunku
-    zarzadczym (patrz `daneOkresu().brakujace`), a do 17.08.2026 nie bylo jak zobaczyc,
-    ktorego miesiaca brakuje — trzeba bylo wchodzic w kazdy po kolei. Teraz zaleglosci widac
-    jednym rzutem oka, a jedno klikniecie prowadzi wprost do miesiaca.
+    ⚠️⚠️ PO CO TO JEST: brak wpisu za JEDEN miesiąc wyłącza „zostaje" w CAŁYM rachunku
+    zarządczym (patrz `daneOkresu().brakujace`), a bez tego paska nie byłoby widać,
+    którego miesiąca brakuje — trzeba by wchodzić w każdy po kolei. Zaległości widać
+    jednym rzutem oka, a jedno kliknięcie prowadzi wprost do miesiąca.
 
     ⚠️ TRZY STANY, NIE DWA. Miesiac z PRZYSZLOSCI nie jest zalegly — skladki za wrzesien nie
     da sie wpisac w sierpniu, wiec ostrzegawcza barwa przy nim uczylaby operatora ignorowac
@@ -85,7 +85,7 @@
     </div>
     <%# Zwykly formularz GET, bez ani jednej linii skryptu (jak wybor miesiaca na /koszty).
         Przegladarka umie z niego zlozyc wylacznie zapytanie (`?miesiac=...`) — trasa
-        (routes/finanse.js) przeklada je na prawdziwy adres `/finanse/dane/<miesiac>`. %>
+        (moduly/raporty/trasy/finanse.js) przekłada je na prawdziwy adres `/finanse/dane/<miesiac>`. %>
     <form method="get" action="/finanse/dane" class="zakres-formularz">
       <label class="zakres-data">
         <span>Inny miesiąc</span>
@@ -143,12 +143,12 @@
       </div>
 
       <%# ——— PASEK ROZJAZDU ————————————————————————————————————————————————————
-          ⚠️ TYLKO GDY JEST KOMPLET SKLADNIKOW I ROZJAZD NIE JEST ZEREM — pasek przy
-          zgodnej sumie nie mowilby nic nowego i przestalby sie rzucac w oczy tam, gdzie
-          naprawde trzeba na niego spojrzec (ta sama zasada, co przy pasie ostrzezen
-          w raporty.ejs). ROZJAZD NIE JEST WYGLADZANY: styczen 2026 skladniki daja 1874,53,
-          przelew 2088,92 — roznica 214,39 zl jest do dzis niewyjasniona i ekran ma ja
-          pokazac, nie ukryc. %>
+          ⚠️ TYLKO GDY JEST KOMPLET SKŁADNIKÓW I ROZJAZD NIE JEST ZEREM — pasek przy
+          zgodnej sumie nie mówiłby nic nowego i przestałby się rzucać w oczy tam, gdzie
+          naprawdę trzeba na niego spojrzeć.
+          ROZJAZD NIE JEST WYGŁADZANY: składniki bywają inne niż przelew,
+          a różnica jest niewyjaśniona. Ekran ma ją pokazać,
+          nie ukryć. %>
       <% if (rozjazd !== null && rozjazd !== 0) { %>
         <div class="pasek-uwaga">
           Składniki dają <%= zlote(skladnikiGrosze) %> zł, przelew <%= zlote(razemGrosze) %> zł
@@ -159,7 +159,7 @@
       <%# ——— OPCJONALNE, KONTROLNE ————————————————————————————————————————————
           `<details>` zamiast osobnej sekcji: to sa pola KONTROLNE (do porownania z KPiR
           u ksiegowej), a nie codzienny wpis — wiekszosc miesiecy nikt ich nie dotyka.
-          Czysty HTML, zero skryptu — ta sama sztuczka, co przy „wiecej" na karcie zamowienia. %>
+          Czysty HTML, zero skryptu. Rozwija się tylko na życzenie operatora. %>
       <details>
         <summary>opcjonalne, kontrolne</summary>
         <div class="pola pola--siatka">

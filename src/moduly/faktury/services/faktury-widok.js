@@ -11,28 +11,28 @@ import { idDokumentuSql, czyDokumentProgramu } from '../../../domena/dokument-pr
 import { korektyZwrotowZFakturaZamowienia } from '../../../oms/db/zwroty.js';
 import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
-// Jedyne miejsce, które zna naraz inFakt i bazę panelu. Reguły są w domain/, I/O tutaj.
+// Łączy listy programu fakturowego z bazą panelu. Reguły są w domena/, I/O tutaj.
 //
 // ⚠️ Z BAZY BIERZEMY WYŁĄCZNIE POWIĄZANIE DOKUMENTU Z PANELEM — nigdy zdania o tym, czy
-// faktura jest zapłacona (spec §4.1, decyzja właściciela 06.08.2026). Panel ma dane po temu
-// (wpłaty zamówienia), ale statusy porządkuje właściciel w inFakcie, a druga prawda
+// faktura jest zapłacona. Panel ma dane po temu
+// (wpłaty zamówienia), ale statusy zapłaty prowadzi się w programie fakturowym, a druga prawda
 // o pieniądzach zostałaby tu na zawsze. Sędzią jest inFakt — jego `status`, nie nasz rachunek.
 //
-// ⚠️ SPROSTOWANIE 10.08.2026: stało tu „sędzią jest `left_to_pay`" i to było zdanie o jedno
-// pole za wąskie. Oznaczenie zapłaty w inFakcie NIE ZERUJE `left_to_pay`, więc pas długów
-// pokazywał 67 dokumentów zamiast dwóch. Doktryna się nie zmienia — dalej rozstrzyga inFakt,
-// a nie wpłaty z panelu — zmienia się pole, którego słuchamy. Reguła: `czekaNaPrzelew`
-// w domain/lista-faktur.js, tam też pomiar.
+// ⚠️ NIE `left_to_pay` — to pole jest za wąskie na sędziego.
+// Oznaczenie zapłaty w inFakcie NIE ZERUJE `left_to_pay`, więc pas długów liczony z tego pola
+// pokazywałby dziesiątki dokumentów zamiast kilku. Zasada się nie zmienia — dalej rozstrzyga inFakt,
+// a nie wpłaty z panelu — liczy się pole, którego słuchamy. Reguła: `czekaNaPrzelew`
+// w domena/lista-faktur.js, tam też pomiar.
 
-// ⚠️ BIAŁA LISTA PÓL DATY — I TO NIE JEST OSTROŻNOŚĆ NA ZAPAS. Zmierzone na żywym API
-// 06.08.2026: inFakt odpowiada HTTP 200 i MILCZĄCO IGNORUJE nieznany klucz filtra, więc
+// ⚠️ BIAŁA LISTA PÓL DATY — I TO NIE JEST OSTROŻNOŚĆ NA ZAPAS. Zmierzone na żywym API:
+// inFakt odpowiada HTTP 200 i MILCZĄCO IGNORUJE nieznany klucz filtra, więc
 // ograniczenie dat po prostu znika, a zapytanie zamienia się w „całe archiwum":
 //
-//   q[invoice_date_gteq]=2026-07-01&q[invoice_date_lteq]=2026-07-31  → total_count  64
-//   q[sale_date_gteq]=2026-07-01&q[sale_date_lteq]=2026-07-31        → total_count  61
-//   q[sale_date_gteq]=2026-07-15&q[sale_date_lteq]=2026-07-15        → total_count   4
-//   q[nie_ma_takiego_gteq]=2026-07-01&q[nie_ma_takiego_lteq]=…       → total_count 329
-//   q[invoice_date_bzdura]=2026-07-01                                → total_count 329
+//   q[invoice_date_gteq]=2026-07-01&q[invoice_date_lteq]=2026-07-31  → zawęża do miesiąca
+//   q[sale_date_gteq]=2026-07-01&q[sale_date_lteq]=2026-07-31        → zawęża do miesiąca (inny zbiór)
+//   q[sale_date_gteq]=2026-07-15&q[sale_date_lteq]=2026-07-15        → zawęża do dnia
+//   q[nie_ma_takiego_gteq]=2026-07-01&q[nie_ma_takiego_lteq]=…       → całe archiwum
+//   q[invoice_date_bzdura]=2026-07-01                                → całe archiwum
 //
 // OBA pola z listy niżej są więc zmierzone i realnie zawężają — nie tylko `invoice_date`.
 // Różnica między nimi jest realna, nie kosmetyczna: przykładowa faktura `3/08/2026` ma
@@ -41,18 +41,18 @@ import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 //
 // Literówka tutaj NIE WYWALA SIĘ — ONA ROZSZERZA. To dokładnie ta awaria, przed którą stoi
 // strażnik miesiąca niżej, więc pole daty musi przechodzić przez tę samą bramkę. Ta sama
-// rodzina pułapki, co przy `order` z nieistniejącym polem (komentarz w infakt/client.js).
+// rodzina pułapki, co przy `order` z nieistniejącym polem (komentarz w oms/infakt/client.js).
 // Każdą nową nazwę dopisaną tu trzeba WCZEŚNIEJ sprawdzić na żywym API.
 const POLA_DATY = new Set(['invoice_date', 'sale_date']);
 
-// Zamówienia po `faktury.infakt_uuid` — jedno zapytanie na całą listę, nie jedno na wiersz.
+// Zamówienia po identyfikatorze dokumentu (`idDokumentuSql`) — jedno zapytanie na całą listę, nie jedno na wiersz.
 const POWIAZANIA = `
   SELECT ${idDokumentuSql('f')} AS uuid, z.id AS zamowienie_id, z.numer AS zamowienie_numer
   FROM faktury f JOIN zamowienia z ON z.id = f.zamowienie_id
   WHERE ${idDokumentuSql('f')} IS NOT NULL
 `;
 
-// PRZ-151.C01 — numer KSeF faktury po jej NUMERZE, drugie źródło `ksef_korygowanej` korekty (plan PRZ-151, D3).
+// Numer KSeF faktury po jej NUMERZE, drugie źródło `ksef_korygowanej` korekty.
 // Program i identyfikator jadą razem, bo ten sam numer może mieć faktura innego programu (np. po zmianie modułu
 // faktur) — liczy się tylko wiersz programu, który dał listę (`czyDokumentProgramu`). JEDNO zapytanie na listę.
 const KSEF_FAKTUR_PO_NUMERZE = `
@@ -63,7 +63,7 @@ const KSEF_FAKTUR_PO_NUMERZE = `
 
 // ⚠️ DRUGIE ŹRÓDŁO DOKUMENTÓW WYSTAWIONYCH Z PANELU. Faktura zbiorcza klienta dropshippingowego
 // nie ma wiersza w `faktury` — jej `infakt_uuid` leży w `okresy_rozliczeniowe` (jeden dokument
-// na cały miesiąc, patrz db/okresy.js). Bez tego mapowania cały pieniądz B2B renderowałby się
+// na cały miesiąc, patrz oms/db/okresy.js). Bez tego mapowania cały pieniądz B2B renderowałby się
 // z `zamowienie: null`, czyli nie do odróżnienia od faktury wklepanej wprost w inFakcie.
 //
 // Osobne zapytanie na CAŁĄ listę, tak samo jak wyżej — nie jedno na wiersz.
@@ -73,8 +73,8 @@ const POWIAZANIA_OKRESOW = `
   WHERE ${idDokumentuSql()} IS NOT NULL
 `;
 
-// ⚠️⚠️ TRZECIE ŹRÓDŁO FAKTÓW O DOKUMENCIE: WYSYŁKI ZLECONE Z PANELU (recenzja całości,
-// Finding 1). Bez tego mapowania lista pokazywała „brak KSeF" przez ~70 sekund po wysyłce,
+// ⚠️⚠️ TRZECIE ŹRÓDŁO FAKTÓW O DOKUMENCIE: WYSYŁKI ZLECONE Z PANELU.
+// Bez tego mapowania lista pokazywała „brak KSeF" przez ~70 sekund po wysyłce,
 // którą sama zleciła — razem z polem wyboru i z licznikiem na czerwonym przycisku. inFakt
 // nadaje numer dopiero po tym czasie (docblock `wyslijDokumentDoKsef` w infakt/client.js), więc
 // `ksef_number` z listy jest wtedy ŚLEPY na fakt, który panel ma u siebie w bazie.
@@ -90,8 +90,8 @@ const ZLECONE_WYSYLKI = `SELECT uuid, zlecona_at FROM wysylki_ksef`;
 // paczka znika z pasa długów razem z doręczonymi (patrz `czekaNaPrzelew`) — a to jedyny realny
 // dług w tym zbiorze. JEDNO zapytanie na CAŁĄ listę.
 //
-// ⚠️⚠️ ROZSTRZYGA `czyPaczkaBezGotowki` (domain/pobranie-zaplacone.js), NIE gołe porównanie
-// z `'zwrot'` (recenzja poprawkowa 28.08.2026, W4). Ta sama funkcja rządzi ścieżką pieniędzy,
+// ⚠️⚠️ ROZSTRZYGA `czyPaczkaBezGotowki` (domena/pobranie-zaplacone.js), NIE gołe porównanie
+// z `'zwrot'`. Ta sama funkcja rządzi ścieżką pieniędzy,
 // więc obie warstwy mówią o paczce JEDNO ZDANIE. Gołe `etapPrzesylki(...) === 'zwrot'` gubiło
 // NIEUDANE DORĘCZENIE („Nie doręczono — adresat nieobecny" ma etap `doreczona`): czuwacz
 // przesyłek przestawał taką paczkę odpytywać, a pas długów jej nie pokazywał — dokument
@@ -99,19 +99,19 @@ const ZLECONE_WYSYLKI = `SELECT uuid, zlecona_at FROM wysylki_ksef`;
 // alarm — w docblocku tamtej funkcji.
 //
 // ⚠️⚠️ DOKŁADNIE JEDNA PACZKA NA ZAMÓWIENIE, I TO TA Z NAJNOWSZYM ZDARZENIEM U KURIERA —
-// `OSTATNIA_ZYWA_PACZKA`, DOSŁOWNIE TA SAMA KLAUZULA, co w services/oznaczanie-pobran.js
-// i w skrypcie sprzątającym (usterka krytyczna, Zadanie 5, K1; trzecia kopia usunięta
-// 28.08.2026). Zwykły `JOIN przesylki p ON p.zamowienie_id = z.id` bez zawężenia dawałby TYLE
+// `OSTATNIA_ZYWA_PACZKA` z wysylka/db/ostatnia-paczka.js, DOSŁOWNIE TA SAMA KLAUZULA, co w
+// wysylka/services/oznaczanie-pobran.js i oms/db/ostrzezenia.js.
+// Zwykły `JOIN przesylki p ON p.zamowienie_id = z.id` bez zawężenia dawałby TYLE
 // wierszy, ile paczek — a przy paczce ZWRÓCONEJ ORAZ dosyłce DORĘCZONEJ dokument trafiłby do
 // zbioru „bez gotówki" i wisiałby na pasie długów mimo zainkasowanej przez kuriera gotówki.
 // Klauzula jest `LEFT JOIN`: zamówienie bez ani jednej żywej paczki zostaje w wyniku z pustymi
 // kolumnami statusu, a reguła niżej odpowiada przy nim „gotówka może jeszcze przyjść".
 //
-// ⚠️ PREFILTR CZYTA OBIE DROGI DO POBRANIA, A ROZSTRZYGA `czyPobranie` (usterka krytyczna,
-// recenzja poprawkowa 28.08.2026, W3). `z.pobranie` to wartość ZE SKLEPU, a o pobraniu naprawdę
+// ⚠️ PREFILTR CZYTA OBIE DROGI DO POBRANIA, A ROZSTRZYGA `czyPobranie`.
+// `z.pobranie` to wartość ZE SKLEPU, a o pobraniu naprawdę
 // rozstrzyga wartość EFEKTYWNA — nadpisanie z karty (`wysylka_reczna_json`, `czyPobranie` w
-// domain/wysylka.js) wygrywa z kolumną, w OBIE strony. Zamówienie złożone BEZ pobrania
-// i przełączone na nie RĘCZNIE (`zapiszNadpisanieWysylki` w db/zamowienia.js pisze WYŁĄCZNIE do
+// domena/wysylka.js) wygrywa z kolumną, w OBIE strony. Zamówienie złożone BEZ pobrania
+// i przełączone na nie RĘCZNIE (`zapiszNadpisanieWysylki` w oms/db/zamowienia.js pisze WYŁĄCZNIE do
 // `wysylka_reczna_json` i nigdy nie rusza `z.pobranie`) miało tu `z.pobranie = 0` i wypadało z
 // tego zapytania PRZED regułą. Odwrotny kierunek był gorszy, bo cichy: zamówienie sklepowe
 // Z pobraniem przełączone na PRZEDPŁATĘ przechodziło prefiltr i — po zwrocie paczki — lądowało
@@ -119,7 +119,7 @@ const ZLECONE_WYSYLKI = `SELECT uuid, zlecona_at FROM wysylki_ksef`;
 // wtedy o jednym zamówieniu trzy różne zdania.
 //
 // ⚠️ SORTOWANIE PORÓWNUJE NAPISY W RÓŻNYCH FORMATACH — patrz komentarz przy
-// `OSTATNIA_ZYWA_PACZKA` (services/oznaczanie-pobran.js).
+// `OSTATNIA_ZYWA_PACZKA` (wysylka/db/ostatnia-paczka.js).
 const POBRANIA_PRZESYLKI = `
   SELECT
     ${idDokumentuSql('f')} AS uuid, z.pobranie, z.wysylka_reczna_json,
@@ -130,7 +130,7 @@ const POBRANIA_PRZESYLKI = `
   WHERE ${idDokumentuSql('f')} IS NOT NULL AND (z.pobranie = 1 OR z.wysylka_reczna_json IS NOT NULL)
 `;
 
-// PRZ-118.07: listy czyta PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`). Sekcja
+// Listy czyta PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`). Sekcja
 // nieopłaconych to zdolność `nieoplacone` — program bez niej: `brakNieoplaconych` niesie zdanie dla człowieka (trasa
 // pokazuje je zamiast sekcji i nie pyta o listę), a `nieoplacone()` odmawia tym zdaniem. Brak zdolności to NIE awaria
 // i NIE pusta lista: pusta tabela znaczyłaby „nikt nie zalega”.
@@ -146,7 +146,7 @@ export function createFakturyWidok({ db, program: programPodany = null, infakt =
     for (const w of db.prepare(POWIAZANIA).all()) {
       zamowienia.set(w.uuid, { id: w.zamowienie_id, numer: w.zamowienie_numer });
     }
-    // PRZ-151.C01 (D7): korekta wystawiona z panelu należy do zamówienia swojego zwrotu — ślad wysyłki do KSeF
+    // Korekta wystawiona z panelu należy do zamówienia swojego zwrotu — ślad wysyłki do KSeF
     // trafia wtedy do logu karty jak przy fakturze. Faktura zamówienia (wyżej) ma pierwszeństwo przy kolizji uuid.
     const ksefKorektZwrotow = new Map();
     for (const w of korektyZwrotowZFakturaZamowienia(db)) {
@@ -177,11 +177,11 @@ export function createFakturyWidok({ db, program: programPodany = null, infakt =
     };
   }
 
-  // PRZ-151.C01 — numer KSeF faktury pierwotnej dla korekty, której program go nie podaje (inFakt). Trzy źródła
-  // PO KOLEI (plan PRZ-151, D3): 1) korekta zwrotu z panelu → faktura zamówienia tego zwrotu; 2) faktura panelu
+  // Numer KSeF faktury pierwotnej dla korekty, której program go nie podaje (inFakt). Trzy źródła
+  // PO KOLEI: 1) korekta zwrotu z panelu → faktura zamówienia tego zwrotu; 2) faktura panelu
   // o numerze `corrected_invoice_number`; 3) wiersz VAT tej samej listy o tym numerze. Brak → `null`, a reguła
   // wysyłki (`rodzajDoWyslania`, domena/wysylka-ksef.js) odmawia: nie wiemy = nie wysyłamy.
-  // Źródło 1 obowiązuje tylko dla faktury, którą korekta koryguje (recenzja PRZ-151.C01): faktura zamówienia mogła
+  // Źródło 1 obowiązuje tylko dla faktury, którą korekta koryguje: faktura zamówienia mogła
   // zostać skasowana w programie i zastąpiona nową (A bez KSeF → B z KSeF), a korekta A nie może dostać numeru B.
   // Program podaje numer korygowanej i jest on inny niż numer obecnej faktury zamówienia → dalej źródła 2 i 3.
   function ksefKorygowanej(d, mapy) {
@@ -203,10 +203,10 @@ export function createFakturyWidok({ db, program: programPodany = null, infakt =
   // PRZEZ KOD: `wzbogac` dokłada oba pola niezależnie, po tym samym `uuid`, z dwóch osobnych
   // map, więc gdyby ten sam `infakt_uuid` trafił kiedyś do obu tabel, dokument dostałby OBA
   // pola naraz. Test „gdy ten sam infakt_uuid trafi do obu tabel (sztucznie)…" w
-  // tests/oms/faktury-widok.test.js wymusza tę kolizję celowo i pina dzisiejsze zachowanie.
+  // tests/moduly/faktury/faktury-widok.test.js wymusza tę kolizję celowo i pina dzisiejsze zachowanie.
   function wzbogac(d, mapy, dzis, tabela = false) {
     // ⚠️ STEMPEL REZERWACJI JEDZIE NA DOKUMENCIE, a nie tylko w wyliczonym `stanKsef`. Bariera
-    // (`coWolnoWyslac` w domain/wysylka-ksef.js) pyta o FAKT, nie o napis — a ekran pokazuje
+    // (`coWolnoWyslac` w domena/wysylka-ksef.js) pyta o FAKT, nie o napis — a ekran pokazuje
     // po nim, KIEDY panel zlecił tę wysyłkę, bo to jest pierwsza rzecz, której szuka człowiek
     // sprawdzający dokument w inFakcie.
     const ksefZleconaAt = mapy.wysylkiKsef.get(d?.uuid) ?? null;
@@ -221,14 +221,14 @@ export function createFakturyWidok({ db, program: programPodany = null, infakt =
       ksefZleconaAt,
       stanTerminu: stanTerminu(d?.payment_date, dzis),
       opisTerminu: opisTerminu(d?.payment_date, dzis),
-      // ⚠️ KWOTY Z inFAKTU SĄ LICZBAMI CAŁKOWITYMI W GROSZACH — zmierzone 06.08.2026:
+      // ⚠️ KWOTY Z inFAKTU SĄ LICZBAMI CAŁKOWITYMI W GROSZACH — zmierzone na API:
       // `gross_price: 88842` to 888,42 zł. Podanie tego wprost na ekran (albo podzielenie
       // przez 100 na floatach) daje kwoty rozjechane o dwa rzędy wielkości; `zl()` z
-      // domain/suma-pozycji.js jest jedynym przeliczeniem, które tu wolno zrobić.
+      // domena/suma-pozycji.js jest jedynym przeliczeniem, które tu wolno zrobić.
       kwotaZl: zl(Number(d?.gross_price ?? 0)),
       pozostaloZl: zl(Number(d?.left_to_pay ?? 0)),
-      // ⚠️ STAN, NIE KWOTA. Do 28.08.2026 widok sam rozstrzygał zapłatę porównaniem
-      // `Number(pozostaloZl) > 0` — czyli czytał `left_to_pay`, pole, które oznaczenie
+      // ⚠️ STAN, NIE KWOTA. Zapłaty nie rozstrzyga porównanie
+      // `Number(pozostaloZl) > 0` — to czytałoby `left_to_pay`, pole, które oznaczenie
       // zapłaty w inFakcie zostawia nietknięte. Kwota zostaje na obiekcie, ale wolno ją
       // pokazać WYŁĄCZNIE przy `do_zaplaty`.
       stanZaplaty: stanZaplaty(d),
@@ -251,7 +251,7 @@ export function createFakturyWidok({ db, program: programPodany = null, infakt =
     }
     const pytanie = { ...zakres, pole };
     const [faktury, korekty] = await Promise.all([program.listaFaktur(pytanie), program.listaKorekt(pytanie)]);
-    // Trzecie źródło `ksef_korygowanej` (D3): faktury VAT z TEJ SAMEJ listy, numer → numer KSeF.
+    // Trzecie źródło `ksef_korygowanej`: faktury VAT z TEJ SAMEJ listy, numer → numer KSeF.
     const ksefZListy = new Map();
     for (const f of Array.isArray(faktury) ? faktury : []) {
       if (f?.rodzaj !== 'vat' || !f.number || !f.ksef_number || ksefZListy.has(f.number)) continue;
@@ -270,7 +270,7 @@ export function createFakturyWidok({ db, program: programPodany = null, infakt =
   }
 
   // ⚠️ TU CELOWO NIE ROBIMY „?? []" / `Array.isArray ? x : []` — inaczej niż `dokumenty()`
-  // i inaczej niż `scalDokumenty` w domain/lista-faktur.js. Ta lista mówi właścicielowi, KTO
+  // i inaczej niż `scalDokumenty` w domena/lista-faktur.js. Ta lista mówi sprzedawcy, KTO
   // MU ZALEGA PIENIĄDZE; zdegradowana odpowiedź inFaktu, cicho zamieniona w pustą tablicę,
   // wyrenderowałaby się jako „nikt nie zalega" — a to nie jest brak informacji, to fałszywe
   // zdanie. Ten sam kompromis co przy `wszystkieStrony` w infakt/client.js: milczenie kosztuje
@@ -291,9 +291,9 @@ export function createFakturyWidok({ db, program: programPodany = null, infakt =
     // (`q[left_to_pay_gt]=0`, zmierzone), ale ROZSTRZYGA czysta reguła, którą widać i którą
     // trzymają testy. Dołożenie do URL-a drugiego `q[...]` kosztowałoby dwie ciche awarie
     // naraz: nieznany klucz ransacka nie wywala się, tylko ROZSZERZA zapytanie do całego
-    // archiwum (pomiar 06.08.2026, komentarz przy `POLA_DATY` wyżej), a `not_eq` na kolumnie
+    // archiwum (komentarz przy `POLA_DATY` wyżej), a `not_eq` na kolumnie
     // z NULL-em po cichu gubi wiersze — na ekranie długów obie kończą się liczbą, której nikt
-    // nie ma jak zakwestionować. Lista ma 67 wierszy, więc filtrowanie u siebie nic nie kosztuje.
+    // nie ma jak zakwestionować. Lista ma rząd kilkudziesięciu wierszy, więc filtrowanie u siebie nic nie kosztuje.
     return lista
       .filter((d) => czekaNaPrzelew(d, { pobranieBezGotowki: mapy.bezGotowki.has(d?.uuid) }))
       .map((d) => wzbogac(d, mapy, dzis));

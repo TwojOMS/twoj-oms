@@ -2,10 +2,10 @@
 <%# statusu, ktora poszla w calosci, trasa przekierowuje na liste (zmiana jest odwracalna),%>
 <%# a po nadaniu — nigdy, bo numery listow sa jedynym potwierdzeniem operacji, ktorej nie %>
 <%# da sie powtorzyc ani cofnac. %>
-<%# ⚠️ POWROT NA ZAWEZONY WIDOK, nie na gola liste (10.09.2026). Na ten ekran trafia sie %>
-<%# wlasnie wtedy, gdy cos wymaga uwagi — odeslanie stad na „Do zrobienia" bez filtrow %>
-<%# kazaloby operatorowi odtwarzac swoja zakladke recznie, zanim wroci do reszty partii. %>
-<%# `powrot` przechodzi przez bariere w trasie (bezpiecznyPowrotNaListe). %>
+<%# ⚠️ POWRÓT NA ZAWĘŻONY WIDOK, nie na gołą listę. Na ten ekran trafia się %>
+<%# właśnie wtedy, gdy coś wymaga uwagi — odesłanie stąd na „Do zrobienia" bez filtrów %>
+<%# kazałoby operatorowi odtwarzać swoją zakładkę ręcznie, zanim wróci do reszty partii. %>
+<%# `powrot` przechodzi przez barierę w trasie (bezpiecznyPowrotNaListe). %>
 <p class="wroc"><a href="<%= powrot %>">← Zamówienia</a></p>
 
 <div class="panel">
@@ -21,11 +21,11 @@
     <% } %>
 
     <% if (niedoslane.length) { %>
-      <%# ⚠️ TRZECIA KATEGORIA, NIE ODMIANA „POMINIETYCH" (K1). Tu panel ZROBIL, o co %>
-      <%# prosil operator — status w panelu jest zmieniony i nikt tego nie cofa — ale %>
-      <%# druga strona (sklep albo Allegro) tej zmiany nie przyjela, wiec klient/kupujacy %>
-      <%# widzi u siebie stary stan. Wrzucenie tego do „Pominietych" klamaloby, ze nic sie %>
-      <%# nie stalo; wrzucenie do „Udanych" chowaloby awarie. Stad wlasna sekcja. %>
+      <%# ⚠️ TRZECIA KATEGORIA, NIE ODMIANA „POMINIĘTYCH". Tu panel ZROBIŁ, o co %>
+      <%# prosił operator — status w panelu jest zmieniony i nikt tego nie cofa — ale %>
+      <%# druga strona (sklep albo Allegro) tej zmiany nie przyjęła, więc klient/kupujący %>
+      <%# widzi u siebie stary stan. Wrzucenie tego do „Pominiętych" kłamałoby, że nic się %>
+      <%# nie stało; wrzucenie do „Udanych" chowałoby awarie. Stąd własna sekcja. %>
       <h3 class="wynik-naglowek">Status zapisany w panelu, ale NIE dojechał do sklepu / Allegro — <%= niedoslane.length %></h3>
       <ul class="lista-wyniku">
         <% niedoslane.forEach(function (n) { %>

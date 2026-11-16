@@ -1,8 +1,11 @@
-// PRZ-102.12 — automat wysyłki faktur do KSeF o ustalonej godzinie (zlecenie właściciela 20.10.2026).
+// Automat wysyłki faktur do KSeF o ustalonej godzinie.
 //
 // ⚠️⚠️ AUTOMAT ZABIERA MOMENT NA ROZMYŚLENIE SIĘ — ekranu podglądu tu nie ma. Dlatego nie wolno mu wysłać
 // NICZEGO, czego nie wysłałby przycisk po „zaznacz wszystkie” na ekranie Faktur:
-//   • kandydaci = `doZaznaczeniaWszystkich` (ta sama reguła, co pola wyboru w faktury.ejs);
+//   • kandydaci = `doZaznaczeniaWszystkich` (domena/wysylka-ksef.js): bez numeru KSeF, rodzaj, który wolno wysłać,
+//     bez blokady konsumenckiej. Pola wyboru w faktury.ejs biorą szerzej (`doZaznaczenia` z domena/lista-faktur.js:
+//     każdy dokument z UUID),
+//     a nadmiar odsiewa przy wysyłce ta sama bariera `coWolnoWyslac`;
 //   • każdy kandydat idzie OSOBNO przez `wysylkaKsef.wyslij` — usługa sama liczy zbiór od nowa z listy pobranej
 //     na świeżo, przepuszcza przez `coWolnoWyslac`, rezerwuje w `wysylki_ksef` i pisze ślad w logu zamówienia
 //     z operatorem „automat KSeF”. Żadnej drugiej drogi do `wyslijDokumentDoKsef`.
@@ -12,7 +15,7 @@
 // kandydatów nie leci tego dnia, a niczego się nie ponawia — dzień jest już zajęty. „Nie wiadomo” zostaje
 // zarezerwowane (usługa go nie zwalnia), więc nie poleci też jutro, dopóki człowiek nie sprawdzi w inFakcie.
 // Faktura ODRZUCONA (4xx) traci rezerwację — trafia na listę wstrzymanych (`ksef.automat.wstrzymane`) i automat
-// ją pomija, dopóki człowiek nie wyśle jej ręcznie albo nie kliknie „Zwolnij” (poprawka po recenzji).
+// ją pomija, dopóki człowiek nie wyśle jej ręcznie albo nie kliknie „Zwolnij”.
 // Pojedyncze wysyłki zamiast jednej partii są właśnie po to: przy martwym inFakcie „nie wiadomo” jest jeden
 // dokument, a nie wszystkie zaznaczone.
 // Automat programu z własną wysyłką (TwojeFaktury) jest w ksef-automat-wbudowany.js — ten plik nie importuje kodu TF.
@@ -28,14 +31,14 @@ import {
 
 /** Odstęp zegara: przebieg rusza najpóźniej minutę po ustawionej godzinie (i minutę po starcie panelu). */
 export const ODSTEP_AUTOMATU_KSEF_MS = 60 * 1000;
-/** PRZ-119.11a: profil próby Fakturowni (prywatna piaskownica) — automat nie wysyła nic i nie zapisuje przebiegów. */
+/** Profil próby Fakturowni (prywatna piaskownica) — automat nie wysyła nic i nie zapisuje przebiegów. */
 export const WYLACZONY_PIASKOWNICA = 'wyłączony — piaskownica';
 
 export function createAutomatKsef({
   db, fakturyWidok, wysylkaKsef, teraz = () => new Date(), log = console.error, dostepny = () => true, piaskownica = false,
 }) {
   // Proces właśnie wstał — wynik „trwa” w bazie to przebieg, który padł razem z poprzednim procesem.
-  // PRZ-123 C08: korekty jako kandydaci tylko, gdy usługa wysyłki je dopuszcza (PRZ-151 D2: program, który wysyła do KSeF).
+  // Korekty jako kandydaci tylko, gdy usługa wysyłki je dopuszcza (program, który wysyła do KSeF).
   const opcje = { korekty: wysylkaKsef?.korekty === true };
   const doZaznaczenia = (d) => doZaznaczeniaWszystkich(d, czyWysylacKonsumenckie(db), opcje);
   oznaczPrzerwanyPrzebieg(db, teraz().toISOString());
@@ -47,9 +50,9 @@ export function createAutomatKsef({
   }
 
   async function przebieg() {
-    // PRZ-119.11a: przed wszystkim innym — bez odczytu ustawień, bez zajęcia dnia, bez wpisu wyniku co przebieg.
+    // Przed wszystkim innym — bez odczytu ustawień, bez zajęcia dnia, bez wpisu wyniku co przebieg.
     if (piaskownica) return { pominiety: true, powod: WYLACZONY_PIASKOWNICA };
-    // PRZ-118.07: nazwa i zdolność programu z usługi wysyłki — tej samej, którą automat wysyła (jedno źródło programu).
+    // Nazwa i zdolność programu z usługi wysyłki — tej samej, którą automat wysyła (jedno źródło programu).
     if (!dostepny()) return { pominiety: true, powod: `${wysylkaKsef.nazwaProgramu?.mianownik ?? 'program fakturowy'} odłączony` };
     // Program bez zdolności `wyslijDoKsef`: automat nie ma czym wysłać — pominięty tym samym zdaniem co przycisk.
     if (wysylkaKsef.niedostepna) return { pominiety: true, powod: wysylkaKsef.niedostepna };
@@ -88,7 +91,7 @@ export function createAutomatKsef({
     }
 
     try {
-      // Dwie rundy (recenzja C02): najpierw faktury z obu miesięcy (każdy miesiąc zaraz po pobraniu listy), potem
+      // Dwie rundy: najpierw faktury z obu miesięcy (każdy miesiąc zaraz po pobraniu listy), potem
       // korekty z obu miesięcy w kolejności listy. Pewna odmowa korekty kończy przebieg, więc żadna korekta — także
       // z poprzedniego miesiąca albo z późniejszą datą — nie zatrzyma faktur VAT do jutra.
       const korektyNaPotem = [];

@@ -1,4 +1,4 @@
-// PRZ-160 E4.15 — strażnik stanów (D57). Co 30 s liczy odcisk zmian, które mogą zmienić cel ilości w kanałach,
+// Strażnik stanów. Co 30 s liczy odcisk zmian, które mogą zmienić cel ilości w kanałach,
 // i przy zmianie woła `przyspiesz()` pętli ERLI, Allegro i Woo. Odstęp 60 s od startu poprzedniego przebiegu
 // i „następny przebieg zaraz po bieżącym” pilnuje każda pętla w swoim `przyspiesz()`.
 import { przelacznikStanow } from '../../../oms/db/stany-magazynowe.js';
@@ -55,7 +55,7 @@ export function createStraznikStanow({ db, petle, log = () => {} }) {
   function przebieg() {
     let przelacznik;
     try { przelacznik = przelacznikStanow(db); } catch (e) { log(`straznik-stanow: przełącznik: ${komunikat(e)}`); return; }
-    // D14: stany wyłączone → bez zapytania o odcisk i bez przyspieszeń.
+    // Stany wyłączone → bez zapytania o odcisk i bez przyspieszeń.
     if (!przelacznik.wlaczone) { odcisk = WYLACZONE; brudne.clear(); return; }
     let nowy;
     try { nowy = odciskStanow(db, przelacznik.granica); } catch (e) { log(`straznik-stanow: odcisk: ${komunikat(e)}`); return; }

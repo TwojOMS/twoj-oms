@@ -89,7 +89,7 @@ describe('demo po poprawkach PRZ-082', () => {
 
   it('1. ekran logowania mówi o resecie co godzinę, nie co noc', async () => {
     const { html } = await strona('/login', '');
-    expect(html).toContain('wracają do stanu początkowego co godzinę');
+    expect(html).toContain('wraca do stanu początkowego co godzinę');
     expect(html).not.toContain('co noc');
   });
 

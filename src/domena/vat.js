@@ -1,28 +1,23 @@
 // Stawka VAT panelu — JEDNO miejsce dla całego modułu.
 //
-// Wcześniej stała mieszkała w services/faktura.js. Wyprowadzona tutaj, bo od chwili, gdy
-// operator może dopisać pozycję ręcznie, netto TAKIEJ pozycji trzeba czymś pokazać na
-// karcie — i musi to być DOKŁADNIE ta sama stawka, którą panel wysyła do inFaktu. Druga
-// kopia „23" w widoku rozjechałaby się z fakturą przy pierwszej zmianie stawki.
+// Netto pozycji dopisanej ręcznie trzeba czymś pokazać na karcie — i musi to być DOKŁADNIE
+// ta sama stawka, którą panel wysyła do programu fakturowego. Druga kopia „23" w widoku
+// rozjechałaby się z fakturą przy pierwszej zmianie stawki.
 //
-// Zaszyta na twardo i tak ma zostać: panel nie liczy podatku i nie zgaduje go z danych Woo
-// (`vat` z mapowania jest dziś zawsze null), a produkty PRO to jedna stawka. Gdyby
-// kiedykolwiek pojawiła się inna, ma to być ŚWIADOMA zmiana z testem, a nie cicha
-// interpretacja pustego pola.
-//
-// PRZ-105 (21.10.2026) — ta świadoma zmiana nadeszła: stawka jest per pozycja, a domyślną ustawia admin
-// (Ustawienia → Firma, moduly/faktury/db/stawka-vat.js). STAWKA_VAT zostaje WBUDOWANĄ domyślną: tą, którą
-// panel ma, dopóki nikt nic nie zapisał (instalacja bez wpisu — faktury bez zmian).
+// Panel nie zgaduje stawki z danych sklepu (`vat` z mapowania Woo jest zawsze null): pusta
+// wartość nie jest interpretowana po cichu. Stawka jest per pozycja, a domyślną ustawia admin
+// (Ustawienia → Firma, moduly/faktury/db/stawka-vat.js). STAWKA_VAT to WBUDOWANA domyślna: ta,
+// którą panel ma, dopóki nikt nic nie zapisał.
 export const STAWKA_VAT = '23';
 
-// Decyzja właściciela 21.10: 23 / 8 / 5 / 0. „zw” i „np” celowo poza listą — proforma i podsumowanie liczą
-// wyłącznie stawki liczbowe (domain/podsumowanie-vat.js), a zgadnięcie „zw = 0%” wydrukowałoby
+// 23 / 8 / 5 / 0. „zw” i „np” celowo poza listą — bez flagi `zw` proforma i podsumowanie liczą
+// wyłącznie stawki liczbowe (domena/podsumowanie-vat.js), a zgadnięcie „zw = 0%” wydrukowałoby
 // klientowi wymyśloną stawkę.
 export const STAWKI_VAT = Object.freeze(['23', '8', '5', '0']);
 
-// PRZ-122.B07a: „zw” (zwolnienie z VAT) — WYŁĄCZNIE przy programie fakturowym wbudowanym (TwojeFaktury), bo tylko
+// „zw” (zwolnienie z VAT) — WYŁĄCZNIE przy programie fakturowym wbudowanym (TwojeFaktury), bo tylko
 // on drukuje adnotację i podstawę zwolnienia. Dopuszcza ją jawna flaga `{ zw: true }` wołającego; bez flagi każda
-// funkcja tego pliku działa jak przed B07a (inFakt „zw” nie dostaje nigdy). Liczy się jak 0: netto = brutto, VAT 0
+// funkcja tego pliku działa bez „zw” (inFakt „zw” nie dostaje nigdy). Liczy się jak 0: netto = brutto, VAT 0
 // (src/domena/twojefaktury/sumy.js), ale stawką 0% NIE jest — na dokumencie i w podsumowaniu to osobny wiersz.
 export const STAWKI_Z_ZW = Object.freeze([...STAWKI_VAT, 'zw']);
 
@@ -32,7 +27,7 @@ export function stawkiDlaProgramu(opis) {
 }
 
 /**
- * PRZ-122.AS1: firma zwolniona z VAT sprzedaje wyłącznie ze stawką „zw” — jedna reguła dla wystawienia (adapter
+ * Firma zwolniona z VAT sprzedaje wyłącznie ze stawką „zw” — jedna reguła dla wystawienia (adapter
  * TwojeFaktury: każda pozycja „zw”) i edycji faktury (lista stawek formularza i zapisu). Niezwolniona → `stawki` bez zmian.
  * Edycja: `stawkiDokumentu` = stawki pozycji wersji bazowej. Faktura wystawiona przed włączeniem zwolnienia (ma stawkę
  * inną niż „zw”) zachowuje pełną listę — zwolnienie działa od następnej faktury, nie zmienia wystawionych.
@@ -44,7 +39,7 @@ export function stawkiSprzedawcy(stawki, { zwolniona = false, stawkiDokumentu = 
 }
 
 /**
- * PRZ-122.B07c: opcje `{ zw }` dla programu — z tej samej reguły co lista stawek (`stawkiDlaProgramu`), żeby lista
+ * Opcje `{ zw }` dla programu — z tej samej reguły co lista stawek (`stawkiDlaProgramu`), żeby lista
  * w formularzu i to, co przyjmuje zapis i liczy dokument, nie mogły się rozjechać. Brak programu / program zewnętrzny → `false`.
  */
 export function opcjeZwProgramu(opis) {
@@ -56,7 +51,7 @@ const zFlaga = (opcje) => opcje?.zw === true;
 
 /**
  * Czy to stawka z listy — napis albo liczba; „08”, „8.0” i inne zapisy to NIE (formularz wysyła napis z listy).
- * `{ zw: true }` (PRZ-122.B07a) dopuszcza też „zw”.
+ * `{ zw: true }` dopuszcza też „zw”.
  */
 export function czyStawkaVat(s, opcje) {
   if (s === null || s === undefined) return false;
@@ -67,29 +62,30 @@ export function czyStawkaVat(s, opcje) {
  * Stawka EFEKTYWNA pozycji — jedna reguła dla faktury, proformy, karty i podsumowania.
  *
  * Własną stawkę ma WYŁĄCZNIE pozycja ręczna (`zrodlo = 'reczna'`, stawka zapisana przy jej dopisaniu).
- * Pozycja ze sklepu i z Allegro dostaje domyślną — decyzja właściciela 21.10: stawka, którą Allegro przysyła
- * w linii (`pozycje.vat` z allegro-mapowanie.js), nie wpływa na fakturę, tak jak dotąd.
- * Stara pozycja ręczna (sprzed PRZ-105, `vat` NULL) i zapis spoza listy → domyślna: u instalacji bez
- * wpisu w Ustawieniach to 23, czyli dokładnie to, co szło na fakturę przed zmianą.
+ * Pozycja ze sklepu i z Allegro dostaje domyślną: stawka, którą Allegro przysyła
+ * w linii (`pozycje.vat` z allegro-mapowanie.js), nie wpływa na fakturę.
+ * Pozycja ręczna bez zapisanej stawki (`vat` NULL) i zapis spoza listy → domyślna: u instalacji bez
+ * wpisu w Ustawieniach to 23.
  *
- * ⚠️ NIP nabywcy z UE (WDT) stoi NAD tą funkcją — patrz `pozycjeDokumentu` (domain/pozycje-faktury.js).
- * `{ zw: true }` (PRZ-122.B07a): ręczna „zw” zostaje „zw”; bez flagi — domyślna, jak każdy zapis spoza listy.
+ * ⚠️ NIP nabywcy z UE (WDT) stoi NAD tą funkcją — patrz `pozycjeDokumentu` (domena/pozycje-faktury.js).
+ * `{ zw: true }`: ręczna „zw” zostaje „zw”; bez flagi — domyślna, jak każdy zapis spoza listy.
  */
 export function stawkaPozycji(p, domyslna, opcje) {
   if (p?.zrodlo === 'reczna' && czyStawkaVat(p.vat, opcje)) return String(p.vat).trim();
   return String(domyslna);
 }
 
-// PRZ-122.B07a: „zw” z flagą = dzielnik 1 (netto = brutto). Bez flagi — `Number('zw')`, czyli NaN, jak dotąd.
+// „zw” z flagą = dzielnik 1 (netto = brutto). Bez flagi — `Number('zw')`, czyli NaN.
 const dzielnik = (stawka, opcje) => (zFlaga(opcje) && String(stawka).trim() === 'zw' ? 1 : 1 + Number(stawka) / 100);
 
-// ⚠️ TU DZIELENIE BRUTTO PRZEZ STAWKĘ JEST DOZWOLONE — i to jest jedyne takie miejsce
-// w module, więc powód musi być zapisany, żeby nikt tego później nie „poprawił"
-// w drugą stronę ani nie rozszerzył na pozycje ze sklepu.
+// ⚠️ TU DZIELENIE BRUTTO PRZEZ STAWKĘ JEST DOZWOLONE — to jedno z kilku sankcjonowanych miejsc
+// (obok domena/podsumowanie-vat.js, domena/wdt.js i netta z Allegro w domena/allegro-mapowanie.js),
+// więc powód musi być zapisany, żeby nikt tego później nie „poprawił" w drugą stronę ani nie
+// rozszerzył na pozycje ze sklepu.
 //
-// Przewodnik (4.5) zakazuje liczenia netto dzieleniem brutta, bo PRZY POZYCJI ZE SKLEPU
+// Reguła netto ze źródła zakazuje liczenia netto dzieleniem brutta, bo PRZY POZYCJI ZE SKLEPU
 // netto jest wartością ŹRÓDŁOWĄ (Woo podaje `total` bez podatku), a dzielenie i mnożenie
-// z powrotem produkowało rozjazd o grosze, o który panel sam się rozbijał na barierze
+// z powrotem produkuje rozjazd o grosze, o który panel rozbijałby się na barierze
 // arytmetycznej.
 //
 // Przy pozycji dopisanej (albo przecenionej) ręcznie kierunek jest ODWROTNY: wartością
@@ -115,16 +111,15 @@ export function nettoZBruttoDoPokazania(bruttoZl, stawka = STAWKA_VAT, opcje) {
 /**
  * Brutto z netto — kierunek odwrotny do nettoZBruttoDoPokazania.
  *
- * Wpisanie netto to WYGODA WEJSCIA, nie druga wartosc do przechowania: przechowujemy
- * dalej WYLACZNIE brutto (spec Etap 3, punkt 5). Gdyby panel trzymal obie i przeliczal
- * je w obie strony, zaokraglenia potrafilyby przesunac cene o grosz przy samym klikaniu
- * po polach.
+ * Wpisanie netto to WYGODA WEJŚCIA, nie druga wartość do przechowania: przechowujemy
+ * WYŁĄCZNIE brutto. Gdyby panel trzymał obie i przeliczał je w obie strony, zaokrąglenia
+ * potrafiłyby przesunąć cenę o grosz przy samym klikaniu po polach.
  *
- * Przeliczenie netto → brutto → netto jest TOZSAMOSCIA przy stawce 23%: brutto rosnie
- * o co najmniej grosz na kazdy grosz netto, wiec dzielenie nie ma jak trafic w cudzy
- * przedzial. Pilnuje tego test przez cale 0,01–200,00 zl.
+ * Przeliczenie netto → brutto → netto jest TOŻSAMOŚCIĄ przy stawce 23%: brutto rośnie
+ * o co najmniej grosz na każdy grosz netto, więc dzielenie nie ma jak trafić w cudzy
+ * przedział. Pilnuje tego test przez całe 0,01–200,00 zł.
  *
- * Nie rzuca — brak danych ma wygladac jak brak danych (ta sama zasada, co wyzej).
+ * Nie rzuca — brak danych ma wyglądać jak brak danych (ta sama zasada, co wyżej).
  */
 export function bruttoZNetto(nettoZl, stawka = STAWKA_VAT, opcje) {
   if (nettoZl === null || nettoZl === undefined) return null;

@@ -1,28 +1,22 @@
 // Zamowienia z PANELU ZAMOWIEN INDYWIDUALNYCH — czyli takie, ktore powstaly z oferty
 // wystawionej klientowi, a nie ze zwyklego koszyka. Wpadaja do WooCommerce razem ze zwyklymi
 // zamowieniami tego samego sklepu, wiec kolumna `sklep` ich NIE rozroznia — a rozroznic je
-// trzeba, bo raporty licza je osobnym kanalem (prosba wlasciciela 2026-08-04).
+// trzeba, bo raporty liczą je osobnym kanałem.
 //
-// ⚠️ OD 2026-08-19 SKLEPEM TYM JEST `sklep_b`, NIE `sklep_a` — wtyczka przeniosla sie na
-// sklep B. Oba slady ponizej sa NIEZALEZNE OD SKLEPU I OD ID PRODUKTU, wiec ta zmiana
-// nie wymagala tu ani jednej linii; zapisane, bo poprzednia wersja tego komentarza nazywala
-// sklep wprost i czytajacy moglby uznac, ze rozpoznanie jest do niego przywiazane.
+// ⚠️ Oba ślady poniżej są NIEZALEŻNE OD SKLEPU I OD ID PRODUKTU, więc przeniesienie wtyczki
+// na inny sklep nie wymaga zmian w tym pliku.
 //
 // Wtyczka `psm-zamowienia-indywidualne` znakuje je DWOMA niezaleznymi sladami i czytamy
 // OBA. Koszt to jeden warunek; koszt pomylki to zamowienie policzone w zlym kanale raportu.
 //
 //  1. `_zam_offer_id` w `meta_data` POZYCJI — doklada je koszyk wtyczki przy skladaniu
-//     zamowienia (shop-plugin/.../includes/class-psm-zam-cart.php, hak
+//     zamowienia (hak wtyczki
 //     `woocommerce_checkout_create_order_line_item`). Niesie identyfikator oferty.
 //  2. SKU zaslepki — ukryty produkt, ktorym wtyczka wstawia pozycje indywidualna, wysylke
-//     i realizacje priorytetowa (shop-plugin/.../includes/class-psm-zam-placeholder.php,
-//     stala SKU).
+//     i realizacje priorytetowa (stała SKU we wtyczce).
 //
-// ⚠️ Zewnetrzne repo raportow wlasciciela (`klasyfikacja.mjs`, funkcja zPanelu) rozpoznaje
-// panel WYLACZNIE po linii zaslepki — tyle ze na danych z Apilo, wiec dopasowuje `originalCode`
-// zaczynajacy sie od '28040|' (identyfikator TEGO SAMEGO produktu w Apilo), a nie napis SKU.
-// Czytajac oba sygnaly, OMS rozpoznaje wszystko, co rozpoznaje dzis raport, plus zamowienia
-// z pozycja z oferty, ale bez linii placeholdera.
+// ⚠️ Rozpoznanie samą linią zaślepki pomija zamówienia z pozycją z oferty, ale bez linii
+// placeholdera. Czytając oba sygnały, OMS rozpoznaje je wszystkie.
 
 export const SKU_PLACEHOLDERA = 'psm-zam-placeholder';
 
@@ -33,7 +27,7 @@ export const SKU_PLACEHOLDERA = 'psm-zam-placeholder';
  * SKU (wtyczka wstawia nim i pozycje, i wysylke, i realizacje priorytetowa), wiec rownosc
  * by wystarczyla — ale wariant z przyrostkiem (osobne SKU per rodzaj linii) jest zmiana
  * o jedno pole w konfiguracji wtyczki, a taka zmiana po cichu wypisalaby czesc zamowien
- * z kanalu indywidualnego. Raport dopasowuje przedrostkiem dokladnie z tego powodu.
+ * z kanalu indywidualnego. Dopasowanie przedrostkiem jest z tego powodu.
  */
 export function czyPozycjaPlaceholdera(sku) {
   return typeof sku === 'string' && sku.trim().startsWith(SKU_PLACEHOLDERA);

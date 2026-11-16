@@ -2,18 +2,17 @@ import { ofertyDoSprawdzenia, zapiszProbeZdjecia } from '../../../oms/db/zdjecia
 import { zdjecieOferty } from '../../../domena/miniatury.js';
 
 // ZDJĘCIA OFERT ALLEGRO — dociągane POZA zapisem zamówienia, tym samym wzorcem, co numery
-// listów przewozowych (services/przesylki-allegro.js).
+// listów przewozowych (moduly/wysylka/services/przesylki-allegro.js).
 //
 // ⚠️⚠️ KIEDY PYTAMY: W PRZEBIEGU POLLERA, o oferty, których jeszcze nie znamy.
 // NIE przy otwarciu karty — i to jest rozstrzygnięcie, nie wygoda:
 //
 //   * MINIATURY WIDAĆ NA LIŚCIE, nie tylko na karcie (kolumna „Produkty", lista.ejs).
 //     Pobieranie „przy otwarciu karty" znaczyłoby, że oferta, której karty nikt nie otworzył,
-//     nie ma miniatury na liście NIGDY — czyli lista wyglądałaby na „częściowo zadziałało",
-//     dokładnie tak, jak wyglądały miniatury sklepowe przed przeliczeniem wstecz (db/db.js).
+//     nie ma miniatury na liście NIGDY — czyli lista wyglądałaby na „częściowo zadziałało".
 //   * LISTA RENDERUJE SIĘ SYNCHRONICZNIE i pokazuje kilkadziesiąt pozycji naraz. Zapytanie
 //     do Allegro w tej ścieżce znaczyłoby kilkadziesiąt żądań na jedno wejście na stronę
-//     główną — a przy milczącym Allegro pusty ekran zamiast listy roboczej (niezmiennik 4.9).
+//     główną — a przy milczącym Allegro pusty ekran zamiast listy roboczej (reguła: każdy stan ma wyjście).
 //   * PRZEBIEG POLLERA JUŻ ROZMAWIA Z ALLEGRO, ma własną blokadę „jeden naraz" i chodzi
 //     w tle, gdzie nikt na niego nie patrzy. To jest jedyne miejsce w panelu, w którym
 //     czekanie na Allegro nic nie kosztuje.
@@ -24,7 +23,7 @@ import { zdjecieOferty } from '../../../domena/miniatury.js';
 // z nowym produktem.
 
 // ⚠️ ILE OFERT NA JEDEN PRZEBIEG. Nie jest to ostrożność na zapas: pierwszy przebieg po
-// wdrożeniu widzi CAŁE archiwum kanału naraz (775 zamówień w chwili rozpoznania), więc bez
+// wdrożeniu widzi CAŁE archiwum kanału naraz (setki zamówień), więc bez
 // ograniczenia jedno tyknięcie zegara zamieniłoby się w setki żądań w jednej serii.
 //
 // 20 × 5 s (LIMIT_ZAPYTANIA_OFERTY_MS) to najgorszy przypadek nieco ponad półtorej minuty,
@@ -34,8 +33,9 @@ export const LIMIT_OFERT_NA_PRZEBIEG = 20;
 
 export function createZdjeciaAllegro({ db, klienci = {}, limitNaPrzebieg = LIMIT_OFERT_NA_PRZEBIEG }) {
   // ⚠️ JEDEN PRZEBIEG NARAZ — ta sama zasada i ten sam powód, co w services/poller.js.
-  // Uzupełnianie jest doczepione do przebiegu pollera, a ten bywa wołany także ręcznie
-  // (przycisk „Synchronizuj"); dwa uzupełnienia naraz pytałyby Allegro o TE SAME oferty,
+  // Uzupełnianie jest doczepione do przebiegu pollera. Dziś woła go tylko zegar `poller`
+  // (kanaly/modul.ts), który sam nie nakłada przebiegów (core/zegary.ts), ale ta funkcja nie
+  // zakłada jednego wołającego: dwa uzupełnienia naraz pytałyby Allegro o TE SAME oferty,
   // bo żadne z nich nie zdążyłoby jeszcze zapisać wyniku.
   let wTrakcie = false;
 
@@ -106,13 +106,13 @@ export function createZdjeciaAllegro({ db, klienci = {}, limitNaPrzebieg = LIMIT
  *
  *   1. `finally` — zdjęcia dociągają się TAKŻE wtedy, gdy przebieg rzucił. Awaria jednego
  *      kanału (wygasły refresh token, 500 z Allegro) nie ma powodu zabierać miniatur
- *      pozostałym, a przebieg zbiorczy (bootstrap.js) rzuca po przejściu WSZYSTKICH pollerów.
+ *      pozostałym, a przebieg zbiorczy (kompozycja-kanalow.ts) rzuca po przejściu WSZYSTKICH pollerów.
  *   2. wewnętrzny `try/catch` — wyjątek rzucony w `finally` PODMIENIŁBY błąd przebiegu na
  *      swój własny: awaria synchronizacji zamówień zniknęłaby z paska na liście, a w jej
  *      miejsce stanęłaby usterka kosmetyczna. `uzupelnij` sama błędów nie wypuszcza, ale ten
  *      warunek ma trzymać się kodu, a nie obietnicy z innego pliku.
- *   3. wynik przebiegu wraca NIETKNIĘTY — wołający (bootstrap, trasa „Synchronizuj") widzi
- *      dokładnie to, co widział przed tą zmianą.
+ *   3. wynik przebiegu wraca NIETKNIĘTY — wołający (zegar pollera) widzi
+ *      dokładnie to, co zwróciłby sam poller.
  */
 export function zPobieraniemZdjec(poller, zdjecia) {
   return {

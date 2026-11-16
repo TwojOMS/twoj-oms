@@ -13,16 +13,16 @@ import { metodaWysylkiZWyboru, PLATNOSCI } from './nowe-zamowienie.js';
  * na karcie. Druga regula przeliczania brutto/netto rozjechalaby sie przy pierwszej
  * zmianie stawki VAT, a rozjazd widac dopiero na fakturze.
  *
- * ⚠️ DPD + PRZELEW NA SZTYWNO (decyzja wlasciciela 2026-08-05): tor manualny panelu to
- * przedplata i kurier. Nietypowy przypadek poprawia sie na karcie w OMS-ie.
+ * ⚠️ DPD + PRZELEW NA SZTYWNO: tor manualny panelu to
+ * przedpłata i kurier. Nietypowy przypadek poprawia sie na karcie w OMS-ie.
  *
  * ⚠️ CALOSC PARSUJEMY PRZED PIERWSZYM ZAPISEM — dokladnie z tego samego powodu, co formularz
- * (domain/nowe-zamowienie.js): odmowa w polowie zostawilaby zamowienie z nadanym numerem,
+ * (domena/nowe-zamowienie.js): odmowa w polowie zostawilaby zamowienie z nadanym numerem,
  * ktorego nie da sie zwolnic, a karta panelu dostalaby blad i zalozylaby drugie.
  */
-// PRZ-105: `stawkaDomyslna` (z Ustawień) podaje trasa — pozycje bez pola `vat` dostają ją, nie wbudowane 23.
-// PRZ-122.B07c: `zw` (flaga programu wbudowanego) dopuszcza stawkę „zw” — jak na karcie; bez flagi jak dotąd.
-// PRZ-122.B07f: `zwolniona` (firma zwolniona z VAT) — numer UE nabywcy to nie WDT, ceny bez stawki 0.
+// `stawkaDomyslna` (z Ustawień) podaje trasa — pozycje bez pola `vat` dostają ją, nie wbudowane 23.
+// `zw` (flaga programu wbudowanego) dopuszcza stawkę „zw” — jak na karcie; bez flagi jak dotąd.
+// `zwolniona` (firma zwolniona z VAT) — numer UE nabywcy to nie WDT, ceny bez stawki 0.
 export function parsujZamowienieZKarty(body = {}, { stawkaDomyslna, zw = false, zwolniona = false } = {}) {
   const kartaId = String(body?.kartaId ?? '').trim();
   if (!kartaId) throw bladOperatora('Żądanie bez identyfikatora karty — nie ma czego oznaczyć.');
@@ -36,7 +36,7 @@ export function parsujZamowienieZKarty(body = {}, { stawkaDomyslna, zw = false, 
 
   return {
     karta_id: kartaId,
-    // ⚠️ Znacznik kanalu raportowego. Patrz spec §7 i ostrzezenie przy INSERCIE.
+    // ⚠️ Znacznik kanału raportowego. Patrz ostrzeżenie przy INSERCIE w `oms/db/zamowienia-reczne.js`.
     indywidualne: 1,
     klient: body?.klient ?? null,
     dostawa: body?.dostawa ?? null,
@@ -45,7 +45,7 @@ export function parsujZamowienieZKarty(body = {}, { stawkaDomyslna, zw = false, 
     metoda_wysylki: metoda,
     pobranie,
     // ⚠️ ETYKIETA DLA CZLOWIEKA ZE SLOWNIKA, nie wpisany tu drugi raz napis „Przelew”.
-    // Lista wyboru w filtrach buduje sie z DISTINCT tej kolumny (db/filtry.js) — wlasna
+    // Lista wyboru w filtrach buduje sie z DISTINCT tej kolumny (oms/db/filtry.js) — wlasna
     // kopia napisu rozjechalaby sie z formularzem przy pierwszej poprawce pisowni
     // i dala w filtrze dwie pozycje wygladajace na te sama.
     metoda_platnosci: PLATNOSCI.przelew,

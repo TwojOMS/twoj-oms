@@ -1,9 +1,9 @@
 import type { Srodowisko } from './kontrakty.ts';
 import { efektywnyTryb } from './tryb.ts';
 
-// PRZ-079/082: co ile minut demo publiczne wraca do stanu początkowego. Jedno źródło dla harmonogramu
-// (deploy/demo/reset.mjs, deploy/demo/start.mjs) i dla napisu na ekranie logowania — do PRZ-082 ekran mówił
-// „co noc”, choć od PRZ-079 reset szedł co godzinę.
+// Co ile minut demo publiczne wraca do stanu początkowego. Jedno źródło dla harmonogramu
+// (deploy/demo/reset.mjs, deploy/demo/start.mjs) i dla napisu na ekranie logowania — napis ma mówić to samo,
+// co robi harmonogram.
 export const MINUTY_RESETU_DOMYSLNIE = 60;
 
 /** Liczba minut od 10 do 1440, dzieląca dobę — inaczej reset nie wypadałby o stałych porach. */
@@ -36,7 +36,7 @@ export function opisResetuDemo(minuty: number): string {
   return `co ${minuty} ${odmiana(minuty, 'minutę', 'minuty', 'minut')}`;
 }
 
-// PRZ-075: wspólne konto gościa demo publicznego. Login i hasło są JAWNE — stoją na ekranie logowania —
+// Wspólne konto gościa demo publicznego. Login i hasło są JAWNE — stoją na ekranie logowania —
 // więc wolno je mieć wyłącznie w trybie próby. Produkcja z tymi zmiennymi odmawia startu: pomyłka w .env
 // nie może wystawić hasła na ekranie logowania firmy. Konto zakłada wejście kontenera demo (deploy/demo/start.mjs).
 export function kontoDemo(env: Srodowisko): { login: string; haslo: string; reset: string; resetPlanowy: string | null; resetGodzina: string | null } | null {
@@ -51,7 +51,7 @@ export function kontoDemo(env: Srodowisko): { login: string; haslo: string; rese
     resetGodzina: resetPlanowy ? godzinaResetuDemo(resetPlanowy) : null };
 }
 
-// PRZ-083: termin najbliższego resetu TEJ instancji panelu. Ustawia go cykl resetu (deploy/demo/cykl.mjs) przed każdym
+// Termin najbliższego resetu TEJ instancji panelu. Ustawia go cykl resetu (deploy/demo/cykl.mjs) przed każdym
 // złożeniem aplikacji; pasek demo liczy do niego i po jego zmianie na ekranie logowania poznaje, że restart minął.
 // Liczony w cyklu, nie w widoku: gdy generator się spóźni, podmiana idzie po terminie, a pasek ma czekać, nie
 // odliczać od nowa do następnej godziny.

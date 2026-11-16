@@ -73,7 +73,7 @@ function* wierszeSprzedazy(db, { od, do: doDnia }, reguly) {
       zrodlo: 'historia', id: w.apilo_id, numer: w.numer ?? w.apilo_id, dzien: w.dzien, kanal, bruttoGrosze,
       // ⚠️ `zrodlo` wyzej mowi „ktora EPOKA" (historia kontra OMS), a `zrodloDanych` — „ktory
       // SYSTEM ZRODLOWY" ('apilo' albo 'woo:<sklep>'). To dwie rozne rzeczy i musza byc dwoma
-      // polami: od 27.08.2026 epoka historyczna ma DWA zrodla, a reguly, ktore pytaja o tagi
+      // polami: epoka historyczna ma DWA źródła, a reguły, które pytają o tagi
       // albo o dane klienta, dotycza wylacznie tego z Apilo.
       zrodloDanych: w.zrodlo,
       nettoGrosze: nettoZamowieniaGrosze(bruttoGrosze, w.klient_email, reguly.klienciWdt),
@@ -93,12 +93,12 @@ function* wierszeSprzedazy(db, { od, do: doDnia }, reguly) {
   // przychodzi jako `undefined` i regula cicho wpada do galezi zapasowej: zamowienie
   // oznaczone jako B2B liczyloby sie jako RECZNE, bez ani jednego bledu, wygladajac na
   // „raport nie widzi nowych zamowien". Test tej reguly idzie wiec przez `sprzedazWOkresie`,
-  // a nie przez samo `kanalOms` (21.08.2026).
+  // a nie przez samo `kanalOms`.
   const kolumny = KOLUMNY_KLASYFIKACJI.join(', ') + ', id, numer, kwota_brutto, utworzone_at,'
     + ' anulowane, anulowane_recznie, chce_fakture, chce_fakture_reczne, klient_json,'
     + ' klient_reczny_json, oplacone_at, oplacone_recznie,'
     // ⚠️ KOLUMNA LICZY PIENIĄDZE, nie zdobi zapytania: poprawka ceny pozycji ze sklepu nie
-    // mieszka w wierszu pozycji, tylko tutaj (domain/pozycje-reczne.js). Bez niej raport
+    // mieszka w wierszu pozycji, tylko tutaj (domena/pozycje-reczne.js). Bez niej raport
     // policzyłby przecenioną linię po cenie sklepowej — cicho, bo różnica wyszłaby zerowa.
     // ⚠️ WYSYŁKA MA W `kwotaOczekiwanaGrosze` WŁASNY CZŁON RÓŻNICOWY — bez ceny sklepowej
     // z tej kolumny „dwie paczki zamiast jednej" liczyłoby się jako 0 × 2 i dopłata za
@@ -115,28 +115,24 @@ function* wierszeSprzedazy(db, { od, do: doDnia }, reguly) {
       if (dzien <= granicaDla(mapa, kanal)) continue;
       const klient = { ...bezpiecznyJson(w.klient_json), ...bezpiecznyJson(w.klient_reczny_json) };
       // ⚠️ KOMPLET WOO `billing`, NIE `imie/nazwisko/firma` — tak wyglada klient_json trzema
-      // niezaleznymi drogami: sklep (domain/mapowanie.js: `klient: surowe.billing`), Allegro
-      // (domain/allegro-mapowanie.js: adresPanelu mapuje imie/nazwisko/firma NA first_name/
-      // last_name/company PRZY ZAPISIE) i reczne zamowienie (domain/nowe-zamowienie.js:
+      // niezaleznymi drogami: sklep (domena/mapowanie.js: `klient: surowe.billing`), Allegro
+      // (domena/allegro-mapowanie.js: adresPanelu mapuje imie/nazwisko/firma NA first_name/
+      // last_name/company PRZY ZAPISIE) i reczne zamowienie (domena/nowe-zamowienie.js:
       // rozbijNazwe + company). Klucze imie/nazwisko/firma nie istnieja w tym obiekcie NIGDY —
-      // regula nazwowa czytajaca je bylaby martwa na kazdym kanale OMS-u (recenzja Zadania 4).
+      // regula nazwowa czytajaca je bylaby martwa na kazdym kanale OMS-u.
       if (czyTestowe(klient.email, `${klient.first_name ?? ''} ${klient.last_name ?? ''} ${klient.company ?? ''}`, reguly)) continue;
-      // ⚠️⚠️ TA SAMA MIARA, CO NA FAKTURZE — i to jest cała treść tej linii (23.08.2026).
-      // Do tego dnia stało tu `grosze(w.kwota_brutto)`, czyli kwota ZE SKLEPU. Ta kolumna
-      // z założenia NIE ROŚNIE od naszych dopisków (`kwotaZamowieniaGrosze` i komentarz przy
-      // niej: podniesiona pociągnęłaby za sobą wpłatę sklepową i niedopłata zniknęłaby
-      // z ekranu), więc pozycja dopisana ręcznie podnosiła fakturę, a raport zostawiała
-      // w miejscu. Zmierzone na produkcji: zamówienie 28171 miało na fakturze 654,00 zł,
-      // a w raporcie 429,00 zł — cała różnica to jedna pozycja dopisana ręcznie.
+      // ⚠️⚠️ TA SAMA MIARA, CO NA FAKTURZE — i to jest cała treść tej linii. `grosze(w.kwota_brutto)`,
+      // czyli kwota ZE SKLEPU, się tu nie nadaje: ta kolumna z założenia NIE ROŚNIE od naszych
+      // dopisków (`kwotaZamowieniaGrosze` w domena/suma-pozycji.js i komentarz przy
+      // `kwotaOczekiwanaGrosze`: podniesiona pociągnęłaby za sobą wpłatę sklepową i niedopłata
+      // zniknęłaby z ekranu), więc pozycja dopisana ręcznie podnosiłaby fakturę, a raport
+      // zostawiałaby w miejscu — różnica między nimi byłaby dokładnie tą pozycją.
       //
-      // ⚠️ SKALA JEST DZIŚ JEDNOSTKOWA, MECHANIZM NIE: na 23.08.2026 poprawka rusza DOKŁADNIE
-      // JEDNO zamówienie (+225,00 zł). Dwa pozostałe rozjazdy „nagłówek < suma pozycji"
-      // znalezione w bazie to zamówienia WŁASNE, które i tak nie
-      // wchodzą do raportu (`czyTestowe`). Ale dokładka wraca przy każdej następnej dopłacie
-      // do zamówienia sklepowego, więc liczy się reguła, nie dzisiejsze 225 zł.
+      // ⚠️ LICZY SIĘ REGUŁA, NIE SKALA: dokładka wraca przy każdej dopłacie do zamówienia
+      // sklepowego, choćby rozjazdów było dziś niewiele.
       const surowe = pozycjeSurowe(db, w.id);
       const pozycje = nalozNadpisaniaPozycji(surowe, w.pozycje_reczne_json);
-      // PRZ-152.G2 — usunięta pozycja znika z faktury, więc i z raportu (ta sama kwota oczekiwana).
+      // Usunięta pozycja znika z faktury, więc i z raportu (ta sama kwota oczekiwana).
       const pozycje_usuniete = pozycjeUsuniete(surowe, w.pozycje_reczne_json);
       const bruttoGrosze = kwotaOczekiwanaGrosze({ ...w, pozycje, pozycje_usuniete });
       yield {
@@ -168,7 +164,7 @@ function bezpiecznyJson(s) {
  * VAT) — dlatego oknem rzadzi `zwroty.data`, a nie data zamowienia.
  *
  * ⚠️ `zwroty.data` to CZYSTY DZIEN (YYYY-MM-DD), zapisywany wprost przez `dodajZwrot`
- * (db/zwroty.js) i zwalidowany regexem w `parsujZwrot` (domain/zwrot.js) — bez strefy i bez
+ * (oms/db/zwroty.js) i zwalidowany regexem w `parsujZwrot` (domena/zwrot.js) — bez strefy i bez
  * czasu, w przeciwienstwie do `utworzone_at` z dwoma formatami. Dlatego okno porownujemy
  * WPROST w SQL-u, bez `dzienWarszawa`.
  *
@@ -203,7 +199,7 @@ export function zwrotyWOkresie(db, { od, do: doDnia }, reguly = {}) {
 }
 
 // ⚠️ KOMPLET KOLUMN, KTÓRYCH POTRZEBUJE NAKŁADKA — `id` i `zrodlo` budują klucz nadpisania
-// (`kluczPozycji` w domain/pozycje-reczne.js), a bez `cena_brutto` przeceniona linia nie ma
+// (`kluczPozycji` w domena/pozycje-reczne.js), a bez `cena_brutto` przeceniona linia nie ma
 // z czego przeliczyć kwoty. Trzy kolumny, które wystarczały do samego rankingu, dawałyby tu
 // nakładkę bezczynną: klucz nie trafiałby w nic i różnica wobec sklepu wyszłaby zerowa.
 function pozycjeSurowe(db, zamowienieId) {
@@ -212,7 +208,7 @@ function pozycjeSurowe(db, zamowienieId) {
   ).all(zamowienieId);
 }
 
-// Kształt dla rankingu produktów i licznika sztuk — ten sam, co przed 23.08. Liczy się
+// Kształt dla rankingu produktów i licznika sztuk — ten sam, co pozycje z historii. Liczy się
 // z pozycji EFEKTYWNYCH, więc linia przeceniona na karcie wchodzi do rankingu po cenie,
 // którą karta pokazuje.
 function doRankingu(pozycje, zamowienieId) {
@@ -272,7 +268,7 @@ function mozliweKanalySklepu(sklep, klasyfikacja) {
 }
 
 /**
- * PRZ-102.14: najwcześniejszy dzień (Warszawa) zamówień OMS każdego kanału raportowego spośród
+ * Najwcześniejszy dzień (Warszawa) zamówień OMS każdego kanału raportowego spośród
  * zamówień z dniem ≤ `limit(kanal)` (`null` = kanał pominięty). Dwie fazy: indeks pokrywający daje
  * per sklep dolną granicę dnia, a dokładnie (dzienWarszawa i kanalOms — ta sama miara, co w raporcie)
  * liczymy tylko sklepy, które mogą mieć zamówienie do limitu. Zmierzone na 30 000 zamówień przed
@@ -300,7 +296,7 @@ export function pierwszeDniOms(db, klasyfikacja, limit, { bezAnulowanych = false
   return wynik;
 }
 
-// PRZ-102.14: granica „bez historii” założona przed pierwszym pobraniem zamówień (sklep bez OD
+// Granica „bez historii” założona przed pierwszym pobraniem zamówień (sklep bez OD
 // pobiera całą historię) wypada PÓŹNIEJ niż jego zamówienia, a pętla OMS wyżej pomija dni
 // ≤ granicy bez słowa — pusty raport wyglądałby jak słaby miesiąc. Odmowa obejmuje każdą drogę
 // zapisu granicy (automat startu, --granice, skrypt ręczny). Anulowanych raport i tak nie liczy.
@@ -322,10 +318,10 @@ function sprawdzZamowieniaPrzedGranica(db, klasyfikacja) {
 
 const POLECENIE_GRANIC = 'sudo sh /opt/oms/aktualizuj.sh compose exec -T oms node scripts/produkcja-pierwszy-start.mjs --granice';
 
-// PRZ-093.07: ciąg dalszy odmowy z `granicaDla` — nowa instalacja dostaje polecenie, które
+// Ciąg dalszy odmowy z `granicaDla` — nowa instalacja dostaje polecenie, które
 // zakłada granicę (docs/instalacja-docker.md, sekcja 9), a nie samo „uzupełnij”. Składnia
 // polecenia jest dosłownie z instrukcji; skrypt pomija kanały z zaimportowaną historią.
-// PRZ-102.14: start panelu zakłada granicę sam tylko kanałowi z kompletem kluczy i linią OD.
+// Start panelu zakłada granicę sam tylko kanałowi z kompletem kluczy i linią OD.
 const JAK_ZALOZYC_GRANICE = ' Kanał z kompletem kluczy i linią PREFIKS_OD dostaje granicę sam przy starcie — wtedy wystarczy restart panelu.'
   + ' Kanał bez linii PREFIKS_OD albo z niepełną konfiguracją: po pierwszym pobraniu zamówień polecenie na serwerze OMS:'
   + ` ${POLECENIE_GRANIC}`

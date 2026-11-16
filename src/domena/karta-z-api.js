@@ -13,7 +13,7 @@ const blad = (pole, powod, kod = 'walidacja') => ({ ok: false, kod, powod, pole 
 
 /**
  * Sprawdza komplet wymiarów stanu docelowego; typy wcześniej sprawdza parser.
- * Jak na ekranie (PRZ-090): szerokość i wysokość razem albo żadna; głębokość opcjonalna (produkt płaski),
+ * Jak na ekranie: szerokość i wysokość razem albo żadna; głębokość opcjonalna (produkt płaski),
  * ale nie sama.
  */
 export function wymiaryKompletne(karta) {

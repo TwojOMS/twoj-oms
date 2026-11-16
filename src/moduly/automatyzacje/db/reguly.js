@@ -1,4 +1,4 @@
-// PRZ-108.07 (zmiana B planu automatyzacji): reguły automatyzacji i historia włączeń. Zapis reguły tworzy ją
+// Reguły automatyzacji i historia włączeń. Zapis reguły tworzy ją
 // WYŁĄCZONĄ; włączenie ustawia granicę (chwila + migawka MAX(id)) i dopisuje historię w JEDNEJ transakcji. Wyłączenie
 // działa od razu: zaplanowane wykonania tej reguły przechodzą w „pominięte: reguła wyłączona” w tej samej transakcji.
 // Usunięcie jest miękkie (`usunieta_at`) — dziennik zostaje.
@@ -93,7 +93,7 @@ export function zmienRegule(db, id, r, { login = null, teraz = () => new Date() 
       db.prepare('UPDATE automatyzacje_reguly SET granica_at = ?, granica_json = ?, kursor_json = NULL WHERE id = ?')
         .run(g.granica_at, json(g.granica_json), id);
     }
-    // Recenzja 07, usterka 5: zaplanowane z kanałów, których reguła już nie obejmuje, nie wyjdą (wysyłacz sprawdza też
+    // Zaplanowane z kanałów, których reguła już nie obejmuje, nie wyjdą (wysyłacz sprawdza też
     // kanał przed rezerwacją — to tu daje od razu widoczny stan w dzienniku).
     const kanaly = new Set(r.warunki?.kanaly ?? []);
     const odznaczone = db.prepare(`SELECT w.id, w.zamowienie_id, z.sklep FROM automatyzacje_wykonania w
@@ -113,7 +113,7 @@ export function zmienRegule(db, id, r, { login = null, teraz = () => new Date() 
 export function wlaczRegule(db, id, { login = null, teraz = () => new Date() } = {}) {
   return wTransakcji(db, () => {
     const g = nowaGranica(teraz(), migawkaGranicy(db));
-    // Tylko reguła WYŁĄCZONA (recenzja 07, usterka 7): „Włącz” ze starej karty na regule włączonej i wstrzymanej nie może
+    // Tylko reguła WYŁĄCZONA: „Włącz” ze starej karty na regule włączonej i wstrzymanej nie może
     // zdjąć wstrzymania ani przesunąć granicy bez decyzji o zaległych. 0 zmienionych wierszy = nic się nie dzieje.
     const zmienione = db.prepare(`UPDATE automatyzacje_reguly SET wlaczona = 1, granica_at = ?, granica_json = ?, kursor_json = NULL,
       wstrzymana_powod = NULL, zmieniona_at = ?, zmienil_login = ? WHERE id = ? AND wlaczona = 0 AND usunieta_at IS NULL`)
@@ -228,7 +228,7 @@ export const SQL_OSTRZEZEN = `SELECT r.id, r.nazwa, CASE WHEN r.wlaczona = 1 THE
     ORDER BY r.id`;
 
 /**
- * PRZ-108.08: reguły z kłopotem do tabelki ostrzeżeń na stronie głównej (tylko admin): włączone i wstrzymane albo
+ * Reguły z kłopotem do tabelki ostrzeżeń na stronie głównej (tylko admin): włączone i wstrzymane albo
  * z wykonaniami `niepewne` / `blad` zakończonymi od `od`. Baza bez modułu automatyzacji (wąski skład) → pusta lista.
  */
 export function regulyDoOstrzezen(db, od) {

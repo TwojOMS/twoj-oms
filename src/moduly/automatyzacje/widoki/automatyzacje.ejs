@@ -1,11 +1,11 @@
-<%# PRZ-108.06: Ustawienia → Automatyzacje (makieta makiety-2026-10-21/automatyzacje.html, kadry 1–2).
-    PRZ-108.07 (zmiana B): sekcja reguł z modelu `reguly` (trasy/reguly.js). Tabela i „Dodaj automatyzację” pokazują się
-    dopiero, gdy rejestr zdarzeń i akcji nie jest pusty (albo gdy w bazie są już reguły) — B wydane samo wygląda jak A.
-    ⚠️ Nazwa pliku: `ustawienia-automatyzacje.ejs` należy do autorespondera (wiadomosci/widoki). %>
+<%# Ustawienia → Automatyzacje.
+    Sekcja reguł z modelu `reguly` (moduly/automatyzacje/trasy/reguly.js). Tabela i „Dodaj automatyzację” pokazują się
+    dopiero, gdy rejestr zdarzeń i akcji nie jest pusty (albo gdy w bazie są już reguły).
+    ⚠️ Nazwa pliku: `ustawienia-automatyzacje.ejs` należy do autorespondera (moduly/wiadomosci/widoki). %>
 <% const r = locals.reguly; const pokazReguly = Boolean(r && (r.dostepne || r.lista.length)); %>
-<%# PRZ-108.11: plakietka BETA obok tytułu h1, nie w nim — tytuł, okruszek i <title> zostają „Automatyzacje”. %>
+<%# Nagłówek rysuje wspólny include: w powłoce Ustawień h1 nadaje dział, a tytuł równy nazwie działu lub zakładki jest pomijany. %>
 <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: 'Automatyzacje'}) %>
-<%# PRZ-119.07: adres automatu KSeF pod programem fakturowym leży w dziale „Faktury i podatki” — pokazuje automaty systemowe. %>
+<%# Adres automatu KSeF pod programem fakturowym leży w dziale „Faktury i podatki” — pokazuje automaty systemowe. %>
 <% const systemowe = locals.tylkoAutomatKsef === true || nawigacja?.kontekst?.aktywnaZakladka === 'systemowe'; %>
 <% if (zapisano) { %><div class="pas-potwierdzenie"><p><%= zapisano %></p></div><% } %>
 <% if (!systemowe) { %>

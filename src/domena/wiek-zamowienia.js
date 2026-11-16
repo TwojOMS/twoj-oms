@@ -1,11 +1,10 @@
-// Zegar wieku zamówienia na liście (spec: docs/superpowers/specs/2026-08-23-wiek-zamowien-design.md).
+// Zegar wieku zamówienia na liście.
 //
 // Jedna formuła spóźnienia dla wszystkich typów: po terminie ⇔ dniRoboczeMiedzy(start, teraz)
-// > limit. Kolor pojawia się DOPIERO po przekroczeniu — faza ostrzegawcza odrzucona wprost
-// (decyzja właściciela, 23.08.2026).
+// > limit. Kolor pojawia się DOPIERO po przekroczeniu — faza ostrzegawcza odrzucona wprost.
 //
 // ⚠️⚠️ SAMA FORMUŁA (typ → limit, start zegara, odcięcie 12:00) NIE MIESZKA JUŻ W TYM PLIKU
-// — od 13.09.2026 stoi w `domain/termin-wysylki.js`, bo zakładka STATYSTYKI zadaje jej to
+// — stoi w `domena/termin-wysylki.js`, bo zakładka STATYSTYKI zadaje jej to
 // samo pytanie o INNY moment („czy paczka, która wyszła, wyszła w terminie"). Druga kopia
 // limitów i odcięcia rozjechałaby się przy pierwszej zmianie reguły, i to cicho: obie liczby
 // wyglądałyby sensownie, a mówiłyby co innego. Uzasadnienia każdej z tych reguł — razem
@@ -23,9 +22,9 @@ import {
   typZamowienia, startZegara, terminZamowienia, dzienTerminu, dniPoTerminie, zakresDatyWysylki,
 } from './termin-wysylki.js';
 
-// Ta sama zasada, co `expressPattern` w panelu indywidualnym (src/domain/settings-defaults.js,
-// domyślnie „priorytetowa, ekspres”): ekspres poznaje się po NAZWIE pozycji, bo dodatek
-// z formularza proformy wchodzi do zamówienia pozycją „Realizacja ekspresowa”.
+// Ta sama zasada, co w panelu indywidualnym: ekspres poznaje się po NAZWIE pozycji („ekspres”,
+// „priorytetowa”), bo dodatek z formularza proformy wchodzi do zamówienia pozycją „Realizacja
+// ekspresowa”.
 const FRAGMENTY_EKSPRESU = ['ekspres', 'priorytetowa'];
 
 export function czyEkspres(pozycje) {
@@ -70,7 +69,7 @@ export function wiekZamowienia(z, teraz = new Date()) {
   const wiek = odmianaDni(wiekDni);
 
   // ⚠️ JEDNA FORMUŁA TERMINU NA PANEL — typ, start, limit i odcięcie 12:00 liczy
-  // domain/termin-wysylki.js, ten sam moduł, z którego liczy zakładka STATYSTYKI.
+  // domena/termin-wysylki.js, ten sam moduł, z którego liczy zakładka STATYSTYKI.
   // Żadna z tych czterech reguł nie ma prawa stać w tym pliku drugi raz.
   const typ = typZamowienia(z);
   // `null` znaczy „zegar nie ma od czego ruszyć": nieopłacona przedpłata albo śmieciowa data.
@@ -85,11 +84,11 @@ export function wiekZamowienia(z, teraz = new Date()) {
   // Potrzebne niżej, przy wyborze słowa „złożone" vs „opłacone".
   const odZlozenia = Boolean(z?.pobranie) || Boolean(z?.b2b);
 
-  // ⚠️ SPÓŹNIENIE MIERZY `dniPoTerminie` — ta sama miara, co statystyki i karta (PRZ-104).
+  // ⚠️ SPÓŹNIENIE MIERZY `dniPoTerminie` — ta sama miara, co statystyki i karta.
   const spoznienie = dniPoTerminie(termin, terazIso);
   if (spoznienie > 0) return { wiek, opis: `po terminie o ${odmianaDniRob(spoznienie)}`, poTerminie: true, typ };
   // Ręczna data: sam dzień, bez „x/7 dni rob.” — licznik od wpłaty nie ma tu nic do rzeczy.
-  // Bez wpłaty ręczna data i tak prowadzi zegar (decyzja właściciela 21.10.2026) — dopisek mówi, czego brakuje.
+  // Bez wpłaty ręczna data i tak prowadzi zegar — dopisek mówi, czego brakuje.
   if (termin.reczny) {
     const brakWplaty = termin.start ? '' : ' · czeka na wpłatę';
     return { wiek, opis: `wysyłka: ${etykietaDnia(termin.reczny, dzis)} · data ręczna${brakWplaty}`, poTerminie: false, typ };
@@ -102,7 +101,7 @@ export function wiekZamowienia(z, teraz = new Date()) {
   }
   const deadline = dzienTerminu(termin);
   let opis = `wysyłka: ${etykietaDnia(deadline, dzis)}`;
-  // ⚠️ Dopisek 12:00 WYŁĄCZNIE przy starcie PRZED odcięciem (prośba właściciela 23.08). Tam niesie
+  // ⚠️ Dopisek 12:00 WYŁĄCZNIE przy starcie PRZED odcięciem. Tam niesie
   // powód, dla którego paczka ma wyjechać jeszcze DZIŚ — czyli jedyne miejsce, gdzie odcięcie
   // zmienia czyjeś działanie. Przy „jutro" mówiłby to, co termin już powiedział, a przy
   // sobotnim zamówieniu byłby wręcz zmyśleniem (odcięcie nie brało udziału w decyzji).
@@ -125,16 +124,16 @@ function objasnienieStandardu(termin, z) {
 }
 
 /**
- * Wiersz „Termin wysyłki” na karcie zamówienia (PRZ-104) — gotowe napisy, widok niczego nie
+ * Wiersz „Termin wysyłki” na karcie zamówienia — gotowe napisy, widok niczego nie
  * skleja. `ocena` mówi, jak poszło: po wysyłce „w terminie / po terminie”, przed — tylko
- * spóźnienie. `moznaZmienic` = false po wysyłce (decyzja właściciela 21.10.2026: inaczej da się po
+ * spóźnienie. `moznaZmienic` = false po wysyłce (inaczej da się po
  * fakcie „poprawić” spóźnioną wysyłkę i statystyka przestaje mówić prawdę).
  */
 export function terminNaKarcie(z, teraz = new Date()) {
   const terazIso = teraz instanceof Date ? teraz.toISOString() : String(teraz);
   const termin = terminZamowienia(z);
   // Granice pola daty w przeglądarce — te same, które sprawdza `parsujDateWysylki` przy zapisie.
-  // ⚠️ MINIONA RĘCZNA DATA OBNIŻA `min` do siebie (recenzja PRZ-104): przy `min = dziś` przeglądarka
+  // ⚠️ MINIONA RĘCZNA DATA OBNIŻA `min` do siebie: przy `min = dziś` przeglądarka
   // nie wysłałaby formularza z obecną wartością — ani „Zapisz”, ani „Przywróć standardowy termin”.
   const zakres = zakresDatyWysylki(dzienWarszawa(terazIso));
   const wynik = {

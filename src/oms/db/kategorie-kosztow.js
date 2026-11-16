@@ -2,30 +2,30 @@ import { bladOperatora } from '../../domena/bledy.js';
 import { znormalizujNip } from '../../domena/gus.js';
 
 // Kategoria kosztu dobierana PO NIP-IE sprzedawcy — nigdy po nazwie. KSeF przysyla nazwy
-// w roznych wariantach zapisu, a NIP jest jeden (ta sama zasada, co w repo `raporty`).
+// w roznych wariantach zapisu, a NIP jest jeden.
 //
-// ⚠️ NIP NORMALIZUJE SIE PO OBU STRONACH — przy zapisie i przy odczycie (recenzja, D3).
+// ⚠️ NIP NORMALIZUJE SIE PO OBU STRONACH — przy zapisie i przy odczycie.
 // `nip` jest tu KLUCZEM GLOWNYM, wiec '525-267-47-98' i '5252674798' zalozylyby DWA wiersze
 // dla jednego podatnika, a chybiony odczyt nie wyglada na rozjazd zapisu, tylko na „ten NIP
 // nie ma jeszcze kategorii" — czyli na brak decyzji operatora, ktora dawno zapadla. TA SAMA
-// funkcja, co przy GUS-ie (`znormalizujNip` w domain/gus.js), i to samo miejsce ma normalizowac
-// `koszty.sprzedawca_nip` (domain/koszt-metadane.js) — inaczej zlaczenie po NIP-ie nie trafia.
+// funkcja, co przy GUS-ie (`znormalizujNip` w domena/gus.js), i to samo miejsce ma normalizowac
+// `koszty.sprzedawca_nip` (domena/koszt-metadane.js) — inaczej zlaczenie po NIP-ie nie trafia.
 //
-// ⚠️ U4 (druga runda recenzji): `znormalizujNip` sam sobie nie waliduje dlugosci — sprzedawca
+// ⚠️ `znormalizujNip` sam sobie nie waliduje dlugosci — sprzedawca
 // zagraniczny (np. NIP unijny 'DE123456789') dostaje tu klucz '123456789', czyli napis
 // WYGLADAJACY jak dziesieciocyfrowy polski NIP, ktorym nie jest. Ten klucz sluzy WYLACZNIE
 // grupowaniu kosztow po sprzedawcy — ekran operatora nie ma prawa go czytac jako walidowany
 // polski NIP (np. proponowac go do wyszukania w GUS-ie).
 //
 // ⚠️ TYP JEST WARTOSCIA MASZYNOWA, BEZ DIAKRYTYKOW: 'zmienny' | 'staly' | 'drobne' — pilnuje
-// tego `CHECK` w schema.sql. NAZWA kategorii to co innego: czyta ja operator i ma pelna
-// polszczyzne. Gdyby ten sam typ trafial do bazy raz jako 'stały', a raz jako 'staly',
+// tego `CHECK` w schemacie bazy (migracja 0001-baseline.sql). NAZWA kategorii to co innego:
+// czyta ją operator i ma pełną polszczyznę. Gdyby ten sam typ trafial do bazy raz jako 'stały', a raz jako 'staly',
 // rozpadlby sie na dwie grupy przy liczeniu progu rentownosci — po cichu.
 
-// Stan poczatkowy przeniesiony z raportu zarzadczego (repo `raporty`).
+// Startowe przypisania NIP → kategoria (lista może być pusta).
 //
 // ⚠️⚠️ WGRYWAMY PRZEZ `INSERT OR IGNORE`, bo ta migracja chodzi przy KAZDYM starcie
-// kontenera: `INSERT OR REPLACE` cofalby wlascicielowi kazda jego zmiane kategorii przy
+// kontenera: `INSERT OR REPLACE` cofałby operatorowi każdą jego zmianę kategorii przy
 // najblizszym restarcie — po cichu i bez sladu, a restart zdarza sie przy kazdym wdrozeniu.
 // To ta sama zasada, co przy `zapiszKoszt`: migracja idempotentna ma dokladac to, czego
 // brakuje, i nie dotykac niczego wiecej.
@@ -33,7 +33,7 @@ const STARTOWE = [
 ];
 
 // ⚠️⚠️ KATEGORIE, KTORE NIE MAJA JESZCZE ANI JEDNEGO DOSTAWCY — i to jest caly powod, dla
-// ktorego slownik kategorii istnieje osobno od tabeli przypisan (patrz schema.sql).
+// ktorego slownik kategorii istnieje osobno od tabeli przypisań.
 //
 // Lista wyboru na ekranie brala sie z `DISTINCT` po tabeli PRZYPISAN, wiec kategoria bez
 // przypisanego NIP-u nie miala jak sie na niej pojawic — a bez pojawienia sie nie miala jak
@@ -54,16 +54,16 @@ const BEZ_PRZYPISANIA = [
 ];
 
 // ⚠️ JEDNORAZOWA ZMIANA NAZWY, A NIE PILNOWANIE NAZWY PRZY KAZDYM STARCIE — i ta roznica jest
-// tu cala trescia (znacznik w `migracje_jednorazowe`, uzasadnienie w schema.sql).
+// tu cala trescia (znacznik w `migracje_jednorazowe`).
 //
-// Sama poprawka napisu w tablicy STARTOWE nie rusza wiersza, ktory JUZ LEZY w bazie
-// produkcyjnej: wgranie idzie przez `INSERT OR IGNORE`, wiec OVH zostawaloby w „Hosting"
-// na zawsze. Migracja ponizej przenosi wiec CALA KATEGORIE (kazdy NIP, ktory w niej stoi —
-// nie tylko OVH), bo przemianowana zostala kategoria, a nie przypisanie jednego dostawcy.
+// Sama poprawka napisu w tablicach startowych nie rusza wiersza, który JUŻ LEŻY w istniejącej
+// bazie: wgranie idzie przez `INSERT OR IGNORE`, więc dostawca hostingu zostawałby w „Hosting"
+// na zawsze. Migracja poniżej przenosi więc CAŁĄ KATEGORIĘ (każdy NIP, który w niej stoi —
+// nie tylko jednego dostawcy), bo przemianowana zostala kategoria, a nie przypisanie jednego dostawcy.
 //
 // DWIE OSLONY, KAZDA NA INNY PRZYPADEK:
-//   • WARUNEK `kategoria = 'Hosting'` — operator, ktory przypial OVH GDZIE INDZIEJ (wlasna
-//     kategoria „Serwery"), nie dostaje swojej decyzji cofnietej: tamten wiersz nie ma juz
+//   • WARUNEK `kategoria = 'Hosting'` — operator, który przypiął dostawcę hostingu GDZIE INDZIEJ
+//     (własna kategoria „Serwery"), nie dostaje swojej decyzji cofniętej: tamten wiersz nie ma już
 //     starej nazwy, wiec migracja go nie widzi.
 //   • ZNACZNIK WYKONANIA — operator, ktory SWIADOMIE wroci do nazwy „Hosting", tez jej nie
 //     traci. Bez znacznika ta migracja chodzilaby przy KAZDYM starcie kontenera i kasowala
@@ -113,10 +113,10 @@ function doSlownika(db, kategoria, typ, kiedy = new Date().toISOString()) {
   ).run(nazwa, typ, kiedy);
 }
 
-// ⚠️ U2 (druga runda recenzji): `znormalizujNip` sama nigdy nie oddaje NULL-a — dla braku
+// ⚠️ `znormalizujNip` sama nigdy nie oddaje NULL-a — dla braku
 // NIP-u, smiecia bez cyfr albo `null`/`undefined` oddaje PUSTY NAPIS. Osoba wolajaca MUSI
 // wiec zamienic pusty wynik na `null` sama — dokladnie tak, jak robi to
-// `naWiersz` w domain/koszt-metadane.js (`znormalizujNip(...) || null`). Bez tej oslony
+// `naWiersz` w domena/koszt-metadane.js (`znormalizujNip(...) || null`). Bez tej oslony
 // pusty napis wchodzilby jako KLUCZ GLOWNY tabeli i sklejalby ze soba WSZYSTKICH sprzedawcow
 // bez NIP-u — ta sama dziura, ktora `naWiersz` juz zamyka, tylko po drugiej stronie granicy.
 const nipDoKlucza = (nip) => znormalizujNip(nip) || null;
@@ -157,12 +157,12 @@ export function przypnijKategorie(db, nip, kategoria, typ) {
   doSlownika(db, kategoria, typ, kiedy);
 }
 
-// ⚠️⚠️ SUMA SLOWNIKA I PRZYPISAN, a nie samo `DISTINCT` po przypisaniach (2026-08-13).
+// ⚠️⚠️ SUMA SLOWNIKA I PRZYPISAN, a nie samo `DISTINCT` po przypisaniach.
 //
 // Zrodla sa dwa, bo odpowiadaja na dwa rozne pytania i zadne samo nie wystarcza:
 //   • SLOWNIK niesie kategorie, ktore JESZCZE NIE MAJA dostawcy („Sprzet", „Reklama") — bez
 //     niego nie da sie ich wybrac, a wiec i zalozyc: to byla dziura, dla ktorej slownik powstal;
-//   • PRZYPISANIA niosa wszystko, co ktos JUZ przypial — takze na bazie produkcyjnej sprzed
+//   • PRZYPISANIA niosa wszystko, co ktos JUZ przypial — także w bazie sprzed
 //     powstania slownika, gdzie kategoria operatora zyje wylacznie w tej tabeli. Pominiecie
 //     ich znaczyloby, ze wdrozenie tej zmiany KASUJE z listy istniejace kategorie.
 //

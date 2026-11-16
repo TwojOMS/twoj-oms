@@ -1,7 +1,7 @@
-<%# Zakladka STATYSTYKI — wysylka i platnosci (13.09.2026).
-    Spec: docs/superpowers/specs/2026-09-13-oms-statystyki-design.md
-    Pasy w kolejnosci: zakres · zastrzezenie · KPI · wysylka · terminowosc · platnosci.
-    ⚠️ ZERO KWOT. Pieniadze mieszkaja w RAPORTACH i FINANSACH (decyzja właściciela). %>
+<%# Zakładka STATYSTYKI — wysyłka i płatności.
+    Pasy w kolejności: zakres · zastrzeżenie · KPI · wysyłka ·
+    terminowość · płatności.
+    ⚠️ ZERO KWOT. Pieniądze mieszkają w RAPORTACH i FINANSACH. %>
 <%
   // ⚠️ PROCENT PO POLSKU, Z PRZECINKIEM — i „—" DLA `null`. `null` znaczy „nie ma z czego
   // policzyc"; „0,0%" czytaloby sie jako „nic nie wyszlo w terminie", czyli jako ZLY WYNIK
@@ -80,11 +80,11 @@
   </div>
 
   <%# ⚠️⚠️ UKŁAD SEKCJI JEST KONWENCJĄ DOMU: `section.panel` owija `div.panel-glowa` (tytuł
-      w kapitalikach + dopisek) i `div.panel-cialo` (treść, `padding: .9rem`). Pierwsza
-      wersja tego ekranu wstawiała `h2` i tabelę WPROST w `section.panel` — a ta klasa ma
-      w layoucie `padding: 0`, więc nagłówki i wiersze dotykały ramki panelu (zgłoszone
-      przez właściciela 13.09.2026: „w polach nie ma marginesów"), a `h2` dostawał typografię
-      obcą resztzie panelu. Wzorzec: `raporty.ejs`, `koszty.ejs`, `faktury.ejs`. %>
+      w kapitalikach + dopisek) i `div.panel-cialo` (treść, `padding: .9rem` w public/oms-uklad.css).
+      Sam `.panel` nie ma wypełnienia, więc `h2` i tabela wstawione WPROST w `section.panel`
+      dotykałyby ramki, a `h2` nie dostałby typografii etykiety panelu (niesie ją `.panel-glowa h2`).
+      Wzorzec: `moduly/raporty/widoki/raporty.ejs`, `moduly/koszty/widoki/koszty.ejs`,
+      `moduly/faktury/widoki/faktury.ejs`. %>
   <section class="panel">
     <div class="panel-glowa">
       <h2>Rozkład przewoźników</h2>
@@ -111,7 +111,7 @@
       </tbody>
       <%# ⚠️⚠️ STOPKA NIE PISZE „100,0%", TYLKO „—". Udziały w kolumnie są zaokrąglone
           do jednego miejsca po przecinku NIEZALEŻNIE od siebie, więc ich suma bywa 99,9%
-          albo 100,1% (zmierzone: trzy usługi po jednym zamówieniu dają 33,3% + 33,3% +
+          albo 100,1% (np. trzy usługi po jednym zamówieniu dają 33,3% + 33,3% +
           33,3% = 99,9%) — a wiersz sumy, który zaprzecza kolumnie nad sobą, jest gorszy
           niż wiersz sumy bez procentu w ogóle. Liczba zamówień w stopce ZOSTAJE: ona
           nie kłamie, sumuje się sama z siebie. %>
@@ -151,7 +151,7 @@
       </tbody>
     </table>
     <%# ⚠️⚠️ WYŁĄCZENIA STOJĄ NA EKRANIE. Procent bez widocznego mianownika jest
-        nieweryfikowalny, a każde z tych trzech ma na produkcji niezerową liczbę. %>
+        nieweryfikowalny, a każde z tych trzech wyłączeń bywa niezerowe. %>
     <p class="wyjasnienie">
       Poza procentami: <strong><%= termin.wylaczenia.niewyslane %></strong> jeszcze
       niewysłanych, <strong><%= termin.wylaczenia.przedWplata %></strong> wysłanych przed

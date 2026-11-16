@@ -4,7 +4,7 @@
 <% if (test) { %><div class="<%= test.ok ? 'pas-potwierdzenie' : 'pas-uprzedzenie' %>" id="fakturownia-test" role="status"><p><strong><%= test.ok ? 'Działa.' : 'Nie działa.' %></strong> <%= test.tekst %></p></div><% } %>
 <% if (bledy.length) { %><div class="pas-uprzedzenie" role="alert" id="fakturownia-bledy" tabindex="-1" autofocus><p><strong>Nie zapisano.</strong></p><ul><% bledy.forEach(b => { %><li><%= b %></li><% }); %></ul></div><% } %>
 <%
-  // PRZ-161: formularz domeny i tokenu tylko przed pierwszym podłączeniem, po „Zmień token” i po błędzie zapisu.
+  // Formularz domeny i tokenu tylko przed pierwszym podłączeniem, po „Zmień token” i po błędzie zapisu.
   const pokazFormularz = !zEnv && (!stan || zmien || bledy.length > 0);
 %>
 
@@ -15,7 +15,7 @@
     <p>Token i domenę konta zmienia administrator serwera w pliku konfiguracji.</p>
     <details class="ust-pomoc"><summary>Dla administratora serwera</summary><p>Plik <code>oms.env</code>: <code>FAKTUROWNIA_API_TOKEN</code> i <code>FAKTUROWNIA_DOMENA</code>. Ustawienia z pliku mają pierwszeństwo.</p></details>
   <% } else if (stan) { %>
-    <%# PRZ-161: „Podłączony” tylko po przyjęciu tokenu przez Fakturownię (wynik przypięty do obecnej domeny i tokenu). %>
+    <%# „Podłączony” tylko po przyjęciu tokenu przez Fakturownię (wynik przypięty do obecnej domeny i tokenu). %>
     <% if (sprawdzenie?.stan === 'ok') { %>
       <p class="ust-stan ust-stan-ok" id="fakturownia-stan-etykieta"><strong>Podłączony</strong></p>
     <% } else if (sprawdzenie?.stan === 'odrzucony') { %>

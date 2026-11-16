@@ -64,7 +64,7 @@ export function pasujeDoSzukania(z, fraza) {
 }
 
 /**
- * Pola zamówienia w postaci, w której porównuje je fraza — liczone RAZ (PRZ-051). Indeks
+ * Pola zamówienia w postaci, w której porównuje je fraza — liczone RAZ. Indeks
  * listy zapisuje je przy zamówieniu, a SQL pyta `pasujePola`, więc reguła dopasowania jest
  * jedna i nie powtarza się jako `LIKE` obok tego pliku.
  */
@@ -80,7 +80,7 @@ export function pasujePola(pola, fraza) {
 
 /**
  * Ta sama reguła, z frazą rozłożoną RAZ — indeks listy woła ją dla każdego zamówienia w bazie,
- * więc normalizacja frazy przy każdym wierszu była czystym kosztem (recenzja PRZ-051).
+ * więc normalizacja frazy przy każdym wierszu była czystym kosztem.
  */
 export function dopasowanieFrazy(fraza) {
   const slowa = normalizuj(fraza).split(' ').filter(Boolean).map((slowo) => {

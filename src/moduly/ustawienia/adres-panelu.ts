@@ -1,6 +1,6 @@
 import { skonfigurowanyUrl } from '../../core/konfiguracja-wartosci.ts';
 
-/** PRZ-069: publiczny adres panelu do linków w mailach (walidacja wpisu; adres z żądania — adresPaneluZZadania). */
+/** Publiczny adres panelu do linków w mailach (walidacja wpisu; adres z żądania — adresPaneluZZadania). */
 export function adresPaneluZEnv(wartosc: string | undefined): string | null {
   const url = skonfigurowanyUrl(wartosc, 'OMS_ADRES_PANELU');
   if (url === undefined) return null;
@@ -12,7 +12,7 @@ export function adresPaneluZEnv(wartosc: string | undefined): string | null {
 }
 
 /**
- * PRZ-094.04: adres panelu z Ustawień (wiersz „adres_panelu” w konfiguracja_integracji) — ta sama walidacja co
+ * Adres panelu z Ustawień (wiersz „adres_panelu” w konfiguracja_integracji) — ta sama walidacja co
  * OMS_ADRES_PANELU. Zapis, który dziś by nie przeszedł (ręcznie zmieniona baza), = brak adresu, nie wyjątek.
  */
 export function adresPaneluZZapisu(zapis: { ustawienia?: Record<string, unknown> } | null): string | null {
@@ -22,7 +22,7 @@ export function adresPaneluZZapisu(zapis: { ustawienia?: Record<string, unknown>
 }
 
 /**
- * PRZ-094.10: adres bieżącego żądania (`req.protocol` + `req.host`, za zaufanym proxy z X-Forwarded-*) przez tę samą
+ * Adres bieżącego żądania (`req.protocol` + `req.host`, za zaufanym proxy z X-Forwarded-*) przez tę samą
  * walidację co wpis — tylko schemat, host i port. Nie przechodzi = brak adresu (nie zgadujemy).
  */
 export function adresPaneluZZadania(zadanie: { protocol?: string; host?: string } | null): string | null {
@@ -31,7 +31,7 @@ export function adresPaneluZZadania(zadanie: { protocol?: string; host?: string 
 }
 
 /**
- * PRZ-094.10: jedyna zasada adresu w linkach z tokenem (/haslo/…), dla maila i „Pokaż link”: OMS_ADRES_PANELU →
+ * Jedyna zasada adresu w linkach z tokenem (/haslo/…), dla maila i „Pokaż link”: OMS_ADRES_PANELU →
  * zapis z Ustawień (oba już w `skonfigurowany`) → adres żądania jako domyślny.
  * ⚠️ Adres z żądania wolno podać tylko z trasy zalogowanego administratora: na ścieżce bez logowania napastnik
  * podstawiłby własny nagłówek Host i link z tokenem, wysłany ofierze, prowadziłby do niego.
@@ -44,7 +44,7 @@ export function adresLinkow(skonfigurowany: string | null, zadanie: { protocol?:
 
 /**
  * Formularz adresu panelu: { adres } po normalizacji (origin) albo czytelny błąd bez echa wpisanej wartości.
- * PRZ-094.10: puste pole to nie błąd — { adres: null, blad: null } = usuń zapis, wraca adres domyślny.
+ * Puste pole to nie błąd — { adres: null, blad: null } = usuń zapis, wraca adres domyślny.
  */
 export function sprawdzFormularzAdresuPanelu(body: Record<string, unknown> = {}): { adres: string | null; blad: string | null } {
   const wpisany = String(body.adres ?? '');

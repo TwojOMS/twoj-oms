@@ -4,7 +4,7 @@ import { bladOperatora } from './bledy.js';
 // kraju, bez odstepow. WooCommerce oddaje numery w roznych ksztaltach (+48600100200,
 // 48600100200, 0048600100200, z odstepami i myslnikami) — porownanie zamowienia ze sklepu
 // z odpowiadajaca mu przesylka InPostu potwierdzilo na zywym API, ze prefiks trzeba
-// zdejmowac samemu (docs/superpowers/notatki/2026-08-01-inpost-shipx-rozpoznanie.md).
+// zdejmowac samemu.
 //
 // To ta sama rodzina bledu co kod pocztowy w DPD ('00-001' -> NONEXISTING_POSTAL_CODE,
 // '00001' -> OK) — a tam odrzucenie bylo CICHE: status walidacji, nie wyjatek, wiec

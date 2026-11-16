@@ -3,17 +3,17 @@ import { modulZamowienia } from './moduly-kanalow.ts';
 
 // Dokad prowadzi POZYCJA zamowienia — jedno pytanie, jedna odpowiedz, jeden plik.
 // Regula mieszka tutaj, a nie w widoku — dokladnie tak samo, jak adres miniatury
-// (domain/miniatury.js).
+// (domena/miniatury.js).
 //
-// ⚠️ NAZWA PLIKU ZMIENILA SIE Z `link-produktu.js` NA `link-pozycji.js` (05.08.2026) razem
-// z dolozeniem Allegro. Pozycja z Allegro prowadzi do OFERTY, a nie do produktu w sklepie —
-// stara nazwa klamalaby o zawartosci dokladnie tak, jak `status_dpd*` klamalo, gdy kolumny
-// zaczely trzymac takze stan przesylek InPostu (db/db.js, zmienNazwyStatusKuriera).
+// ⚠️ NAZWA PLIKU ZMIENIŁA SIĘ Z `link-produktu.js` NA `link-pozycji.js` razem
+// z dołożeniem Allegro. Pozycja z Allegro prowadzi do OFERTY, a nie do produktu w sklepie —
+// stara nazwa kłamałaby o zawartości dokładnie tak, jak kłamały kolumny `status_dpd*`, gdy
+// zaczęły trzymać także stan przesyłek InPostu.
 //
 // ⚠️ ALLEGRO DOLACZYLO DO TEGO MODULU, A NIE DOSTALO WLASNEGO — i to jest decyzja, nie
 // wygoda. Kryterium bylo jedno: co sie stanie przy TRZECIM kanale.
 //
-//   * Osobny modul znaczy, ze wybor „ktory adres" mieszka w TRASIE (routes/zamowienia.js),
+//   * Osobny moduł znaczy, że wybór „który adres" mieszka w TRASIE karty zamówienia,
 //     jako `if`. Trzeci kanal to wtedy zmiana w kilku miejscach naraz (nowy modul, `if`
 //     w trasie karty i w kazdym kolejnym widoku, ktory kiedys pokaze pozycje) oraz kolejna
 //     kopia reguly „brak identyfikatora = brak odnosnika". Kopie tej samej reguly rozjezdzaja
@@ -21,10 +21,11 @@ import { modulZamowienia } from './moduly-kanalow.ts';
 //   * Jeden modul z tablica wzorcow znaczy, ze trzeci kanal to JEDEN wpis nizej. Trasa pyta
 //     o dokladnie to samo, co dzis, i nie musi wiedziec, ze doszedl kanal.
 //
-// Wzorzec nie jest wymyslony na te okazje — `domain/tracking.js` rozwiazuje DOKLADNIE ten
-// sam ksztalt problemu (adres per kurier, `null` przy kurierze bez zmierzonego wzorca)
-// i robi to jedna tablica z jednym wejsciem. Dwa rozne ksztalty na to samo pytanie obok
-// siebie byly by trzecia rzecza do zapamietania.
+// Wzorzec nie jest wymyślony na tę okazję — rejestr przewoźników (`domena/przewoznicy.ts`,
+// czytany przez `adresSledzenia` w `domena/przewoznik-przesylki.js`) rozwiązuje DOKŁADNIE ten
+// sam kształt problemu (adres per przewoźnik, `null` przy nieznanym przewoźniku) i robi to
+// jedną tablicą z jednym wejściem. Dwa różne kształty na to samo pytanie obok siebie byłyby
+// trzecią rzeczą do zapamiętania.
 //
 // ⚠️ WPIS NIESIE TAKZE PODPIS (`tytul`), a nie sam adres. Podpis jest CZESCIA TEJ SAMEJ
 // decyzji: „Otworz produkt w sklepie" nad odnosnikiem do oferty Allegro jest drobnym
@@ -47,13 +48,13 @@ import { modulZamowienia } from './moduly-kanalow.ts';
 //  1. pozycja dopisana recznie — nie ma produktu w sklepie;
 //  2. brak identyfikatora produktu — wiersz wysylki, „Razem", albo pozycja sprzed
 //     dolozenia kolumny, ktorej przeliczenie nie mialo z czego policzyc;
-//  3. sklep nieskonfigurowany w panelu — nie ma adresu, a panel „nie udaje, ze widzi kanal,
-//     do ktorego nie ma kluczy" (config.js);
-//  4. pozycja z zaslepki panelu indywidualnego — identyfikator wskazuje wtedy produkt-zaslepke
-//     (wysylka, realizacja priorytetowa), a nie towar. Zmierzone na zywym sklepie (zamowienie
-//     28046): WSZYSTKIE pozycje takiego zamowienia maja TEN SAM product_id zaslepki, wiec
-//     bez tego warunku kazda pozycja prowadzilaby do tego samego, ukrytego produktu —
-//     odnosnik bylby nie tyle bezuzyteczny, co mylacy.
+//  3. sklep nieskonfigurowany w panelu — nie ma adresu, a panel nie udaje, że widzi kanał,
+//     do którego nie ma kluczy;
+//  4. pozycja z zaślepki panelu indywidualnego — identyfikator wskazuje wtedy produkt-zaślepkę
+//     (wysyłka, realizacja priorytetowa), a nie towar. Zmierzone na żywym sklepie:
+//     WSZYSTKIE pozycje takiego zamówienia mają TEN SAM product_id zaślepki, więc
+//     bez tego warunku każda pozycja prowadziłaby do tego samego, ukrytego produktu —
+//     odnośnik byłby nie tyle bezużyteczny, co mylący.
 // ---------------------------------------------------------------------------------
 function adresProduktu({ produktId = null, sku = null, reczna = false } = {}, baseUrl = null) {
   if (typeof baseUrl !== 'string' || !baseUrl.trim()) return null;
@@ -66,22 +67,21 @@ function adresProduktu({ produktId = null, sku = null, reczna = false } = {}, ba
 // ---------------------------------------------------------------------------------
 // ALLEGRO.
 //
-// ⚠️ ADRES ZWERYFIKOWANY W PRAWDZIWEJ PRZEGLADARCE na identyfikatorze z zywego
-// zamowienia: `https://allegro.pl/oferta/{id}` otwiera dokladnie te oferte („Lampa
-// stolowa Mosiadz 30x35cm"). Sprawdzian MUSIAL isc przez przegladarke — WAF
-// Allegro oddaje 403 na zadania spoza niej, wiec kod odpowiedzi z `fetch`a nie dowodzi
-// NICZEGO. To ta sama pulapka, ktora przy DPD dala „dzialajacy" link bez numeru na stronie
-// (patrz komentarz otwierajacy domain/tracking.js).
+// ⚠️ ADRES ZWERYFIKOWANY W PRAWDZIWEJ PRZEGLĄDARCE na identyfikatorze z żywego
+// zamówienia: `https://allegro.pl/oferta/{id}` otwiera dokładnie tę ofertę. Sprawdzian MUSIAŁ
+// iść przez przeglądarkę — WAF Allegro oddaje 403 na żądania spoza niej, więc kod odpowiedzi
+// z `fetch`a nie dowodzi NICZEGO. To ta sama pułapka, która przy DPD dała „działający" link
+// bez numeru na stronie.
 //
 // ⚠️ ZERO WYSYLKI DO ALLEGRO. To jest `href` w HTML-u, a nie wywolanie API — identyfikator
 // lezy juz w bazie, przepisany z formularza zakupowego (`lineItems[].offer.id`).
 //
 // ⚠️ WYLACZNIE CYFRY. Identyfikator przychodzi od Allegro jako NAPIS („1234567890") i taki
-// tez lezy w bazie — kolumna jest TEXT wlasnie po to, zeby nikt go po drodze nie przerobil
-// na liczbe (uzasadnienie przy `pozycje.oferta_id` w schema.sql). Warunek na same cyfry robi
-// tu dwie rzeczy naraz: odsiewa wiersze bez oferty (wysylka, „Razem", doplata Allegro,
-// pozycja dopisana recznie) i pilnuje reguly tego repo — „brak linku jest lepszy niz link
-// otwierajacy pusta wyszukiwarke" (tracking.js). Przy okazji w adresie nie ma juz czego
+// też leży w bazie — kolumna `pozycje.oferta_id` jest TEXT właśnie po to, żeby nikt go po
+// drodze nie przerobił na liczbę. Warunek na same cyfry robi
+// tu dwie rzeczy naraz: odsiewa wiersze bez oferty (wysyłka, „Razem", dopłata Allegro,
+// pozycja dopisana ręcznie) i pilnuje reguły tego repo — „brak linku jest lepszy niż link
+// otwierający pustą wyszukiwarkę". Przy okazji w adresie nie ma juz czego
 // kodowac: wartosc, ktora do niego wchodzi, sklada sie z samych cyfr.
 // ---------------------------------------------------------------------------------
 const SAME_CYFRY = /^[0-9]+$/;

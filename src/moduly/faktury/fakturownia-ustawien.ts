@@ -1,4 +1,4 @@
-// PRZ-119.05 — klient Fakturowni z Ustawień (Ustawienia → Integracje → Fakturownia). Wzór: infakt-ustawien.ts.
+// Klient Fakturowni z Ustawień (Ustawienia → Integracje → Fakturownia). Wzór: infakt-ustawien.ts.
 //
 // Pośrednik o tych samych metodach co createFakturowniaClient. Każde wywołanie czyta BIEŻĄCY zapis z bazy; nowy klient
 // powstaje tylko, gdy zmieniły się opcje (domena albo token) — zmiana działa od następnego żądania, bez restartu.

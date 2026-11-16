@@ -2,20 +2,20 @@
 <% if (proba) { %>
   <p class="pasek-info"><%= 'Rozliczenie okresowe jest dla klientów B2B, którzy zamawiają regularnie. Zamiast faktury do każdego zamówienia dostają jedną fakturę za cały miesiąc. Zamówienia klienta z zaznaczonym „Rozliczany zbiorczo” trafiają tu same, a na koniec miesiąca zamykasz okres i wystawiasz jedną fakturę.' %></p>
 <% } %>
-<%# Lista miesiecznych okresow rozliczeniowych klientow zbiorczych (spec 2026-08-01).
+<%# Lista miesiecznych okresow rozliczeniowych klientow zbiorczych.
     Jeden wiersz = jeden miesiac jednego klienta = jedna faktura, ktora ten klient dostanie.
 
-    ⚠️ Widok NIE LICZY NICZEGO SAM — kwota, saldo i stan faktury sa policzone w trasie
-    (web/routes/okresy.js), dokladnie ta sama zasada, co przy liscie zamowien i karcie.
+    ⚠️ Widok NIE LICZY SAM kwoty, salda ani stanu faktury — sa policzone w trasie
+    (moduly/faktury/trasy/okresy.js), dokladnie ta sama zasada, co przy liscie zamowien i karcie.
     W szczegolnosci ETYKIETA ROZLICZENIA IDZIE Z `stan`, nigdy ze znaku salda: dodatnie
     saldo przed faktura to ZALICZKA, a po fakturze — NADPLATA do zwrotu. %>
 
 <%
-  // ⚠️ `MIESIACE` PRZYCHODZI Z TRASY (domain/okres-rozliczeniowy.js) — ta sama tablica,
+  // ⚠️ `MIESIACE` PRZYCHODZI Z TRASY (domena/okres-rozliczeniowy.js) — ta sama tablica,
   // z ktorej `opisOdmowy` sklada komunikat odmowy. Kopia w szablonie znaczylaby, ze odmowa
   // i ekran moga kiedys nazwac ten sam miesiac inaczej.
   const nazwaMiesiaca = (m) => MIESIACE[m - 1] ?? `miesiąc ${m}`;
-  // Stan faktury OKRESU (domain/okres-rozliczeniowy.js) w slowach dla czlowieka.
+  // Stan faktury OKRESU (domena/okres-rozliczeniowy.js) w slowach dla czlowieka.
   const OPIS_FAKTURY = {
     brak: 'brak',
     w_toku: 'wystawianie trwa',
@@ -64,8 +64,8 @@
             </td>
             <%# ⚠️ Zadne z tych zdan NIE WYNIKA ze znaku salda — wszystkie z `stan`. %>
             <%
-              // ⚠️ DOMKNIECIE 1 (recenzja Zadania 9, runda 2) — ta sama zasada, co na karcie
-              // okresu (web/views/okres.ejs): gdy faktura JUZ ISTNIEJE i choc jedno zamowienie
+              // ⚠️ SALDO WBREW FAKTURZE — ta sama zasada, co na karcie
+              // okresu (moduly/faktury/widoki/okres.ejs): gdy faktura JUZ ISTNIEJE i choc jedno zamowienie
               // tego miesiaca jest dzis anulowane, kwota liczona NA BIEZACO moze byc nizsza niz
               // w chwili wystawienia, a `rozliczenie.stan` udawalby wtedy „brak faktury" albo
               // „nadplata do zwrotu" obok kolumny „Faktura", ktora w tym samym wierszu mowi
@@ -86,7 +86,7 @@
                 <span class="stan-zle">brakuje <%= o.rozliczenie.saldoZl %> zł</span>
               <% } else if (o.rozliczenie.stan === 'nadplata') { %>
                 nadpłata <%= o.rozliczenie.saldoZl %> zł
-              <%# ⚠️ Nadplata ma WLASNA, jawna galaz. Jako galaz domyslna malowala kazdy
+              <%# ⚠️ Nadplata ma WLASNA, jawna galaz. Jako gałąź domyślna malowałaby każdy
                   nieznany stan jako pieniadze do zwrotu — piaty stan dodany kiedys w domenie
                   obiecywalby zwrot kwoty, ktora z nadplata nie ma nic wspolnego. %>
               <% } else { %>

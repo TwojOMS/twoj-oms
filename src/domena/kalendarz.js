@@ -1,11 +1,9 @@
 // Kalendarz — jedna arytmetyka dat dla całego OMS-u.
 //
-// Wyjęte z `domain/termin-platnosci.js`, gdzie mieszkały prywatnie, bo tych samych obliczeń
+// Wyjęte z `domena/termin-platnosci.js`, gdzie mieszkały prywatnie, bo tych samych obliczeń
 // potrzebuje lista faktur (zakres miesiąca, dni do terminu). DRUGA KOPIA byłaby tu gorsza niż
 // zwykłe powtórzenie: rozjechałaby się przy pierwszej poprawce, a rozjazd znaczy termin
 // płatności przesunięty o dzień na dokumencie księgowym.
-//
-// Treść funkcji przeniesiona bez zmian — to przeprowadzka, nie ulepszanie.
 
 const WZORZEC_DATY = /^(\d{4})-(\d{2})-(\d{2})$/;
 

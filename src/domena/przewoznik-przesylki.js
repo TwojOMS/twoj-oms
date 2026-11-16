@@ -1,4 +1,4 @@
-// PRAWDZIWY PRZEWOZNIK PRZESYLKI (PRZ-067, decyzja właściciela 13.10).
+// PRAWDZIWY PRZEWOZNIK PRZESYLKI.
 //
 // Kolumna `przesylki.kurier` mowi, JAKA DROGA nadalismy paczke (`dpd`, `inpost` — nasze umowy;
 // `allegro_wza`, `allegro` — panel Allegro), a NIE kto ja wiezie. Paczka Allegro moze jechac
@@ -6,7 +6,7 @@
 // maja pokazywac TEGO przewoznika, bo operator szuka „paczek DPD", a nie „paczek nadanych przez
 // panel Allegro".
 //
-// ⚠️ `carrier_allegro = ALLEGRO` NIE JEST SYGNALEM. Pomiar z produkcji (13.10, 60 dni, 257 przesylek):
+// ⚠️ `carrier_allegro = ALLEGRO` NIE JEST SYGNALEM. Pomiar z produkcji:
 // ALLEGRO stoi przy „Allegro Kurier DPD", „Allegro Kurier DHL", „Allegro Automat ORLEN Paczka"
 // i przy One Box. Prawdziwego przewoznika przesylki Allegro ustala NAZWA USLUGI. Mocnym sygnalem
 // sa tylko INPOST i PACKETA.
@@ -104,7 +104,7 @@ export function przewoznikWiersza(p, zamowienie) {
 }
 
 /**
- * Link do sledzenia paczki (PRZ-152.G7) — JEDNA droga dla zakladki Przesylki, karty zamowienia
+ * Link do sledzenia paczki — JEDNA droga dla zakladki Przesylki, karty zamowienia
  * i maila „Zamowienie wyslane": prawdziwy przewoznik z `przewoznikWiersza` (kod → carrier
  * Allegro → nazwa uslugi → metoda), potem jego adres. Sam kod drogi nadania nie wystarcza:
  * `allegro_wza` nie mowi, kto wiezie, wiec paczka WzA jadaca DPD zostawala bez linku.
@@ -115,7 +115,7 @@ export function linkSledzeniaPaczki(p, zamowienie) {
 }
 
 /**
- * Przewoznik KONKRETNEJ paczki (link do sledzenia, plakietka na karcie — PRZ-152.G8) albo `null`.
+ * Przewoznik KONKRETNEJ paczki (link do sledzenia, plakietka na karcie) albo `null`.
  * Nieznany kod spoza Allegro nie dziedziczy przewoznika zamowienia: zamowienie mowi, jak klient
  * chcial dostac paczke, a nie kto ja wiezie. Kurier zamowienia uzupelnia tylko drogi Allegro (WzA).
  */

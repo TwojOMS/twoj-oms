@@ -2,14 +2,14 @@ import { nazwaBezRozmiaru, wymiaryZTekstu } from './rozmiar.js';
 
 // DOPASOWANIE OFERTY ALLEGRO DO KARTY — czysta miara podobienstwa nazw.
 //
-// PO CO TO JEST. Lustro trzyma 447 ofert Allegro i wszystkie maja `karta_id IS NULL`. Karta
-// powstaje z katalogu SKLEPU, a oferte wiaze sie z nim RECZNIE: pole `external` jest na
-// Allegro puste we wszystkich ofertach, wiec jedynym mostem miedzy tymi dwoma swiatami jest
+// PO CO TO JEST. Oferty Allegro w lustrze startuja z `karta_id IS NULL`. Karta
+// powstaje z katalogu SKLEPU, a oferte wiaze sie z nim RECZNIE: pole `external` oferty bywa puste
+// (sprzedawca nie musi go wypelniac), wiec jedynym pewnym mostem miedzy tymi dwoma swiatami jest
 // NAZWA. Ten modul nie wiaze niczego — oddaje wylacznie ranking kandydatow dla czlowieka,
 // ktory kliknie.
 //
 // ⚠️⚠️ TU NIE MA PROGU I NIE WOLNO GO TU DOPISAC. Zmierzone na prawdziwych danych
-// (428 roznych nazw ofert wobec 767 produktow sklepowych, 2026-08-11): przy najlepszej
+// (kilkaset roznych nazw ofert wobec kilkuset produktow sklepowych): przy najlepszej
 // mierze tylko okolo 10% ofert osiaga ocene, ktora dalaby sie nazwac „pewna", a w kubelku
 // 0,50–0,67 siedza trafienia POPRAWNE — `Lampa stołowa nocna…` → `Lampa stołowa
 // - 64cm`, `KOPUŁA…` → `Kopuła - lampa wisząca`, `KINKIET RAMIĘ` → `Kinkiet Ramię`. Prog wyciety
@@ -78,7 +78,7 @@ function slowa(nazwa) {
 // ——— WYMIARY ——————————————————————————————————————————————————————————————————
 
 // Wymiary z KOLUMN (`karty.szerokosc_mm`/`wysokosc_mm`). Polowiczne to nadal brak — ta sama
-// regula, co w filtrze braków w db/magazyn.js: do paczki i do sklepu potrzebne sa oba.
+// regula, co w filtrze braków w oms/db/magazyn.js: do paczki i do sklepu potrzebne sa oba.
 function wymiaryZKolumn(pozycja) {
   const szerokosc_mm = Number(pozycja?.szerokosc_mm);
   const wysokosc_mm = Number(pozycja?.wysokosc_mm);
@@ -155,9 +155,9 @@ function f1(wspolne, ileOferty, ileKarty) {
   return (2 * pokrycieOferty * pokrycieKarty) / (pokrycieOferty + pokrycieKarty);
 }
 
-// ⚠️ SLOWA KARTY LICZONE RAZ NA KARTE, A NIE RAZ NA PARE. Ekran powiazan porownuje 447 ofert
-// z ~965 kartami, czyli okolo 430 tysiecy par na JEDNO wejscie na strone; tokenizacja nazwy
-// karty przy kazdej parze byloby 430 tysiecy przebiegow regexpa zamiast 965. Klucz jest
+// ⚠️ SLOWA KARTY LICZONE RAZ NA KARTE, A NIE RAZ NA PARE. Ekran powiazan porownuje kilkaset ofert
+// z okolo tysiacem kart, czyli kilkaset tysiecy par na JEDNO wejscie na strone; tokenizacja nazwy
+// karty przy kazdej parze byloby kilkaset tysiecy przebiegow regexpa zamiast okolo tysiaca. Klucz jest
 // SLABY (WeakMap): wiersze przychodza swiezo z bazy przy kazdym zadaniu i maja z niej
 // wypasc razem z odpowiedzia, a nie zostac w pamieci kontenera do restartu.
 const slowaKarty = new WeakMap();
@@ -189,8 +189,8 @@ function lepszy(a, b) {
   return Number(a.karta?.id) < Number(b.karta?.id);
 }
 
-// Wstawienie do listy najlepszych `ile` sztuk. Petla po ~965 kandydatach z sortowaniem
-// calosci przy KAZDEJ z 447 ofert to 447 pelnych sortowan tablicy tysiacelementowej;
+// Wstawienie do listy najlepszych `ile` sztuk. Petla po okolo tysiacu kandydatow z sortowaniem
+// calosci przy KAZDEJ z kilkuset ofert to kilkaset pelnych sortowan tablicy tysiacelementowej;
 // tutaj kosztem jest `ile` porownan na kandydata i ani jednej alokacji dla przegranych.
 function wstaw(najlepsi, kandydat, ile) {
   let i = najlepsi.length;
@@ -209,21 +209,21 @@ function wstaw(najlepsi, kandydat, ile) {
  * @returns {Array<{karta: object, ocena: number, wspolneSlowa: string[]}>}
  *
  * ⚠️ NICZEGO TU NIE WIAZEMY I NICZEGO NIE ZAPISUJEMY. Funkcja jest czysta, a wybor nalezy
- * do czlowieka: ocena jest PODPOWIEDZIA, nie decyzja (rozstrzygniecie wlasciciela — nic
+ * do czlowieka: ocena jest PODPOWIEDZIA, nie decyzja (nic
  * nie wiaze sie bez klikniecia).
  *
  * ⚠️⚠️ ZERO WSPOLNYCH SLOW ODPADA — I TO JEST JEDYNE ODRZUCENIE W TYM PLIKU. To nie jest
  * prog jakosci (progow tu nie ma, patrz naglowek modulu), tylko granica miedzy „slabo
  * pasuje" a „nie ma zadnego zwiazku": przy zerowym pokryciu wszyscy kandydaci maja ocene 0,
  * wiec kolejnosc bralaby sie z bazy, a pod oferta staly by trzy przypadkowe karty. Czlowiek
- * przegladajacy 447 wierszy klika w to, co panel podsunal — a podsuniete losowo trafienie
+ * przegladajacy kilkaset wierszy klika w to, co panel podsunal — a podsuniete losowo trafienie
  * jest gorsze niz puste miejsce i pole wyszukiwania obok.
  */
 export function propozycje(oferta, karty, { ile = 3 } = {}) {
   const slowaOferty = slowa(oferta?.nazwa);
   // ⚠️ TO JEST SKROT, A NIE STRAZNIK — i tak ma byc nazwane, zeby nikt go pozniej nie
   // „wzmocnil". Oferta bez slow ma pusty zbior kluczy, wiec `wspolne` bylby zerem przy
-  // KAZDYM z ~965 kandydatow i petla i tak oddalaby pusto; `ile` niedodatnie odsiewa
+  // KAZDYM z kandydatow i petla i tak oddalaby pusto; `ile` niedodatnie odsiewa
   // `wstaw`. Zysk jest wylacznie taki, ze nie przelatujemy calego katalogu po nic.
   // Mutacja kasujaca te linie JEST rownowazna i suita slusznie jej nie lapie: gdyby
   // lapala, przypinalaby test do optymalizacji zamiast do zachowania.

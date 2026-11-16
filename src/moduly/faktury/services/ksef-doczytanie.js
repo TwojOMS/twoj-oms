@@ -5,7 +5,7 @@ import { idDokumentu, czyDokumentProgramu, numerKsefDokumentu } from '../../../d
 import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
 // Doczytanie numeru KSeF dla JEDNEJ faktury, przy otwarciu karty zamowienia.
-// Regula „czy w ogole pytac" siedzi w domain/ksef-doczytanie.js — tutaj jest wylacznie I/O.
+// Regula „czy w ogole pytac" siedzi w domena/ksef-doczytanie.js — tutaj jest wylacznie I/O.
 //
 // ⚠️ TA USLUGA NIE RZUCA NIGDY, I TO JEST JEJ GLOWNA WLASNOSC. Wola ja renderowanie karty,
 // a karta ma sie otworzyc takze wtedy, gdy inFakt lezy, klucz wygasl albo dysk jest pelny.
@@ -13,24 +13,20 @@ import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 // przeczytac zamowienie jeszcze raz. To jest ta sama umowa, co przy `przesylkiAllegro.odswiez`
 // na tej samej karcie: „czy cos sie zmienilo", a nie „czy poszlo gladko".
 //
-// ⚠️⚠️ SPROSTOWANIE 14.08.2026 — TU STALA MOJA WLASNA POMYLKA, ZAPISANA JAKO DECYZJA.
-// Stalo tutaj: „ta sciezka odpowiada na jedno pytanie o jeden dokument i NIE URUCHAMIA NICZEGO
-// DALEJ — jesli kiedys ma uruchamiac, to swiadomie". Rozumowanie bylo rozwazone i BLEDNE, bo
-// pomijalo jeden fakt: zapisanie `ksef_numer` WYCINA fakture z kolejki czuwacza (jego zapytanie
-// zaczyna sie od `f.ksef_numer IS NULL`, domain/ksef-oczekiwanie.js). Ta sciezka nie „powstrzymywala
-// sie" wiec od nastepstwa — ona ZABIERALA czuwaczowi robote, nie wykonujac jej, i faktura nie
-// szla do kupujacego na Allegro NIGDY.
+// ⚠️⚠️ TA ŚCIEŻKA NIE MOŻE „TYLKO ZAPISAĆ NUMERU” I NIC DALEJ — to kusi, ale jest BŁĘDEM.
+// Zapisanie `ksef_numer` WYCINA fakturę z kolejki czuwacza (jego zapytanie zaczyna się od
+// `f.ksef_numer IS NULL`, domena/ksef-oczekiwanie.js). Ścieżka, która nie robi nic dalej, nie
+// „powstrzymuje się” od następstwa — ona ZABIERA czuwaczowi robotę, nie wykonując jej, i faktura
+// nie idzie do kupującego na Allegro NIGDY. Trafiałoby za KAŻDYM razem, bo naturalna kolejność
+// ruchów to „zleć wysyłkę do KSeF w zakładce FAKTURY, potem zajrzyj na kartę”.
 //
-// Zgloszenie wlasciciela: „faktury nie wysylaja sie do allegro". Trafialo za KAZDYM razem, bo
-// naturalna kolejnosc ruchow to „zlec wysylke do KSeF w zakladce FAKTURY, potem zajrzyj na karte".
-//
-// Od teraz nastepstwo zapisu numeru mieszka w JEDNYM miejscu (services/po-numerze-ksef.js)
-// i wolaja je OBIE drogi. Zapis `ksef_numer` bez tego wywolania jest bledem, nie decyzja.
+// Dlatego następstwo zapisu numeru mieszka w JEDNYM miejscu (services/po-numerze-ksef.js)
+// i wołają je OBIE drogi. Zapis `ksef_numer` bez tego wywołania jest błędem, nie decyzją.
 //
 // Czuwacz dalej robi wiecej niz ta sciezka: chodzi po WSZYSTKICH fakturach czekajacych na numer,
 // co godzine, i ma wlasna druga petle (weryfikacja pliku w Allegro).
 
-// PRZ-118.07: numer KSeF czyta PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`).
+// Numer KSeF czyta PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`).
 export function createDoczytanieKsef({
   db, program: programPodany = null, infakt = null, poNumerzeKsef = null, teraz = () => new Date().toISOString(),
 }) {
@@ -43,7 +39,7 @@ export function createDoczytanieKsef({
   async function dlaFaktury(faktura, zamowienieId) {
     if (!program) return false;
     if (!czyDoczytacKsef(faktura, Date.now())) return false;
-    // PRZ-121.04a: dokument innego programu niż moduł faktur OMS-u — nie pytamy o niego nikogo i nic nie zapisujemy
+    // Dokument innego programu niż moduł faktur OMS-u — nie pytamy o niego nikogo i nic nie zapisujemy
     // (stempel „pytaliśmy” byłby nieprawdą). Karta otwiera się jak zawsze.
     if (!czyDokumentProgramu(faktura, program)) return false;
 
@@ -54,16 +50,15 @@ export function createDoczytanieKsef({
       // odpowiedzi — i to na niej stoi dlawik. Bez tego zapisu kazde odswiezenie karty
       // faktury, ktora numeru jeszcze nie ma, bilo do inFaktu od nowa. `zapiszNumerKsef`
       // uzywa COALESCE, wiec pusta odpowiedz nie skasuje numeru zapisanego wczesniej.
-      // PRZ-126 C09f: z `dokumentId` — wiersz przepięty w trakcie pytania na fakturę zastępczą nie dostaje numeru starej.
+      // Z `dokumentId` — wiersz przepięty w trakcie pytania na fakturę zastępczą nie dostaje numeru starej.
       const zapisano = zapiszNumerKsef(db, faktura.id, { ksefNumer: numer, sprawdzonaAt: teraz(), dokumentId: dok });
       if (!numer || !zapisano) return false;
       // Log dopiero po zapisie i tylko przy FAKCIE — inaczej historia zamowienia rosnie
       // proporcjonalnie do liczby odslon karty, a nie do liczby zdarzen.
       dopiszLog(db, zamowienieId, { akcja: 'ksef', wynik: `dokument jest w KSeF (${numer})` });
-      // ⚠️⚠️ NASTEPSTWO ZAPISU NUMERU — BEZ TEGO FAKTURA NIE POJDZIE DO ALLEGRO NIGDY.
-      // Zapisanie numeru wycina fakture z kolejki czuwacza (`ksef_numer IS NULL`), a to
-      // czuwacz byl jedynym miejscem, ktore po znalezieniu numeru wysylalo dokument
-      // kupujacemu. Regresja z produkcji 14.08.2026 — patrz docblock w po-numerze-ksef.js.
+      // ⚠️⚠️ NASTĘPSTWO ZAPISU NUMERU — BEZ TEGO FAKTURA NIE PÓJDZIE DO ALLEGRO NIGDY.
+      // Zapisanie numeru wycina fakturę z kolejki czuwacza (`ksef_numer IS NULL`), a czuwacz
+      // wysyła dokument kupującemu tylko dla faktur z tej kolejki — patrz docblock w po-numerze-ksef.js.
       //
       // Wlasny `try`: awaria nastepstwa nie ma prawa cofnac zapisanego numeru ani wywalic
       // karty. Numer JEST faktem niezaleznym od tego, czy udalo sie z niego skorzystac.
@@ -79,9 +74,9 @@ export function createDoczytanieKsef({
       //
       // Drugi `try` jest tu naprawde potrzebny: ten zapis idzie do bazy w trakcie renderowania
       // karty, a karta ma sie otworzyc takze przy pelnym dysku (ta sama zasada, co przy
-      // `zapiszLubOdpusc` w routes/zamowienia.js).
+      // `zapiszLubOdpusc` w moduly/wysylka/services/status-kuriera.js).
       try {
-        // PRZ-126 C09g — z `dokumentId`: wiersz przepięty w trakcie pytania na zastępczą nie dostaje stempla starej.
+        // Z `dokumentId`: wiersz przepięty w trakcie pytania na zastępczą nie dostaje stempla starej.
         zapiszNieudanyOdczytKsef(db, faktura.id, { sprawdzonaAt: teraz(), dokumentId: idDokumentu(faktura) });
       } catch { /* karta wazniejsza niz slad */ }
       return false;

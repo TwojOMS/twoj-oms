@@ -7,7 +7,7 @@ import { pobierzZamowienie } from './zamowienia.js';
 import { wplatyOkresu } from './platnosci.js';
 
 const KLUCZ = 'moduly.wylaczone';
-// PRZ-102.22: chwila ostatniego włączenia Kosztów — /health liczy od niej próg nocnego pobrania (domena/zdrowie.js).
+// Chwila ostatniego włączenia Kosztów — /health liczy od niej próg nocnego pobrania (domena/zdrowie.js).
 const KLUCZ_KOSZTY_WLACZONE = 'moduly.koszty.wlaczone_at';
 export const kosztyWlaczoneOd = (db) => db.prepare('SELECT wartosc FROM ustawienia WHERE klucz = ?').get(KLUCZ_KOSZTY_WLACZONE)?.wartosc ?? null;
 export function wylaczoneModuly(db) {
@@ -36,7 +36,7 @@ export function zaleznosciModulow(db) {
       bledneKwotyOkresow++;
     }
   }
-  // PRZ-102.22: koszty z ostatnich 60 dni (data wystawienia) — przy przełączniku Kosztów, nie blokuje wyłączenia.
+  // Koszty z ostatnich 60 dni (data wystawienia) — przy przełączniku Kosztów, nie blokuje wyłączenia.
   const od = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
   const kosztyOstatnie = db.prepare('SELECT COUNT(*) AS n FROM koszty WHERE data_wystawienia >= ?').get(od).n;
   return { zbiorczy, rabaty, okresy, nierozliczoneOkresy, bledneKwotyOkresow, kosztyOstatnie };
@@ -49,7 +49,7 @@ export function przelaczModul(db, { modul, wlacz }) {
     const zaleznosci = zaleznosciModulow(db);
     const powody = [];
     // Bezpiecznik rozliczeń dotyczy Stałych klientów i Rozliczeń. Koszty to widok i pobieranie — wyłączenie nie
-    // rusza danych (PRZ-102.22), więc nie blokuje go nic.
+    // rusza danych, więc nie blokuje go nic.
     const chroniony = modul === 'klienci' || modul === 'okresy';
     if (chroniony && !wlacz && zaleznosci.zbiorczy > 0) powody.push(`${zaleznosci.zbiorczy} klientów B2B z rozliczeniem zbiorczym — wymagają edycji warunków na karcie klienta i fakturowania w Rozliczeniach`);
     if (chroniony && !wlacz && zaleznosci.okresy > 0) powody.push(`${zaleznosci.okresy} okresów z zamówieniami bez zakończonej faktury — potrzebne są Rozliczenia oraz karta klienta do uzupełnienia nabywcy i warunków umowy`);

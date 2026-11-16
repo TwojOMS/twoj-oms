@@ -1,4 +1,4 @@
-// Scalanie zamówień — trasy (PRZ-101.04). Reguły: domena/scalanie.js, zapis: oms/db/scalenia.js.
+// Scalanie zamówień — trasy. Reguły: domena/scalanie.js, zapis: oms/db/scalenia.js.
 //
 // Ten sam wzorzec, co nadanie hurtem: zaznaczenie na liście → POST podgląd (nic nie zapisuje) →
 // POST wykonanie → przekierowanie na kartę głównego (PRG). Adresy leżą pod /zamowienia, więc
@@ -16,7 +16,7 @@ import { komunikatDlaOperatora } from '../../domena/bledy.js';
 import { ktoKlikal } from './wspolne.js';
 import { ekranOdmowyKarty } from './odmowa-karty.js';
 
-// Rzadka funkcja na „nietypowe sytuacje” (właściciel) — sufit chroni ekran przed przypadkowym
+// Rzadka funkcja na „nietypowe sytuacje” — sufit chroni ekran przed przypadkowym
 // „zaznacz wszystkie” na 200 zamówieniach.
 const SUFIT_SCALENIA = 10;
 
@@ -72,7 +72,7 @@ export function registerScalanieRoutes(app, kontekst) {
       wysylkaSuma: glowne ? bezpieczneGr(() => zl(wysylkaGrupyGrosze(glowne, dolaczone, WYSYLKA_SUMA))) : null,
       razemGlowne: kwota(WYSYLKA_Z_GLOWNEGO),
       razemSuma: kwota(WYSYLKA_SUMA),
-      // PRZ-101.11: jedno zdanie pod każdą opcją — co pojedzie na fakturę, z kwotami.
+      // Jedno zdanie pod każdą opcją — co pojedzie na fakturę, z kwotami.
       opisGlowne: glowne ? bezpieczneGr(() => opisWysylekGrupy(glowne, dolaczone, WYSYLKA_Z_GLOWNEGO)) : null,
       opisSuma: glowne ? bezpieczneGr(() => opisWysylekGrupy(glowne, dolaczone, WYSYLKA_SUMA)) : null,
     });
@@ -116,7 +116,7 @@ export function registerScalanieRoutes(app, kontekst) {
     return reply.redirect(`/zamowienia/${glowneId}#scalenie`);
   });
 
-  // N1 (ponowna recenzja): „Odłącz anulowane”. Bez wystawionej faktury grupy — PRG na kartę. Z fakturą
+  // „Odłącz anulowane”. Bez wystawionej faktury grupy — PRG na kartę. Z fakturą
   // NIE przekierowujemy: karta od razu mówi o korekcie (ten sam napis, co w logu), tak jak ekran wyniku
   // po wystawieniu faktury. Odświeżenie powtórzy POST i dostanie odmowę „nie ma czego odłączać”.
   app.post('/zamowienia/:id/odlacz-anulowane', async (req, reply) => {

@@ -13,9 +13,9 @@ export const KOLOR = {
   linia: '#EFE9DD',
   tekst: '#2E2A26',    // Grafit
   muted: '#6D675F',
-  // Stal. Kolor rejestru PRO — od 21/22.08.2026 NIE „wyłącznie" wycen: tym samym akcentem
-  // idą nagłówki sekcji i kreska sumy w potwierdzeniu przyjęcia zamówienia
-  // (potwierdzenie-html.js) oraz w trzech mailach o pieniądzach (wiadomosc-html.js).
+  // Stal. Kolor rejestru PRO — nie tylko wycen: tym samym akcentem idą nagłówki sekcji i kreska sumy
+  // w potwierdzeniu przyjęcia zamówienia (potwierdzenie-html.js) oraz w trzech mailach o pieniądzach
+  // (wiadomosc-html.js).
   akcent: '#3E5566',
 };
 export const FONT = 'Helvetica, Arial, sans-serif';
@@ -23,23 +23,23 @@ export const FONT = 'Helvetica, Arial, sans-serif';
 // Czcionka o STAŁEJ SZEROKOŚCI dla wartości, które klient PRZEPISUJE do banku (numer
 // rachunku). W czcionce proporcjonalnej cyfry zlewają się w jeden ciąg.
 //
-// ⚠️ STAŁA, NIE TRZECIA KOPIA LITERAŁU (sprzątanie po recenzji całości gałęzi, 22.08.2026):
-// ten sam napis stał wprost w `liniaPudelka` niżej i w tabeli przelewu w wiadomosc-html.js.
+// ⚠️ STAŁA, NIE TRZECIA KOPIA LITERAŁU: wspólna dla `liniaPudelka` niżej i tabeli przelewu
+// w wiadomosc-html.js, bo lista krojów zapasowych ma się zmieniać w jednym miejscu.
 export const MONO = "font-family:Consolas,'Courier New',monospace;";
 
 /**
  * NAGŁÓWEK SEKCJI w mailu składanym z modelu — wersaliki, rozstrzelenie, kolor akcentu.
  *
- * ⚠️ JEDNA FUNKCJA NA DWA RENDERERY (22.08.2026): potwierdzenie przyjęcia zamówienia
- * (potwierdzenie-html.js) i trzy maile o pieniądzach (wiadomosc-html.js) miały ją przepisaną
- * znak w znak, każdy u siebie. Dwie kopie tego samego stylu rozjeżdżają się przy pierwszej
- * poprawce palety — a klient dostaje wtedy dwa różne papiery firmowe z jednego panelu.
+ * ⚠️ JEDNA FUNKCJA NA DWA RENDERERY: potwierdzenie przyjęcia zamówienia (potwierdzenie-html.js)
+ * i trzy maile o pieniądzach (wiadomosc-html.js) używają tej samej funkcji. Dwie kopie tego samego stylu
+ * rozjeżdżają się przy pierwszej poprawce palety — a klient dostaje wtedy dwa różne papiery firmowe
+ * z jednego panelu.
  *
  * ⚠️⚠️ TRZECIA, PODOBNA WERSJA ZOSTAJE OSOBNO i to jest świadome: nagłówek sekcji w
  * `renderMailHtml` (maile z wyceną) ma INNE rozstrzelenie (2px zamiast 1px), inne marginesy
  * i dodatkowo OBCINA dwukropek z końca linii — bo tam nagłówek nie przychodzi z modelu, tylko
  * jest ROZPOZNAWANY we wpisanym przez człowieka tekście („Dane do przelewu:"). Sklejenie
- * obu zmieniłoby wygląd maili z wyceną, które chodzą na produkcji od tygodni.
+ * obu zmieniłoby wygląd maili z wyceną.
  */
 export const naglowekSekcji = (tekst) => `<p style="margin:20px 0 6px;font-family:${FONT};font-size:12px;`
   + `font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:${KOLOR.akcent};">${esc(tekst)}</p>`;
@@ -54,28 +54,27 @@ function linkify(escaped) {
   return escaped.replace(/https?:\/\/[^\s<]+/g, (u) => `<a href="${u}" style="color:${KOLOR.akcent};">${u}</a>`);
 }
 
-// Kanoniczne linie wyceny (format buildQuoteText) — rozpoznawane zachowawczo:
+// Kanoniczne linie wyceny — rozpoznawane zachowawczo:
 // nie pasuje = zwykły akapit, nic nie znika.
 const RE_POZYCJA = /^(\d+)x (.+) - ([\d.,]+zł) brutto\/szt$/;
 // Dodatki — JEDEN wzorzec „nazwa - wartość", bez względu na to, czy po prawej stoi kwota
 // („25zł brutto"), czy słowo („gratis", „w cenie"). Wartość zawsze idzie do własnej komórki,
 // wyrównanej do prawej tak samo jak cena produktu.
 //
-// ⚠️ ZGŁOSZENIE WŁAŚCICIELA (19.08.2026): przy kwocie wiersz wyglądał poprawnie, ale „gratis"
-// i „w cenie" były osobnym typem wiersza rozciągniętym na obie kolumny — czyli WYPADAŁY
-// z tabeli dokładnie wtedy, gdy nic nie kosztowały. Jeden wzorzec likwiduje ten rozjazd
-// u źródła: nie ma już wariantu „bez kwoty", jest wariant „inna wartość po prawej".
+// ⚠️ Przy kwocie wiersz wyglądałby poprawnie, ale „gratis” i „w cenie” jako osobny typ wiersza
+// rozciągnięty na obie kolumny WYPADAŁYBY z tabeli dokładnie wtedy, gdy nic nie kosztują. Jeden wzorzec
+// likwiduje ten rozjazd u źródła: nie ma wariantu „bez kwoty”, jest wariant „inna wartość po prawej”.
 const RE_DODATEK = /^(przygotowanie projektu|wysyłka kurierem DPD) - (.+)$/;
 const RE_RAZEM = /^Razem: ([\d.,]+zł)(?: \((.+ netto)\))?$/;
 // Linia bedaca WYLACZNIE adresem. Razem z linia zakonczona dwukropkiem tuz nad nia tworzy
-// PRZYCISK (patrz koniec `buildQuoteText`). Rozpoznanie po SASIEDZTWIE, nie po tresci
-// etykiety — dzieki temu dziala takze po zmianie napisu w /settings.
+// PRZYCISK (rozpoznaje go `textToBlocks`, rysuje `renderMailHtml`). Rozpoznanie po SASIEDZTWIE, nie po tresci
+// etykiety — dzieki temu dziala takze po zmianie napisu w Ustawieniach.
 //
 // ⚠️ Sam adres w akapicie ma zostac zwyklym linkiem. Bez wymogu linii z dwukropkiem
 // KAZDY adres w mailu (np. w danych do przelewu) zamienialby sie w wielki przycisk.
 const RE_SAM_ADRES = /^https?:\/\/\S+$/;
-// TABELA CZASU REALIZACJI (zgloszenie właściciela 19.08.2026). Osobna tabela, wlasny naglowek —
-// otwiera ja dokladnie ta linia (stala NAGLOWEK_REALIZACJA w quote/quote-text.js), a zamyka
+// TABELA CZASU REALIZACJI. Osobna tabela, wlasny naglowek —
+// otwiera ja dokladnie ta linia (stala NAGLOWEK_REALIZACJA nizej), a zamyka
 // pierwsza linia, ktora nie wyglada jak „opis - kwota". Bez naglowka nie ruszamy niczego:
 // wzorzec „cos - cos" trafialby w zwykle zdania z myslnikiem.
 const NAGLOWEK_REALIZACJA = 'Czas realizacji:';
@@ -87,16 +86,15 @@ const RE_OPCJA = /^(.+?) - (\+?[\d.,]+\s?zł)$/;
 // ⚠️ OBA WARUNKI SA KONIECZNE. Bez wymogu pustej linii nad soba wzorzec lapie zdanie
 // „Możesz też przelać należność bezpośrednio na nasze konto:" WEWNATRZ pudelka przelewu
 // i robi z niego naglowek sekcji w srodku opcji. Bez ograniczenia dlugosci lapie kazde
-// dluzsze zdanie konczace sie dwukropkiem, ktore ktos kiedys wpisze w /settings —
+// dluzsze zdanie konczace sie dwukropkiem, ktore ktos kiedys wpisze w Ustawieniach —
 // i wypisuje cale zdanie klienta WERSALIKAMI.
 //
-// ⚠️ Osobny limit LICZBY SLOW tu stal i zostal ZDJETY: weryfikacja mutacyjna pokazala, ze
-// przy limicie 42 znakow nie robi nic ponad to, co juz robi dlugosc, a odcinal poprawne
-// naglowki w rodzaju „Dane do wysyłki i faktury:". Regula, ktorej nie da sie zlamac testem,
-// jest reguła zbedna.
+// ⚠️ Osobnego limitu LICZBY SLOW tu nie ma: przy limicie 42 znakow nie robi nic ponad to, co juz robi
+// dlugosc, a odcinalby poprawne naglowki w rodzaju „Dane do wysyłki i faktury:". Regula, ktorej nie da sie
+// zlamac testem, jest reguła zbedna.
 const RE_NAGLOWEK_SEKCJI = /^[^\s].{0,40}:$/;
 
-// PUDELKO OPCJI PLATNOSCI: pierwsza linia grupy „N. Tytul" (patrz blokOpcji w quote-text.js).
+// PUDELKO OPCJI PLATNOSCI: pierwsza linia grupy „N. Tytul”.
 const RE_OPCJA_NR = /^(\d{1,2})\.\s+(.+)$/;
 
 // Linia bedaca samym numerem konta — co najmniej 20 znakow bedacych cyframi i spacjami.
@@ -141,7 +139,7 @@ function textToBlocks(text) {
 
   // Linia zakonczona dwukropkiem, tuz nad pierwsza pozycja wyceny, to NAGLOWEK tabeli
   // („Wycena:") — nie akapit. Rozpoznajemy ja po SASIEDZTWIE, a nie po tresci, zeby
-  // dzialalo takze wtedy, gdy ktos zmieni ten napis w /settings.
+  // dzialalo takze wtedy, gdy ktos zmieni ten napis w Ustawieniach.
   const naglowkiTabeli = new Set();
   for (let i = 0; i < lines.length - 1; i += 1) {
     const tu = lines[i].trim();
@@ -160,7 +158,7 @@ function textToBlocks(text) {
   }
 
   // NAGLOWKI SEKCJI (ZAMOWIENIE, ZWROTY, „Dane do przelewu"). Rozpoznanie po POLOZENIU
-  // i DLUGOSCI, nie po tresci — inaczej kazda zmiana napisu w /settings gubilaby naglowek.
+  // i DLUGOSCI, nie po tresci — inaczej kazda zmiana napisu w Ustawieniach gubilaby naglowek.
   const naglowkiSekcji = new Set();
   for (let i = 0; i < lines.length; i += 1) {
     const tu = lines[i].trim();
@@ -264,11 +262,10 @@ function wydzielPudelka(blocks) {
 /**
  * KOPERTA MAILA — wordmark, karta, stopka. Wspólna dla WSZYSTKICH maili panelu.
  *
- * ⚠️ WYJĘTA Z `renderMailHtml` BEZ ZMIANY ANI ZNAKU (21.08.2026), przy okazji drugiego maila
- * o zupełnie innej treści (potwierdzenie przyjęcia zamówienia — src/mail/potwierdzenie-html.js).
- * Powód jest ten sam, co zawsze przy wyjmowaniu wspólnego kawałka: druga kopia koperty
- * rozjechałaby się z tą przy pierwszej zmianie stopki albo palety, a klient dostawałby dwa
- * różne „papiery firmowe" z jednego panelu.
+ * ⚠️ WYJĘTA Z `renderMailHtml` BEZ ZMIANY ANI ZNAKU, żeby drugi mail o zupełnie innej treści
+ * (potwierdzenie przyjęcia zamówienia — src/core/poczta/potwierdzenie-html.js) miał tę samą kopertę.
+ * Druga kopia koperty rozjechałaby się z tą przy pierwszej zmianie stopki albo palety, a klient dostawałby
+ * dwa różne „papiery firmowe” z jednego panelu.
  *
  * `body` to GOTOWY HTML treści — koperta go nie escapuje i nie interpretuje. Escapowanie
  * należy do renderera treści, bo tylko on wie, co jest daną, a co znacznikiem.
@@ -345,7 +342,7 @@ export function renderMailHtml({ text, footer = '', naglowek = '' } = {}) {
       // Nagłówek sekcji w rejestrze PRO: wersaliki, rozstrzelenie, kolor akcentu — tak samo
       // jak eyebrow na stronie oferty, żeby mail i sklep czytały się jak jedno miejsce.
       //
-      // ⚠️ CELOWO NIE `naglowekSekcji` Z GÓRY TEGO PLIKU (sprawdzone przy sprzątaniu 22.08.2026):
+      // ⚠️ CELOWO NIE `naglowekSekcji` Z GÓRY TEGO PLIKU:
       // tamta funkcja ma rozstrzelenie 1px i inne marginesy, a tutaj nagłówek jest ROZPOZNANY
       // we wpisanym przez człowieka tekście, więc dochodzi jeszcze obcięcie dwukropka z końca.
       // Podmiana na wspólną wersję zmieniłaby wygląd maili z wyceną, które chodzą na produkcji.

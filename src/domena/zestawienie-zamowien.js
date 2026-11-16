@@ -3,9 +3,9 @@ import { adresOdbiorcy } from './adres-odbiorcy.js';
 import { punktOdbioru } from './wysylka.js';
 import { fmtDataCzasKrotko } from './format-daty.js';
 
-// „Zestawienie zamówień" (PRZ-084) — wydruk WEWNETRZNY na wzor „order-shipping" z Apilo:
+// „Zestawienie zamówień" — wydruk WEWNETRZNY na wzor „order-shipping" z Apilo:
 // zamowienia jedno pod drugim, kazde z danymi wysylki, pozycjami z cenami, kwota i uwagami
-// klienta. Decyzja właściciela 15.10: dane osobowe w pelni, jak w Apilo (imie, adres/paczkomat,
+// klienta. Dane osobowe w pełni, jak w Apilo (imię, adres/paczkomat,
 // telefon, e-mail) — to kartka dla pakujacego, nie dla klienta.
 //
 // ⚠️ TEN MODUL NIE LICZY ZADNEJ KWOTY. Pozycje, wysylka, razem, platnosc i uwagi ida

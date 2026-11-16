@@ -63,18 +63,19 @@ describe('PRZ-075 kontoDemo — konfiguracja', () => {
 });
 
 describe('PRZ-075 demo publiczne — ekrany', () => {
-  it('ekran logowania demo pokazuje login i hasło gościa; produkcja nie', async () => {
+  // Ekran demo wpuszcza gościa przyciskiem: login i hasło jadą w polach ukrytych (tests/moduly/ustawienia/ekran-logowania.test.js).
+  it('ekran logowania demo niesie login i hasło gościa w przycisku; produkcja nie', async () => {
     const demo = await panel(envDemo);
     const r = await demo.app.inject('/login');
     expect(r.statusCode).toBe(200);
-    expect(r.body).toContain(`<code>${LOGIN}</code>`);
-    expect(r.body).toContain(`<code>${HASLO}</code>`);
-    expect(r.body).not.toContain('wyłącznie w sieci lokalnej');
+    expect(r.body).toContain(`name="uzytkownik" value="${LOGIN}"`);
+    expect(r.body).toContain(`name="haslo" value="${HASLO}"`);
+    expect(r.body).not.toContain('wyłącznie w&nbsp;sieci lokalnej');
     const prod = await panel(envProdukcja);
     const p = await prod.app.inject('/login');
     expect(p.body).not.toContain(HASLO);
-    expect(p.body).not.toContain('logowanie-demo');
-    expect(p.body).toContain('wyłącznie w sieci lokalnej');
+    expect(p.body).not.toContain('Wejdź do demo');
+    expect(p.body).toContain('wyłącznie w&nbsp;sieci lokalnej');
   });
 
   it('gość nie zmieni hasła ani imienia wspólnego konta (403), konto zostaje jak było', async () => {

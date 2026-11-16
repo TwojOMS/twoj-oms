@@ -1,4 +1,4 @@
-// PRZ-121.01 — zapisany wybór modułu faktur: wiersz „program_fakturowy” w tabeli konfiguracja_integracji
+// Zapisany wybór modułu faktur: wiersz „program_fakturowy” w tabeli konfiguracja_integracji
 // (migracja rdzenia 6, bez nowej migracji; wzór: rachunek-firmy.js). Jawne ustawienia {"program": "…"}, puste
 // sekrety; zostaje kto i kiedy (konto_login, zmieniono_at). Regułę stosuje domena/wybor-programu.js.
 import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji, usunKonfiguracjeIntegracji }
@@ -33,7 +33,7 @@ export function zapiszWyborProgramu(db, program, { konto = null, teraz = new Dat
 export const usunWyborProgramu = (db) => usunKonfiguracjeIntegracji(db, KLUCZ_WYBORU_PROGRAMU);
 
 /**
- * PRZ-121.02 — ile dokumentów (faktur zamówień i faktur okresów) leży w którym programie: `{ <program>: liczba }`.
+ * Ile dokumentów (faktur zamówień i faktur okresów) leży w którym programie: `{ <program>: liczba }`.
  * Liczy wiersze nowe (`program` + `dokument_id`) i stare (sam `infakt_uuid`) tym samym odczytem co `programDokumentu`;
  * rezerwacja bez identyfikatora dokumentu się nie liczy.
  * @returns {Record<string, number>}

@@ -13,25 +13,25 @@ import { zCzekaniemNa429 } from '../../../oms/ksef/limit.js';
 import { uslugaKsefDostepna, powodNiedostepnosciKsef } from '../../../domena/konfiguracja-ksef-kosztow.js';
 import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
-// Paczka dla biura rachunkowego (spec 2026-09-02, Czesc D): scalony PDF miesiaca — zestawienie
+// Paczka dla biura rachunkowego: scalony PDF miesiąca — zestawienie
 // czesci i jej dokumenty. Ten modul jest wylacznie SPINACZEM: skad wziac bajty, w jakiej
 // kolejnosci je poskladac i kiedy odmowic. Co ma stanac w zestawieniu, liczy domena
 // (`zlozPaczke`), a jak to wyglada — `pdf/`.
 //
-// ⚠️⚠️ DWA PLIKI, NIE JEDEN — DECYZJA WLASCICIELA Z 2026-09-02 WIECZOREM („podzial — dwa
-// pliki do pobrania, jeden kosztowy, drugi przychodowy"). `zbuduj(miesiac, czesc)` sklada
+// ⚠️⚠️ DWA PLIKI, NIE JEDEN — DECYZJA PRODUKTOWA: dwa pliki do pobrania, jeden kosztowy,
+// drugi przychodowy. `zbuduj(miesiac, czesc)` sklada
 // ZA KAZDYM RAZEM JEDEN plik: `sprzedaz` (zestawienie sprzedazy + faktury + korekty) albo
 // `koszty` (zestawienie kosztow + faktury kosztowe). Powod jest po stronie biura: sprzedaz
-// i koszty ida do dwoch roznych rejestrow VAT i wedruja w biurze osobno, wiec jeden wspolny
-// plik trzeba bylo najpierw rozciac.
+// i koszty idą do dwóch różnych rejestrów VAT i wędrują w biurze osobno, więc jeden wspólny
+// plik trzeba by najpierw rozciąć.
 //
-// ⚠️ KAZDA CZESC SIEGA WYLACZNIE PO SWOJE ZRODLO: plik sprzedazowy pyta inFakt i NIE dotyka
-// KSeF, plik kosztowy czyta baze i archiwum/KSeF, a inFaktu nie pyta o nic. Pobranie „na
+// ⚠️ KAŻDA CZĘŚĆ SIĘGA WYŁĄCZNIE PO SWOJE ŹRÓDŁO: plik sprzedażowy pyta program fakturowy i NIE
+// dotyka KSeF, plik kosztowy czyta bazę i archiwum/KSeF, a programu fakturowego nie pyta o nic. Pobranie „na
 // wszelki wypadek" kosztowaloby minute czekania czlowieka i sztucznie zblizalo do limitu
-// 16/min KSeF — za dane, ktore i tak nie weszlyby do skladanego pliku.
+// KSeF (kilkanaście żądań na minutę) — za dane, które i tak nie weszłyby do składanego pliku.
 //
-// ⚠️⚠️ WSZYSTKO ALBO NIC — DECYZJA WLASCICIELA, NIE OSTROZNOSC. Jedno niepowodzenie
-// (nieodebrany PDF z inFaktu, koszt bez pliku i bez KSeF, plik, ktorego nie da sie wczytac)
+// ⚠️⚠️ WSZYSTKO ALBO NIC — DECYZJA PRODUKTOWA, NIE OSTROŻNOŚĆ. Jedno niepowodzenie
+// (nieodebrany PDF z programu fakturowego, koszt bez pliku i bez KSeF, plik, którego nie da się wczytać)
 // przerywa CALOSC odmowa z NUMEREM dokumentu i nie zostawia zadnego pliku. Paczka „prawie
 // kompletna" jest gorsza niz brak paczki: ksiegowa nie ma jak zauwazyc, ze brakuje w niej
 // jednej faktury — zestawienie i tak ja wymienia, a strony sie zgadzaja z numeracja stopki.
@@ -39,10 +39,10 @@ import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 // nacisnie „Pobierz" drugi raz.
 
 /**
- * Bajty z archiwum na NAS-ie albo `null`, gdy katalogu/sciezki nie ma lub plik zniknal.
+ * Bajty z archiwum na dysku albo `null`, gdy katalogu/ścieżki nie ma lub plik zniknął.
  *
  * ⚠️ BRAK PLIKU NIE JEST TU BLEDEM — jest odpowiedzia „nie mam, wez z sieci". Archiwum jest
- * DODATKIEM (kopia na NAS-ie), a zrodlem prawdy zostaje inFakt/KSeF; odmowa w tym miejscu
+ * DODATKIEM (kopia na dysku), a źródłem prawdy zostaje program fakturowy/KSeF; odmowa w tym miejscu
  * kladlaby paczke za kazdym razem, gdy ktos przeniesie katalog albo gdy archiwum jest jeszcze
  * wylaczone.
  */
@@ -50,7 +50,7 @@ import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 // zdarzenia, mimo ze oba moga wygladac na „nie da sie wziac z dysku". Brak pliku jest
 // odpowiedzia „nie mam, wez z sieci" (patrz komentarz przy `bajtySprzedazy`). Blad odczytu
 // (SMB odcieta w polowie, `EBUSY`, `EACCES`) NIE JEST tym samym: plik jest, wiec to NIE jest
-// sygnal „wez z sieci" — to jest awaria wspolnego zasobu (NAS-u), o ktorej operator MUSI
+// sygnał „weź z sieci" — to jest awaria wspólnego zasobu (dysku archiwum), o której operator MUSI
 // wiedziec, bo inaczej dostanie pozornie dzialajaca paczke zbudowana z sieci akurat wtedy,
 // gdy dysk archiwum jest w zlym stanie. Dlatego blad z `czytajPlik` NIE jest tu chwytany —
 // leci dalej do wywolujacego, ktory zna numer dokumentu i zamienia go na `bladOperatora`.
@@ -71,8 +71,9 @@ import { gdzieDokument } from '../../../domena/nazwa-programu.js';
 
 export const CZESCI = ['sprzedaz', 'koszty'];
 
-// PRZ-122.B13d1: zestawienie ZAZNACZONYCH faktur (z listy FAKTURY). Limit, bo trasa jest synchroniczna, a inFakt oddaje
-// PDF-y po `rownolegle` naraz — wiekszy wybor to zestawienie za caly miesiac. Napisy w jednym miejscu (właściciel moze je zmienic).
+// Zestawienie ZAZNACZONYCH faktur (z listy FAKTURY). Limit, bo trasa jest synchroniczna, a program
+// fakturowy oddaje PDF-y po `rownolegle` naraz — większy wybór to zestawienie za cały miesiąc.
+// Napisy w jednym miejscu, żeby dało się je zmienić bez szukania po kodzie.
 export const MAX_ZAZNACZONYCH = 100;
 const POLA_ZAZNACZONYCH = ['invoice_date', 'sale_date'];
 export const ZAZNACZONE = {
@@ -81,7 +82,7 @@ export const ZAZNACZONE = {
   nazwaPliku: (miesiac) => `zestawienie-faktur-${miesiac}-zaznaczone.pdf`,
 };
 
-// Pobieranie porcjami po `ile` naraz. inFakt znosi kilka rownoleglych zadan, ale caly miesiac
+// Pobieranie porcjami po `ile` naraz. Program fakturowy znosi kilka równoległych żądań, ale cały miesiąc
 // naraz (setki faktur) to zaproszenie do 429 i do wyczerpania gniazd — a przy okazji do
 // kolejnosci wynikow zaleznej od sieci. `Promise.all` na porcji zachowuje kolejnosc wejscia,
 // wiec strony paczki ida dokladnie tak, jak wiersze zestawienia.
@@ -94,8 +95,8 @@ async function porcjami(elementy, ile, fn) {
   return wyniki;
 }
 
-// PRZ-118.08: listy i PDF-y sprzedaży daje PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`).
-// PRZ-122.ZGODA-TFb: `plikiKsef(uuid)` → { xml, upo } | null — pliki KSeF programu wbudowanego z parametru (moduł faktur;
+// Listy i PDF-y sprzedaży daje PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`).
+// `plikiKsef(uuid)` → { xml, upo } | null — pliki KSeF programu wbudowanego z parametru (moduł faktur;
 // w testach paczka-dla-biura-twojefaktury.js). Ten plik nie importuje kodu TwojeFaktury; bez funkcji — paczka jak u inFaktu.
 export function createPaczkaDlaBiura({
   db, program: programPodany = null, infakt = null, wizualizacjaKosztu = null, katalogSprzedazy = null, katalogKosztow = null,
@@ -108,14 +109,14 @@ export function createPaczkaDlaBiura({
   // minimum 1 tutaj, RAZ, jest tansze niz pilnowanie tego w kazdym miejscu wywolania.
   const rownoleglePaczki = Math.max(1, Number(rownolegle) || 1);
   const program = zProgramu({ program: programPodany, infakt });
-  // PRZ-118.09: „Wygenerowano … w panelu OMS (<źródło>)” na zestawieniu sprzedaży — mianownik nazwy programu.
+  // „Wygenerowano … w panelu OMS (<źródło>)” na zestawieniu sprzedaży — mianownik nazwy programu.
   const zrodloSprzedazy = program?.opis?.nazwa?.mianownik ?? null;
   /**
    * ⚠️ Z DYSKU TYLKO WTEDY, GDY PLIK NA PEWNO JEST TYM DOKUMENTEM. Trzy warunki naraz:
-   * wiersz archiwum istnieje, NIE jest oznaczony jako skasowany w inFakcie i jego `odcisk`
-   * zgadza sie z odciskiem dokumentu, ktory inFakt oddal przed chwila. Zabraknie
-   * ktoregokolwiek — bierzemy bajty z sieci. Powod: inFakt pozwala poprawiac fakture, dopoki
-   * nie poszla do KSeF, a `updated_at` w API NIE ISTNIEJE (pomiar 2026-09-02) — bez
+   * wiersz archiwum istnieje, NIE jest oznaczony jako skasowany w programie fakturowym i jego
+   * `odcisk` zgadza się z odciskiem dokumentu, który program oddał przed chwilą. Zabraknie
+   * któregokolwiek — bierzemy bajty z sieci. Powód: program (np. inFakt) pozwala poprawiać
+   * fakturę, dopóki nie poszła do KSeF, a `updated_at` w jego API NIE ISTNIEJE — bez
    * porownania odcisku biuro dostaloby wersje sprzed poprawki, wygladajaca na aktualna.
    */
   async function bajtySprzedazy(dok, podglady) {
@@ -126,7 +127,7 @@ export function createPaczkaDlaBiura({
         z = czytaj(katalogSprzedazy, wiersz.sciezka_pdf, czytajPlik);
       } catch (e) {
         // Plik ISTNIEJE (inaczej `czytaj` oddalaby `null` bez wolania `czytajPlik`), ale nie
-        // da sie go przeczytac — awaria wspolnego zasobu (NAS-u), a nie „nie mam, wez z sieci".
+        // da się go przeczytać — awaria wspólnego zasobu (dysku archiwum), a nie „nie mam, weź z sieci".
         throw bladOperatora(`Nie udało się przygotować zestawienia faktur: nie da się odczytać pliku dokumentu ${dok.number} z archiwum (${e.message}).`);
       }
       if (z) return z;
@@ -136,14 +137,14 @@ export function createPaczkaDlaBiura({
         ? await program.pobierzPdfKorekty(dok.uuid)
         : await program.pobierzPdf(dok.uuid);
     } catch (e) {
-      // PRZ-126.C06 (właściciel 29.10: „nic nie blokuje. tylko informacją że nie ma ksef”): dokument bez numeru KSeF
+      // Brak numeru KSeF niczego nie blokuje, tylko jest opisany na wydruku: dokument bez numeru KSeF
       // (faktura VAT B2B/B2C, korekta) wchodzi PODGLĄDEM programu — napis „PODGLĄD — nie jest fakturą”, bez zdarzenia
       // `wydano_nabywcy` (biuro nie jest nabywcą) — a wiersz zestawienia dostaje uwagę (znacznik `bezNumeruKsef`).
       if (e?.czekaNaKsef && typeof program.podgladPdf === 'function') {
         podglady.add(dok.uuid);
         return program.podgladPdf(dok.uuid);
       }
-      // Program bez podglądu (inFakt) — paczka czeka (409) z tym samym zdaniem, a nie „brak dokumentu” (PRZ-122.B10a).
+      // Program bez podglądu (inFakt) — paczka czeka (409) z tym samym zdaniem, a nie „brak dokumentu”.
       if (e?.czekaNaKsef) {
         throw bladOperatora(`Nie udało się przygotować zestawienia faktur: ${e.message}`, { status: 409, czekaNaKsef: true });
       }
@@ -155,8 +156,8 @@ export function createPaczkaDlaBiura({
    * Koszt: najpierw plik z archiwum (`sciezka_pdf`), potem wizualizacja z KSeF.
    *
    * ⚠️⚠️ POBRANIE Z KSeF IDZIE PRZEZ `zCzekaniemNa429` (ksef/limit.js). KSeF przepuszcza
-   * 16 zadan na minute (liczba zmierzona na produkcji), a paczka miesiaca potrafi miec kilkadziesiat
-   * kosztow — bez tej obwolutki 17. dokument wywracalby CALA paczke zdaniem „KSeF odmowil",
+   * kilkanaście żądań na minutę, a paczka miesiąca potrafi mieć kilkadziesiąt
+   * kosztów — bez tej obwolutki pierwszy dokument ponad limit wywracałby CAŁĄ paczkę zdaniem „KSeF odmówił",
    * czyli regula „wszystko albo nic" zamienialaby prosbe o chwile przerwy w utrate calego wydruku.
    * `doKiedy: Infinity`, bo tutaj czeka CZLOWIEK przy przegladarce (trasa ma `requestTimeout: 0`),
    * a nie nocny przebieg z budzetem; sufit na pojedyncze czekanie siedzi w `limit.js`.
@@ -179,7 +180,7 @@ export function createPaczkaDlaBiura({
     if (!uslugaKsefDostepna(wizualizacjaKosztu)) {
       throw bladOperatora(
         `Nie udało się przygotować zestawienia faktur: dokument ${k.numer_dokumentu} nie jest zarchiwizowany, `
-        // PRZ-108.10 (recenzja): przy zapisanym tokenie bez NIP-u firmy — ta przyczyna, wprost.
+        // Przy zapisanym tokenie bez NIP-u firmy — ta przyczyna, wprost.
         + (powodNiedostepnosciKsef(wizualizacjaKosztu) ? `a KSeF nie działa. ${powodNiedostepnosciKsef(wizualizacjaKosztu)}`
           : 'a panel nie ma podpiętego KSeF, żeby go pobrać.'),
       );
@@ -213,7 +214,7 @@ export function createPaczkaDlaBiura({
    */
   async function wczytaj(bajty, numer) {
     try {
-      // `ignoreEncryption`: inFakt potrafi oddac PDF z pustym haslem wlasciciela (sam zakaz
+      // `ignoreEncryption`: program fakturowy (np. inFakt) potrafi oddać PDF z pustym hasłem właściciela (sam zakaz
       // edycji). Bez tej flagi pdf-lib odmawia scalenia dokumentu, ktory kazda przegladarka
       // otwiera bez pytania.
       const doc = await PDFDocument.load(bajty, { ignoreEncryption: true });
@@ -225,7 +226,7 @@ export function createPaczkaDlaBiura({
   }
 
   /**
-   * Korekty okresu: po dacie WYSTAWIENIA (art. 29a ust. 13), z jednym wyjatkiem — PRZ-126.C09d: KOR do zera z zamiany
+   * Korekty okresu: po dacie WYSTAWIENIA (art. 29a ust. 13), z jednym wyjątkiem — KOR do zera z zamiany
    * faktury przy zlym NIP-ie (`zastepujaca`, tylko program wbudowany) nalezy do okresu SPRZEDAZY starej, razem ze stara
    * i nowa. Inaczej przychod wychodzi podwojnie w miesiacu starej, a KOR w miesiacu zamiany. Kazda KOR trafia do
    * dokladnie jednego miesiaca: z listy po wystawieniu odpada KOR z zamiany, z listy po sprzedazy zostaje tylko ona.
@@ -251,7 +252,7 @@ export function createPaczkaDlaBiura({
       ...korekty.map((d) => ({ ...d, rodzaj: 'korekta' })),
     ];
     // ⚠️ MAPA BUDOWANA Z WARTOWNIKIEM NA DUPLIKAT KLUCZA. `new Map(...)` po cichu zostawilaby
-    // TYLKO OSTATNI wpis pod danym `uuid` — gdyby inFakt kiedys oddal fakture i korekte
+    // TYLKO OSTATNI wpis pod danym `uuid` — gdyby program fakturowy kiedyś oddał fakturę i korektę
     // o tym samym `uuid` (bug po ich stronie, ale niewykluczony), obie pozycje zestawienia
     // pobralyby bajty TEGO SAMEGO dokumentu: jedna z nich dostalaby cudzy PDF pod swoim
     // numerem, a nic by o tym nie powiedzialo. Lepsza odmowa z numerem niz papier, ktory
@@ -278,7 +279,7 @@ export function createPaczkaDlaBiura({
   }
 
   /**
-   * PRZ-126.C06: zestawienie po pobraniu stron — dokumenty, które weszły podglądem, dostają znacznik `bezNumeruKsef`
+   * Zestawienie po pobraniu stron — dokumenty, które weszły podglądem, dostają znacznik `bezNumeruKsef`
    * (uwaga w wierszu). Kolejność wierszy i sumy te same co w pierwszym złożeniu (znacznik zmienia tylko uwagę).
    */
   function zPodgladami(paczka, wejscie, podglady) {
@@ -288,10 +289,10 @@ export function createPaczkaDlaBiura({
   }
 
   /**
-   * PRZ-122.B13b: przy programie wbudowanym (TwojeFaktury) kazdy dokument w KSeF dostaje w paczce dwa zalaczniki PDF:
+   * Przy programie wbudowanym (TwojeFaktury) kazdy dokument w KSeF dostaje w paczce dwa zalaczniki PDF:
    * `{numer}.xml` (dokladnie bajty wyslane do KSeF) i `{numer}-upo.xml` (gdy UPO jest). Paczka jest jednym scalonym
    * PDF-em, wiec XML i UPO jada jako pliki osadzone (EmbeddedFiles) — strony i stopka bez zmian. Dokument bez KSeF
-   * (od C06 w paczce podglad) i inFakt — bez zalacznikow. Numer w nazwie jak w archiwum (`doNazwyPliku`).
+   * (wchodzi do paczki podglądem) i program zewnętrzny (np. inFakt) — bez załączników. Numer w nazwie jak w archiwum (`doNazwyPliku`).
    */
   async function dolaczPlikiKsef(wynik, wiersze) {
     if (program?.opis?.wbudowany !== true || !plikiKsef) return;
@@ -366,7 +367,7 @@ export function createPaczkaDlaBiura({
   }
 
   /**
-   * Czesc wspolna zestawienia za okres (`zbuduj`) i zestawienia zaznaczonych (`zbudujZaznaczone`, PRZ-122.B13d1):
+   * Część wspólna zestawienia za okres (`zbuduj`) i zestawienia zaznaczonych (`zbudujZaznaczone`):
    * dwa przebiegi zestawienia, scalenie z dokumentami, tytul, zalaczniki KSeF (czesc sprzedazowa), straznik stron.
    * Wydzielona mechanicznie z `zbuduj` — obie sciezki skladaja plik JEDNA funkcja.
    */
@@ -388,7 +389,7 @@ export function createPaczkaDlaBiura({
     // wydruku, ktory trzyma w rece, a nie sume dwoch osobnych pobran.
     const zestaw = (liczbaStron) => zbudujZestawienie({
       paczka, czesc, wygenerowano, liczbaStron, liczbaDokumentow, ...opcjeZestawienia,
-      // PRZ-118.09: źródło sprzedaży na wydruku = nazwa programu (bez programu — „inFakt” z tabeli wydruku).
+      // Źródło sprzedaży na wydruku = nazwa programu (bez programu — „inFakt” z tabeli wydruku).
       ...(czesc === 'sprzedaz' && zrodloSprzedazy ? { zrodlo: zrodloSprzedazy } : {}),
     });
     const proba = await PDFDocument.load(await zestaw(0));
@@ -406,8 +407,8 @@ export function createPaczkaDlaBiura({
     wynik.setTitle(tytulPliku);
     if (czesc === 'sprzedaz') await dolaczPlikiKsef(wynik, paczka.sprzedaz);
     // ⚠️ STRAZNIK NA KONIEC: `stron` (napis w stopce KAZDEJ strony zestawienia) MUSI zgadzac
-    // sie z faktyczna liczba stron scalonego pliku. Zalozenie o dwoch przebiegach ("Do
-    // rozstrzygniecia" w raporcie Task 11, pkt 3) jest zalozeniem, nie dowodem — gdyby kiedys
+    // sie z faktyczna liczba stron scalonego pliku. Zalozenie o dwoch przebiegach
+    // jest zalozeniem, nie dowodem — gdyby kiedys
     // przestalo trzymac (np. zestawienie na krawedzi strony zmienia liczbe stron miedzy
     // przebiegami), stopka klamalaby o kompletnosci wydruku PO CICHU. Lepsza odmowa tutaj niz
     // ksiegowa liczaca strony wydruku przeciw stopce, ktora sie nie zgadza.
@@ -423,7 +424,7 @@ export function createPaczkaDlaBiura({
 
   /**
    * JEDEN plik paczki: `czesc` = 'sprzedaz' albo 'koszty' (patrz naglowek modulu — dwa pliki
-   * to decyzja wlasciciela z 2026-09-02 wieczorem, a nie szczegol implementacji).
+   * to decyzja produktowa, a nie szczegół implementacji).
    */
   async function zbuduj(miesiac, czesc) {
     const zakres = zakresMiesiaca(miesiac);
@@ -440,7 +441,7 @@ export function createPaczkaDlaBiura({
     // ⚠️ DWA ROZNE POLA DATY, I TO NIE JEST NIEKONSEKWENCJA: sprzedaz bierzemy po DACIE
     // SPRZEDAZY (to ona wyznacza okres VAT — art. 19a ustawy o VAT), a korekty po dacie
     // WYSTAWIENIA (korekta „in minus" rozlicza sie w okresie wystawienia — art. 29a ust. 13).
-    // Sekwencyjnie, nie `Promise.all`: przy odmowie z inFaktu drugie zadanie i tak byloby
+    // Sekwencyjnie, nie `Promise.all`: przy odmowie z programu fakturowego drugie żądanie i tak byłoby
     // bezuzyteczne, a kolejnosc wolan jest sprawdzalna w tescie.
     const faktury = sprzedazowa ? await program.listaFaktur({ ...zakres, pole: 'sale_date' }) : [];
     const korekty = sprzedazowa ? await korektyOkresu(zakres) : [];
@@ -481,7 +482,7 @@ export function createPaczkaDlaBiura({
   }
 
   /**
-   * PRZ-122.B13d1: zestawienie ZAZNACZONYCH faktur z listy FAKTURY (jeden miesiac) — strona zestawienia, potem PDF-y
+   * Zestawienie ZAZNACZONYCH faktur z listy FAKTURY (jeden miesiac) — strona zestawienia, potem PDF-y
    * dokumentow, przy programie wbudowanym XML i UPO jako zalaczniki; skladane ta sama `scalZDokumentami`.
    * Zaznaczenie niesie TYLKO identyfikatory: listy pobieramy na swiezo za `miesiac` z tym samym `pole` co lista
    * (jak `przelicz` w services/wysylka-ksef.js). Odmowy PRZED jakimkolwiek `pobierzPdf`: pusto / zly miesiac / zle pole,

@@ -1,4 +1,4 @@
-// PRZ-160.04b — przebieg „Pobierz treść i zdjęcia ofert": oferty Allegro powiązane z kartą → pola karty, galeria
+// Przebieg „Pobierz treść i zdjęcia ofert": oferty Allegro powiązane z kartą → pola karty, galeria
 // i dane kanału. Tylko odczyt z Allegro; zapis wyłącznie do bazy OMS i katalogu zdjęć.
 //
 // Kolejność na ofertę: pobierzOferte → opisKategoriiAllegro → trescOfertyAllegro → zdjęcia (poza transakcją,
@@ -20,7 +20,7 @@ const odmowa = e => e?.status === 401 || e?.status === 403;
 const komunikatOdmowy = (kanal, e) => `Allegro odmówiło dostępu do konta ${kanal} (HTTP ${e.status}). `
   + 'Połącz konto ponownie w Ustawieniach i uruchom pobieranie jeszcze raz — pobrane oferty zostaną pominięte.';
 
-// PRZ-160.06b: zdjęcie ma najwyżej 3 próby; odstęp przed 2. i 3. próbą (ms). Ponawiamy tylko błędy chwilowe.
+// Zdjęcie ma najwyżej 3 próby; odstęp przed 2. i 3. próbą (ms). Ponawiamy tylko błędy chwilowe.
 const PROBY_ZDJECIA = 3;
 const ODSTEPY_PROB = [2000, 10000];
 const KODY_SIECI = new Set(['ECONNRESET', 'ECONNREFUSED', 'ECONNABORTED', 'ETIMEDOUT', 'EPIPE', 'EAI_AGAIN',
@@ -41,8 +41,8 @@ const bezAdresow = t => t.replace(/\b[a-z][a-z0-9+.-]*:\/\/\S+/gi, '(adres)').sl
  * Oferty do pobrania. Jedna oferta na kartę i konto (kanał): aktywna (`zniknal_at` puste; `status_publikacji`
  * ACTIVE albo nieznany) o najniższym `id` w lustrze; bez aktywnej — najniższe `id` spośród niezniknietych.
  * `ofertaWskazana` (id wiersza `produkty_sklepowe`) omija ten wybór i `tresc_pobrana_at` — dla przycisku
- * „Weź treść z tej oferty" (06d).
- * `karty` (PRZ-160 P3b.03, opcjonalne) zawęża kolejkę do podanych kart — import „tylko nowe" bierze treść
+ * „Weź treść z tej oferty".
+ * `karty` (opcjonalne) zawęża kolejkę do podanych kart — import „tylko nowe" bierze treść
  * wyłącznie dla kart, które właśnie utworzył.
  */
 export function kolejka(db, kanaly, ofertaWskazana = null, karty = null) {
@@ -68,7 +68,7 @@ const galeria = (db, kartaId) => db.prepare('SELECT * FROM zdjecia_kart WHERE ka
 const zrodloZdjec = (db, kartaId) => db.prepare("SELECT * FROM karty_zrodla_pol WHERE karta_id = ? AND pole = 'zdjecia'").get(kartaId);
 const takieSame = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
 
-// Adresy do pobrania albo null, gdy galerii nie wolno ruszyć (D4) albo własne odnośniki są już te same.
+// Adresy do pobrania albo null, gdy galerii nie wolno ruszyć albo własne odnośniki są już te same.
 function adresyDoPobrania(db, kartaId, zrodlo, adresy) {
   const unikalne = [...new Set(adresy)].slice(0, LIMIT_ZDJEC);
   if (!unikalne.length) return null;
@@ -119,7 +119,7 @@ function zapiszOferte(db, { wiersz, tresc, zdjecia, zrodlo, at }) {
     VALUES (?, ?, ?, 0, ?) ON CONFLICT (karta_id, pole) DO UPDATE SET
     zrodlo = excluded.zrodlo, reczne = 0, zmieniono_at = excluded.zmieniono_at`).run(id, pole, zrodlo, at);
 
-  // Producenta nie zapisujemy (D28); stanów ten przebieg nie dotyka.
+  // Producenta nie zapisujemy; stanów ten przebieg nie dotyka.
   const pola = {
     ...tresc.pola,
     opis_sekcje_json: tresc.opisSekcje?.sekcje?.length ? JSON.stringify(tresc.opisSekcje) : null,
@@ -133,7 +133,7 @@ function zapiszOferte(db, { wiersz, tresc, zdjecia, zrodlo, at }) {
     oznacz(pole);
   }
 
-  // PRZ-160.P3b.01: parametr „Marka” oferty → marka karty, tylko do pustego pola i nigdy przez ręczne źródło.
+  // Parametr „Marka” oferty → marka karty, tylko do pustego pola i nigdy przez ręczne źródło.
   const marka = markaZParametrow(tresc.daneKanalu?.parametry);
   if (marka && polePuste('marka', karta.marka) && !zrodla.get('marka')?.reczne && wolno('marka', karta.marka)) {
     db.prepare('UPDATE karty_produktow SET marka = ?, zmieniony_at = ? WHERE id = ?').run(marka, at, id);
@@ -191,7 +191,7 @@ function zapiszOferte(db, { wiersz, tresc, zdjecia, zrodlo, at }) {
       d.updatedAt, at);
   db.prepare('UPDATE produkty_sklepowe SET tresc_pobrana_at = ?, tresc_zmieniona_at = ? WHERE id = ?')
     .run(at, d.updatedAt, wiersz.id);
-  // PRZ-160.06b: trwały wpis błędu przy ofercie (pominięte zdjęcia); udane pobranie bez błędów go czyści.
+  // Trwały wpis błędu przy ofercie (pominięte zdjęcia); udane pobranie bez błędów go czyści.
   const blad = bladZdjec(zdjecia);
   db.prepare('UPDATE produkty_sklepowe SET tresc_blad = ?, tresc_blad_at = ? WHERE id = ?')
     .run(blad, blad ? at : null, wiersz.id);
@@ -284,7 +284,7 @@ export function createTrescAllegroPrzebieg({ db, allegro = {}, kanalyAllegro = [
   let stan = { ...STAN_POCZATKOWY };
   const gotowy = () => [...kanalyAllegro].some(k => typeof allegro[k]?.pobierzOferte === 'function');
 
-  // `kanaly`, `karty` (PRZ-160 P3b.03, opcjonalne): ekran importu czyta treść jednego konta, a „tylko nowe"
+  // `kanaly`, `karty` (opcjonalne): ekran importu czyta treść jednego konta, a „tylko nowe"
   // — tylko kart, które utworzył. Bez nich — jak dotąd: wszystkie konta, wszystkie karty.
   function start({ ofertaWskazana = null, kanaly = null, karty = null } = {}) {
     if (!gotowy() || stan.trwa) return { wystartowal: false };

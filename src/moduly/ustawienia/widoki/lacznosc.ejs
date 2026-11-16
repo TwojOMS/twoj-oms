@@ -1,14 +1,14 @@
 <%#
-  Ekran „Łączność" (17.08.2026) — czy panel dosięga usług, z których żyje.
+  Ekran „Łączność" (zakładka „Stan systemu”) — czy panel dosięga usług, z których żyje.
 
-  ⚠️ POWSTAŁ PO AWARII. Po restarcie NAS-a panel pisał „Sklep nieosiągalny: fetch failed"
-  przy sklepach, Allegro i inFakcie NARAZ — a wszystkie trzy działały; padł DNS na NAS-ie.
+  ⚠️ POWSTAŁ PO AWARII. Po restarcie serwera panel pisał „Sklep nieosiągalny: fetch failed"
+  przy sklepach, Allegro i programie do faktur NARAZ — a wszystkie działały; padł DNS na serwerze.
   Ten ekran ma odpowiadać na jedno pytanie: czy to nasza sieć, czy tamta usługa.
 
-  ⚠️ WIDOK NICZEGO NIE SPRAWDZA. Wyniki przychodzą policzone z services/lacznosc.js,
-  podsumowanie z domain/lacznosc.js. Tutaj zostaje kolor i układ.
+  ⚠️ WIDOK NICZEGO NIE SPRAWDZA. Wyniki przychodzą policzone z oms/services/lacznosc.js,
+  podsumowanie z domena/lacznosc.js. Tutaj zostaje kolor i układ.
 
-  ⚠️ ANI JEDNEGO KOLORU WPROST — wszystko z palety w layout-oms.ejs (jasny i ciemny motyw).
+  ⚠️ ANI JEDNEGO KOLORU WPROST — wszystko z palety w public/oms-uklad.css (jasny i ciemny motyw).
 %>
 <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Stan systemu"}) %>
 
@@ -54,7 +54,7 @@
                 <div class="kanal-drobne"><%= w.host || w.url %></div>
               </td>
               <td>
-                <%# Nazwa: adres IP dowodzi, ze DNS odpowiedzial. Brak = to wlasnie tutaj peklo. %>
+                <%# Nazwa: adres IP dowodzi, że DNS odpowiedział. Brak = to właśnie tutaj pękło. %>
                 <% if (w.adresIp) { %>
                   <span class="lacznosc-ok">✓ <%= w.adresIp %></span>
                   <% if (w.msDns != null) { %><div class="kanal-drobne"><%= w.msDns %> ms</div><% } %>
@@ -94,10 +94,10 @@
   </div>
 </div>
 
-<%# ⚠️ NIC PO CICHU. Bezpiecznik, ktory w milczeniu przestaje pytac, jest gorszy niz blad —
-    dlatego jego stan ma byc widoczny tam, gdzie i tak sie zaglada przy podejrzeniu awarii.
-    Sekcja pojawia sie WYLACZNIE, gdy cos jest otwarte: pusty naglowek na kazdym wejsciu
-    uczylby go pomijac wzrokiem. %>
+<%# ⚠️ NIC PO CICHU. Bezpiecznik, który w milczeniu przestaje pytać, jest gorszy niż błąd —
+    dlatego jego stan ma być widoczny tam, gdzie i tak się zagląda przy podejrzeniu awarii.
+    Sekcja pojawia się WYŁĄCZNIE, gdy coś jest otwarte: pusty nagłówek na każdym wejściu
+    uczyłby go pomijać wzrokiem. %>
 <% if ((typeof bezpieczniki !== 'undefined') && bezpieczniki.length) { %>
 <div class="ust-sekcja">
   <h2>Wstrzymane odpytywanie</h2>

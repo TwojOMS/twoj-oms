@@ -1,9 +1,9 @@
-// PRZ-102.22 — token KSeF do pobierania faktur KOSZTOWYCH skonfigurowany w Ustawieniach. Wzór: klucz GUS z PRZ-102.11
-// (domena/konfiguracja-gus.js) i inFakt z PRZ-093.10.
+// Token KSeF do pobierania faktur KOSZTOWYCH skonfigurowany w Ustawieniach. Wzór: klucz GUS
+// (domena/konfiguracja-gus.js) i inFakt.
 //
 // Dla instalacji klientów Twojego OMS-u: token KSeF wpisuje się na ekranie zamiast do oms.env.
 // ⚠️ Gdy token jest w .env (KSEF_TOKEN), .env WYGRYWA i ekran tylko to pokazuje — instalacja skonfigurowana plikiem
-// (w tym produkcja właściciela) nie zmienia zachowania po tej zmianie.
+// nie zmienia zachowania.
 // ⚠️ Token służy WYŁĄCZNIE do czytania faktur zakupowych (czuwacz kosztów, PDF kosztu, paczka kosztów). Wysyłka
 // sprzedaży obsługuje wybrany program; TwojeFaktury wymaga osobnej zgody na wysyłkę.
 // Adres API (KSEF_API) i archiwum XML (KSEF_ARCHIWUM) NIE są polami formularza — zostają wyłącznie w pliku.
@@ -11,7 +11,7 @@ import { znormalizujNip } from './gus.js';
 
 /** Ekran Ustawienia → Integracje → KSeF. */
 export const EKRAN_KSEF = '/ustawienia/integracje/ksef';
-/** Zdanie na ekranie — jakie uprawnienie ma mieć token (właściciel 20.10). */
+/** Zdanie na ekranie — jakie uprawnienie ma mieć token. */
 export const ZDANIE_UPRAWNIENIA_KSEF = 'Wygeneruj w KSeF token z uprawnieniem tylko do przeglądania faktur zakupowych — OMS niczego przez KSeF nie wysyła.';
 export const ZDANIE_TOKENU_KOSZTOW_TWOJEFAKTURY = 'Ten sam token wysyła też faktury sprzedaży z TwojeFaktury — musi mieć uprawnienie do wystawiania faktur (InvoiceWrite).';
 
@@ -36,7 +36,7 @@ export function sprawdzFormularzKsef(body = {}, zapisane = null, nipSprzedawcy =
   const nipSurowy = tekst(body.nip);
   const nip = nipSurowy ? znormalizujNip(nipSurowy) : null;
   if (nipSurowy && nip !== nipSprzedawcy) {
-    // PRZ-108.10: NIP firmy z pliku albo z Ustawień → Firma; bez niego panel nie ma z czym porównać.
+    // NIP firmy z pliku albo z Ustawień → Firma; bez niego panel nie ma z czym porównać.
     bledy.push(nipSprzedawcy
       ? 'NIP musi być NIP-em firmy (Ustawienia → Firma albo OMS_SPRZEDAWCA_NIP w pliku) — KSeF pobiera faktury zakupowe tej firmy. Zostaw pole puste, a OMS użyje NIP-u firmy.'
       : 'Panel nie zna jeszcze NIP-u firmy — wpisz go najpierw w Ustawienia → Firma, potem zapisz token (pole NIP możesz zostawić puste).');
@@ -60,11 +60,7 @@ export function nipZapisuZgodny(zapis, nipSprzedawcy) {
 }
 
 /**
- * Czy usługa z modułu kosztów jest gotowa (plik albo zapis z ekranu). Usługa z modułu (`dostepny()`) odpowiada przy
- * każdym żądaniu; zwykły obiekt (testy, starsze składy) — samym istnieniem. Wzór: gusDostepny (konfiguracja-gus.js).
- */
-/**
- * PRZ-108.10 (recenzja): token z ekranu jest zapisany, ale panel nie zna NIP-u firmy (ani w pliku, ani w Ustawienia →
+ * Token z ekranu jest zapisany, ale panel nie zna NIP-u firmy (ani w pliku, ani w Ustawienia →
  * Firma) — jedno zdanie dla „Sprawdź połączenie”, „Odśwież teraz”, PDF-u kosztu, paczki dla biura i ekranu Koszty,
  * zamiast mylącego „brak tokenu” / „nie ma podpiętego KSeF”.
  */
@@ -75,6 +71,10 @@ export function powodNiedostepnosciKsef(usluga) {
   return typeof usluga?.powodNiedostepnosci === 'function' ? usluga.powodNiedostepnosci() : null;
 }
 
+/**
+ * Czy usługa z modułu kosztów jest gotowa (plik albo zapis z ekranu). Usługa z modułu (`dostepny()`) odpowiada przy
+ * każdym żądaniu; zwykły obiekt (testy, starsze składy) — samym istnieniem. Wzór: gusDostepny (konfiguracja-gus.js).
+ */
 export function uslugaKsefDostepna(usluga) {
   return Boolean(usluga) && (typeof usluga.dostepny !== 'function' || usluga.dostepny());
 }

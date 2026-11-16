@@ -48,7 +48,7 @@ const KOLUMNY_LUSTRA = [
   // stad `DO UPDATE SET`, tak samo jak przy nazwie i cenie. Zbior kart, ktore juz powstaly,
   // to nie zmienia: `karta_id` tej listy NIE DOTYKA i dotykac nie moze (patrz wyzej).
   'atrybuty_json',
-  // PRZ-090: wymiary i waga, ktore podaje sklep (z jednostka) — kolumny lustra, przepisywane przy kazdym odczycie.
+  // Wymiary i waga, ktore podaje sklep (z jednostka) — kolumny lustra, przepisywane przy kazdym odczycie.
   'wymiary_json', 'waga_tekst',
   'odczytane_at',
 ];
@@ -133,14 +133,14 @@ const POLA_KARTY = [
   'opis_sekcje_json',
   'sku', 'nazwa', 'szerokosc_mm', 'wysokosc_mm', 'kategoria_glowna', 'paczkomat',
   'opis', 'glebokosc_mm', 'waga_g',
-  // PRZ-153.E5.3: pola z migracji 0011 (API v1 i ekran karty). Edycja hurtem ma WLASNA, wezsza liste
-  // (`domain/magazyn-hurt.js`) — dopisanie tutaj nie wlacza tych pol do hurtu ani do przenoszenia ze sklepu.
+  // Pola z migracji 0011 (API v1 i ekran karty). Edycja hurtem ma WLASNA, wezsza liste
+  // (`domena/magazyn-hurt.js`) — dopisanie tutaj nie wlacza tych pol do hurtu ani do przenoszenia ze sklepu.
   'cena_gr', 'stawka_vat', 'ean', 'wycofana',
-  // PRZ-160.P3b.01: marka ze słownika marek (migracja 0016); poza hurtem, jak pola wyżej.
+  // Marka ze słownika marek (migracja 0016); poza hurtem, jak pola wyżej.
   'marka',
 ];
 
-// Paczkomat ma TRZY stany i pilnuje ich domain/paczkomat.js. Czwarta wartosc w kolumnie
+// Paczkomat ma TRZY stany i pilnuje ich domena/paczkomat.js. Czwarta wartosc w kolumnie
 // zepsulaby filtr „bez oznaczenia paczkomatu" — karta z napisem 'moze' nie bylaby ani
 // oznaczona, ani nieoznaczona.
 const wartoscPola = (pole, wartosc) => (
@@ -317,9 +317,8 @@ export function zastosujHurtem(db, plan, { at = teraz(), zrodlo = 'reczne' } = {
  * Oddaje `Map` „numer wielkimi literami" → „skad go znamy".
  *
  * ⚠️⚠️ OBA ZBIORY, I TO JEST CALA TRESC TEJ FUNKCJI. `karty.sku` ma `UNIQUE`, wiec o nasze
- * numery baza upomni sie sama; o 218 numerow zyjacych w sklepach (184 na sklepie B, 115 na
- * sklep A — zmierzone 2026-08-12) NIE UPOMNI SIE NIKT. Numer nadany karcie w panelu
- * jedzie w Zadaniu 15 do sklepu — jesli tam juz jest, to jest CUDZEGO produktu.
+ * numery baza upomni sie sama; o setki numerów żyjących w sklepach NIE UPOMNI SIE NIKT.
+ * Numer nadany karcie w panelu jedzie do sklepu — jesli tam juz jest, to jest CUDZEGO produktu.
  *
  * ⚠️ PRODUKT ZNIKNIETY ZE SKLEPU NADAL TRZYMA SWOJ NUMER (brak warunku `zniknal_at IS NULL`,
  * inaczej niz na liscie magazynu). Wiersz zostaje w lustrze, bo powiazanie ma przezyc
@@ -331,12 +330,12 @@ export function zastosujHurtem(db, plan, { at = teraz(), zrodlo = 'reczne' } = {
  * rozne numery. Ostrozniej znaczy tutaj: WIECEJ wykrytych kolizji, nigdy mniej.
  *
  * ⚠️ OPIS ZRODLA JEST CZESCIA ODPOWIEDZI, nie ozdoba. „Numer zajety" bez zdania, PRZEZ CO,
- * nie daje sie z niczym zrobic — a przy 965 wierszach czlowiek nie ma jak tego sam odszukac.
+ * nie daje sie z niczym zrobic — a przy setkach wierszy czlowiek nie ma jak tego sam odszukac.
  * Kolejnosc jawna, zeby przy tym samym numerze po obu stronach zrodlo pokazane czlowiekowi
  * bylo POWTARZALNE, a nie zalezne od planu zapytania.
  *
  * ⚠️⚠️ `pomijajProduktyKart` SLUZY WYLACZNIE PRZEJECIU NUMERU ZE SKLEPU
- * (`domain/przejecie-sku.js`) i bez niego tamten ekran nie dzialalby NIGDY: numer, ktory karta
+ * (`domena/przejecie-sku.js`) i bez niego tamten ekran nie dzialalby NIGDY: numer, ktory karta
  * ma PRZEJAC, zyje w lustrze — czyli `zajeteSku` widzialoby go jako zajety przez produkt TEGO
  * SAMEJ karty i kazde przejecie odbijaloby sie o wlasne odbicie. Pomijamy WYLACZNIE produkty
  * wskazanych kart; nasze numery z rejestru (`karty.sku`) i wszystkie pozostale produkty
@@ -393,10 +392,10 @@ export function zajeteSku(db, { pomijajProduktyKart = [] } = {}) {
  * w miedzyczasie z karty albo z drugiej karty przegladarki. Numer raz nadany jedzie do sklepu
  * i staje sie tozsamoscia produktu — ciche przenumerowanie jest tu najgorszym mozliwym
  * skutkiem. Karta, ktora „nie weszla", wraca w `nieaktualne` i MA BYC POKAZANA
- * (niezmiennik 4.13a: pominiete wracaja z powodem).
+ * (reguła: pominięte wracają z powodem).
  *
  * ⚠️⚠️ TRANSAKCJA JEST OBOWIAZKOWA. Czesciowo ponumerowany katalog jest GORSZY niz odmowa:
- * blad na trzechsetnej karcie z 965 zostawilby polowe rejestru z numerami, a drugie
+ * blad w polowie setek kart zostawilby polowe rejestru z numerami, a drugie
  * klikniecie dolozylo by reszte z INNEGO ciagu — i nikt by juz nie wiedzial, ktora karta
  * skad ma numer. To ta sama zasada, co przy `zastosujHurtem` i `utworzKartyZNiepowiazanych`.
  *
@@ -407,7 +406,7 @@ export function zajeteSku(db, { pomijajProduktyKart = [] } = {}) {
  *
  * ⚠️ CALA FUNKCJA JEST SYNCHRONICZNA (zadnego `await`), wiec poller zamowien chodzacy po tym
  * samym polaczeniu nie wejdzie w srodek otwartej transakcji. Zegar pytany RAZ NA PRZEBIEG:
- * 965 numerow z jednego klikniecia dostaje JEDEN znacznik — po nim i tylko po nim da sie
+ * Setki numerow z jednego klikniecia dostaja JEDEN znacznik — po nim i tylko po nim da sie
  * potem powiedziec „to sa te z tamtego przycisku".
  */
 export function nadajSku(db, plan, { at = teraz() } = {}) {
@@ -441,18 +440,20 @@ export function nadajSku(db, plan, { at = teraz() } = {}) {
  * najwyzej do JEDNEJ karty" wynika z KSZTALTU BAZY.
  *
  * ⚠️ KARTY, KTOREJ NIE MA, PILNUJE `wymagajKarty`, A NIE KLUCZ OBCY. Kolumna `karta_id` doszla migracja
- * addytywna (PRZ-090), a nowego klucza obcego na istniejacej tabeli kontrola migracji nie przepuszcza.
+ * addytywna, a nowego klucza obcego na istniejacej tabeli kontrola migracji nie przepuszcza.
  */
 export function powiazProdukt(db, produktSklepowyId, kartaId, { konto = null } = {}) {
   if (kartaId !== null && kartaId !== undefined) wymagajKarty(db, kartaId);
   const stara = db.prepare('SELECT karta_id FROM produkty_sklepowe WHERE id = ?').get(produktSklepowyId)?.karta_id ?? null;
-  // E4.14: pierwsze wiązanie (stara = null) nie mierzy zużycia — import i „Utwórz karty” wiążą setki produktów.
+  // Pierwsze wiązanie (stara = null) nie mierzy zużycia — import i „Utwórz karty”
+  // wiążą setki produktów.
   // Ślad i tak powstaje, gdy oferta miała sprzedaż, bo mierzymy tylko przy przepięciu albo odpięciu.
   wSavepoincie(db, 'powiaz_produkt', () => przeniesPowiazanie(db, produktSklepowyId, kartaId ?? null, () => {
     db.prepare('UPDATE produkty_sklepowe SET karta_id = ? WHERE id = ?')
       .run(kartaId ?? null, produktSklepowyId);
-    // PRZ-160: przepięcie z karty na inną (albo odpięcie) zeruje `tresc_pobrana_at` — oferta wraca do kolejki
-    // „Pobierz treść i zdjęcia ofert". Tylko wtedy, bo pierwsze wiązanie (stara = null) działa też na bazie sprzed 0012.
+    // Przepięcie z karty na inną (albo odpięcie) zeruje `tresc_pobrana_at` — oferta wraca do kolejki
+    // „Pobierz treść i zdjęcia ofert". Tylko wtedy, bo pierwsze wiązanie (stara = null) działa też
+    // na bazie sprzed migracji rdzen/0012.
     if (stara !== null && String(stara) !== String(kartaId ?? '')) {
       db.prepare('UPDATE produkty_sklepowe SET tresc_pobrana_at = NULL WHERE id = ?').run(produktSklepowyId);
     }
@@ -461,7 +462,7 @@ export function powiazProdukt(db, produktSklepowyId, kartaId, { konto = null } =
 }
 
 // ================================================================================
-// E4.14 / D59: PRZEPIĘCIE OFERTY — rejestr, podgląd, ślad
+// PRZEPIĘCIE OFERTY — rejestr, podgląd, ślad
 //
 // Lustro (`produkty_sklepowe.karta_id`) i rejestr (`oferty_kanalow.karta_id`) mówią o tej samej ofercie.
 // Przepięcie zmienia OBA w jednej transakcji (rejestr ma pierwszeństwo przy liczeniu stanu — `kartyLustraZ`),
@@ -506,7 +507,7 @@ function przeniesWRejestrze(db, produkt, naKarte, at) {
       WHERE kanal = ? AND id_zewnetrzne = ? AND pochodzenie = 'przejeta' AND karta_id <> ?`)
       .run(naKarte, at, produkt.kanal, idZewnetrzne, naKarte);
     // Ponowne powiązanie po odpięciu: `brak-karty` stawiamy tylko przy fladze 1, więc wracamy do wysyłki z OMS-u;
-    // pierwszą wysyłkę i tak pilnuje skok D53.
+    // pierwszą wysyłkę i tak pilnuje próg skoku (`skokIlosci` w domena/ilosc-kanalu.js).
     if (maKolumne(db, 'oferty_kanalow', 'ilosc_z_oms')) {
       db.prepare(`UPDATE oferty_kanalow SET ilosc_z_oms = 1, ilosc_problem_json = NULL, zmieniono_at = ?
         WHERE kanal = ? AND id_zewnetrzne = ? AND pochodzenie = 'przejeta' AND ilosc_z_oms = 0
@@ -549,8 +550,9 @@ function przeniesPowiazanie(db, produktSklepowyId, naKarte, zmienLustro, { konto
 }
 
 /**
- * Podgląd przepięć przy włączonych stanach (D59): jak zmieni się stan kart, gdy zamówienia od granicy przejdą
- * z ofertą. Nic nie zapisuje — zmiana lustra żyje tylko w SAVEPOINT, który cofamy. `null` przy wyłączonych stanach.
+ * Podgląd przepięć przy włączonych stanach: jak zmieni się stan kart, gdy zamówienia od granicy
+ * przejdą z ofertą. Nic nie zapisuje — zmiana lustra żyje tylko w SAVEPOINT, który cofamy.
+ * `null` przy wyłączonych stanach.
  * `zmiany`: `[{ produktSklepowyId, naKarte }]` (`naKarte = null` — odpięcie).
  */
 export function podgladPrzepiec(db, zmiany) {
@@ -591,14 +593,14 @@ function wymagajKarty(db, kartaId) {
 //
 // ⚠️ ALIAS `w.` JEST CZESCIA KONTRAKTU: te wyrazenia wklejamy do OBU zapytan listy, a oba
 // nazywaja tabele kart `karty w` (patrz `kartyZKanalami`).
-// ⚠️ Z TRIM, tak samo jak `nadajSku` i `bezSku` w `domain/przejecie-sku.js`: SKU z samych
+// ⚠️ Z TRIM, tak samo jak `nadajSku` i `bezSku` w `domena/przejecie-sku.js`: SKU z samych
 // spacji to brak, nie numer — spojnosc z reszta modulu, inaczej „komplet" tutaj i „nadaj
 // numer" na karcie przeczylyby sobie o tym samym karcie.
 const BRAK_SKU_SQL = "(w.sku IS NULL OR TRIM(w.sku) = '')";
-// Polowiczny wymiar to nadal brak: do ciecia potrzebne sa OBA (niezmiennik 4.23).
+// Polowiczny wymiar to nadal brak: do ciecia potrzebne sa OBA (reguła: oba wymiary albo żaden).
 const BRAK_WYMIAROW_SQL = '(w.szerokosc_mm IS NULL OR w.wysokosc_mm IS NULL)';
-// PRZ-160.P4.04: kategorie z encjami HTML (lustro sklepu: „DIY &amp;amp; Craft") porownujemy
-// po zdekodowaniu — ta sama `dekodujEncje` co przy zapisie kart (P3b.01), zarejestrowana raz
+// Kategorie z encjami HTML (lustro sklepu: „DIY &amp;amp; Craft") porownujemy
+// po zdekodowaniu — ta sama `dekodujEncje` co przy zapisie kart, zarejestrowana raz
 // na polaczenie jako deterministyczna funkcja SQL (lista pozycji filtru i sam filtr).
 const DEKODUJ_SQL = 'oms_dekoduj_encje';
 const zDekodowaniem = new WeakSet();
@@ -612,9 +614,10 @@ function zarejestrujDekodowanie(db) {
 
 const BRAK_KATEGORII_SQL ="(w.kategoria_glowna IS NULL OR w.kategoria_glowna = '')";
 const BRAK_ZDJECIA_SQL = 'NOT EXISTS (SELECT 1 FROM zdjecia_kart z WHERE z.karta_id = w.id)';
-// json_valid w CASE: json_array_length na popsutym napisie RZUCA i wywraca całą listę (jak przy 4.23 niżej).
+// json_valid w CASE: json_array_length na popsutym napisie RZUCA i wywraca całą listę
+// (jak przy filtrze kategorii niżej).
 const BRAK_OPISU_SQL = "(w.opis_sekcje_json IS NULL OR COALESCE(CASE WHEN json_valid(w.opis_sekcje_json) THEN json_array_length(w.opis_sekcje_json, '$.sekcje') END, 0) = 0)";
-// ⚠️ Wartosci stanow z domain/paczkomat.js interpolowane RAZ przy starcie procesu. To stale
+// ⚠️ Wartosci stanow z domena/paczkomat.js interpolowane RAZ przy starcie procesu. To stale
 // APLIKACJI, a nie dane z zadania HTTP — i inaczej niz przy dawnym `nieoznaczony()` to
 // wyrazenie idzie takze do SELECT-a i do ORDER BY, gdzie parametry zapytania nie siegaja.
 // Czwarty stan nadal wymaga zmiany wylacznie w domenie.
@@ -734,7 +737,7 @@ function warunkiKart({ fraza, filtry = {} }) {
   // bledem, ktory polozylby CALA liste. Lustro bierze sie z cudzego API, wiec jedna
   // popsuta wartosc jest kwestia czasu, a nie hipoteza.
   //
-  // ⚠️ PRZ-160.P4.04: porownanie PO ZDEKODOWANIU encji HTML po obu stronach (`DEKODUJ_SQL`,
+  // ⚠️ Porownanie PO ZDEKODOWANIU encji HTML po obu stronach (`DEKODUJ_SQL`,
   // ta sama funkcja co `kategorieDoFiltra`) — „DIY & Craft" trafia w karte z ta kategoria
   // i w produkt lustra z „DIY &amp;amp; Craft". Funkcje SQL rejestruje `kartyZKanalami`.
   if (kategoria) {
@@ -749,7 +752,7 @@ function warunkiKart({ fraza, filtry = {} }) {
     params.push(szukana, szukana);
   }
 
-  // Trzy stany paczkomatu. Lista wartosci idzie z domain/paczkomat.js — dodanie czwartego
+  // Trzy stany paczkomatu. Lista wartosci idzie z domena/paczkomat.js — dodanie czwartego
   // stanu nie wymaga poprawki tutaj. „Nieoznaczony" to DOKLADNIE to samo wyrazenie, ktorego
   // uzywa kolumna `liczba_brakow`, kafel i sortowanie (patrz `BRAK_PACZKOMATU_SQL`).
   if (paczkomat) {
@@ -845,7 +848,7 @@ export function kartyZKanalami(db, { fraza, filtry, sort, kier } = {}) {
 }
 
 /**
- * PRZ-160.P3a.02: w ktorych kanalach (lustro sklepow) karty sa DOSTEPNE — material kolumny
+ * W ktorych kanalach (lustro sklepow) karty sa DOSTEPNE — material kolumny
  * „Kanały” listy magazynu. JEDNO zapytanie dla calej strony (numery kart jada jednym
  * parametrem JSON, bez limitu zmiennych SQLite i bez N+1). Dostepny = wiersz lustra z ta
  * karta i pustym `zniknal_at`; dla kanalow z `kanalyZeStatusem` (Allegro — rozpoznaje wolajacy
@@ -877,7 +880,7 @@ export function kanalyDostepnosciKart(db, kartaIds, { kanalyZeStatusem = [] } = 
  * kafel „bez SKU: 217" prowadzacy do listy z 214 wierszami.
  *
  * ⚠️ `doPrzejecia` to PODZBIOR `bezSku`, a nie osobny brak: karta bez NASZEGO numeru, ktorego
- * ZYWY produkt ma juz wlasny numer w sklepie — jest wiec co przejac (domain/przejecie-sku.js).
+ * ZYWY produkt ma juz wlasny numer w sklepie — jest wiec co przejac (domena/przejecie-sku.js).
  * Bez warunku o numerze sklepu ten kafel powtarzalby „bez SKU" i nie odpowiadal na nic.
  *
  * ⚠️ `COALESCE`, bo `SUM` na PUSTEJ tabeli oddaje NULL, a nie zero. Widok wypisalby to jako
@@ -910,7 +913,8 @@ export function zliczeniaBrakow(db) {
  * Kafel prowadzi na ekran zakladania kart, wiec nie ma prawa obiecywac roboty przy
  * wierszach, ktorych tamten ekran w ogole nie pokaze.
  *
- * ⚠️ OFERTY ALLEGRO WYDZIELONE, bo to INNA robota: oferty karty nie zakladaja (4.27) —
+ * ⚠️ OFERTY ALLEGRO WYDZIELONE, bo to INNA robota: oferty karty nie zakladaja
+ * (reguła: oferta nie zakłada karty) —
  * dobiera sie je RECZNIE do kart, ktore juz istnieja. Zliczone razem z produktami sklepu
  * kazalyby czlowiekowi szukac na ekranie zakladania kart czegos, czego tam nie ma.
  *
@@ -956,11 +960,11 @@ export function zliczeniaNiepowiazanych(db, kanalyAllegro) {
  * I nie jest to stan krancowy. Po „Odczytaj katalogi" lustro ma wszystko, co przyslal sklep,
  * a karty powstaja dopiero z OSOBNEGO klikniecia — nowa kategoria sklepu byla wiec widoczna
  * natychmiast, a trafialna dopiero po utworzeniu kart. Czesc produktow nie dostanie karty
- * NIGDY (~26 wariantow bez rozmiaru i zaslepki, ktorych `powodPominiecia` nie powiaze —
- * Zadanie 8), wiec kategoria wystepujaca tylko u nich bylaby martwa pozycja bez konca.
+ * NIGDY (warianty bez rozmiaru i zaslepki, ktorych `powodPominiecia` nie powiaze),
+ * wiec kategoria wystepujaca tylko u nich bylaby martwa pozycja bez konca.
  *
  * ⚠️ NAPRAWIAMY LISTE, A NIE FILTR. Poszerzenie filtru o produkty niepowiazane zmienialoby
- * ZNACZENIE filtru i dotykaloby rozstrzygniecia z Zadania 4 (nadzbior: `karty.kategoria_glowna`
+ * ZNACZENIE filtru i dotykaloby rozstrzygniecia o nadzbiorze (`karty.kategoria_glowna`
  * ALBO kategorie produktow w lustrze) — a wynik tego filtru ma opisywac KARTY, nie zawartosc
  * lustra. Lista pozycji ma byc DOKLADNIE zbiorem osiagalnym przez filtr.
  *
@@ -968,7 +972,7 @@ export function zliczeniaNiepowiazanych(db, kanalyAllegro) {
  * ktory polozylby caly ekran, a liczba w tablicy kategorii weszlaby do pola wyboru jako
  * wartosc, ktorej porownanie z kolumna TEXT nigdy nie bedzie prawdziwe.
  *
- * ⚠️ PRZ-160.P4.04: obie strony zlaczenia ida przez `dekodujEncje` (funkcja SQL `DEKODUJ_SQL`)
+ * ⚠️ Obie strony zlaczenia ida przez `dekodujEncje` (funkcja SQL `DEKODUJ_SQL`)
  * PRZED `DISTINCT` — inaczej „DIY & Craft" z karty i „DIY &amp;amp; Craft" z lustra staly
  * w polu wyboru obok siebie. Dekodowanie w SQL, a nie w JS po zapytaniu, bo filtr
  * (`warunkiKart`) musi porownywac TA SAMA funkcja, a tam wartosci z `json_each` sa tylko
@@ -1011,23 +1015,23 @@ export function niepowiazaneProdukty(db) {
  * Tworzenie kart HURTEM z niepowiazanych produktow — obsluga przycisku „Utworz karty
  * z niepowiazanych". Oddaje `{ utworzone, pominiete: [{ id, powod }] }`.
  *
- * Regula, CO staje sie karta i CO ta karta niesie, siedzi w `domain/karta-z-produktu.js` —
+ * Regula, CO staje sie karta i CO ta karta niesie, siedzi w `domena/karta-z-produktu.js` —
  * tutaj zostaje wylacznie przebieg po bazie. `powodPominiecia` jest JEDYNA bramka: gdyby obok
  * niej stal drugi warunek, ekran „pominiete" pokazywalby inny zbior niz ten, ktory faktycznie
  * odpadl, a to jest jedyne miejsce, gdzie wlasciciel widzi, czego panel nie tknal.
  *
- * ⚠️ TRANSAKCJA JEST OBOWIAZKOWA i nie chodzi tu tylko o czas. Po pierwsze, ~980 wstawien
- * w autocommicie to ~980 osobnych transakcji WAL z wlasnym fsync — zmierzone przy odczycie
- * katalogu: 3000 wierszy to 3,7 s wobec 222 ms w transakcji. Po drugie i wazniejsze: blad
- * w polowie zostawilby POLOWE rejestru — czesc produktow powiazana, czesc nie — a drugie
- * klikniecie dolozyloby karty tylko do reszty, wiec rejestr powstalby z dwoch roznych
- * przebiegow i nikt by juz nie wiedzial, ktora karta skad jest.
+ * ⚠️ TRANSAKCJA JEST OBOWIAZKOWA i nie chodzi tu tylko o czas. Po pierwsze, setki wstawien
+ * w autocommicie to setki osobnych transakcji WAL z wlasnym fsync — zmierzone przy odczycie
+ * katalogu: kilka tysięcy wierszy to sekundy wobec setek milisekund w transakcji.
+ * Po drugie i wazniejsze: blad w polowie zostawilby POLOWE rejestru — czesc produktow
+ * powiazana, czesc nie — a drugie klikniecie dolozyloby karty tylko do reszty, wiec rejestr
+ * powstalby z dwoch roznych przebiegow i nikt by juz nie wiedzial, ktora karta skad jest.
  *
  * ⚠️ ODCZYT JEST W SRODKU TRANSAKCJI, nie przed nia: poller zamowien chodzi po TYM SAMYM
  * polaczeniu, a lista przeczytana przed `BEGIN` moglaby juz nie opisywac tego, co zapisujemy.
  * Cala funkcja jest SYNCHRONICZNA (zadnego `await`), wiec petla zdarzen nie wejdzie w srodek.
  *
- * ⚠️ Zegar pytany RAZ NA PRZEBIEG. ~980 kart z jednego klikniecia ma jeden znacznik — po nim
+ * ⚠️ Zegar pytany RAZ NA PRZEBIEG. Setki kart z jednego klikniecia maja jeden znacznik — po nim
  * i tylko po nim da sie potem powiedziec „to sa te z tamtego przycisku" i cofnac pomylke masowa.
  */
 export function utworzKartyZNiepowiazanych(db, { teraz: kiedy = teraz, kanalySklepow } = {}) {
@@ -1114,11 +1118,11 @@ export function powiazaneOfertyAllegro(db, kanaly) {
 
 /**
  * Karty jako kandydaci do powiazania — nazwa, SKU i wymiary, czyli to, czym rozstrzyga sie
- * wybor (`domain/dopasowanie-ofert.js` liczy z nazwy i wymiarow, czlowiek patrzy na SKU).
+ * wybor (`domena/dopasowanie-ofert.js` liczy z nazwy i wymiarow, czlowiek patrzy na SKU).
  *
  * ⚠️ WYBRANE KOLUMNY, NIE `SELECT *`. Ta lista jedzie do liczenia propozycji dla KAZDEJ
- * z 447 ofert i do jednej wspolnej listy podpowiedzi w HTML-u; `opis` (mediana 143 znaki
- * razy ~965 kart) nie sluzy tam niczemu poza puchnieciem pamieci i strony.
+ * z setek ofert i do jednej wspolnej listy podpowiedzi w HTML-u; `opis` (ponad sto znakow
+ * razy setki kart) nie sluzy tam niczemu poza puchnieciem pamieci i strony.
  *
  * ⚠️ Zwraca PUSTO, gdy rejestr kart jest pusty — i to jest STAN DZISIEJSZY produkcji,
  * a nie przypadek krancowy: zakladanie kart to osobny przycisk. Ekran ma wtedy powiedziec,
@@ -1140,7 +1144,7 @@ export function kartyDoPowiazania(db) {
  * dlugo jest ona otwarta. Druga karta, przycisk Wstecz albo powtorzone wyslanie tego samego
  * formularza przynosza pare, ktora ktos w miedzyczasie rozstrzygnal INACZEJ — bezwarunkowy
  * UPDATE nadpisalby tamten wybor po cichu i bez sladu. Oferta, ktora „nie weszla", wraca
- * w `nieaktualne` i ma byc POKAZANA (niezmiennik 4.13a: pominiete wracaja z powodem).
+ * w `nieaktualne` i ma byc POKAZANA (reguła: pominięte wracają z powodem).
  * Skutek uboczny i pozadany: powtorne wyslanie tego samego formularza nie robi juz nic.
  *
  * ⚠️ `zniknal_at IS NULL` z tego samego powodu, co na liscie: oferta wycofana z Allegro
@@ -1245,7 +1249,7 @@ export function produktyKarty(db, kartaId) {
  * zapisu do sklepow. Wiersze wracaja CALE, z `karta_id` przy kazdym.
  *
  * ⚠️ OSOBNA FUNKCJA, A NIE PETLA PO `produktyKarty`: oba ekrany dotykaja setek kart naraz
- * (278 przy przejeciu, 965 przy nadaniu numerow), a `prepare` na wiersz to setki zapytan
+ * (przy przejeciu i przy nadaniu numerow), a `prepare` na wiersz to setki zapytan
  * zamiast jednego.
  *
  * ⚠️⚠️ BEZ WARUNKU `zniknal_at IS NULL` — inaczej niz na liscie magazynu, i jest to tresc,
@@ -1253,7 +1257,7 @@ export function produktyKarty(db, kartaId) {
  * w `zajeteSku`), wiec karta z jednym produktem wycofanym o numerze „PD10" i jednym zywym
  * o numerze „B-KOP-118" NIE JEST jednoznaczna — a bez tego wiersza wygladalaby na
  * jednoznaczna i panel przejalby numer za czlowieka. Zapis do sklepu odsiewa znikniete
- * OSOBNO (`domain/zapis-do-sklepu.js`), bo tam pytanie jest inne: nie „jaki numer istnieje",
+ * OSOBNO (`domena/zapis-do-sklepu.js`), bo tam pytanie jest inne: nie „jaki numer istnieje",
  * tylko „gdzie wolno pisac".
  *
  * ⚠️ Numery odsiewane tak samo, jak w `kartyPoIdach` — przychodza z zadania HTTP, a `IN`
@@ -1312,7 +1316,7 @@ export function kartaZeSku(db, sku) {
 }
 
 /**
- * PRZ-160 P4.03 (punkt 24) — szukajka karty dla SKU wiersza importu kanału. Najpierw `karty_produktow.sku`
+ * Szukajka karty dla SKU wiersza importu kanału. Najpierw `karty_produktow.sku`
  * (`kartaZeSku`); brak → karta POWIĄZANYCH wierszy lustra o tym samym `sku_sklepu` (po JS `trim()`, jak
  * w imporcie), bo karta założona dawniej z produktu kanału SKU nie ma. Liczą się najpierw wiersze żywe;
  * dopiero gdy żywych nie ma — zniknięte. Różne karty → `{ kilka: true }` (nie zgadujemy).
@@ -1359,13 +1363,13 @@ export function produktyPominiete(db, kanalySklepow) {
 }
 
 // =====================================================================================
-// SZUKANIE PRODUKTU DO ZAMOWIENIA TELEFONICZNEGO (21.08.2026)
+// SZUKANIE PRODUKTU DO ZAMOWIENIA TELEFONICZNEGO
 //
 // ⚠️ TO NIE JEST LISTA MAGAZYNU. Tamta (`kartyZKanalami`) opisuje KARTY i ich obecnosc
 // w czterech kanalach — sluzy do porzadkowania katalogu. Ta oddaje POZYCJE JEDNEGO
 // CENNIKA, gotowe do dopisania do zamowienia, i wlasnie dlatego kanaly allegrowe nie maja
 // jak sie tu dostac: kanal przychodzi juz przefiltrowany przez domene
-// (domain/magazyn-do-zamowienia.js), a zapytanie i tak pyta o jeden.
+// (domena/magazyn-do-zamowienia.js), a zapytanie i tak pyta o jeden.
 //
 // ⚠️ SZUKAMY PO WSZYSTKICH SLOWACH NARAZ, nie po calej frazie. „grzybek 30" ma znalezc
 // „Lampa stołowa Grzybek ceramiczna 30cm" — przy telefonie operator wpisuje dwa slowa

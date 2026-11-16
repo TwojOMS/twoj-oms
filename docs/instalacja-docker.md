@@ -38,6 +38,10 @@ Z oficjalnego repozytorium Dockera, nie pakiet `docker.io` z Debiana: Debian 13 
 26.1 i osobny, starszy `docker-compose`, a instrukcja korzysta z wtyczki `docker compose`
 w bieżącej wersji (pole `required` w `env_file`) i z `buildx`.
 
+Na świeżym serwerze w chmurze system przez pierwsze minuty sam się aktualizuje i `apt-get` odpowiada wtedy
+„Could not get lock”. Najpierw poczekaj, aż skończy: `sudo cloud-init status --wait` (bez `cloud-init` — na
+serwerze postawionym z płyty — polecenie nie istnieje i ten krok pomijasz).
+
 ```bash
 sudo apt-get update
 sudo apt-get install -y ca-certificates curl

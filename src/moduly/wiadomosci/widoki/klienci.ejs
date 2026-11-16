@@ -25,10 +25,10 @@
 <section class="panel">
   <div class="panel-glowa">
     <h2>Klienci B2B <span class="dopisek"><%= klienci.length %> w bazie</span></h2>
-    <%# ⚠️ `btn--glowny` (21.08.2026, prosba wlasciciela: „niech sie jakos wyroznia"). To jedyna %>
-    <%# czynnosc TWORZACA na tym ekranie — reszta przyciskow prowadzi do istniejacych wpisow. %>
-    <%# Barwa z palety (`--marka` / `--na-marce`), nigdy wpisana wprost: arkusz ma wariant %>
-    <%# jasny i ciemny, wiec kolor z palca zadzialalby w jednym i zniknal w drugim. %>
+    <%# ⚠️ Przycisk „Dodaj nowego klienta” w nagłówku ekranu ma klasę `btn--glowny`, bo to jedyna %>
+    <%# czynność TWORZĄCA na tej liście — reszta przycisków prowadzi do istniejących wpisów. %>
+    <%# Barwa z palety (`--marka` / `--na-marce` w public/oms-uklad.css), nigdy wpisana wprost: %>
+    <%# arkusz ma wariant jasny i ciemny, więc kolor z palca zadziałałby w jednym i zniknął w drugim. %>
   </div>
   <div class="panel-cialo">
     <% if (!klienci.length) { %>
@@ -42,10 +42,10 @@
           <% klienci.forEach(function (k) { %>
             <tr<%= edytowany && edytowany.id === k.id ? ' class="wiersz-razem"' : '' %>>
               <td>
-                <%# ⚠️ NAZWA JEST ODNOSNIKIEM DO KARTY KLIENTA (21.08.2026, prosba wlasciciela:
-                    „klikniecie w nazwe klienta otwiera strone z jego danymi oraz historia
-                    zamowien"). Karta CZYTA — formularz zapisu otwiera osobny przycisk obok,
-                    zeby klikniecie w nazwe nie rozwijalo pietnastu pol nad reszta listy. %>
+                <%# ⚠️ NAZWA JEST ODNOŚNIKIEM DO KARTY KLIENTA, na której są jego dane oraz
+                    historia zamówień. Karta CZYTA — formularz zapisu otwiera osobny
+                    przycisk obok, żeby kliknięcie w nazwę nie otwierało od razu formularza
+                    z wieloma polami. %>
                 <a href="/klienci/<%= k.id %>/karta"><%= k.nazwa %></a>
                 <% if (!k.aktywny) { %> <span class="znacznik">wygaszony</span><% } %>
                 <div class="sku"><%= k.klucz %></div>
@@ -76,11 +76,11 @@
   </div>
   <div class="panel-cialo">
     <form method="post" action="/klienci">
-      <%# ⚠️ TEN PRZYCISK MUSI STAC PIERWSZY I DLATEGO WYGLADA NA ZBEDNY — ta sama pulapka, %>
-      <%# co na ekranie zakladania zamowienia (ustalenie recenzji 2026-08-01). Enter w dowolnym %>
-      <%# polu wysyla formularz PRZYCISKIEM DOMYSLNYM, a domyslnym jest PIERWSZY submit %>
-      <%# w kolejnosci znacznikow — czyli „Pobierz z GUS" nizej. Bez tej kopii operator %>
-      <%# wpisywalby nazwe, wciskal Enter i dostawal komunikat GUS-u zamiast zapisanego klienta. %>
+      <%# ⚠️ TEN PRZYCISK MUSI STAĆ PIERWSZY I DLATEGO WYGLĄDA NA ZBĘDNY — ta sama pułapka, %>
+      <%# co na ekranie zakładania zamówienia. Enter w dowolnym %>
+      <%# polu wysyła formularz PRZYCISKIEM DOMYŚLNYM, a domyślnym jest PIERWSZY submit %>
+      <%# w kolejności znaczników — czyli „Pobierz z GUS” niżej. Bez tej kopii operator %>
+      <%# wpisywałby nazwę, wciskał Enter i dostawał komunikat GUS-u zamiast zapisanego klienta. %>
       <button class="poza-okiem" tabindex="-1" aria-hidden="true">Zapisz</button>
       <input type="hidden" name="id" value="<%= wart(f.id) %>">
       <div class="metryczka">
@@ -145,7 +145,7 @@
               </label>
               <%# ⚠️ NIC NIE ZAPISUJE — przestawia wartosci miedzy polami i oddaje formularz. %>
               <%# TA SAMA funkcja, co na ekranie zakladania zamowienia %>
-              <%# (domain/nowe-zamowienie.js: skopiujFaktureDoWysylki), wiec i te same decyzje: %>
+              <%# (domena/nowe-zamowienie.js: skopiujFaktureDoWysylki), wiec i te same decyzje: %>
               <%# imie, nazwisko i telefon zostaja NIETKNIETE (kurier wymaga osoby do kontaktu, %>
               <%# a dane faktury jej nie niosa), a pusty e-mail nie kasuje tego z wysylki. %>
               <p>
@@ -183,7 +183,7 @@
           <div class="pola">
             <%# ⚠️ B2B TO KANAL RAPORTOWY. Zaznaczone tutaj podstawia sie na zamowienie jako %>
             <%# MIGAWKA — zmiana tego pola NIE przenosi zamowien juz zalozonych miedzy %>
-            <%# kanalami i nie ma tego robic (domain/kanaly-raportowe.js). %>
+            <%# kanalami i nie ma tego robic (domena/kanaly-raportowe.js). %>
             <label class="pole-przelacznik">
               <input type="checkbox" name="b2b" <%= f.b2b ? 'checked' : '' %>>
               Liczony w raportach jako kanał B2B (hurt)
@@ -197,7 +197,7 @@
             </label>
             <label>Sposób dostawy
               <select name="metoda_wysylki">
-                <%# ⚠️ PUSTA OPCJA JEST ZAPISEM „NIE USTALONO” (PRZ-102.24). Bez niej przegladarka %>
+                <%# ⚠️ PUSTA OPCJA JEST ZAPISEM „NIE USTALONO”. Bez niej przegladarka %>
                 <%# wysylala pierwsza opcje (DPD) i poprawka samego adresu ustalala klientowi dostawe. %>
                 <option value=""<%= f.metoda_wysylki ? '' : ' selected' %>>nie ustalono</option>
                 <% Object.keys(dostawy).forEach(function (k) { %>

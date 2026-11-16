@@ -4,7 +4,7 @@ import { dzienWarszawa } from '../../../domena/format-daty.js';
 import { zl } from '../../../domena/kwoty.js';
 import { indeksListy } from '../../../oms/db/indeks-listy.js';
 
-// PRZ-167 (właściciel 15.11): ANALITYKA — ekran wejściowy pozycji „Analityka” w menu bocznym. Podsumowanie DZISIEJSZEJ
+// ANALITYKA — ekran wejściowy pozycji „Analityka” w menu bocznym. Podsumowanie DZISIEJSZEJ
 // sprzedaży i odnośniki do podstron (Raporty, Statystyki, Reklamy, Finanse).
 //
 // ⚠️ TRASA NICZEGO NIE LICZY PO SWOJEMU — każda liczba ma już źródło gdzie indziej i musi się z nim zgadzać:
@@ -12,7 +12,7 @@ import { indeksListy } from '../../../oms/db/indeks-listy.js';
 //   (bez anulowanych i testowych);
 // - w realizacji: licznik statusu „W realizacji” z indeksu listy zamówień (ta sama liczba co przy statusie w menu);
 // - wysłane dziś: `wyslane_at` w dniu warszawskim — „Wysłane” jest statusem ustawianym przy wyjeździe paczki
-//   (domena/status.js), nie przy wydruku etykiety.
+//   (`src/domena/status.js`), nie przy wydruku etykiety.
 
 const dzisiaj = () => dzienWarszawa(new Date().toISOString());
 

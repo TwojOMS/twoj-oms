@@ -1,8 +1,8 @@
 import { kosztyMiesiaca } from '../oms/db/koszty.js';
 import { grosze } from './kwoty.js';
 
-// Wskazniki, ktore oglada sie co miesiac (spec §8.4). Modul jest CZYSTY poza jedna funkcja,
-// ktora musi siegnac do bazy po dokumenty prowizyjne — z powodu opisanego nizej.
+// Wskaźniki, które ogląda się co miesiąc. Moduł jest CZYSTY poza jedną funkcją, która musi
+// sięgnąć do bazy po dokumenty prowizyjne — z powodu opisanego niżej.
 
 const NIP_ALLEGRO = '5252674798';
 const OBSLUGA = ['Prowizje sprzedażowe', 'Kurierzy', 'Opakowania'];

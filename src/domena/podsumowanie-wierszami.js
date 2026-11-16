@@ -1,20 +1,20 @@
 import { czyStawkaVat } from './vat.js';
 
-// PRZ-105 — podsumowanie netto / VAT / brutto pod pozycjami (ekran „Nowe zamówienie”, karta).
+// Podsumowanie netto / VAT / brutto pod pozycjami (ekran „Nowe zamówienie”, karta).
 //
-// ⚠️ TA SAMA REGUŁA, KTÓRĄ LICZY FAKTURA — zmierzona, nie założona. 21.10.2026, 400 ostatnich faktur
-// sprzedaży z inFaktu (tylko odczyt): netto linii = round(brutto_linii × 100 / (100 + stawka)) w 968/968
-// liniach, netto dokumentu = SUMA netto linii w 270/270 fakturach wielopozycyjnych, VAT = brutto − netto.
+// ⚠️ TA SAMA REGUŁA, KTÓRĄ LICZY FAKTURA — zmierzona, nie założona. Na kilkuset ostatnich fakturach
+// sprzedaży z inFaktu (tylko odczyt): netto linii = round(brutto_linii × 100 / (100 + stawka)) w każdej
+// linii, netto dokumentu = SUMA netto linii w każdej fakturze wielopozycyjnej, VAT = brutto − netto.
 //
-// To NIE jest reguła proformy (domain/podsumowanie-vat.js liczy od sumy brutto stawki) — tamta zgodziła
-// się z fakturą tylko w 149/270 przypadków, w 121 rozjechała o 1–2 gr. Grosz różnicy między ekranem
-// a fakturą to błąd, więc ekran liczy jak inFakt, a proforma zostaje swoją sprawą (osobne zadanie).
+// To NIE jest reguła proformy (domena/podsumowanie-vat.js liczy od sumy brutto stawki) — tamta zgodziła
+// się z fakturą tylko w około połowie przypadków, w pozostałych rozjechała o 1–2 gr. Grosz różnicy między ekranem
+// a fakturą to błąd, więc ekran liczy jak inFakt, a proforma zostaje swoją sprawą.
 //
-// Kopia dla przeglądarki stoi w public/suma-podglad.js i jest przypięta do tej testem wspólnej tablicy.
+// Kopia dla przeglądarki stoi w src/public/suma-podglad.js i jest przypięta do tej testem wspólnej tablicy.
 
 /**
  * @param {{ bruttoGr: number, stawka: string|number }[]} linie — linie towarów i dostawy, grosze całkowite
- * @param {{ zw?: boolean }} [opcje] — PRZ-122.B07a: `zw: true` (program wbudowany) dopuszcza „zw”: netto = brutto, VAT 0
+ * @param {{ zw?: boolean }} [opcje] — `zw: true` (program wbudowany) dopuszcza „zw”: netto = brutto, VAT 0
  * @returns {{ nettoGr: number, vatGr: number, bruttoGr: number }}
  */
 export function podsumowanieWierszami(linie = [], opcje = {}) {

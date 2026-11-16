@@ -4,12 +4,12 @@
 // ⚠️⚠️ POWOD ISTNIENIA TEGO MODULU. Token Allegro niesie zakresy Z CHWILI AUTORYZACJI,
 // a odswiezenie je ZACHOWUJE. Uprawnienie dodane pozniej w aplikacji na
 // apps.developer.allegro.pl NIE POJAWI SIE w tokenie samo — wchodzi wylacznie przy NOWEJ
-// autoryzacji (device flow). Zmierzone 28.08.2026: oba kanaly mialy dokladnie te same piec
-// zakresow co 05.08, mimo ze `messaging` i `disputes` byly juz nadane w aplikacji, a para
-// tokenow odswiezala sie tego samego dnia rano. Bez tego modulu panel nie ma jak tego
+// autoryzacji (device flow). Zmierzone: po odswiezeniu pary tokenow kanaly mialy dokladnie te
+// same zakresy co w dniu autoryzacji, mimo ze `messaging` i `disputes` byly juz nadane w aplikacji.
+// Bez tego modulu panel nie ma jak tego
 // zauwazyc: zamowienia chodza, kanal wyglada zdrowo, a Centrum wiadomosci oddaje 403.
 //
-// ⚠️ NAZWY ZAKRESOW NIE SA POSWIADCZENIEM (niezmiennik 4.10 dotyczy tokenow i hasel). Wolno
+// ⚠️ NAZWY ZAKRESOW NIE SA POSWIADCZENIEM (reguła: sekrety nie wychodzą — dotyczy tokenow i hasel). Wolno
 // je pokazac na ekranie — i trzeba, bo bez nazwy czlowiek nie wie, czego dodac w aplikacji.
 // Sam token NIGDY nie opuszcza tego modulu.
 
@@ -27,14 +27,14 @@ export const WYMAGANE_UPRAWNIENIA = [
   'allegro:api:sale:offers:read',
   'allegro:api:shipments:read',
   'allegro:api:shipments:write',
-  // Centrum wiadomosci (spec 2026-08-28) — zakladka /wiadomosci i autoresponder.
+  // Centrum wiadomosci — zakladka /wiadomosci i autoresponder.
   'allegro:api:messaging',
   // Dyskusje i reklamacje (`GET /sale/issues`), tylko odczyt.
   'allegro:api:disputes',
 ];
 
 /**
- * PRZ-160 E3.02 (D42): zakresy do wystawiania ofert. ⚠️⚠️ OPCJONALNE, NIE WYMAGANE — i to
+ * Zakresy do wystawiania ofert. ⚠️⚠️ OPCJONALNE, NIE WYMAGANE — i to
  * jest decyzja. Dopisanie ich do `WYMAGANE_UPRAWNIENIA` uznałoby KAŻDE działające konto za
  * niekompletne: pas na ekranie, otwarta bariera wiązania, a wiązanie NADPISUJE działającą
  * parę tokenów. Konto bez nich ma działać dokładnie jak dziś; zgodę dostaje na żądanie.

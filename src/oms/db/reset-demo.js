@@ -13,7 +13,7 @@ export function zlecResetDemo(db, { login, teraz = new Date() }) {
     .run(KLUCZ_ZLECENIA_RESETU, JSON.stringify({ zlecono, login }), zlecono);
 }
 
-// PRZ-149.01: konfiguracja rzeczywistego Allegro Sandbox w piaskownicy — wiersze z poświadczeniami (sekrety_json,
+// Konfiguracja rzeczywistego Allegro Sandbox w piaskownicy — wiersze z poświadczeniami (sekrety_json,
 // tokeny_kanalu) jak w bazie; kopia resetu leży obok bazy z tymi samymi uprawnieniami (0600, katalog dane/ 0700).
 function odczytajSandbox(db) {
   const konfiguracja = db.prepare(`SELECT * FROM konfiguracja_integracji WHERE integracja IN (${ZACHOWANE_SANDBOX_ALLEGRO.map(() => '?').join(',')})`)
@@ -50,7 +50,7 @@ function przywrocSandbox(db, { konfiguracja, kanaly, tokeny }) {
   return { konfiguracja: nKonf, kanaly: nKanaly };
 }
 
-// PRZ-119.11a: wiersz Fakturowni profilu próby — cały, z sekretami (jak Allegro Sandbox), tylko na żądanie startu.
+// Wiersz Fakturowni profilu próby — cały, z sekretami (jak Allegro Sandbox), tylko na żądanie startu.
 function odczytajFakturownieProby(db) {
   return db.prepare(`SELECT * FROM konfiguracja_integracji WHERE integracja IN (${ZACHOWANE_PROBA_FAKTUROWNIA.map(() => '?').join(',')})`)
     .all(...ZACHOWANE_PROBA_FAKTUROWNIA);
@@ -123,7 +123,7 @@ function czytajKopie(kopia, baza) {
   }
 }
 
-// PRZ-149.01: `nas-proba.sh reset` działa poza kontenerem (bez gwarancji sqlite3 na hoście), więc nie kasuje już bazy,
+// `nas-proba.sh reset` działa poza kontenerem (bez gwarancji sqlite3 na hoście), więc nie kasuje już bazy,
 // tylko zostawia ten znacznik w dane/. Start zamienia go na zwykłe zlecenie resetu w bazie — dalej jak reset z panelu
 // (kopia, świeże demo, przywrócenie). Bazy nie da się otworzyć = dawne zachowanie: kasujemy ją, start zakłada demo.
 export const znacznikResetuProby = (baza) => `${baza}.reset-proba`;

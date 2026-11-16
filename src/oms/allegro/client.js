@@ -2,20 +2,19 @@ import { MAKS_PLIK, sprawdzNazwe } from '../../moduly/wiadomosci/zalaczniki.js';
 import { transport } from '../../integracje/transport.js';
 // Jedyne miejsce w OMS, ktore robi HTTP do Allegro.
 //
-// ⚠️ ZAPIS JEST BIALA LISTA, NIE ZAKAZEM (zmiana z Planu B, 05.08.2026). Do 05.08 stalo tu
-// „ten klient wylacznie czyta" i pilnowal tego test — Plan B otwiera zapis, wiec zakaz
-// zamienia sie w wyliczenie. Wolno DOKLADNIE:
+// ⚠️ ZAPIS JEST BIAŁĄ LISTĄ, NIE ZAKAZEM: zamiast „ten klient wyłącznie czyta" stoi tu
+// wyliczenie dozwolonych zapisów. Wolno DOKŁADNIE:
 //   PUT  /order/checkout-forms/{id}/fulfillment              (status realizacji)
 //   POST /order/checkout-forms/{id}/invoices                 (metadane faktury)
 //   PUT  /order/checkout-forms/{id}/invoices/{invId}/file    (plik PDF)
 //
-// ⚠️ OD 11.08.2026 WOLNO TAKZE CZTERY WYWOLANIA „Wysylam z Allegro" (`shipment-management`):
+// ⚠️ WOLNO TAKŻE CZTERY WYWOŁANIA „Wysyłam z Allegro" (`shipment-management`):
 //   GET  /shipment-management/delivery-proposals/{orderId}
 //   POST /shipment-management/shipments/create-commands        (KUPUJE PRZEWOZ)
 //   GET  /shipment-management/shipments/create-commands/{cmd}
 //   POST /shipment-management/label                            (binarny PDF)
 //
-// ⚠️ OD 28.08.2026 WOLNO TAKZE JEDNO WYWOLANIE CENTRUM WIADOMOSCI:
+// ⚠️ WOLNO TAKŻE JEDNO WYWOŁANIE CENTRUM WIADOMOŚCI:
 //   POST /messaging/threads/{threadId}/messages                (WIADOMOSC DO KUPUJACEGO)
 // To zapis NIEODWRACALNY — nie wydaje pieniedzy, ale po drugiej stronie jest czlowiek,
 // ktory dostaje powiadomienie. Limit 2000 znakow sprawdzamy PRZED wyjsciem do sieci.
@@ -25,16 +24,17 @@ import { transport } from '../../integracje/transport.js';
 // na NASZEJ umowie; te KUPUJA przewoz na umowie ALLEGRO, ta sama usluga, ktora wybral
 // kupujacy. Dopisanie tamtej metody „przy okazji" byloby DRUGA, PLATNA przesylka do klienta,
 // ktory swoja juz dostal.
-// ⚠️ ZDANIE „metody allegrowe nie maja wpisu w DLA_METODY" BYLO PRAWDZIWE DO 11.08.2026 —
-// dzis `allegro_dpd` prowadzi tam do kuriera `allegro_wza` (kurierzy/index.js). Bariera nie
-// znikla, tylko przeniosla sie nizej: `domain/allegro-wysylka.js` przepuszcza WYLACZNIE
+// ⚠️ METODY ALLEGROWE MAJĄ WPIS W REJESTRZE KURIERÓW (dawna mapa `DLA_METODY`): `allegro_dpd`,
+// `allegro_punkt`, `allegro_kurier` i `allegro_inne` prowadzą do kuriera `allegro_wza`
+// (`metody` w domena/moduly-kurierow.ts, uzasadnienie w kurierzy/index.js). Bariera nie
+// znikla, tylko przeniosla sie nizej: `domena/allegro-wysylka.js` przepuszcza WYLACZNIE
 // uslugi o `owner: ALLEGRO`, a adapter przed zakupem pyta Allegro, czy paczki juz nie ma.
-// ⚠️ Zmierzone 05.08.2026: token Allegro NIESIE uprawnienie
+// ⚠️ Zmierzone: token Allegro NIESIE uprawnienie
 // `allegro:api:shipments:write`, wiec Allegro nam tego NIE ODMOWI — biala lista
 // w tests/oms/allegro-client-zapis.test.js jest JEDYNA istniejaca bariera i pilnuje,
 // zeby to zdanie nie zostalo samym komentarzem.
 //
-// ⚠️ OD PRZ-160.E3.03 (wystawianie ofert) WOLNO TAKZE:
+// ⚠️ DO WYSTAWIANIA OFERT WOLNO TAKŻE:
 //   POST  /sale/product-offers                                 (NOWA OFERTA — publiczna, gdy ACTIVE)
 //   PATCH /sale/product-offers/{id}                            (zmiana oferty)
 //   POST  upload.<host API>/sale/images                        (zdjecie; isAiCoCreated tylko przy AI)
@@ -42,7 +42,7 @@ import { transport } from '../../integracje/transport.js';
 //   PUT   /sale/offer-price-change-commands/{commandId}        (cena wielu ofert)
 //   PUT   /sale/offer-publication-commands/{commandId}         (zakończenie lub wznowienie ofert)
 //   POST  /pricing/offer-fee-preview                           (prognoza prowizji, bez skutku)
-// ⛔ METODY DELETE NIE MA I NIE BEDZIE (D38): oferte sie konczy (publication ENDED), nie kasuje.
+// ⛔ METODY DELETE NIE MA I NIE BĘDZIE: ofertę się kończy (publication ENDED), nie kasuje.
 // Test wywoluje KAZDA metode klienta i porownuje zbior zapisow z ta lista.
 
 // ⚠️ Limit dlugosci wiadomosci bierzemy Z DOMENY, a nie z wlasnej stalej — ta sama liczba
@@ -56,13 +56,13 @@ export const LIMIT_STRONY = 100;
 // ozdobnik, tylko warunek dzialania calego kanalu.
 const AKCEPTUJEMY = 'application/vnd.allegro.public.v1+json';
 
-// ⚠️⚠️ `/sale/issues` PRZYJMUJE WYLACZNIE SWOJ TYP BETA — zmierzone na produkcji
-// 28.08.2026 na zywym tokenie, trzy warianty:
+// ⚠️⚠️ `/sale/issues` PRZYJMUJE WYŁĄCZNIE SWÓJ TYP BETA — zmierzone na żywym tokenie,
+// trzy warianty:
 //     application/vnd.allegro.public.v1+json  ->  406
 //     application/vnd.allegro.beta.v1+json    ->  200
 //     application/json                        ->  406
-// Do tego dnia odczyt dyskusji odbijal sie o 406 przy KAZDYM przebiegu i nikt tego nie
-// widzial: przebieg lapie wyjatek na kanal, a pusta tabela `allegro_sprawy` wyglada tak
+// Z innym typem odczyt dyskusji odbija się o 406 przy KAŻDYM przebiegu i nikt tego nie
+// widzi: przebieg lapie wyjatek na kanal, a pusta tabela `allegro_sprawy` wyglada tak
 // samo, gdy odczyt dziala i nie ma spraw, jak wtedy, gdy nie dziala wcale.
 //
 // ⚠️ TO JEST WYJATEK JEDNEGO ZASOBU, NIE NOWA DOMYSLNA. Reszta klienta chodzi na
@@ -72,7 +72,7 @@ const AKCEPTUJEMY_BETA = 'application/vnd.allegro.beta.v1+json';
 
 // ⚠️ ALLEGRO WYMAGA STREFY W DATACH FILTRA, A KONFIGURACJA JEJ NIE MA.
 //
-// Wspolny `parsujDateOd()` (src/oms/config.js) oddaje podloge jako `RRRR-MM-DDT00:00:00`
+// Wspolny `parsujDateOd()` (src/core/web/modul.ts) oddaje podloge jako `RRRR-MM-DDT00:00:00`
 // — bez `Z` — bo w takiej postaci bierze ja WooCommerce (razem z `dates_are_gmt=true`).
 // Allegro filtruje po polach `format: date-time`, czyli po RFC 3339, gdzie przesuniecie
 // strefy jest obowiazkowe. Ta sama wartosc wyslana wprost to 400 na KAZDE zapytanie, czyli
@@ -89,7 +89,7 @@ const AKCEPTUJEMY_BETA = 'application/vnd.allegro.beta.v1+json';
 const WZOR_DATY = /^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2}:\d{2}(?:\.\d+)?))?(Z|[+-]\d{2}:?\d{2})?$/;
 
 // ⚠️ TWARDE LIMITY CZASU NA JEDNO ZADANIE. Bez wlasnego sygnalu undici czeka na naglowki
-// DOMYSLNE 300 000 ms, a serwer panelu stoi z `requestTimeout: 0` (web/server.js) — czyli
+// DOMYŚLNE 300 000 ms, a serwer panelu stoi z `requestTimeout: 0` (core/aplikacja.ts) — czyli
 // zawieszona sesja TCP do Allegro nie ma w calym panelu ZADNEGO ogranicznika. Ten sam
 // wzorzec i to samo uzasadnienie, co LIMIT_ZAPYTANIA_STATUS_MS w kurierzy/dpd.js
 // i kurierzy/inpost.js. Stale, a nie liczby wklejone w wywolanie, zeby dalo sie je
@@ -102,45 +102,46 @@ const WZOR_DATY = /^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2}:\d{2}(?:\.\d+)?))?(Z|
 //    patrzy, a strona to 100 zamowien z pozycjami, czyli setki kilobajtow JSON-a: piec
 //    sekund realnie umialoby uciac zdrowa, tylko wolna odpowiedz i wyciszyc caly kanal.
 //    Przebieg i tak nie moze sie nawarstwic — poller ma wlasna blokade „jeden przebieg
-//    naraz" (services/poller.js), wiec dluzszy limit nie mnozy polaczen.
+//    naraz" (moduly/kanaly/services/poller.js), więc dłuższy limit nie mnoży połączeń.
 //  - `pobierzPrzesylki` wola KARTA ZAMOWIENIA, synchronicznie, przy renderowaniu
 //    (GET /zamowienia/:id, przed petla statusu kuriera). PO DRUGIEJ STRONIE SIEDZI CZLOWIEK
 //    i patrzy w pusty ekran — a jedynym wyjsciem z odpytywania jest belka statusu stojaca
 //    na TEJ WLASNIE karcie, wiec karta, ktora sie nie otwiera, jest stanem bez wyjscia
-//    (PRZEWODNIK.md 4.9). Tu limit musi byc krotki, dokladnie jak przy statusie kuriera.
-//  - `pobierzOferte` wola UZUPELNIANIE ZDJEC (services/zdjecia-allegro.js), doczepione do
-//    przebiegu pollera — czyli TEZ W TLE i tez bez czlowieka po drugiej stronie. Limit jest
-//    mimo to KROTKI, i to nie jest niekonsekwencja: jeden przebieg pyta o wiele ofert POD RZAD
-//    (LIMIT_OFERT_NA_PRZEBIEG), wiec limit mnozy sie przez ich liczbe. Przy 30 s jedna
-//    milczaca oferta potrafilaby przeciagnac uzupelnianie przez kilka tyknien zegara naraz —
-//    a stawka jest tu wylacznie OZDOBNA (miniatura), wiec cierpliwosc ma byc mala.
-//  - `pobierzOferty` wola ODCZYT MAGAZYNU (services/magazyn-sync.js), uruchamiany PRZYCISKIEM.
+//    (reguła: każdy stan ma wyjście). Tu limit musi być krótki, dokładnie jak przy statusie kuriera.
+//  - `pobierzOferte` woła UZUPEŁNIANIE ZDJĘĆ (moduly/kanaly/services/zdjecia-allegro.js), doczepione do
+//    przebiegu pollera — w tle, bez człowieka, do LIMIT_OFERT_NA_PRZEBIEG ofert pod rząd — oraz przycisk
+//    „Pobierz treść i zdjęcia ofert” w magazynie (moduly/magazyn/services/allegro-tresc-kart.js), który też
+//    pyta o oferty po kolei, a człowiek czeka na wynik. Limit jest KRÓTKI, bo w obu ścieżkach mnoży się
+//    przez liczbę ofert: przy 30 s jedna milcząca oferta przeciągałaby przebieg o pół minuty na sztukę.
+//    W pollerze stawka jest wyłącznie ozdobna (miniatura); w przycisku oferta przerwana limitem dostaje
+//    `tresc_blad` i zostaje niepobrana do następnego kliknięcia.
+//  - `pobierzOferty` woła ODCZYT MAGAZYNU (moduly/magazyn/services/magazyn-sync.js), uruchamiany PRZYCISKIEM,
+//    oraz przejęcie stanów (moduly/magazyn/services/przejecie-stanow.js).
 //    Limit stoi POSRODKU i to jest decyzja: czlowiek czeka na wynik, ale nie na pusty ekran
-//    — a przede wszystkim limit MNOZY SIE przez liczbe stron (23 przy 447 ofertach i limicie
-//    20). Pollerowe 30 s znaczyloby najgorszy przypadek liczony w minutach, a piec sekund
+//    — a przede wszystkim limit MNOŻY SIĘ przez liczbę stron. Pollerowe 30 s znaczyloby najgorszy przypadek liczony w minutach, a piec sekund
 //    umialoby uciac zdrowy, tylko wolny odczyt calego katalogu i nie wczytac ANI JEDNEJ
 //    oferty — bo kontrola kompletnosci (nizej) i tak odrzuca odczyt uciety.
 export const LIMIT_ZAPYTANIA_ZAMOWIEN_MS = 30 * 1000;
 export const LIMIT_ZAPYTANIA_PRZESYLEK_MS = 5000;
 export const LIMIT_ZAPYTANIA_OFERTY_MS = 5000;
 export const LIMIT_ZAPYTANIA_OFERT_MS = 10 * 1000;
-// PRZ-160.04a — odczyt kategorii i jej parametrów (raz na kategorię; słownik parametrów waży do ok. 1 MB).
+// Odczyt kategorii i jej parametrów (raz na kategorię; słownik parametrów waży do ok. 1 MB).
 export const LIMIT_ZAPYTANIA_KATEGORII_MS = 10 * 1000;
 
-// ⚠️ WARTOSC ZMIERZONA, NIE WZIETA Z DOKUMENTACJI. Rozpoznanie (2026-08-06) potwierdzilo tylko
-// `limit=20`; PRZ-160 P19 (14.11.2026) zmierzyl `GET /sale/offers?limit=1000&offset=0` → 200 w sandboxie
-// i na dwoch kontach produkcyjnych (417 ofert w jednej odpowiedzi, ok. 650 KB, 510 ms), `limit=1001` → 400.
-// Przy 20 katalog 417 ofert to 21 zapytan na przebieg petli, przy 1000 — jedno. Sufit stron nadal z `totalCount`.
+// ⚠️ WARTOŚĆ ZMIERZONA, NIE WZIĘTA Z DOKUMENTACJI: `GET /sale/offers?limit=1000&offset=0` → 200
+// w sandboxie i na żywych kontach (kilkaset ofert w jednej odpowiedzi, setki KB, pół sekundy),
+// `limit=1001` → 400. Przy limicie 20 katalog kilkuset ofert to kilkadziesiąt zapytań na przebieg
+// pętli, przy 1000 — jedno. Sufit stron nadal z `totalCount`.
 export const LIMIT_STRONY_OFERT = 1000;
 
 // Twarda granica przebiegow: konto zglaszajace absurdalny `totalCount` (albo oddajace
 // w kolko pelna strone) zapetliloby odczyt na godziny — przycisk „Odswiez", ktory nigdy nie
-// wraca. 200 stron to 4000 ofert, czyli prawie dziewieciokrotnosc dzisiejszych 447.
+// wraca. 200 stron po `LIMIT_STRONY_OFERT` to zapas o rzędy wielkości ponad zwykły katalog.
 export const MAKS_STRON_OFERT = 200;
 
-// PRZ-160.E3.03 — limity wywołań etapu 3 (wystawianie ofert). Zapis oferty i zdjęcia dostają
+// Limity wywołań wystawiania ofert. Zapis oferty i zdjęcia dostają
 // 30 s jak faktura: Allegro waliduje ofertę synchronicznie i bywa wolne, a timeout zapisu
-// to wynik NIEPEWNY (D39 — dalej rozstrzyga odczyt po sygnaturze, nie drugi POST).
+// to wynik NIEPEWNY (dalej rozstrzyga odczyt po sygnaturze, nie drugi POST).
 export const LIMIT_ZAPISU_OFERTY_MS = 30 * 1000;
 export const LIMIT_OPERACJI_MS = 10 * 1000;
 export const LIMIT_ZDJECIA_MS = 30 * 1000;
@@ -150,7 +151,7 @@ export const LIMIT_SLOWNIKOW_MS = 10 * 1000;
 export const MAKS_OFERT_KOMENDY = 1000;
 const TYPY_ZDJEC = ['image/jpeg', 'image/png', 'image/webp'];
 
-// Centrum wiadomosci (2026-08-28). Allegro pozwala na max 20 watkow na strone — to nie jest
+// Centrum wiadomości. Allegro pozwala na max 20 watkow na strone — to nie jest
 // nasz wybor, tylko sufit zasobu.
 export const LIMIT_STRONY_WATKOW = 20;
 
@@ -183,7 +184,7 @@ export const LIMIT_ZAPYTANIA_STATUSU_MS = 5000;
 
 // Zgloszenie faktury i wyslanie jej pliku. Limit DLUZSZY niz przy statusie, i to jest decyzja,
 // nie niedopatrzenie: to jedyne wywolanie tego klienta, ktore niesie ZALACZNIK (PDF), a chodzi
-// w tle — z czuwacza (Zadanie 12), bez czlowieka po drugiej stronie. Piec sekund umialoby uciac
+// w tle — z czuwacza, bez człowieka po drugiej stronie. Piec sekund umialoby uciac
 // zdrowa, tylko wolna wysylke, a powtorka nie jest darmowa: Allegro przyjmuje do 10 faktur na
 // zamowienie, wiec kazde ponowienie ryzykuje DRUGI dokument u kupujacego.
 export const LIMIT_WYSYLKI_FAKTURY_MS = 30 * 1000;
@@ -227,7 +228,7 @@ function naDateAllegro(wartosc, nazwa) {
 
 export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = transport({ fetchImpl }) }) {
   async function bladHttp(r, sciezka, token) {
-    // Biała lista opisu: bez nagłówków, reszty ciała i parametrów zapytania (4.10).
+    // Biała lista opisu: bez nagłówków, reszty ciała i parametrów zapytania (reguła: sekrety nie wychodzą).
     // ⚠️ Biała lista NAZW pól nie wystarcza: Allegro potrafi odbić token albo nagłówek
     // autoryzacji WEWNĄTRZ `message`. Maskujemy więc wartość tokenu tego żądania i każde
     // `Bearer …` — PRZED ucięciem do 300 znaków, inaczej zostałby początek tokenu.
@@ -244,7 +245,7 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
           return opis ? opis + (path ? ` (${path})` : '') : '';
         }).filter(Boolean).join('; '));
         if (opisy) dopisek = ': ' + opisy.slice(0, 298);
-        // Kody i `metadata` (np. PARAMETER_MISMATCH → productId, parameterId) dla pętli ofert (D34 krok 4).
+        // Kody i `metadata` (np. PARAMETER_MISMATCH → productId, parameterId) dla pętli ofert.
         // Tylko proste wartości metadata, każda maskowana i ucięta — jak opis.
         const prosta = (w) => (typeof w === 'string' || typeof w === 'number' ? ukryj(String(w)).slice(0, 100) : null);
         bledy = body.errors.slice(0, 3).map((error) => ({
@@ -283,9 +284,9 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
       method: 'GET',
       // ⚠️ `User-Agent` JEST WARUNKIEM DZIALANIA KANALU, nie ozdobnikiem — tak samo jak
       // `Accept` wyzej. Allegro pisze wprost, ze wywolania bez prawidlowego naglowka
-      // spowoduja ZABLOKOWANIE KLUCZA API, a po 30.06.2026 odrzuca je automatycznie.
+      // spowodują ZABLOKOWANIE KLUCZA API; Allegro odrzuca je automatycznie.
       // Wartosc idzie Z KONFIGURACJI (`ALLEGRO_USER_AGENT`, walidowana przy starcie
-      // w src/oms/config.js), bo Allegro trzyma ja na bialej liscie i pozwala zmieniac
+      // w src/core/web/modul.ts), bo Allegro trzyma ja na bialej liscie i pozwala zmieniac
       // wylacznie numer wersji — a wersja bedzie rosla bez wydawania panelu.
       headers: {
         Authorization: `Bearer ${token}`, Accept: akceptuj, 'User-Agent': ustawienia.userAgent,
@@ -298,7 +299,7 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
       signal: AbortSignal.timeout(limitMs),
     });
     // Kod HTTP, ścieżka bez parametrów i ograniczony opis z białej listy bladHttp.
-    // Komunikat ląduje w bazie i na ekranie (niezmiennik 4.10).
+    // Komunikat ląduje w bazie i na ekranie (reguła: sekrety nie wychodzą).
     if (!r.ok) throw await bladHttp(r, sciezka, token);
     const body = await r.json();
     if (!zRetryAfter) return body;
@@ -326,14 +327,14 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
       body: JSON.stringify(cialo),
       signal: AbortSignal.timeout(limitMs),
     });
-    // Ten sam ograniczony opis co w GET — biała lista bladHttp (niezmiennik 4.10).
+    // Ten sam ograniczony opis co w GET — biała lista bladHttp (reguła: sekrety nie wychodzą).
     if (!r.ok) throw await bladHttp(r, sciezka, token);
     // 204 i puste cialo sa przy PUT normalne — `json()` rzucilby na nich SyntaxError,
     // czyli udana zmiana statusu wygladalaby jak awaria kanalu.
     return r.json().catch(() => null);
   }
 
-  // PRZ-160.E3.03: zapis, po którym liczy się NIE TYLKO ciało — `202` niesie adres operacji
+  // Zapis, po którym liczy się NIE TYLKO ciało — `202` niesie adres operacji
   // w `Location` i `Retry-After`, a `303` (przy `redirect: 'manual'`) znaczy „gotowe".
   // `wyslijJson` zostaje bez zmian: kilkanaście wywołań czeka tam wyłącznie na ciało.
   // `cialo === undefined` = bez ciała i bez Content-Type (odczyt stanu operacji).
@@ -419,7 +420,7 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
 
     const d = await get(`/order/checkout-forms?${p}`, LIMIT_ZAPYTANIA_ZAMOWIEN_MS);
     // ⚠️ 200 z cialem nie-tablica NIE MOZE oddawac []: „brak zamowien" byloby wtedy nie do
-    // odroznienia od zlej konfiguracji. Ten sam blad zlapala recenzja Etapu 1 przy Woo.
+    // odróżnienia od złej konfiguracji. Tę samą kontrolę ma klient Woo.
     if (!Array.isArray(d?.checkoutForms)) throw new Error('Allegro nie oddało listy zamówień (checkoutForms nie jest tablicą)');
     // `Math.max(1, …)` nie jest kosmetyka: poller ma petle `do … while (strona <= stron)`,
     // wiec zero stron nie wywala przebiegu — po prostu cicho udaje, ze wszystko przeczytano.
@@ -444,20 +445,20 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
    * Jedna OFERTA — wylacznie po to, zeby dobrac jej zdjecie glowne (`images[0]`).
    *
    * ⚠️ `/sale/product-offers/{offerId}`, NIGDY `/sale/offers/{offerId}`. Ten drugi zasob
-   * Allegro WYCOFALO i oddaje 403 „This resource is no longer supported" — zmierzone na
-   * zywym koncie 05.08.2026. Zamiana sciezki „na krotsza" wyciszylaby miniatury w calosci,
+   * Allegro WYCOFAŁO i oddaje 403 „This resource is no longer supported" — zmierzone na
+   * żywym koncie. Zamiana sciezki „na krotsza" wyciszylaby miniatury w calosci,
    * i to cicho: brak zdjecia jest tu stanem normalnym, wiec nikt by tego nie zauwazyl.
    *
    * Oddajemy CALA odpowiedz, a nie sam adres: wyciagniecie zdjecia to regula domenowa
-   * (domain/miniatury.js: zdjecieOferty) i ma dac sie sprawdzic bez dotykania HTTP.
-   * Wymaga uprawnienia `allegro:api:sale:offers:read` — nadanego i przewiazanego (05.08.2026).
+   * (domena/miniatury.js: zdjecieOferty) i ma dac sie sprawdzic bez dotykania HTTP.
+   * Wymaga uprawnienia `allegro:api:sale:offers:read`.
    */
   async function pobierzOferte(ofertaId) {
     return get(`/sale/product-offers/${encodeURIComponent(ofertaId)}`, LIMIT_ZAPYTANIA_OFERTY_MS);
   }
 
   /**
-   * PRZ-160.04a — kategoria Allegro: `{ id, name, parent: { id } | null, leaf, options }` (pomiar P8).
+   * Kategoria Allegro: `{ id, name, parent: { id } | null, leaf, options }` (zmierzone).
    * Ścieżkę od korzenia składa wołający, idąc po `parent.id`. Tylko odczyt; odmowę (401/403)
    * wołający pomija po `blad.status` — bez nowego wpisu w WYMAGANE_UPRAWNIENIA.
    */
@@ -466,7 +467,7 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
   }
 
   /**
-   * PRZ-160.04a — opisy parametrów kategorii: `{ parameters: [{ id, name, type, unit, options: { describesProduct },
+   * Opisy parametrów kategorii: `{ parameters: [{ id, name, type, unit, options: { describesProduct },
    * dictionary, restrictions }] }`. Słownik marek potrafi ważyć ok. 1 MB — przycina go `opisKategorii`
    * (domena/tresc-oferty-allegro.js), zanim cokolwiek trafi do bazy.
    */
@@ -477,22 +478,22 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
   /**
    * WSZYSTKIE oferty tego konta — do lustra magazynu (`produkty_sklepowe`).
    *
-   * ⚠️ BEZ ARGUMENTU KANALU, mimo ze plan zapowiadal `pobierzOferty(kanal)`. Klient JEST juz
-   * per-kanal: dostaje `ustawienia` i `tokeny` jednego konta przy tworzeniu (bootstrap.js,
+   * ⚠️ BEZ ARGUMENTU KANAŁU — nie `pobierzOferty(kanal)`. Klient JEST już per-kanał: dostaje
+   * `ustawienia` i `tokeny` jednego konta przy tworzeniu (moduly/kanaly/services/kompozycja-kanalow.ts,
    * `klienciKanalow`). Parametr `kanal` sugerowalby, ze jedna instancja obsluguje oba konta,
    * i pierwsze wywolanie z „drugim" kanalem po cichu przeczytaloby katalog pierwszego.
-   * Kanal dokleja WOLAJACY (Zadanie 7), z klucza mapy — i tam sprawdza go biala lista
-   * w `domain/allegro-oferta.js`.
+   * Kanał dokleja WOŁAJĄCY (moduly/magazyn/services/magazyn-sync.js), z klucza mapy — i tam sprawdza go biala lista
+   * w `domena/allegro-oferta.js`.
    *
-   * ⚠️ `GET /sale/offers` (LISTA) dziala — zmierzone 2026-08-06, HTTP 200. To NIE JEST ten
+   * ⚠️ `GET /sale/offers` (LISTA) działa — zmierzone, HTTP 200. To NIE JEST ten
    * sam zasob, co wycofane `GET /sale/offers/{id}` (403 „no longer supported"); szczegoly
    * jednej oferty ida przez `/sale/product-offers/{id}` w `pobierzOferte` wyzej.
    *
    * ⚠️ NIE DOCIAGAMY GALERII. Lista niesie wylacznie `primaryImage` i to wystarcza:
-   * pelna galeria kosztowalaby 447 osobnych wywolan, a zdjecia do karty produktu
+   * pełna galeria kosztowałaby osobne wywołanie na każdą ofertę (setki), a zdjęcia do karty produktu
    * bierzemy ze sklepu, gdzie Woo oddaje komplet w tym samym zapytaniu.
    *
-   * ⚠️ ZADNYCH FILTROW W ZAPYTANIU. Zmierzone 2026-08-04: literowka w nazwie parametru
+   * ⚠️ ŻADNYCH FILTRÓW W ZAPYTANIU. Zmierzone: literówka w nazwie parametru
    * filtrujacego jest przez Allegro CICHO IGNOROWANA i oddaje pelen zbior — filtr, ktory nie
    * dziala, wyglada tu dokladnie tak samo jak filtr, ktory dziala. Chcemy i tak wszystkie
    * oferty (stan publikacji zapisujemy, zamiast odsiewac), wiec nie ma czego wysylac.
@@ -516,7 +517,7 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
       });
       const d = await get(`/sale/offers?${p}`, LIMIT_ZAPYTANIA_OFERT_MS);
       // ⚠️ 200 z cialem nie-tablica NIE MOZE oddawac []: „konto nie ma ofert" byloby wtedy nie
-      // do odroznienia od zlej konfiguracji, a Zadanie 7 oznaczyloby CALY katalog kanalu
+      // do odróżnienia od złej konfiguracji, a odczyt magazynu oznaczyłby CAŁY katalog kanału
       // jako znikniety. Ta sama kontrola, co przy zamowieniach i przy produktach Woo.
       if (!Array.isArray(d?.offers)) throw new Error('Allegro nie oddało listy ofert (offers nie jest tablicą)');
       partia = d.offers;
@@ -537,7 +538,7 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
       && (zapowiedziano === null || wszystkie.length < zapowiedziano)
     );
 
-    // ⚠️ Uciety odczyt WYGLADA JAK SUKCES, a potem Zadanie 7 oznacza brakujace oferty jako
+    // ⚠️ Ucięty odczyt WYGLĄDA JAK SUKCES, a potem odczyt magazynu oznacza brakujące oferty jako
     // `zniknal_at` — czyli jest nieodrozninalny od „konto stracilo pol katalogu". Wiecej niz
     // zapowiedziano przepuszczamy bez slowa: oferta wystawiona w trakcie odczytu dokłada sie
     // do liczby i nic przez to nie ginie.
@@ -547,7 +548,7 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
     return wszystkie;
   }
 
-  // ===== PRZ-160.E3.03 — wystawianie ofert: zapis, odczyt, słowniki konta =====
+  // ===== Wystawianie ofert: zapis, odczyt, słowniki konta =====
 
   const wymagaj = (warunek, komunikat) => { if (!warunek) throw new Error(`Allegro: ${komunikat}`); };
   const tekstNiepusty = (w) => typeof w === 'string' && w.trim() !== '';
@@ -631,14 +632,14 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
   /**
    * Oferty o danej sygnaturze (`external.id`). ⚠️ Filtr po stronie Allegro bywa ignorowany
    * (wtedy wraca cała lista) — odfiltrowujemy sami, inaczej obca oferta wyglądałaby jak
-   * „już wystawiona" i D39 uznałby zapis za udany.
+   * „już wystawiona" i odczyt po sygnaturze uznałby zapis za udany.
    */
   async function ofertyPoSygnaturze(sygnatura) {
     wymagaj(tekstNiepusty(sygnatura), 'pusta sygnatura oferty.');
     const p = new URLSearchParams({ 'external.id': sygnatura, limit: String(LIMIT_STRONY_OFERT) });
     const d = await get(`/sale/offers?${p}`, LIMIT_ZAPYTANIA_OFERT_MS);
     if (!Array.isArray(d?.offers)) throw new Error('Allegro nie oddało listy ofert (offers nie jest tablicą)');
-    // D31: wynik służy do decyzji „ponów POST albo nie”. Lista, która wygląda na niefiltrowaną (obca sygnatura)
+    // Wynik służy do decyzji „ponów POST albo nie”. Lista, która wygląda na niefiltrowaną (obca sygnatura)
     // albo ma więcej niż jedną stronę, nie dowodzi, że naszej oferty nie ma — to „nie wiadomo”, nie zero.
     if (d.offers.some((o) => o?.external?.id !== sygnatura)) {
       throw new Error('Allegro zignorowało filtr external.id — nie wiadomo, czy oferta z tą sygnaturą istnieje.');
@@ -650,9 +651,9 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
   }
 
   /**
-   * Produkty katalogu Allegro po EAN (D34: `phrase=<EAN>&mode=GTIN`).
+   * Produkty katalogu Allegro po EAN (`phrase=<EAN>&mode=GTIN`).
    * ⚠️ `Accept-Language: pl-PL` jest warunkiem działania: bez niego fetch wysyła „*”, a Allegro odpowiada 422
-   * `UnsupportedLanguageInAcceptLanguageHeader` (dowód 2a na sandboxie, 14.11.2026) — każda karta z EAN kończyła jako błąd.
+   * `UnsupportedLanguageInAcceptLanguageHeader` (zmierzone na sandboksie) — każda karta z EAN kończyłaby się błędem.
    */
   async function szukajProduktow(ean) {
     wymagaj(typeof ean === 'string' && /^\d{8,14}$/.test(ean), 'EAN musi mieć 8–14 cyfr.');
@@ -771,7 +772,7 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
 
   /**
    * Prognoza prowizji: `POST /pricing/offer-fee-preview` — POST bez skutku po stronie Allegro.
-   * Dowód r4 (sandbox 14.11): bez `publication` i `parameters` Allegro odpowiada 422 „Can't parse value of:
+   * Zmierzone na sandboksie: bez `publication` i `parameters` Allegro odpowiada 422 „Can't parse value of:
    * offer.publication”; z pustymi wartościami 200. Pola podane przez wołającego mają pierwszeństwo.
    */
   async function podgladOplat(oferta) {
@@ -793,9 +794,9 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
   /**
    * Stan realizacji zamowienia — SWIEZO, tuz przed decyzja o wyslaniu statusu.
    *
-   * ⚠️ NIE DA SIE TEGO WZIAC Z NASZEJ BAZY. Zmierzone 05.08.2026: Allegro **nie podbija
-   * `updatedAt` przy zmianie `fulfillment.status`** (5 z 10 zamowien mialo u nas `PROCESSING`,
-   * a w Allegro `SENT`, przy identycznym `updatedAt`). Poller filtruje po `updatedAt.gte`,
+   * ⚠️ NIE DA SIĘ TEGO WZIĄĆ Z NASZEJ BAZY. Zmierzone: Allegro **nie podbija
+   * `updatedAt` przy zmianie `fulfillment.status`** (co drugie sprawdzone zamówienie miało u nas
+   * `PROCESSING`, a w Allegro `SENT`, przy identycznym `updatedAt`). Poller filtruje po `updatedAt.gte`,
    * wiec takiego zamowienia nie odczyta ponownie NIGDY — kolumna `status_realizacji` jest
    * nieaktualna na zawsze i decyzja oparta na niej cofa kupujacemu status.
    *
@@ -809,7 +810,7 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
       LIMIT_ZAPYTANIA_STATUSU_MS,
     );
     // ⚠️ `null` (Allegro nie ma statusu) MUSI dac sie odroznic od awarii — dlatego brak pola
-    // oddajemy jako `null`, a awaria RZUCA. `domain/allegro-status.js` czyta `undefined` jako
+    // oddajemy jako `null`, a awaria RZUCA. `domena/allegro-status.js` czyta `undefined` jako
     // „NIE PYTALISMY" i odmawia wysylki, wiec oddanie stad `undefined` uciszyloby kanal.
     return d?.fulfillment?.status ?? null;
   }
@@ -818,7 +819,7 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
     // ⚠️ ODMOWA PRZED WYJSCIEM DO SIECI. Wartosc spoza listy to nasz blad, nie blad Allegro —
     // a 400 z Allegro powiedzialoby „HTTP 400", nie „ten status nie istnieje". Lista jest
     // pelna lista z dokumentacji, celowo szersza niz to, co wysylamy (PROCESSING/SENT):
-    // klient ma odmawiac literowce, a nie decydowac za `domain/allegro-status.js`.
+    // klient ma odmawiac literowce, a nie decydowac za `domena/allegro-status.js`.
     const DOZWOLONE = ['NEW', 'PROCESSING', 'READY_FOR_SHIPMENT', 'SENT', 'READY_FOR_PICKUP', 'PICKED_UP'];
     if (!DOZWOLONE.includes(status)) {
       throw new Error(`Allegro: „${status}" nie jest statusem realizacji (dozwolone: ${DOZWOLONE.join(', ')})`);
@@ -827,7 +828,7 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
     // optymistyczna (409 przy nieaktualnej wersji), ale nasza kopia zamowienia jest stara
     // nawet o dwie minuty (przebieg pollera), a wlasciciel klika w panelu Allegro rownolegle.
     // Konflikt oznaczalby falszywa sprawe na pasku przy zamowieniu, z ktorym wszystko jest
-    // w porzadku. Przed wyslaniem czegos niepotrzebnego broni `domain/allegro-status.js`
+    // w porzadku. Przed wyslaniem czegos niepotrzebnego broni `domena/allegro-status.js`
     // (pomija stan, ktory w Allegro juz jest) — i to jest wlasciwe miejsce tej ochrony,
     // po stronie decyzji, a nie po stronie transportu.
     await wyslijJson(
@@ -842,8 +843,7 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
    * Faktury juz zgloszone przy zamowieniu — ODCZYT NAJLEPSZEJ WOLI.
    *
    * ⚠️ TEN ZASOB ODDAJE DZIS `400` NA KAZDE NASZE ZAMOWIENIE i nie jest to nasza literowka.
-   * Zmierzone 05.08.2026 na czterech zamowieniach z obu kont (notatka
-   * `2026-08-05-allegro-zapis-rozpoznanie.md` §2): sciezka istnieje i jest routowana (sciezki
+   * Zmierzone na kilku zamówieniach z dwóch kont: ścieżka istnieje i jest routowana (sciezki
    * zmyslone daja 404 „Feature unavailable"), naglowek jest wlasciwy (`beta.v1` i zwykly JSON
    * daja 406), token dobry (`…/shipments` oddaje 200), a `400` powstaje PRZED sprawdzeniem
    * identyfikatora — smiec w miejscu id daje to samo 400, podczas gdy zasob nadrzedny oddaje
@@ -928,7 +928,7 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
       headers: {
         Authorization: `Bearer ${token}`,
         // `Accept` zostaje WERSJONOWANY: odpowiedz na ten PUT niesie stan weryfikacji pliku
-        // (Zadanie 10) i przychodzi JSON-em Allegro.
+        // i przychodzi JSON-em Allegro.
         Accept: AKCEPTUJEMY,
         // ⚠️ TU `application/pdf`, NIE typ wersjonowany Allegro — to jedyne wywolanie w calym
         // module, ktore niesie plik, a nie JSON. Wersjonowany typ znaczylby „to jest JSON
@@ -940,7 +940,7 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
       body: bajty,
       signal: AbortSignal.timeout(LIMIT_WYSYLKI_FAKTURY_MS),
     });
-    // ⚠️ Do komunikatu idzie kod HTTP i sciezka — NIGDY token ani cialo odpowiedzi (4.10).
+    // ⚠️ Do komunikatu idzie kod HTTP i ścieżka — NIGDY token ani ciało odpowiedzi (reguła: sekrety nie wychodzą).
     if (!r.ok) throw new Error(`Allegro: HTTP ${r.status} przy ${sciezka}`);
     // Puste cialo nie jest awaria — stan weryfikacji jest bonusem, a nie warunkiem powodzenia.
     return r.json().catch(() => null);
@@ -951,7 +951,7 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
   // ⚠️ TE CZTERY WYWOLANIA WYDAJA PIENIADZE. `utworzPrzesylke` kupuje PRAWDZIWY przewoz
   // u prawdziwego przewoznika, na umowie Allegro. Nie ma trybu probnego ani sandboxa,
   // a kupionej etykiety nie cofa sie kliknieciem. Reszta modulu tego nie wola sama —
-  // droga prowadzi przez `domain/allegro-wysylka.js` (bariera) i `kurierzy/allegro-wza.js`.
+  // droga prowadzi przez `domena/allegro-wysylka.js` (bariera) i `kurierzy/allegro-wza.js`.
   //
   // ⚠️ To NIE JEST zdjecie zakazu `POST /order/checkout-forms/{id}/shipments` z naglowka
   // pliku. Tamta droga DOPISUJE do zamowienia numer listu paczki nadanej GDZIE INDZIEJ,
@@ -1028,11 +1028,11 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
    * ŻYWA metoda dostawy zamówienia — `delivery.method.id` prosto z Allegro.
    *
    * ⚠️ Osobne wywołanie, a nie odczyt kolumny: Allegro NIE PODBIJA `updatedAt` przy zmianach
-   * w zamówieniu (zmierzone 05.08.2026), więc nasza kopia bywa nieświeża Z DEFINICJI. Ta
+   * w zamówieniu (zmierzone), więc nasza kopia bywa nieświeża Z DEFINICJI. Ta
    * wartość decyduje o tym, KTÓRĄ USŁUGĘ kupujemy — czyli o pieniądzach i o Smart kupującego.
    *
    * `null` (Allegro nie podało metody) MUSI dać się odróżnić od awarii: brak pola oddajemy
-   * jako `null`, a awaria RZUCA. Bariera w `domain/allegro-wysylka.js` czyta `null` jako
+   * jako `null`, a awaria RZUCA. Bariera w `domena/allegro-wysylka.js` czyta `null` jako
    * odmowę, więc ciche zamienienie awarii w `null` dałoby odmowę zamiast krzyku.
    */
   async function pobierzMetodeDostawy(idZamowienia) {
@@ -1043,17 +1043,17 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
   async function utworzPrzesylke({ commandId, input } = {}) {
     // ⚠️ `commandId` JEST KLUCZEM IDEMPOTENCJI ALLEGRO i musi przyjsc Z REZERWACJI W BAZIE.
     // Wylosowany tutaj znaczylby, ze ponowienie po zerwanym polaczeniu kupuje DRUGI przewoz.
-    // Panel Allegro takiej oslony nie ma — 10.08.2026 wlasciciel kupil tak dwie etykiety do
-    // jednego zamowienia. Rzucamy PRZED wyjsciem do sieci: 400 od Allegro tez byloby glosne,
+    // Panel Allegro takiej osłony nie ma — da się w nim kupić dwie etykiety do jednego
+    // zamówienia. Rzucamy PRZED wyjsciem do sieci: 400 od Allegro tez byloby glosne,
     // ale mowiloby „HTTP 400", a nie „ktos zapomnial klucza idempotencji".
     if (!commandId) throw new Error('Allegro: przesyłki nie wolno tworzyć bez commandId (klucz idempotencji z rezerwacji).');
 
     // ⚠️ POMINIETE `deliveryMethodId` ZNACZY, ZE USLUGE DOBIERA ALLEGRO, A NIE MY.
     // Dokumentacja twierdzi, ze bierze sie wtedy z zamowienia, ale `delivery-proposals`
-    // oddaje to pole jako `null` (zmierzone 10.08.2026) i NIE ZMIERZYLISMY, co robi Allegro
+    // oddaje to pole jako `null` (zmierzone) i NIE ZMIERZYLIŚMY, co robi Allegro
     // przy braku. Zla usluga to utrata Smart u kupujacego i przewoz, ktorego nikt nie
     // zamawial — wiec pole jest tu OBOWIAZKOWE, a wartosc pochodzi z zywego odczytu
-    // zamowienia (`domain/allegro-wysylka.js`), nigdy z podpowiedzi i nigdy z bazy.
+    // zamowienia (`domena/allegro-wysylka.js`), nigdy z podpowiedzi i nigdy z bazy.
     if (!input?.deliveryMethodId) {
       throw new Error('Allegro: przesyłki nie wolno tworzyć bez deliveryMethodId — usługę wybieramy my, nie Allegro.');
     }
@@ -1064,11 +1064,11 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
   /**
    * Gotowa przesylka — i JEDYNE miejsce, w ktorym jest NUMER LISTU.
    *
-   * ⚠️ ZMIERZONE 11.08.2026 NA PIERWSZEJ PRAWDZIWEJ PACZCE. Odpowiedz komendy tworzenia
+   * ⚠️ ZMIERZONE NA PRAWDZIWEJ PACZCE. Odpowiedź komendy tworzenia
    * niesie WYLACZNIE `{commandId, status, errors, shipmentId}` — numeru listu tam NIE MA
    * i nie pojawi sie nigdy. Trzeba pojsc po niego tutaj: `packages[].waybill` (numer
    * allegrowy „AD…") oraz `packages[].transportingInfo[].carrierWaybill` (numer u DPD).
-   * Zalozenie, ze numer przyjdzie razem ze statusem, kosztowalo jedno wdrozenie.
+   * Założenie, że numer przyjdzie razem ze statusem, jest błędne.
    */
   async function pobierzPrzesylkeWza(shipmentId) {
     return get(`/shipment-management/shipments/${encodeURIComponent(shipmentId)}`, LIMIT_ZAPYTANIA_PRZESYLEK_MS);
@@ -1076,15 +1076,15 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
 
   /**
    * HISTORIA ZDARZEN PRZEWOZU — dziala TAKZE dla przesylek, ktorych panel nie nadawal
-   * (Allegro Punkt, Allegro One). Zmierzone sonda 25.08.2026.
+   * (Allegro Punkt, Allegro One). Zmierzone sondą.
    *
    * ⚠️ `Accept-Language: pl-PL` NIE JEST OZDOBNIKIEM. Bez tego naglowka `description`
    * przychodzi PO ANGIELSKU („Parcel has been delivered") i trafia prosto na ekran karty
    * oraz do zakladki przesylek. Klasyfikacji to nie ruszy — etap liczy sie z maszynowego
-   * `code` (domain/etap-przesylki.js) — ale operator zobaczylby angielski opis obok
+   * `code` (domena/etap-przesylki.js) — ale operator zobaczylby angielski opis obok
    * polskich zdarzen DPD i InPostu.
    *
-   * ⚠️ ZLY `carrierId` NIE ODDAJE BLEDU. Przepytano 25.08 wszystkie 74 identyfikatory
+   * ⚠️ ZŁY `carrierId` NIE ODDAJE BŁĘDU. Przepytano wszystkie (kilkadziesiąt) identyfikatory
    * z `GET /order/carriers`: kazdy oddaje HTTP 200, a tresc ma wylacznie ten wlasciwy —
    * reszta `trackingDetails: null`. Dlatego identyfikator MUSI pochodzic z odpowiedzi
    * Allegro (`przesylki.carrier_allegro`), a nie z naszej stalej. Na tym poleglo zgloszenie
@@ -1106,7 +1106,7 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
       },
       signal: AbortSignal.timeout(LIMIT_ZAPYTANIA_STATUSU_MS),
     });
-    // Kod HTTP i sciezka bez numeru — komunikat laduje w bazie i na ekranie (niezmiennik 4.10).
+    // Kod HTTP i ścieżka bez numeru — komunikat ląduje w bazie i na ekranie (reguła: sekrety nie wychodzą).
     if (!r.ok) throw new Error(`Allegro: HTTP ${r.status} przy /order/carriers/{carrierId}/tracking`);
     return r.json();
   }
@@ -1140,7 +1140,7 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
       body: JSON.stringify(format === 'ZPL' ? { shipmentIds } : { shipmentIds, pageSize: 'A4' }),
       signal: AbortSignal.timeout(LIMIT_ETYKIETY_MS),
     });
-    // ⚠️ Do komunikatu idzie kod HTTP i sciezka — NIGDY token ani cialo (4.10).
+    // ⚠️ Do komunikatu idzie kod HTTP i ścieżka — NIGDY token ani ciało (reguła: sekrety nie wychodzą).
     if (!r.ok) throw new Error(`Allegro: HTTP ${r.status} przy ${sciezka}`);
     // ⚠️ `arrayBuffer`, NIGDY `json()` ani `text()`: tekstowe odczytanie PDF-u zepsuloby
     // plik po cichu — etykieta wygladalaby na pobrana, a wydruk bylby smieciem.
@@ -1182,7 +1182,7 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
   //     wyczyta, ze formulka jest za dluga — a poprawia ja w Ustawieniach, nie w kodzie;
   //   • pusty tekst Allegro moze PRZYJAC, i wtedy kupujacy dostaje pusta wiadomosc od firmy.
   //
-  // ⚠️ Limit bierzemy z `domain/ustawienia-formulki.js`, a nie z wlasnej stalej — ta sama
+  // ⚠️ Limit bierzemy z `domena/ustawienia-formulki.js`, a nie z wlasnej stalej — ta sama
   // liczba pilnuje formularza w Ustawieniach i wyjscia do sieci. Dwie kopie rozjechalyby sie
   // przy pierwszej zmianie po stronie Allegro.
   async function deklarujZalacznikWiadomosci(nazwa, rozmiar) {
@@ -1217,17 +1217,17 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
     );
   }
 
-  // Dyskusje i reklamacje. ⚠️⚠️ RUSZTOWANIE NA DWA MIESIACE: `/sale/disputes` Allegro usunelo
-  // 07.01.2026, a od 28.10.2026 te sprawy wchodza do Centrum wiadomosci jako watki
-  // POST_PURCHASE_ISSUE i maja byc obslugiwane WYLACZNIE przez `/messaging`. Gdy to nastapi,
-  // ta metoda ma ZNIKNAC razem z services/dyskusje.js, a nie zostac „na wszelki wypadek".
+  // Dyskusje i reklamacje. ⚠️⚠️ RUSZTOWANIE TYMCZASOWE: `/sale/disputes` Allegro usunęło,
+  // a te sprawy przechodzą do Centrum wiadomości jako wątki POST_PURCHASE_ISSUE i mają być
+  // obsługiwane WYŁĄCZNIE przez `/messaging`. Gdy to nastąpi, ta metoda ma ZNIKNĄĆ razem
+  // z moduly/wiadomosci/services/dyskusje.js, a nie zostac „na wszelki wypadek".
   //
-  // ⚠️ KSZTALT ODPOWIEDZI — ZMIERZONY 28.08.2026 na produkcji, nie zalozony. Odpowiedz ma
+  // ⚠️ KSZTAŁT ODPOWIEDZI — ZMIERZONY na żywym koncie, nie założony. Odpowiedz ma
   // DOKLADNIE JEDNO pole najwyzszego poziomu: `issues` (tablica). Nazwa kolekcji byla wczesniej
   // zgadnieta i trafiona.
   //
   // ⚠️⚠️ `totalCount` NIE ISTNIEJE w tej odpowiedzi, wiec `razem` jest ZAWSZE `null`. Dzis nic
-  // na nim nie stoi (services/dyskusje.js czyta wylacznie pierwsza strone), ale ktokolwiek
+  // na nim nie stoi (moduly/wiadomosci/services/dyskusje.js czyta wyłącznie pierwszą stronę), ale ktokolwiek
   // dopisze tu stronicowanie, NIE MA NA CZYM oprzec warunku konca — musi liczyc dlugosc strony.
   async function pobierzSprawy({ offset = 0 } = {}) {
     const d = await get(
@@ -1253,7 +1253,7 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
     pobierzPrzesylkeWza, pobierzEtykieteWza, pobierzSledzenie,
     pobierzPropozycjePodjazdu, zlecPodjazd, stanZleceniaPodjazdu, pobierzPodjazd,
     pobierzWatki, pobierzWiadomosci, wyslijWiadomosc, deklarujZalacznikWiadomosci, wgrajZalacznikWiadomosci, pobierzSprawy,
-    // PRZ-160.E3.03 — wystawianie ofert (zapisy w nagłówku pliku; bez kasowania: D38).
+    // Wystawianie ofert (zapisy w nagłówku pliku; bez kasowania).
     utworzOferte, edytujOferte, stanOperacji, ofertyKonta, ofertyPoSygnaturze,
     szukajProduktow, wgrajZdjecie, komendaIlosci, komendaCeny, komendaPublikacji, wynikKomendy,
     pobierzCenniki, pobierzZwroty, pobierzReklamacje, pobierzGwarancje, pobierzProducentow,

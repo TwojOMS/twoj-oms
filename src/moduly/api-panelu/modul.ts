@@ -6,7 +6,7 @@ import { kanalIndywidualnyWlaczony } from '../kanaly/klasyfikacja.ts';
 export const modulApiPanelu: ModulOms<{ kanalIndywidualny: boolean }> = {
   nazwa: 'api-panelu', wersja: '1.0.0',
   wymaga: ['rdzen', 'web', 'kanaly', 'faktury', 'zamowienia'],
-  // PRZ-089: bez panelu zamówień indywidualnych trasa z karty odmawia (OMS_KANAL_INDYWIDUALNY).
+  // Bez panelu zamówień indywidualnych trasa z karty odmawia (OMS_KANAL_INDYWIDUALNY).
   konfiguracja: env => ({ kanalIndywidualny: kanalIndywidualnyWlaczony(env) }),
   migracje: [], uprawnienia: [], menu: [],
   zbuduj: ctx => ({

@@ -16,7 +16,7 @@ function wymuszenieIndeksu(db) {
 }
 
 /**
- * PRZ-102.14: per sklep najwcześniejszy dzień z julianday (dolna granica dnia warszawskiego: data bez
+ * Per sklep najwcześniejszy dzień z julianday (dolna granica dnia warszawskiego: data bez
  * strefy to dzień sklepu, data ze strefą jest w UTC, a Warszawa jest przed UTC) i liczba dat, których
  * SQLite nie rozumie. Sam indeks pokrywający (julianday, sklep) — bez odczytu wierszy tabeli.
  * @returns {{ sklep: string, od_dnia: string | null, bez_daty: number }[]}

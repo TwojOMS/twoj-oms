@@ -1,4 +1,4 @@
-<%# Ekran scalania zamówień (PRZ-101.04). NIC tu jeszcze nie jest zapisane — zapis robi dopiero %>
+<%# Ekran scalania zamówień. NIC tu jeszcze nie jest zapisane — zapis robi dopiero %>
 <%# „Scal” (POST /zamowienia/scal), który liczy odmowy od nowa. „Przelicz” wraca na ten ekran %>
 <%# z innym głównym albo inną wysyłką, bo kwoty i część odmów zależą od wyboru głównego. %>
 <p class="wroc"><a href="<%= powrot %>">← Zamówienia</a></p>
@@ -36,7 +36,7 @@
       <h3 class="wynik-naglowek">Koszt wysyłki w scalonym zamówieniu</h3>
       <p><label><input type="radio" name="wysylka" value="glowne" <%= wysylka !== 'suma' ? 'checked' : '' %>>
         z zamówienia głównego — <b><%= wysylkaGlowne ?? '?' %> zł</b> (razem do faktury <%= razemGlowne ?? '?' %> zł)</label>
-        <%# PRZ-101.11: wysyłka OPŁACONEGO dołączonego wchodzi także tutaj — kupujący za nią zapłacił. %>
+        <%# Wysyłka OPŁACONEGO dołączonego wchodzi także tutaj — kupujący za nią zapłacił. %>
         <% if (opisGlowne) { %><br><span class="wyjasnienie" id="opis-wysylki-glowne"><%= opisGlowne %></span><% } %></p>
       <p><label><input type="radio" name="wysylka" value="suma" <%= wysylka === 'suma' ? 'checked' : '' %>>
         suma wysyłek — <b><%= wysylkaSuma ?? '?' %> zł</b> (razem do faktury <%= razemSuma ?? '?' %> zł)</label>

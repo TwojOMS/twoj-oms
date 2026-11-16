@@ -10,15 +10,16 @@ export const symbolPowoduKorekty = (powod) => (powod === 'mistake' || powod === 
 // wystawia fakture.
 //
 // ⚠️⚠️ WYSTAWIENIE FAKTURY NIGDY JEJ NIE WYSYLA DO KSeF: `wystaw()` nizej nie zna parametru
-// `send_to_ksef`, nie wola zadnego zasobu KSeF i tak ma zostac. Wlasciciel wystawia faktury
-// w ciagu dnia, a wysyla je zbiorczo dopiero wieczorem — to SWIADOMA decyzja, zeby pomylke
-// dalo sie skasowac w inFakcie, dopoki dokument jeszcze nie jest nieodwracalny. Wystawienie
-// i wysylka to DWIE OSOBNE DECYZJE CZLOWIEKA i zlanie ich w jedna kasuje te mozliwosc.
+// `send_to_ksef`, nie wola zadnego zasobu KSeF i tak ma zostac. Wystawienie i wysyłka to
+// DWIE OSOBNE DECYZJE CZŁOWIEKA: między nimi pomyłkę da się jeszcze skasować w inFakcie,
+// dopóki dokument nie trafił do KSeF i nie jest nieodwracalny. Zlanie ich w jedną kasuje
+// tę możliwość.
 //
-// Sama wysylka mieszka w `wyslijDokumentDoKsef` na koncu tego pliku (od 06.08.2026, na zadanie
-// wlasciciela: zbiorcza wysylka z panelu zamiast klikania w inFakcie) — jedyne miejsce
-// w panelu, ktore wysyla. Ma byc wolane WYLACZNIE z trasy zatwierdzenia po ekranie podgladu.
-// Szczegoly i zakaz wolania jej skadkolwiek indziej — w komentarzu przy tej funkcji.
+// Sama wysyłka mieszka w `wyslijDokumentDoKsef` na końcu tego pliku — jedyne miejsce
+// w tym kliencie, które wysyła. Woła ją WYŁĄCZNIE moduly/faktury/services/wysylka-ksef.js: z trasy
+// zatwierdzenia po ekranie podglądu albo z automatu KSeF o godzinie z Ustawień (services/ksef-automat.js),
+// który podglądu nie ma i dlatego wysyła tylko to, co wysłałby przycisk.
+// Szczegóły i zakaz wołania jej skądkolwiek indziej — w komentarzu przy tej funkcji.
 
 // Twardy limit JEDNEGO zadania do inFaktu. Jego jedynym powodem istnienia jest
 // utrzymanie niezmiennika: "rezerwacja starsza od progu" MUSI znaczyc "nic nie leci".
@@ -28,18 +29,18 @@ export const symbolPowoduKorekty = (powod) => (powod === 'mistake' || powod === 
 // PROG_ZAWIESZONEJ_FAKTURY_MS. Wystarczylo, zeby wywolanie dociagnelo do granicy, i
 // wiszace wystawianie czytalo sie jako osierocone -> operator odblokowywal zamowienie
 // w trakcie ZYWEGO wystawiania -> drugie klikniecie = DWA dokumenty w inFakcie (a jesli
-// nikt tego nie zlapie przed wieczorna zbiorcza wysylka — oba pojada do KSeF).
+// nikt tego nie złapie przed wysyłką — oba pojadą do KSeF).
 export const LIMIT_ZADANIA_MS = 60 * 1000;
 
-// ⚠️⚠️ inFakt IGNORUJE `limit` — zmierzone 06.08.2026 na produkcyjnym koncie dla wartości
-// 10, 25, 50, 100 i 200: ZA KAŻDYM RAZEM `count: 10` przy `total_count: 64`. Strona ma
+// ⚠️⚠️ inFakt IGNORUJE `limit` — zmierzone dla wartości
+// 10, 25, 50, 100 i 200: ZA KAŻDYM RAZEM `count: 10`, choć `total_count` było większe. Strona ma
 // dziesięć wierszy i nie da się jej powiększyć. Dlatego paginacja mieszka TUTAJ, wewnątrz
-// klienta, a nie u wołającego: kod, który weźmie pierwszą stronę, pokaże „cały czerwiec"
-// jako 10 z 64 faktur — bez błędu i bez ostrzeżenia.
+// klienta, a nie u wołającego: kod, który weźmie pierwszą stronę, pokaże „cały miesiąc"
+// jako pierwsze 10 faktur — bez błędu i bez ostrzeżenia.
 export const STRONA_INFAKTU = 10;
 
 // ⚠️ SUFIT, żeby zapytanie o zbyt szeroki zakres nie zamieniło się w przelot po całym
-// archiwum. 60 stron = 600 dokumentów = dwa lata sprzedaży. Po przekroczeniu ODMAWIAMY:
+// archiwum. 60 stron = 600 dokumentów. Po przekroczeniu ODMAWIAMY:
 // cicha część wyniku wygląda dokładnie tak samo jak komplet.
 export const SUFIT_STRON = 60;
 
@@ -53,8 +54,8 @@ export const ROWNOLEGLE_STRON = 6;
 // i każda ma własny `LIMIT_ZADANIA_MS`. Równoległość WEWNĄTRZ partii czasu nie sumuje.
 //
 // Ta liczba jest składnikiem strażnika czasu przebiegu czuwacza archiwum sprzedaży
-// (services/czuwacz-archiwum-sprzedazy.js → bootstrap.js): podniesienie sufitu stron albo
-// obniżenie równoległości ma POŁOŻYĆ PANEL PRZY STARCIE, a nie po cichu rozjechać nocny zegar.
+// (moduly/faktury/services/czuwacz-archiwum-sprzedazy.js → strażnik startu w moduly/faktury/modul.ts):
+// podniesienie sufitu stron albo obniżenie równoległości ma POŁOŻYĆ PANEL PRZY STARCIE, a nie po cichu rozjechać zegar.
 export const NAJDLUZSZA_LISTA_MS = (1 + Math.ceil((SUFIT_STRON - 1) / ROWNOLEGLE_STRON)) * LIMIT_ZADANIA_MS;
 
 // Straznik przy wczytaniu modulu: gdyby ktos kiedys podniosl limit albo obnizyl prog,
@@ -169,13 +170,13 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
    * paginacją co listy dat, zamiast dorabiać sobie drugą pętlę po stronach.
    *
    * ⚠️ PUŁAPKA SORTOWANIA: inFakt oddaje HTTP 200 na `order` z NIEISTNIEJĄCYM polem —
-   * zmierzone 06.08.2026, `order=nie_ma_takiego asc` odpowiada normalnie i zwraca ten sam
+   * zmierzone: `order=nie_ma_takiego asc` odpowiada normalnie i zwraca ten sam
    * pierwszy wiersz, co zapytanie bez sortowania. Literówka w nazwie pola NIE wywali się,
    * tylko po cichu zmieni kolejność: na ekranie nieopłaconych znaczyłoby to „najstarszy dług"
    * pokazany gdzieś w środku listy. Każdą nazwę pola tutaj trzeba sprawdzić na żywym API.
    *
-   * ⚠️ Spację w wartości `order` `URLSearchParams` koduje jako `+` i TAK MA ZOSTAĆ: zmierzone
-   * 06.08.2026, `order=payment_date+asc` i `order=payment_date%20asc` dają IDENTYCZNY wynik.
+   * ⚠️ Spację w wartości `order` `URLSearchParams` koduje jako `+` i TAK MA ZOSTAĆ: zmierzone,
+   * `order=payment_date+asc` i `order=payment_date%20asc` dają IDENTYCZNY wynik.
    * Nie ma tu czego podmieniać po stronie klienta.
    */
   function adres(zasob, {
@@ -191,7 +192,7 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
   }
 
   // `sufitStron` per wywołanie może sufit WYŁĄCZNIE ZAWĘZIĆ (Math.min niżej) — krok luk
-  // KSeF w czuwaczu (2026-08-29) ma ciaśniejszy budżet czasu niż ekran, a poluzowanie
+  // KSeF w czuwaczu ma ciaśniejszy budżet czasu niż ekran, a poluzowanie
   // z zewnątrz otwierałoby z powrotem przelot po archiwum, przed którym broni stała.
   async function wszystkieStrony(zasob, zakres, rodzaj, { sufitStron = SUFIT_STRON } = {}) {
     const sufit = Math.min(Number(sufitStron) || SUFIT_STRON, SUFIT_STRON);
@@ -202,7 +203,7 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
     // ⚠️ NIEUFNOŚĆ WOBEC `total_count` — bez tego strażnika NaN CICHO OMIJA sufit niżej
     // (`NaN > SUFIT_STRON` jest fałszem) i zeruje pętlę stron (`s < NaN` też), więc funkcja
     // oddawałaby PIERWSZĄ STRONĘ jako komplet. To ta sama awaria, przed którą broni cały ten
-    // moduł — „cały czerwiec" jako 10 z 64 — tyle że wpuszczona przez zepsutą odpowiedź
+    // moduł — „cały miesiąc" jako pierwsze 10 faktur — tyle że wpuszczona przez zepsutą odpowiedź
     // zamiast przez ignorowany `limit`. Milczenie jest tu gorsze niż odmowa.
     if (!Number.isFinite(razem) || razem < 0) {
       throw bladOperatora(
@@ -250,35 +251,28 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
    * Dokumenty, za które klient jeszcze nie zapłacił — CAŁA historia, nie miesiąc.
    *
    * ⚠️⚠️ TO ZAPYTANIE TYLKO ZAWĘŻA — NIE ROZSTRZYGA. Kto zalega, mówi `czekaNaPrzelew`
-   * (domain/lista-faktur.js), a `nieoplacone()` w services/faktury-widok.js przepuszcza przez
+   * (domena/lista-faktur.js), a `nieoplacone()` w moduly/faktury/services/faktury-widok.js przepuszcza przez
    * nią każdy wiersz stąd. Nazwa tej funkcji obiecuje więcej, niż jej wynik znaczy, i to jest
    * świadome: sam filtr serwerowy oddaje NADZBIÓR.
    *
-   * ⚠️ SPROSTOWANIE DO POPRZEDNIEJ WERSJI TEGO DOCBLOCKA — i to ona wprowadziła w błąd cały
-   * ekran. Stało tu, że `q[left_to_pay_gt]=0` daje „65 dokumentów i ani jednego już opłaconego",
-   * a filtr po statusie przepuszcza zapłacone. Drugie zdanie jest prawdziwe, pierwsze nie było:
-   * pomiar 06.08.2026 sprawdzał tylko, czy wynik zgadza się SAM ZE SOBĄ (`left_to_pay > 0` jako
-   * definicja „nieopłaconej"), i to jest rozumowanie w kółko. Pomiar 10.08.2026 na tym samym
-   * koncie, tym razem po statusie:
-   *
-   *   q[left_to_pay_gt]=0                 → 67 dokumentów:  status paid=65, sent=2
-   *   q[left_to_pay_gt]=0 & status!=paid  → 2  (numery, które wskazał właściciel)
+   * ⚠️ `q[left_to_pay_gt]=0` ODDAJE TEŻ DOKUMENTY JUŻ OPŁACONE — pomiar po statusie pokazał,
+   * że prawie cały wynik ma `status: paid`. Sprawdzanie wyniku samym `left_to_pay > 0` jako
+   * definicją „nieopłaconej" to rozumowanie w kółko i tego błędu nie wykryje.
    *
    * Oznaczenie zapłaty w inFakcie ustawia `status` i `paid_date`, a `left_to_pay` ZOSTAWIA —
-   * ta sama pułapka, co przy `/paid.json` (domain/termin-platnosci.js). Filtr zostaje w URL-u,
-   * bo tanio ucina archiwum z 329 dokumentów do 67; osąd zszedł piętro wyżej, gdzie widać go
+   * ta sama pułapka, co przy `/paid.json` (domena/termin-platnosci.js). Filtr zostaje w URL-u,
+   * bo tanio ucina archiwum do małego nadzbioru; osąd zszedł piętro wyżej, gdzie widać go
    * w testach.
    *
-   * ⚠️ DRUGIEGO `q[...]` TU NIE DOKŁADAĆ (kuszące: `q[status_not_eq]=paid` zbiłoby 7 stron do
+   * ⚠️ DRUGIEGO `q[...]` TU NIE DOKŁADAĆ (kuszące: `q[status_not_eq]=paid` zbiłoby kilka stron do
    * jednej). Nieznany klucz ransacka nie wywala się, tylko ROZSZERZA zapytanie do całego
    * archiwum, a `not_eq` na kolumnie z NULL-em po cichu gubi wiersze. Na ekranie długów obie
-   * awarie kończą się liczbą, której nikt nie ma jak zakwestionować — a siedem stron to ~0,4 s.
+   * awarie kończą się liczbą, której nikt nie ma jak zakwestionować — a kilka stron to ułamek sekundy.
    *
-   * ⚠️ JEDNA ŚCIEŻKA PAGINACJI — ta sama `wszystkieStrony`, co listy dat. Wcześniej stała
-   * tu WŁASNA pętla po stronach i to ona była błędem: brała kres z `total_count` bez
-   * strażnika, więc brakujące albo nieliczbowe `total_count` kończyło ją po pierwszej
-   * stronie, a przekroczenie sufitu wychodziło cichym `break`. W obu razach ekran długów
-   * pokazywał 10 z 65 dokumentów jako komplet — ZANIŻONY dług klientów bez śladu błędu.
+   * ⚠️ JEDNA ŚCIEŻKA PAGINACJI — ta sama `wszystkieStrony`, co listy dat. Własna pętla po
+   * stronach bez strażnika `total_count` kończyłaby się po pierwszej stronie przy brakującym
+   * `total_count`, a przekroczenie sufitu wychodziłoby cichym `break` — ekran długów pokazałby
+   * pierwszą stronę jako komplet, ZANIŻONY dług klientów bez śladu błędu.
    * `wszystkieStrony` w obu przypadkach ODMAWIA i tak ma być: na tym ekranie milczenie
    * kosztuje więcej niż odmowa. Druga pętla po stronach to zarazem drugie miejsce do
    * zepsucia — nie odtwarzać jej tutaj.
@@ -291,9 +285,9 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
 
   /**
    * Ilu dokumentow ma DOKLADNIE ten numer — straznik duplikatu wlasnej serii WDT
-   * (services/faktura.js) przed wystawieniem z polem `number`.
+   * (moduly/faktury/services/wdt-faktury.js) przed wystawieniem z polem `number`.
    *
-   * `q[number_eq]` ZWERYFIKOWANE na zywym koncie 26.08.2026: znany numer → total_count 1,
+   * `q[number_eq]` ZWERYFIKOWANE na żywym koncie: znany numer → total_count 1,
    * zmyslony → 0. To wazne, bo NIEZNANY klucz ransacka nie wywala sie, tylko ROZSZERZA
    * zapytanie do calego archiwum — ten klucz dziala i wolno na nim polegac.
    *
@@ -320,10 +314,10 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
     const dane = await zapytaj(sciezka, { method: 'GET' }, 'wyszukanie klienta');
     const wpisy = dane?.entities ?? [];
     const ile = dane?.metainfo?.total_count ?? wpisy.length;
-    // Kartoteka ma ~275 wpisow zakladanych latami, wiec duplikat po NIP-ie jest realny.
+    // Kartoteka zakładana latami ma setki wpisów, więc duplikat po NIP-ie jest realny.
     // Branie entities[0] wybieraloby nabywcę faktury LOSOWO (kolejnosc ustala inFakt), a zly
     // nabywca na wystawionej fakturze to klopot niezaleznie od KSeF: w inFakcie faktury sie
-    // nie edytuje, tylko kasuje i wystawia od nowa — a jesli zdazy pojechac wieczorem do
+    // nie edytuje, tylko kasuje i wystawia od nowa — a jeśli zdąży pojechać do
     // KSeF, zostaje juz tylko KOREKTA. Niech rozstrzygnie czlowiek.
     if (ile > 1) {
       throw bladOperatora(
@@ -356,8 +350,7 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
     // `wyslijDokumentDoKsef` nizej, nigdy skutek uboczny tego wywolania. Dlatego NIC tu na tym polu
     // nie sprawdzamy ani nie blokujemy — zapisujemy wiernie to, co inFakt oddal, a jego brak
     // nie jest bledem. Trafia do kolumny `faktury.ksef_status`, ktora mimo nazwy trzyma
-    // WEWNETRZNY stan panelu ('w_toku' / 'do_wyjasnienia') — patrz komentarz przy tej
-    // kolumnie w schema.sql.
+    // WEWNĘTRZNY stan panelu ('w_toku' / 'do_wyjasnienia').
     return { uuid: dane?.uuid ?? null, numer: dane?.number ?? null, ksefStatus: dane?.ksef_data ?? null };
   }
 
@@ -365,16 +358,16 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
    * KOREKTA — zasob ASYNCHRONICZNY, inaczej niz faktura (`/v3/invoices.json`, synchroniczna).
    *
    * ⚠️⚠️ `201` NIE ZNACZY „WYSTAWIONO" — I NIE ZNACZY NAWET „TRESC BYLA POPRAWNA". Zmierzone
-   * 2026-08-14 na zywym koncie: `POST` z PUSTYM cialem `{}` dostal `201 „Zlecenie przyjete"`,
+   * na żywym koncie: `POST` z PUSTYM cialem `{}` dostal `201 „Zlecenie przyjete"`,
    * a dokument NIE POWSTAL (liczba korekt na koncie bez zmian). Walidacja odbywa sie w tle,
    * juz po odpowiedzi, i jej wynik NIE WRACA ta droga.
    *
    * Konsekwencja: kod uznajacy `201` za sukces twierdzilby, ze korekta istnieje, przy KAZDEJ
    * odrzuconej tresci. Dowodem istnienia dokumentu jest WYLACZNIE odczyt (`doczytaj`
-   * w services/korekta.js) — patrz notatka `2026-08-14-oms-zwroty-pomiar.md`.
+   * w moduly/zwroty/services/korekta.js).
    *
-   * ⚠️ KOREKTA TO OSOBNY ZASOB — ten sam uuid pod `/invoices/` oddaje 404 (sprawdzone
-   * 2026-08-01), stad `pobierzPdfKorekty` nizej.
+   * ⚠️ KOREKTA TO OSOBNY ZASOB — ten sam uuid pod `/invoices/` oddaje 404,
+   * stąd `pobierzPdfKorekty` niżej.
    */
   async function wystawKorekte(payload) {
     const dane = await zapytaj('/v3/async/corrective_invoices.json', {
@@ -422,7 +415,7 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
    * PDF dokumentu — do wydruku i do dysku.
    *
    * `zasob` jest parametrem, bo KOREKTA TO OSOBNY ZASÓB (`corrective_invoices`) — ten sam
-   * uuid pod `/invoices/` oddaje 404 (sprawdzone 2026-08-01). Reszta zachowania jest
+   * uuid pod `/invoices/` oddaje 404. Reszta zachowania jest
    * wspólna dla obu dokumentów i celowo istnieje TYLKO RAZ.
    *
    * ⚠️ NIE przez `zapytaj`: tamta funkcja parsuje odpowiedź jako JSON, więc na dokumencie
@@ -465,23 +458,22 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
     return bajty;
   }
 
-  // Sygnatura BEZ ZMIAN — wołają to `services/faktura.js` i `services/faktura-allegro.js`.
+  // Sygnatura BEZ ZMIAN — woła ją wiele modułów (m.in. `moduly/faktury/services/faktura.js` i `faktura-allegro.js`).
   const pobierzPdf = (uuid, typ) => pobierzPdfZasobu('invoices', uuid, typ);
 
-  // ⚠️ KOREKTA TO OSOBNY ZASÓB — ten sam uuid pod /invoices/ oddaje 404 (sprawdzone 2026-08-01).
+  // ⚠️ KOREKTA TO OSOBNY ZASÓB — ten sam uuid pod /invoices/ oddaje 404.
   const pobierzPdfKorekty = (uuid, typ = 'original') => pobierzPdfZasobu('corrective_invoices', uuid, typ);
 
   /**
    * Oznaczenie WYSTAWIONEJ faktury jako opłaconej — WYŁĄCZNIE po to, żeby jej wewnętrzny
    * `status` w inFakcie przestał mówić „nieopłacona".
    *
-   * ⚠️ TO NIE MA NIC WSPÓLNEGO Z KSeF (patrz nagłówek pliku). To osobny zasób, a panel dalej
-   * NIE WYSYŁA dokumentów do KSeF ani tu, ani nigdzie indziej.
+   * ⚠️ TO NIE MA NIC WSPÓLNEGO Z KSeF (patrz nagłówek pliku). To osobny zasób i nic tu
+   * nie wysyła do KSeF — wysyłka w tym kliencie mieszka wyłącznie w `wyslijDokumentDoKsef`.
    *
    * ⚠️ ZAKRES: to zmienia STATUS, a nie treść dokumentu. Kwota zapłaty jedzie na dokument
-   * polem `paid_price` przy TWORZENIU (domain/termin-platnosci.js) i to działa — dokument
-   * dla klienta drukuje „Zapłacono: 123,00 / Pozostało: 0,00". Zmierzone 2026-08-04 (notatka
-   * `2026-08-04-infakt-daty-i-oplacenie-rozpoznanie.md`): ten zasób `left_to_pay` ani
+   * polem `paid_price` przy TWORZENIU (domena/termin-platnosci.js) i to działa — dokument
+   * dla klienta drukuje „Zapłacono: 123,00 / Pozostało: 0,00". Zmierzone: ten zasób `left_to_pay` ani
    * `paid_price` NIE RUSZA. Dlatego są potrzebne OBA wywołania i żadne nie zastępuje drugiego:
    * tamto mówi prawdę KLIENTOWI, to mówi ją LIŚCIE FAKTUR W inFAKCIE.
    *
@@ -491,13 +483,13 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
    * że status już się zmienił.
    *
    * `paid_date` jest w dokumentacji OPCJONALNA, ale musi być „nie wcześniejsza niż data
-   * wystawienia" — datę wybiera USŁUGA (services/faktura.js), bo tylko ona zna obie daty.
+   * wystawienia" — datę wybiera USŁUGA (moduly/faktury/services/faktura.js), bo tylko ona zna obie daty.
    * Jej brak znaczy BRAK POLA, nigdy `undefined`.
    *
    * ⚠️ Ścieżka `/v3/async/invoices/{uuid}/paid.json` pochodzi z dokumentacji, ale została
-   * POTWIERDZONA na żywym API 2026-08-04 (ta sama notatka: „Zwraca 201 i referencję zadania
-   * […] status faktury zmienia się na `paid`"). Mimo to wołający MUSI traktować awarię jako
-   * nieszkodliwą — patrz services/faktura.js.
+   * POTWIERDZONA na żywym API (zwraca 201 i referencję zadania, a status faktury zmienia się
+   * na `paid`). Mimo to wołający MUSI traktować awarię jako
+   * nieszkodliwą — patrz moduly/faktury/services/faktura.js.
    */
   async function oznaczZaplacona(uuid, { paidDate } = {}) {
     if (!uuid) throw bladOperatora('Ta faktura nie ma numeru dokumentu w inFakcie.');
@@ -517,19 +509,18 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
    * Pojedyncza faktura — pierwotnie WYŁĄCZNIE po to, żeby dowiedzieć się, czy dokument jest
    * już w KSeF (`numer`/`ksefNumer`, czytane przez czuwaczKsef i ksef-doczytanie).
    *
-   * ⚠️ TO JEST ODCZYT I MA NIM ZOSTAĆ. Panel nie wysyła do KSeF (patrz nagłówek pliku):
-   * właściciel robi to sam, w ciągu dnia. Ta metoda tylko pyta, czy już zrobił.
+   * ⚠️ TO JEST ODCZYT I MA NIM ZOSTAĆ. Wysyłka do KSeF idzie wyłącznie przez
+   * `wyslijDokumentDoKsef` (patrz nagłówek pliku). Ta metoda tylko pyta, czy dokument już jest w KSeF.
    *
-   * Kształt pola `ksef_number` zmierzony 05.08.2026 (notatka
-   * `2026-08-05-allegro-zapis-rozpoznanie.md`): wypełnione dla dokumentów wysłanych do KSeF,
+   * Kształt pola `ksef_number` zmierzony: wypełnione dla dokumentów wysłanych do KSeF,
    * a PDF niesie ten numer w pierwszej linii dokumentu.
    *
-   * ⚠️⚠️ DRUGI ODBIORCA OD ZADANIA 8 (services/korekta.js): pola SUROWE z API, pod nazwami
+   * ⚠️⚠️ DRUGI ODBIORCA (moduly/zwroty/services/korekta.js): pola SUROWE z API, pod nazwami
    * takimi, jakich używa sam inFakt (`number`, `invoice_date`, `uuid`, `services`) — nie
    * tłumaczone na polski jak `numer`/`ksefNumer` wyżej. Korekta odnosi się do stanu faktury
    * „TERAZ" w inFakcie (mogła zostać poprawiona ręcznie), więc `services` stąd — a nie
-   * z pozycji zamówienia w naszej bazie — idzie do `paryKorekty` (domain/korekta-pozycje.js).
-   * Nazwy pól `services` są te same, co przy WYSTAWIANIU faktury (`domain/pozycje-faktury.js`:
+   * z pozycji zamówienia w naszej bazie — idzie do `paryKorekty` (domena/korekta-pozycje.js).
+   * Nazwy pól `services` są te same, co przy WYSTAWIANIU faktury (`domena/pozycje-faktury.js`:
    * `name`, `quantity`, `gross_price`, `tax_symbol`) — echo tego, co panel sam wysłał.
    */
   async function pobierzFakture(uuid) {
@@ -554,9 +545,9 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
       client_post_code: dane?.client_post_code,
       client_tax_code: dane?.client_tax_code,
       client_country: dane?.client_country,
-      // ⚠️ POTRZEBNE SKANOWI POBRAŃ (services/oznaczanie-pobran.js), a nie czuwaczowi KSeF.
+      // ⚠️ POTRZEBNE SKANOWI POBRAŃ (moduly/wysylka/services/oznaczanie-pobran.js), a nie czuwaczowi KSeF.
       // `status` — żeby dokument oznaczony ręcznie w inFakcie wypadł z kandydatów zamiast
-      // dostać drugie zlecenie (pomiar 28.08: `18/08/2026` jest `delivery` I `paid`).
+      // dostać drugie zlecenie (zmierzone: dokument pobraniowy bywa naraz `delivery` i `paid`).
       // `left_to_pay` — żeby rozstrzygał `stanZaplaty`, ta sama reguła co wszędzie indziej,
       // a nie drugi warunek dopisany na miejscu.
       status: dane?.status ?? null,
@@ -566,8 +557,8 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
   }
 
   // ⚠️⚠️ TU STAŁ `statusKsef(uuid)` — `GET /v3/ksef2/documents/{uuid}/status.json`, oddający
-  // `status` ('sent' → 'success' albo 'error') i `status_description`. USUNIĘTY 06.08.2026
-  // (recenzja całości, M1) i to jest DECYZJA, a nie sprzątanie z lenistwa. Metoda była
+  // `status` ('sent' → 'success' albo 'error') i `status_description`. Usunięty
+  // i to jest DECYZJA, a nie sprzątanie z lenistwa. Metoda była
   // zbudowana i otestowana, ale NIE MIAŁA ANI JEDNEGO WOŁAJĄCEGO: czuwacz czyta numer przez
   // `pobierzFakture`, więc do dziś nie odróżnia „przyjęte, czeka" od „organ ODRZUCIŁ".
   //
@@ -578,9 +569,9 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
   //     jest własna kolumna razem z `status_description`. Bez niej wiedza wylądowałaby
   //     wyłącznie w logu, czyli nie zmieniłaby ani jednej blokady na karcie.
   //  2. BUDŻET CZASU PRZEBIEGU BY PĘKŁ. Drugie wywołanie na wiersz to drugie 60 s w najgorszym
-  //     przypadku: `NAJDLUZSZY_PRZEBIEG_MS` (services/czuwacz-ksef.js) urósłby z 54 min 10 s do
-  //     ~104 min, czyli PONAD odstęp między tyknięciami zegara — a bootstrap.js odmawia wtedy
-  //     startu panelu. Wpięcie „przy okazji" położyłoby panel przy starcie.
+  //     przypadku: `najdluzszyPrzebiegMs(limity)` (moduly/faktury/services/czuwacz-ksef.js) urósłby z 54 min 10 s do
+  //     ~104 min, czyli PONAD odstęp między tyknięciami zegara — a strażnik startu w moduly/faktury/modul.ts
+  //     odmawia wtedy startu panelu. Wpięcie „przy okazji" położyłoby panel przy starcie.
   //
   // CO MA SIĘ STAĆ, GDY TA WIEDZA BĘDZIE POTRZEBNA: osobne zadanie — kolumna na status i opis,
   // przeliczony budżet przebiegu (albo pytanie o status TYLKO dla dokumentów, które panel sam
@@ -588,20 +579,18 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
   // są zmierzone i zapisane tutaj, więc odtworzenie jej to kilka linii.
 
   /**
-   * ⚠️⚠️ JEDYNE MIEJSCE W CAŁYM PANELU, KTÓRE WYSYŁA DOKUMENT DO KSeF — i operacja jest
+   * ⚠️⚠️ JEDYNE MIEJSCE W TYM KLIENCIE, KTÓRE WYSYŁA DOKUMENT DO KSeF — i operacja jest
    * NIEODWRACALNA. Dokumentu w KSeF nie da się skasować, zostaje wyłącznie korekta.
    *
-   * Wolno ją wywołać WYŁĄCZNIE z trasy zatwierdzenia (services/wysylka-ksef.js), po ekranie
-   * podglądu i po ponownym przeliczeniu zbioru. NIGDY z pollera, NIGDY z czuwacza, NIGDY
+   * Wolno ją wywołać WYŁĄCZNIE z moduly/faktury/services/wysylka-ksef.js — z trasy zatwierdzenia po ekranie
+   * podglądu albo z automatu KSeF (services/ksef-automat.js, ta sama bariera `coWolnoWyslac`), zawsze po
+   * ponownym przeliczeniu zbioru. NIGDY z pollera, NIGDY z czuwacza, NIGDY
    * jako skutek uboczny wystawienia faktury — `wystaw()` wyżej dalej nie zna `send_to_ksef`
    * i znać nie ma.
    *
-   * ⚠️⚠️ WYSYŁKA JEST PER DOKUMENT — TO SPROSTOWANIE, NIE DROBIAZG (07.08.2026). Do tego dnia
-   * stało tu wywołanie WSADOWE (`POST /v3/ksef2/documents/send.json` z `{uuids: [...]}`),
-   * zbudowane na hipotezie „jedno zgłoszenie, cała partia, wszystko albo nic". Hipoteza była
-   * w tym pliku opisana jako niezweryfikowana — i okazała się BŁĘDNA: taki zasób nie istnieje,
-   * a panel dostawał 404 przy każdej próbie („wysyłka FV do KSeF nie działa", zgłoszenie
-   * właściciela).
+   * ⚠️⚠️ WYSYŁKA JEST PER DOKUMENT. Wywołanie WSADOWE (`POST /v3/ksef2/documents/send.json`
+   * z `{uuids: [...]}`, „jedno zgłoszenie, cała partia, wszystko albo nic") nie istnieje —
+   * taki zasób oddaje 404 przy każdej próbie.
    *
    * Zmierzone sondą na żywym API (wyłącznie zmyślone identyfikatory, żaden prawdziwy dokument
    * nie mógł pojechać):
@@ -617,10 +606,10 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
    * ⚠️⚠️ CO Z TEGO WYNIKA DLA WOŁAJĄCEGO: „wszystko albo nic" NIE OBOWIĄZUJE. Każdy dokument
    * idzie osobnym żądaniem, więc CZĘŚCIOWY SUKCES jest przypadkiem normalnym — jedna odmowa
    * nie mówi nic o pozostałych i nie wolno na jej podstawie zwalniać cudzych rezerwacji.
-   * Pętla i podział wyniku siedzą w services/wysylka-ksef.js.
+   * Pętla i podział wyniku siedzą w moduly/faktury/services/wysylka-ksef.js.
    *
    * ⚠️ ODPOWIEDŹ ZNACZY „PRZYJĘTO ZLECENIE", A NIE „JEST W KSeF". Zmierzone na prawdziwym
-   * dokumencie: `request_created_at` 13:27:05, `request_finished_at` 13:28:15 — siedemdziesiąt
+   * dokumencie: od `request_created_at` do `request_finished_at` minęło ok. siedemdziesięciu
    * sekund. Numer pojawia się dopiero potem; woła o niego czuwacz.
    *
    * ⚠️⚠️ NIEZWERYFIKOWANE: czy `send.json` odpowiada OD RAZU (zlecenie przyjęte), czy BLOKUJE
@@ -642,7 +631,7 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
     // a wstawione do sciezki daje adres, ktory niczego nie znaczy.
     const czysty = String(uuid ?? '').trim();
     // ⚠️ `status: 400` JEST TU CELOWY, MIMO ZE ZADNE ZADANIE HTTP NIE POSZLO. Regula
-    // zwolnienia rezerwacji (`jednoznacznaOdmowa` w services/wysylka-ksef.js) rozpoznaje
+    // zwolnienia rezerwacji (`jednoznacznaOdmowa` w moduly/faktury/services/wysylka-ksef.js) rozpoznaje
     // jednoznacznosc WYLACZNIE po statusie 4xx — a to jest odmowa NAJBARDZIEJ jednoznaczna
     // z mozliwych: do inFaktu nie poszlo NIC, wiec dokumentu u organu na pewno nie ma. Bez
     // tego tagu ta odmowa wygladalaby jak zerwane polaczenie (brak `status`) i trzymalaby
@@ -650,7 +639,7 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
     if (!czysty) {
       throw bladOperatora('Nie ma czego wysłać do KSeF — pusty identyfikator dokumentu.', { status: 400 });
     }
-    // ⚠️ BEZ CIALA ZADANIA. Zmierzone sonda 07.08.2026: `POST` na te sciezke BEZ ciala
+    // ⚠️ BEZ CIALA ZADANIA. Zmierzone sondą: `POST` na te sciezke BEZ ciala
     // dochodzi do handlera (zmyslony uuid oddaje JSON-owe 404 „Zasob ktorego szukasz nie
     // zostal znaleziony", a nie 400 o brakujacym ladunku). Pusta koperta `{}` bylaby wiec
     // zgadywaniem ksztaltu, ktorego nikt nie potrzebuje.
@@ -667,9 +656,9 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
   }
 
   /**
-   * PRZ-093.10 — „Sprawdź połączenie” na ekranie Ustawienia → Integracje → inFakt.
+   * „Sprawdź połączenie” na ekranie Ustawienia → Integracje → inFakt.
    * Jedno `GET /v3/invoices.json?offset=0` — to samo żądanie, którym zaczyna się każda lista faktur
-   * (`wszystkieStrony`, zmierzone 06.08.2026). Tylko odczyt: niczego nie wystawia ani nie wysyła do KSeF,
+   * (`wszystkieStrony`). Tylko odczyt: niczego nie wystawia ani nie wysyła do KSeF,
    * wynik nie niesie danych faktur.
    * Sukces wymaga liczbowego `metainfo.total_count` — strona pośrednika z HTTP 200 to nie „połączenie działa”.
    * ⚠️ Klucz API zastępowany w komunikacie: ten trafia na ekran, a inFakt mógłby odbić klucz w treści błędu.

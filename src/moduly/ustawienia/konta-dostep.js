@@ -1,5 +1,5 @@
-// PRZ-069: e-mail konta (osobna tabela, plan O2) i konto zaproszone (bez hasła, wartownik zamiast scrypt).
-// Status „zaproszone” wyliczany z faktów: hash_hasla nie jest zapisem scrypt (spec §4.2).
+// E-mail konta (osobna tabela) i konto zaproszone (bez hasła, wartownik zamiast scrypt).
+// Status „zaproszone” wyliczany z faktów: hash_hasla nie jest zapisem scrypt.
 import { WARTOWNIK_ZAPROSZENIA } from './linki-hasla.js';
 import { zalozKonto } from '../../core/bezpieczenstwo/konta.js';
 import { zahaszuj } from '../../domena/hasla.js';
@@ -11,7 +11,7 @@ const FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const KOMUNIKAT_EMAIL_ZAJETY = 'Ten adres e-mail ma już inne konto.';
 
 /**
- * Recenzja D8 r1, P3-6: kontrola w kodzie i INSERT to dwa kroki — drugi proces na tej samej bazie może
+ * Kontrola w kodzie i INSERT to dwa kroki — drugi proces na tej samej bazie może
  * zająć e-mail albo login pomiędzy nimi. UNIQUE z bazy zamieniamy na tę samą odmowę co kontrola w kodzie
  * (400), zamiast surowego błędu SQLite w odpowiedzi 500.
  */
@@ -51,8 +51,8 @@ export function ustawEmail(db, kontoId, email, teraz) {
 
 /**
  * Konto z hasłem (stara ścieżka `/nowe` z `haslo`): INSERT z ekranami roli Z BAZY i przypisanie roli w JEDNEJ
- * transakcji — awaria pomiędzy nie zostawia konta z presetem z kodu (recenzja D8 r1).
- * Recenzja D8 r1 PRZ-068, P3-8: scrypt PRZED `BEGIN IMMEDIATE` — w transakcji tylko gotowy zapis.
+ * transakcji — awaria pomiędzy nie zostawia konta z presetem z kodu.
+ * Scrypt PRZED `BEGIN IMMEDIATE` — w transakcji tylko gotowy zapis.
  */
 export function zalozKontoZHaslem(db, { login, imie, haslo, rola }) {
   const hashHasla = zahaszuj(haslo);

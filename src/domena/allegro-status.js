@@ -5,12 +5,10 @@ import { czyKanalAllegro } from './wysylka.js';
 // dokładnie tak, jak zapowiada komentarz w tamtym pliku: `completed` z WooCommerce nie znaczy
 // u Allegro NIC, a `SENT` nie znaczy nic w sklepie.
 //
-// ⚠️ ALLEGRO ODBIJA STAN OMS-U, TAKŻE W TYŁ — decyzja właściciela z 05.08.2026, wprost:
-// „taki status jak w OMS, taki w Allegro; wracam w OMS na NOWE, to w Allegro zmienia się na
-// NOWE". Dlatego `nowe → NEW` JEST w tej mapie i musi w niej zostać. Reguła „nigdy wstecz"
-// (`RANGA_REALIZACJI`), którą miała tu wcześniej ta wersja planu, blokowałaby dokładnie ten
-// powrót — powstała z błędnego założenia, że etykieta kupiona w panelu Allegro sama
-// podnosi status. NIE PODNOSI (potwierdzone przez właściciela).
+// ⚠️ ALLEGRO ODBIJA STAN OMS-U, TAKŻE W TYŁ: taki status jak w OMS, taki w Allegro; gdy zamówienie
+// wraca w OMS na NOWE, w Allegro też zmienia się na NOWE. Dlatego `nowe → NEW` JEST w tej mapie
+// i musi w niej zostać. Reguła „nigdy wstecz" blokowałaby dokładnie ten powrót — opierałaby się
+// na błędnym założeniu, że etykieta kupiona w panelu Allegro sama podnosi status. NIE PODNOSI.
 //
 // Anulowanie i zwrot NIE JADĄ — ta sama decyzja co przy sklepach. `CANCELLED` nie jest u Allegro
 // statusem realizacji (rezygnacja to osobny proces), a „zwrot" w panelu bywa notatką operacyjną.
@@ -67,11 +65,11 @@ export function statusDlaAllegro(z, stanWAllegro) {
  * i „brak wpisu w mapie" znaczą wyłącznie tyle, że niczego nie wysyłamy — o tym, co
  * naprawdę stoi w Allegro, nie mówią NIC.
  *
- * Po co to istnieje (K2, recenzja Partii 1 Planu B): nieudany sync zostawia ślad
+ * Po co to istnieje: nieudany sync zostawia ślad
  * (`sync_woo_blad`), a komunikat na karcie podpowiada człowiekowi, żeby ustawił status
  * ręcznie w panelu Allegro. Kiedy to zrobi i kliknie „Wyślij ponownie", nie ma już czego
  * wysyłać — i bez tej funkcji ślad zostawał na karcie NA ZAWSZE (jedynym wyjściem był
- * ręczny UPDATE w pliku SQLite, czyli dokładnie stan bez wyjścia z niezmiennika 4.9).
+ * ręczny UPDATE w pliku SQLite, czyli dokładnie stan bez wyjścia, wbrew regule „każdy stan ma wyjście").
  *
  * ⚠️ Odpowiednika dla SKLEPÓW celowo nie ma i mieć nie może: tam porównanie idzie
  * z kolumną `status_woo`, czyli z naszą KOPIĄ, która bywa nieaktualna. Tutaj `stanWAllegro`

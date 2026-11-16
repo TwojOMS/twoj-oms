@@ -2,7 +2,7 @@
 // odcisk dokumentu, rozstrzygniecie „nowy / bez zmian / zmieniony" i zakres miesiecy.
 // Bez sieci, bez bazy, bez dysku.
 
-// ⚠️ PODLOGA JEST STALA, NIE PARAMETREM (lekcja `SHOP_<SKLEP>_OD`): styczen 2026 to
+// ⚠️ PODLOGA JEST STALA, NIE PARAMETREM (podłoga w .env bywa przestawiana „na chwilę", patrz okna-pobrania.js): styczen 2026 to
 // poczatek roku, za ktory biuro rachunkowe dostaje paczki; nizej nie ma czego archiwizowac.
 export const PODLOGA_ARCHIWUM_SPRZEDAZY = '2026-01';
 
@@ -11,7 +11,7 @@ export const PODLOGA_ARCHIWUM_SPRZEDAZY = '2026-01';
 // poprawki dokumentow, ktore inFakt pozwala edytowac, dopoki nie poszly do KSeF.
 export const MIESIECY_WSTECZ = 2;
 
-// ⚠️ inFakt NIE MA `updated_at` (pomiar 2026-09-02) — jedyna droga wykrycia poprawionej
+// ⚠️ inFakt NIE MA `updated_at` — jedyna droga wykrycia poprawionej
 // faktury jest odcisk z pol, ktore decyduja o tresci dokumentu. Status platnosci, `paid_date`
 // i `left_to_pay` do odcisku NIE wchodza: oplacenie nie zmienia wydrukowanego dokumentu,
 // a wchodziloby w odcisk kazdej faktury raz na miesiac, czyli pobieralo cale archiwum od nowa.

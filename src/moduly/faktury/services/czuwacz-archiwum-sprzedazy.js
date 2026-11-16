@@ -8,32 +8,32 @@ import {
 import { zarchiwizujDokument, oznaczSkasowanyDokument } from './archiwum-sprzedazy.js';
 import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
-// Nocny czuwacz archiwum sprzedazy (spec 2026-09-02, Czesc B). Zegar godzinowy (bootstrap.js,
-// `uruchomZegary`), praca w JEDNYM oknie na dobe: 4:00 czasu Warszawy — godzine PO czuwaczu
-// kosztow (3:00), zeby dwa nocne przebiegi nie szly rownolegle. Przycisk na /faktury wola
-// `przebieg({ wymuszony: true })` o kazdej porze.
+// Nocny czuwacz archiwum sprzedaży. Zegar godzinowy (faktury/zegary.ts), praca w JEDNYM
+// oknie na dobę: 4:00 czasu Warszawy — godzinę PO czuwaczu
+// kosztów (3:00), żeby dwa nocne przebiegi nie szły równolegle. Przycisk na /faktury woła
+// `przebieg({ wymuszony: true })` o każdej porze.
 //
-// ⚠️ SIOSTRZANY MODUL: services/czuwacz-kosztow.js (KSeF) — ta sama konstrukcja: straznik
-// „trwa", pora, budzet CZASU zamiast sufitu sztuk, licznik bledow z rzedu. Roznica: tutaj
-// nie ma kursora — kazdej nocy przeglada sie PELNE listy ostatnich trzech miesiecy, bo inFakt
-// nie ma `updated_at` i tylko pelna lista pozwala wykryc poprawiona albo skasowana fakture.
+// ⚠️ SIOSTRZANY MODUŁ: koszty/services/czuwacz-kosztow.js (KSeF) — ta sama konstrukcja: strażnik
+// „trwa”, pora, budżet CZASU zamiast sufitu sztuk, licznik błędów z rzędu. Różnica: tutaj
+// nie ma kursora — każdej nocy przegląda się PEŁNE listy ostatnich trzech miesięcy, bo lista
+// z programu fakturowego nie ma `updated_at` i tylko pełna lista pozwala wykryć poprawioną albo skasowaną fakturę.
 export const GODZINA_ARCHIWUM_SPRZEDAZY = 4;
 
-// ⚠️ BUDZET CZASU, A NIE SUFIT SZTUK — ta sama lekcja, co w czuwaczu kosztow i przy
-// wystawianiu faktur hurtem: jedno pobranie PDF-u to jedno zadanie HTTP do inFaktu plus zapis
-// na NAS przez SMB, a przy pierwszym przebiegu (od stycznia) idzie ich kilkaset. Sufit sztuk
-// nie mowi NIC o tym, ile przebieg potrwa, gdy inFakt albo dysk odpowiadaja wolno. Zaleglosc
-// nie przepada: kolejka jest STANEM (odcisk w `archiwum_sprzedazy`), wiec reszta wraca sama
-// nastepnej nocy — a podloga zostaje NIEZROBIONA, wiec nastepny przebieg znowu idzie od
-// stycznia, a nie od trzech ostatnich miesiecy.
+// ⚠️ BUDŻET CZASU, A NIE SUFIT SZTUK — ta sama lekcja, co w czuwaczu kosztów i przy
+// wystawianiu faktur hurtem: jedno pobranie PDF-u to jedno zadanie HTTP do programu fakturowego
+// plus zapis na NAS przez SMB, a przy pierwszym przebiegu (od stycznia) idzie ich kilkaset. Sufit
+// sztuk nie mówi NIC o tym, ile przebieg potrwa, gdy program albo dysk odpowiadają wolno. Zaległość
+// nie przepada: kolejka jest STANEM (odcisk w `archiwum_sprzedazy`), więc reszta wraca sama
+// następnej nocy — a podłoga zostaje NIEZROBIONA, więc następny przebieg znowu idzie od
+// stycznia, a nie od trzech ostatnich miesięcy.
 export const BUDZET_ARCHIWUM_SPRZEDAZY_MS = 10 * 60 * 1000;
 
-// ⚠️⚠️ NAJGORSZY MOZLIWY CZAS JEDNEGO PRZEBIEGU — LICZONY, A NIE OPISANY W KOMENTARZU
-// (recenzja calej galezi). `bootstrap.js` odmawia startu panelu, gdy ta liczba nie miesci sie
-// miedzy tyknieciami zegara czuwaczy, wiec podniesienie ktorejkolwiek ze skladowych bez
-// policzenia skutku ma POLOZYC PANEL PRZY STARCIE, a nie po cichu rozjechac nocny zegar.
-// Ta sama regula, co przy `najdluzszyPrzebiegMs(limity)` (czuwacz-ksef.js) i `NAJDLUZSZY_PRZEBIEG_
-// KOSZTOW_MS` (czuwacz-kosztow.js).
+// ⚠️⚠️ NAJGORSZY MOZLIWY CZAS JEDNEGO PRZEBIEGU — LICZONY, A NIE OPISANY W KOMENTARZU.
+// Strażnik startu (moduly/faktury/modul.ts) odmawia startu panelu, gdy ta liczba nie mieści się
+// między tyknięciami zegara czuwaczy, więc podniesienie którejkolwiek ze składowych bez
+// policzenia skutku ma POŁOŻYĆ PANEL PRZY STARCIE, a nie po cichu rozjechać nocny zegar.
+// Ta sama reguła, co przy `najdluzszyPrzebiegMs(limity)` (czuwacz-ksef.js) i `NAJDLUZSZY_PRZEBIEG_
+// KOSZTOW_MS` (koszty/services/czuwacz-kosztow.js).
 //
 // Trzy skladniki, kazdy z modulu, ktory go naprawde narzuca:
 //   • BUDZET CZASU tego czuwacza — bramka stoi PRZED pobraniem dokumentu ORAZ przed listami
@@ -48,31 +48,31 @@ export const BUDZET_ARCHIWUM_SPRZEDAZY_MS = 10 * 60 * 1000;
 // w praktyce (po przekroczonym budzecie na listach petla dokumentow od razu odbija), ale
 // straznik ma zawyzac, a nie zanizac.
 //
-// ⚠️ BEZ BRAMKI BUDZETU PRZED LISTAMI TA LICZBA BYLABY FIKCJA. Do recenzji calej galezi budzet
-// pilnowal WYLACZNIE petli po dokumentach, wiec przebieg z pustymi miesiacami pobieral listy
-// wszystkich miesiecy od podlogi (a tych przybywa z kazdym miesiacem kalendarza) i „najgorszy
-// przypadek" rosl bez zadnej granicy — dokladnie ten rodzaj arytmetyki, ktora wyglada
-// na straznika i nie strzeze niczego.
-// PRZ-118.05: te same trzy składniki z limitów WYBRANEGO programu (`opis.limity`): jedna lista miesiąca
+// ⚠️ BEZ BRAMKI BUDŻETU PRZED LISTAMI TA LICZBA BYŁABY FIKCJA. Gdyby budżet pilnował
+// WYŁĄCZNIE pętli po dokumentach, przebieg z pustymi miesiącami pobierałby listy wszystkich
+// miesięcy od podłogi (a tych przybywa z każdym miesiącem kalendarza) i „najgorszy
+// przypadek” rósłby bez żadnej granicy — dokładnie ten rodzaj arytmetyki, która wygląda
+// na strażnika i nie strzeże niczego.
+// Te same trzy składniki z limitów WYBRANEGO programu (`opis.limity`): jedna lista miesiąca
 // = `najdluzszaListaMs`, jedno pobranie dokumentu = `zadanieMs`. Strażnik startu w moduly/faktury/modul.ts.
 export function najdluzszyPrzebiegArchiwumSprzedazyMs(limity) {
   return BUDZET_ARCHIWUM_SPRZEDAZY_MS + limity.najdluzszaListaMs + limity.zadanieMs;
 }
 
-// ⚠️ HAMULEC NA MARTWE ZRODLO (wzorzec `LIMIT_KOLEJNYCH_BLEDOW_ARCHIWUM`, czuwacz-kosztow.js).
-// inFakt nieosiagalny albo NAS odmontowany znaczy, ze KAZDY nastepny dokument odbije sie tak
-// samo — bez licznika przebieg waliby w martwe zrodlo tyle razy, ile jest dokumentow w trzech
-// miesiacach. Licznik liczy bledy Z RZEDU i zeruje sie po kazdym udanym dokumencie, bo jedna
-// faktura, ktorej inFakt nie oddaje, nie ma prawa zablokowac calego archiwum na zawsze.
+// ⚠️ HAMULEC NA MARTWE ŹRÓDŁO (wzorzec `LIMIT_KOLEJNYCH_BLEDOW_ARCHIWUM`, koszty/services/czuwacz-kosztow.js).
+// Program fakturowy nieosiągalny albo NAS odmontowany znaczy, że KAŻDY następny dokument odbije
+// się tak samo — bez licznika przebieg waliłby w martwe źródło tyle razy, ile jest dokumentów
+// w trzech miesiącach. Licznik liczy błędy Z RZĘDU i zeruje się po każdym udanym dokumencie, bo
+// jedna faktura, której program nie oddaje, nie ma prawa zablokować całego archiwum na zawsze.
 export const LIMIT_KOLEJNYCH_BLEDOW = 3;
 
-// ⚠️ POWODY POMINIECIA SA STALYMI, A NIE NAPISAMI U WOLAJACEGO — bootstrap loguje TYLKO jeden
-// z nich. „Nie ta pora" zdarza sie 23 razy na dobe i jest stanem poprawnym; wpis o nim przy
+// ⚠️ POWODY POMINIĘCIA SĄ STAŁYMI, A NIE NAPISAMI U WOŁAJĄCEGO — zegar (faktury/zegary.ts)
+// loguje TYLKO jeden z nich. „Nie ta pora" zdarza sie 23 razy na dobe i jest stanem poprawnym; wpis o nim przy
 // kazdym tyknieciu utopilby prawdziwa awarie.
 export const POWOD_TRWA = 'poprzedni przebieg jeszcze trwa';
 export const POWOD_NIE_TA_PORA = 'nie ta pora';
 
-// PRZ-118.07: listy i PDF-y czyta PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`). Budżet
+// Listy i PDF-y czyta PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`). Budżet
 // przebiegu z `opis.limity` programu liczy `najdluzszyPrzebiegArchiwumSprzedazyMs(limity)` wyżej — strażnik startu w modul.ts.
 export function createCzuwaczArchiwumSprzedazy({
   db, program: programPodany = null, infakt = null, katalogArchiwum, teraz = () => new Date(), log = console.error,
@@ -100,7 +100,7 @@ export function createCzuwaczArchiwumSprzedazy({
     let bledyZRzedu = 0;
     try {
       // Podloga zrobiona = pierwszy pelny przeglad od stycznia 2026 doszedl do konca. Dopoki
-      // nie jest, kazdy przebieg zaczyna od stycznia (domain/archiwum-sprzedazy.js).
+      // nie jest, kazdy przebieg zaczyna od stycznia (domena/archiwum-sprzedazy.js).
       const podlogaZrobiona = Boolean(stanArchiwumSprzedazy(db)?.podloga_zrobiona_at);
       // ⚠️ DZIEN WARSZAWSKI, NIE UTC. Kontener chodzi z TZ=UTC — o 00:xx czasu Warszawy
       // (latem UTC+2) jest jeszcze POPRZEDNI dzien wg UTC. Okno „ostatnie trzy miesiace"
@@ -116,8 +116,8 @@ export function createCzuwaczArchiwumSprzedazy({
         // a pierwszy przebieg od podlogi ciagnie listy WSZYSTKICH miesiecy — kazda do jedenastu
         // sekwencyjnych rund (limit `najdluzszaListaMs` programu), i tych miesiecy
         // przybywa z kazdym miesiacem kalendarza. Bez tej bramki `najdluzszyPrzebiegArchiwumSprzedazyMs`
-        // bylby liczba bez pokrycia, a straznik w bootstrap.js — straznikiem
-        // niczego. Zaleglosc nie przepada: podloga zostaje niezrobiona, reszta jedzie nastepnej nocy.
+        // byłby liczbą bez pokrycia, a strażnik startu w modul.ts — strażnikiem
+        // niczego. Zaległość nie przepada: podłoga zostaje niezrobiona, reszta jedzie następnej nocy.
         if (teraz().getTime() >= koniecBudzetu) {
           log('Archiwum sprzedazy: budzet czasu wyczerpany przed miesiacem ' + miesiac
             + ' — reszta pojedzie nastepnej nocy.');
@@ -134,10 +134,10 @@ export function createCzuwaczArchiwumSprzedazy({
           const [faktury, korekty] = await Promise.all([program.listaFaktur(zakres), program.listaKorekt(zakres)]);
           dokumenty = [...faktury, ...korekty];
         } catch (e) {
-          // ⚠️⚠️ MIESIAC BEZ PELNEJ LISTY NIE ROZSTRZYGA O NICZYM — zwlaszcza o skasowaniach.
-          // Czkawka inFaktu na jednym zapytaniu oznaczylaby inaczej CALY miesiac faktur jako
-          // skasowane: pliki przemianowane na SKASOWANA_, wiersze z `skasowana_at`, a papier
-          // moze juz lezy w biurze. Miesiac jest wiec POMIJANY w calosci i wroci nastepna noca.
+          // ⚠️⚠️ MIESIĄC BEZ PEŁNEJ LISTY NIE ROZSTRZYGA O NICZYM — zwłaszcza o skasowaniach.
+          // Czkawka programu fakturowego na jednym zapytaniu oznaczyłaby inaczej CAŁY miesiąc faktur
+          // jako skasowane: pliki przemianowane na SKASOWANA_, wiersze z `skasowana_at`, a papier
+          // może już leży w biurze. Miesiąc jest więc POMIJANY w całości i wróci następną nocą.
           bledy.push(`${miesiac}: ${e.message}`);
           continue;
         }
@@ -160,8 +160,8 @@ export function createCzuwaczArchiwumSprzedazy({
             else if (w.stan === 'nadpisany') wynik.nadpisanych += 1;
             else if (w.stan === 'bez_zmian') wynik.bezZmian += 1;
             // Nieudany ZAPIS na dysk (`zarchiwizujDokument` zjada go sam i tylko loguje) liczy
-            // sie do tego samego licznika, co blad pobrania: padniety NAS odbije tak samo
-            // kazdy nastepny dokument, a kazda taka proba kosztuje jedno pobranie z inFaktu.
+            // się do tego samego licznika, co błąd pobrania: padnięty NAS odbije tak samo
+            // każdy następny dokument, a każda taka próba kosztuje jedno pobranie z programu fakturowego.
             //
             // ⚠️ I TO JEST TEZ BLAD PRZEBIEGU, NIE TYLKO WPIS W LOGU. Bez `bledy.push` ponizej
             // przebieg z jedna nieudana probka zapisu konczylby sie w galezi „sukces" —
@@ -183,10 +183,10 @@ export function createCzuwaczArchiwumSprzedazy({
             break;
           }
         }
-        // ⚠️⚠️ PRZERWANY MIESIAC NIE ROZSTRZYGA O SKASOWANIACH — z dokladnie tego samego
-        // powodu, co miesiac z bledem listy wyzej. Po wyczerpaniu budzetu albo po limicie
-        // bledow `widziane` zawiera tylko OGON tego, co panel zdazyl obejsc, wiec reszta
-        // miesiaca wygladalaby stad jak zniknieta z inFaktu.
+        // ⚠️⚠️ PRZERWANY MIESIĄC NIE ROZSTRZYGA O SKASOWANIACH — z dokładnie tego samego
+        // powodu, co miesiąc z błędem listy wyżej. Po wyczerpaniu budżetu albo po limicie
+        // błędów `widziane` zawiera tylko OGON tego, co panel zdążył obejść, więc reszta
+        // miesiąca wyglądałaby stąd jak zniknięta z programu fakturowego.
         if (wynik.niedokonczone) break;
         // Skasowane: wiersz w bazie z data wystawienia w tym miesiacu, ktorego PELNA lista
         // (bez bledu, bez przerwania) nie zawiera.

@@ -1,4 +1,4 @@
-/* PRZ-065: ekran roboczy dla Przesyłek i Faktur. Paleta jest wspólna w oms-design.css. */
+/* Ekran roboczy dla Przesyłek i Faktur. Zmienne --prz-* to aliasy palety obu motywów z oms-uklad.css. */
 .prz065-tabele {
   --prz-surface: var(--oms-surface, var(--powierzchnia));
   --prz-surface-muted: var(--oms-surface-muted, var(--powierzchnia-2));
@@ -50,7 +50,7 @@
 
 .prz065-zakladki {
   /* Linia pod paskiem jako cień wewnętrzny, a nie border + chip z margin-bottom:-1px — ten ujemny margines
-     dawał 1 px przepełnienia w pionie i przeglądarka rysowała pionowy suwak (Adam 05.11). */
+     dawał 1 px przepełnienia w pionie i przeglądarka rysowała pionowy suwak. */
   box-shadow: inset 0 -1px 0 var(--prz-border);
   display: flex;
   gap: 0;
@@ -114,10 +114,10 @@
 .prz065-rzadkie { margin-top: 24px !important; }
 
 /* Faktury: trzy źródła danych mają być czytane jak jedna lista robocza, nie trzy alarmy. */
-/* PRZ-074: trzy zakładki zawsze się mieszczą, a `overflow-x: auto` z `margin-bottom: -1px`
+/* Trzy zakładki zawsze się mieszczą, a `overflow-x: auto` z `margin-bottom: -1px`
    zakładki dawało 1 px przewijania w pionie — czyli suwak po prawej. */
 .prz065-faktury .prz065-zakladki-faktur { margin: -4px 0 16px; overflow: visible; }
-/* PRZ-074: numer KSeF zwinięty pod „w KSeF ▸”; rozwinięty łamie się w szerokości kolumny,
+/* Numer KSeF zwinięty pod „w KSeF ▸”; rozwinięty łamie się w szerokości kolumny,
    zamiast ją rozpychać. */
 .prz065-faktury .ksef-zwiniety summary { cursor: pointer; list-style: none; white-space: nowrap; }
 .prz065-faktury .ksef-zwiniety summary::-webkit-details-marker { display: none; }
@@ -125,7 +125,7 @@
 .prz065-faktury .ksef-zwiniety[open] summary::after { content: ' ▾'; }
 .prz065-faktury .ksef-zwiniety .ksef-numer { max-width: 9rem; overflow-wrap: anywhere; }
 .prz065-faktury .kol-data { white-space: nowrap; }
-/* PRZ-078 (pomiar na produkcji: 1091/911 px przy 1280): `nowrap` daty nie może obejmować
+/* `nowrap` daty nie może obejmować
    dopisku „sprzedaż …” (156 px kolumny), a numer zamówienia z Allegro to UUID — w Fakturach
    10 znaków i „…”, pełny numer w `title` (to samo `.link-numer`, co na liście zamówień). */
 .prz065-faktury .kol-data .wiersz-szczegoly { white-space: normal; }
@@ -151,16 +151,16 @@
 .prz065-faktury .belka-masowa .belka-etykieta-masowa { color: var(--prz-muted); font-size:1rem; font-weight: 600; }
 .prz065-faktury .belka-masowa .btn--groza { background: var(--prz-accent); border-color: var(--prz-accent); color: var(--na-marce, #fff); }
 .prz065-faktury .belka-masowa .cicho { color: var(--prz-muted); font-size:0.92rem; }
-/* C07c: menu „Pobierz” stoi przy prawym końcu belki — otwiera się w lewo, do wnętrza karty (od lewej krawędzi
+/* Menu „Pobierz” stoi przy prawym końcu belki — otwiera się w lewo, do wnętrza karty (od lewej krawędzi
    przycisku wychodziło przy 1280 px poza kartę). Na telefonie belka jest kolumną — tam znów od lewej, z zawijaniem. */
 .prz065-faktury .wydruki--masowe .wydruki-menu--lewe { left: auto; right: 0; }
-/* C07c: kolumna „Zaznacz” (C07a) wypchnęła tabelę o ~23 px poza kartę przy 1280 px, PDF był ucięty.
-   Węższy odstęp w komórkach i zawijany znacznik płatności („pozostało 1666.36 zł”) — mieści się bez przewijania. */
+/* Kolumna „Zaznacz” wypchnęła tabelę o ~23 px poza kartę przy 1280 px, PDF był ucięty.
+   Węższy odstęp w komórkach i zawijany znacznik płatności („pozostało 1234,56 zł”) — mieści się bez przewijania. */
 .prz065-faktury .prz065-tabela--dokumenty th,
 .prz065-faktury .prz065-tabela--dokumenty td { padding: var(--tabela-p); }
 .prz065-faktury .prz065-tabela--dokumenty .znacznik { white-space: normal; }
 
-/* Makieta prowadzi najpierw przez etap, potem przez zawężenie danych. */
+/* Najpierw wybór etapu, potem zawężenie danych. */
 .prz065-przesylki .panel-cialo { display: flex; flex-direction: column; }
 .prz065-przesylki .panel-cialo > .prz065-zakladki { order: 1; }
   .prz065-przesylki .panel-cialo > .filtry { order: 2; }
@@ -182,7 +182,7 @@
   .prz065-zakladki .chip { padding-left: 9px; padding-right: 9px; }
   .prz065-przewijak { margin-left: -12px; margin-right: -12px; border-left: 0; border-radius: 0; border-right: 0; }
   .prz065-tabela th, .prz065-tabela td { padding: 9px 8px; }
-  /* .prz065-drugorzedny-pdf zostaje widoczny także na telefonie — od PRZ-074 to jedyny przycisk zestawienia. */
+  /* .prz065-drugorzedny-pdf zostaje widoczny także na telefonie — to jedyny przycisk zestawienia. */
   .prz065-faktury .belka-masowa { align-items: flex-start; flex-direction: column; }
   .prz065-faktury .wydruki--masowe .wydruki-menu--lewe { left: 0; right: auto; max-width: calc(100vw - 32px); }
   .prz065-faktury .wydruki--masowe .wydruki-menu button { white-space: normal; }
@@ -264,9 +264,8 @@
   .prz065-tabela--dokumenty td:nth-child(3)::before { content: 'Zamówienie'; }
   .prz065-tabela--dokumenty td:nth-child(4)::before { content: 'Data'; }
   .prz065-tabela--dokumenty td:nth-child(5)::before { content: 'Nabywca'; }
-  /* ⚠️ Podpisy MUSZĄ iść w kolejności <th> z faktury.ejs. Kolumny Netto (29.10) i KSeF (03.11)
-     doszły bez nich i do 10.11 na telefonie netto miało podpis „Brutto”, brutto „KSeF” (audyt MWG,
-     PRZ-155). Pilnuje test tabela-faktur-prz155. */
+  /* ⚠️ Podpisy MUSZĄ iść w kolejności <th> z faktury.ejs. Kolumny Netto i KSeF
+     doszły kiedyś bez nich i na telefonie netto miało podpis „Brutto”, brutto „KSeF”. Pilnuje test tabela-faktur-prz155. */
   .prz065-tabela--dokumenty td:nth-child(6)::before { content: 'Netto'; }
   .prz065-tabela--dokumenty td:nth-child(7)::before { content: 'Brutto'; }
   .prz065-tabela--dokumenty td:nth-child(8)::before { content: 'Płatność'; }
@@ -280,12 +279,12 @@
   .prz065-tabela--proformy td:nth-child(6)::before { content: 'Działania'; }
 }
 
-/* PRZ-067: logo przewoznika w kolumnie „Kurier” (Przesylki). Stala wysokosc 18 px; najszersze
-   logo (DHL 176×39 ≈ 4,5:1) daloby przy niej ~81 px i przy 1280 px poszerzalo kolumne ze 115 do
-   122 px (zmierzone). max-width 72 px trzyma kolumne w dawnej szerokosci; DHL zmniejsza sie wtedy
-   do ~16 px wysokosci, a object-fit: contain chroni proporcje.
-   Jasne tlo z zaokragleniem: logotypy sa projektowane na biel — na ciemnym motywie bez podkladki
-   czarne „DHL”/„DPD” znikaja. Podkladka jest celowo jasna w OBU motywach. */
+/* Logo przewoźnika w kolumnie „Kurier” (Przesyłki). Stała wysokość 18 px; najszersze
+   logo (DHL 176×39 ≈ 4,5:1) dałoby przy niej ~81 px i przy 1280 px poszerzało kolumnę ze 115 do
+   122 px. max-width 72 px trzyma kolumnę w dawnej szerokości; DHL zmniejsza się wtedy
+   do ~16 px wysokości, a object-fit: contain chroni proporcje.
+   Jasne tło z zaokrągleniem: logotypy są projektowane na biel — na ciemnym motywie bez podkładki
+   czarne „DHL”/„DPD” znikają. Podkładka jest celowo jasna w OBU motywach. */
 .prz067-kurier { white-space: normal; }
 .prz067-logo {
   background: #fff;

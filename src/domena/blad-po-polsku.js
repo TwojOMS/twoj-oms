@@ -1,6 +1,6 @@
 // KOMUNIKAT TECHNICZNY PO POLSKU — dla ekranu i dla budzika, nigdy dla logu.
 //
-// ⚠️ POWSTALO ZE ZGLOSZENIA WLASCICIELA 10.09.2026: „Poller allegro_b nie działa:
+// ⚠️ POWSTAŁO ZE ZGŁOSZENIA UŻYTKOWNIKA: „Poller kanału nie działa:
 // The operation was aborted due to timeout". Zdanie sklada sie z polskiej ramki panelu
 // i angielskiego srodka, bo srodek pisze Node (undici), a nie panel. Czlowiek przy panelu
 // ma z takiego wiersza wyciagnac JEDNA rzecz — czy to jego sprawa, czy sieci — a „aborted
@@ -24,7 +24,7 @@
 // Kolejnosc MA ZNACZENIE: frazy dluzsze i bardziej szczegolowe stoja przed krotszymi,
 // bo podmiana idzie po kolei (`connect ETIMEDOUT` przed golym `ETIMEDOUT`).
 const SLOWNIK = [
-  // undici / AbortSignal.timeout — TO JEST fraza ze zgloszenia z 10.09.2026.
+  // undici / AbortSignal.timeout — TO JEST fraza z pierwotnego zgłoszenia.
   [/The operation was aborted due to timeout/gi, 'przekroczony czas oczekiwania na odpowiedź'],
   [/(?:This|The) operation was aborted/gi, 'żądanie przerwane'],
   [/Connect Timeout Error/gi, 'przekroczony czas nawiązywania połączenia'],

@@ -2,8 +2,8 @@ import type { DatabaseSync, SQLInputValue } from 'node:sqlite';
 import { STAWKI_Z_ZW } from '../../domena/vat.js';
 import { regulyKonta, sprawdzReguly } from '../../domena/cennik-dostaw.js';
 
-// PRZ-160 E2.01 — dostęp do rejestru ofert kanałów (`oferty_kanalow`) i ustawień ofert konta kanału
-// (`oferty_ustawienia_kont`), tabele z migracji magazyn/0001. Bez logiki pętli (E2.05) i bez wyliczenia ceny (E2.04).
+// Dostęp do rejestru ofert kanałów (`oferty_kanalow`) i ustawień ofert konta kanału
+// (`oferty_ustawienia_kont`), tabele z migracji magazyn/0001. Bez logiki pętli synchronizacji i bez wyliczenia ceny.
 // Kwoty w groszach (liczby całkowite). Narzut i próg potwierdzenia w procentach (np. 12.5) na wejściu i wyjściu,
 // w bazie w punktach bazowych (1250) — wyjście podaje też `narzutBp`, żeby cenę liczyć bez ułamków.
 
@@ -23,8 +23,8 @@ export type OfertaKanalu = {
   odczytIlosc: number | null; odczytCenaGr: number | null; odczytStatus: string | null; odczytZamrozone: unknown;
   odczytZarchiwizowana: boolean | null; odczytanoAt: string | null;
   cenaDoPotwierdzeniaGr: number | null; liczbaProb: number; nastepnaProbaAt: string | null; blad: string | null;
-  // E4.01 (magazyn/0004): ilość z OMS (D50), ślad ostatniej wysyłki ilości, ilość w toku `{cel, at}` (D53),
-  // problem ilości `{kod, wstrzymuje, od, cel, odczyt, zakres?, tekst}` (D54), surowy odczyt kanału (może być < 0).
+  // Kolumny z magazyn/0004: ilość z OMS, ślad ostatniej wysyłki ilości, ilość w toku `{cel, at}`,
+  // problem ilości `{kod, wstrzymuje, od, cel, odczyt, zakres?, tekst}`, surowy odczyt kanału (może być < 0).
   iloscZOms: boolean; iloscWyslanaAt: string | null; stanKartyWyslany: number | null;
   iloscWToku: unknown; iloscProblem: unknown; odczytIloscKanalu: number | null;
   utworzonoAt: string; zmienionoAt: string;
@@ -43,49 +43,49 @@ export type UstawieniaOfertKonta = {
   zwrotyId: string | null; reklamacjeId: string | null; gwarancjaId: string | null; lokalizacja: unknown;
   aktywujPoSprawdzeniu: boolean; bezpieczenstwoDomyslne: string | null; slowniki: unknown;
   buforSzt: number; progSkokuSzt: number;
-  /** E3d.02 D1: reguły cenników od góry; ostatni wpis bez limitów = „dla większych”, jeden wpis = „wszystko”. */
+  /** Reguły cenników od góry; ostatni wpis bez limitów = „dla większych”, jeden wpis = „wszystko”. */
   cenniki: readonly RegulaCennika[];
   zmienionoAt: string | null; aktorLogin: string | null;
 };
 
-/** E3d.02 D1: reguła cennika konta — wymiary w mm i waga w g (liczby całkowite); bez limitów = „dla większych”. */
+/** Reguła cennika konta — wymiary w mm i waga w g (liczby całkowite); bez limitów = „dla większych”. */
 export type RegulaCennika = { doMm?: number[]; doG?: number; cennik: string };
 
-/** D51: zatwierdzenie stanów przed pierwszą wysyłką ilości — związane z przełączeniem magazynu, nie z datą. */
+/** Zatwierdzenie stanów przed pierwszą wysyłką ilości — związane z przełączeniem magazynu, nie z datą. */
 export type ZatwierdzenieStanow = {
   id: number; przelaczenieId: number; zatwierdzil: string | null; zatwierdzonoAt: string; ofert: number; skrot: string;
 };
 
-/** D59: ślad przepięcia powiązania produktu kanału z jednej karty na drugą. */
+/** Ślad przepięcia powiązania produktu kanału z jednej karty na drugą. */
 export type PrzepiecieStanu = {
   id: number; kanal: string; produktId: string; wariantId: string | null; zKarty: number | null; naKarte: number | null;
   iloscWstecz: number; kontoLogin: string | null; utworzonoAt: string;
 };
 
-/** D32: zdjęcie wgrane na konto Allegro — adres z odpowiedzi i znacznik AI z chwili wgrania. */
+/** Zdjęcie wgrane na konto Allegro — adres z odpowiedzi i znacznik AI z chwili wgrania. */
 export type WgraneZdjecieAllegro = {
   zdjecieId: number; konto: string; adres: string; ai: 0 | 1; wygasaAt: string | null; wgranoAt: string;
 };
 
-/** Najdłuższa informacja o bezpieczeństwie produktu przyjmowana przez Allegro (§1.6, `safetyInformation`). */
+/** Najdłuższa informacja o bezpieczeństwie produktu przyjmowana przez Allegro (`safetyInformation`). */
 export const BEZPIECZENSTWO_MAKS_ZNAKOW = 5000;
 
 type Opcje = { teraz?: string };
 type Wiersz = Record<string, SQLInputValue>;
 
-// D55: zera nie zapisujemy jako stałej ilości — oferta schodzi przyciskiem „Zdejmij” (albo cel 0 z OMS-u → END).
+// Zera nie zapisujemy jako stałej ilości — oferta schodzi przyciskiem „Zdejmij” (albo cel 0 z OMS-u → END).
 export const STALA_ILOSC_ZERO = '0 sztuk = zdejmij ofertę przyciskiem „Zdejmij” na karcie w Magazynie; stała ilość to liczba od 1 do 1000000';
 
-/** D24: oferty wstrzymane; D14: stała ilość nieustawiona; D13a: próg 20%. Konto bez wiersza dostaje te wartości. */
+/** Oferty wstrzymane, stała ilość nieustawiona, próg 20%. Konto bez wiersza dostaje te wartości. */
 export const DOMYSLNE_USTAWIENIA_OFERT = Object.freeze({
   czynne: false, narzutBp: 0, progPotwierdzeniaBp: 2000, stalaIlosc: null, czasWysylkiDni: null, cennikDostaw: null,
   stawkaVat: null, producentId: null, osobaOdpowiedzialnaId: null,
-  // E3.01: warunki i lokalizacja nieustawione, D30: „Aktywuj po sprawdzeniu” domyślnie nie.
+  // Warunki i lokalizacja nieustawione, „Aktywuj po sprawdzeniu” domyślnie nie.
   zwrotyId: null, reklamacjeId: null, gwarancjaId: null, lokalizacja: null, aktywujPoSprawdzeniu: false,
   bezpieczenstwoDomyslne: null, slowniki: null,
-  // E4.01: bez bufora, próg skoku stanu karty 5 szt.
+  // Bez bufora, próg skoku stanu karty 5 szt.
   buforSzt: 0, progSkokuSzt: 5,
-  // E3d.02: konto bez reguł cenników.
+  // Konto bez reguł cenników.
   cenniki: Object.freeze([]) as readonly RegulaCennika[],
 });
 
@@ -161,7 +161,7 @@ const POLA_OFERTY: Record<string, readonly [string, (v: unknown) => SQLInputValu
   liczbaProb: ['liczba_prob', (v) => calkowita('liczbaProb', v, 0)],
   nastepnaProbaAt: ['nastepna_proba_at', tekstowe('nastepnaProbaAt')],
   blad: ['blad', tekstowe('blad')],
-  // E4.01 — kolumny z magazyn/0004 bez CHECK w bazie, więc pilnuje ich ten słownik.
+  // Kolumny z magazyn/0004 bez CHECK w bazie, więc pilnuje ich ten słownik.
   iloscZOms: ['ilosc_z_oms', (v) => {
     if (typeof v !== 'boolean') throw new Error('Pole iloscZOms musi być true albo false');
     return v ? 1 : 0;
@@ -198,7 +198,7 @@ function oferta(w: Wiersz | undefined): OfertaKanalu | null {
     odczytanoAt: w.odczytano_at as string | null,
     cenaDoPotwierdzeniaGr: w.cena_do_potwierdzenia_gr as number | null, liczbaProb: Number(w.liczba_prob),
     nastepnaProbaAt: w.nastepna_proba_at as string | null, blad: w.blad as string | null,
-    // Kolumny z magazyn/0004 — baza bez tej migracji daje zachowanie sprzed E4 (bez ilości z OMS).
+    // Kolumny z magazyn/0004 — baza bez tej migracji daje zachowanie bez ilości z OMS.
     iloscZOms: w.ilosc_z_oms === 1, iloscWyslanaAt: (w.ilosc_wyslana_at as string | null | undefined) ?? null,
     stanKartyWyslany: (w.stan_karty_wyslany as number | null | undefined) ?? null,
     iloscWToku: json(w.ilosc_w_toku_json), iloscProblem: json(w.ilosc_problem_json),
@@ -220,7 +220,7 @@ export function ofertyKarty(db: DatabaseSync, kartaId: number): OfertaKanalu[] {
     .map((w) => oferta(w) as OfertaKanalu);
 }
 
-// E4.13: alarm ilości czeka na decyzję, gdy wstrzymuje wysyłkę; `brak-stanu` — bo prowadzi do stanu otwarcia.
+// Alarm ilości czeka na decyzję, gdy wstrzymuje wysyłkę; `brak-stanu` — bo prowadzi do stanu otwarcia.
 const PROBLEM_ILOSCI = "(json_extract(o.ilosc_problem_json, '$.wstrzymuje') = 1 OR json_extract(o.ilosc_problem_json, '$.kod') = 'brak-stanu')";
 const DO_DECYZJI = `o.stan IN ('problem', 'blad') OR o.cena_do_potwierdzenia_gr IS NOT NULL OR ${PROBLEM_ILOSCI}`;
 const filtrDecyzji = (ilosc: boolean) => (ilosc ? PROBLEM_ILOSCI : `(${DO_DECYZJI})`);
@@ -241,14 +241,14 @@ export function liczbaOfertDoDecyzji(db: DatabaseSync, { ilosc = false }: { ilos
   return Number(w.n);
 }
 
-/** E4.13: oferty konta z danym kodem alarmu ilości („Wyślij zera” — całe konto naraz). */
+/** Oferty konta z danym kodem alarmu ilości („Wyślij zera” — całe konto naraz). */
 export function ofertyZProblememIlosci(db: DatabaseSync, kanal: string, kod: string): OfertaKanalu[] {
   return (db.prepare(`SELECT * FROM oferty_kanalow WHERE kanal = ? AND json_extract(ilosc_problem_json, '$.kod') = ? ORDER BY id`)
     .all(kanal, kod) as Wiersz[]).map((w) => oferta(w) as OfertaKanalu);
 }
 
-/** Nowy wiersz rejestru. Z OMS-u → tryb `zarzadzana`, przejęta → `obserwowana` (D23). Druga oferta OMS tej samej
- * karty na tym samym koncie albo powtórzone (konto, id zewnętrzne) kończy się błędem bazy (D8). */
+/** Nowy wiersz rejestru. Z OMS-u → tryb `zarzadzana`, przejęta → `obserwowana`. Druga oferta OMS tej samej
+ * karty na tym samym koncie albo powtórzone (konto, id zewnętrzne) kończy się błędem bazy. */
 export function wstawOferte(db: DatabaseSync, nowa: NowaOferta, opcje?: Opcje): OfertaKanalu {
   const kartaId = calkowita('kartaId', nowa.kartaId, 1);
   const kanal = tekst('kanal', nowa.kanal);
@@ -292,10 +292,10 @@ export function zmienOferte(db: DatabaseSync, id: number, zmiany: Record<string,
   return ofertaPoId(db, id);
 }
 
-/** Przedrostek tymczasowego id oferty przed POST (D31): `ext:` + `external.id` wysłany do Allegro. */
+/** Przedrostek tymczasowego id oferty przed POST: `ext:` + `external.id` wysłany do Allegro. */
 export const PRZEDROSTEK_EXT = 'ext:';
 
-/** D31: po przyjęciu oferty (201/202) zamienia tymczasowe `ext:…` na numer oferty — tylko z `ext:…` i tylko raz.
+/** Po przyjęciu oferty (201/202) zamienia tymczasowe `ext:…` na numer oferty — tylko z `ext:…` i tylko raz.
  * Wiersz z innym id (już przypisany, przejęty) → odmowa, nic nie zmienione. Numer zajęty na koncie → błąd bazy
  * (`UNIQUE (kanal, id_zewnetrzne)`). Brak oferty → null. */
 export function przypiszIdZewnetrzne(db: DatabaseSync, id: number, nowe: string, opcje?: Opcje): OfertaKanalu | null {
@@ -359,10 +359,10 @@ const POLA_USTAWIEN: Record<string, readonly [string, (v: unknown) => SQLInputVa
     return v;
   }],
   slowniki: ['slowniki_json', obiektLubNull('slowniki')],
-  // E4.01 — kolumny z magazyn/0004 bez CHECK w bazie.
+  // Kolumny z magazyn/0004 bez CHECK w bazie.
   buforSzt: ['bufor_szt', (v) => wZakresie('Bufor (szt.)', v, 0, 1000000)],
   progSkokuSzt: ['prog_skoku_szt', (v) => wZakresie('Próg skoku stanu (szt.)', v, 1, 1000000)],
-  // E3d.02 D1: cała lista reguł naraz; `null` = konto bez reguł.
+  // Cała lista reguł naraz; `null` = konto bez reguł.
   cenniki: ['cenniki_json', (v) => {
     const { reguly, bledy } = sprawdzReguly(v ?? []);
     if (bledy.length) throw new Error(`Reguły cenników: ${bledy.join(' ')}`);
@@ -371,7 +371,7 @@ const POLA_USTAWIEN: Record<string, readonly [string, (v: unknown) => SQLInputVa
   }],
 };
 
-/** D4: reguły z wiersza — `cenniki_json`, a gdy pusta albo kolumny brak (baza bez magazyn/0003) — dawne pole. */
+/** Reguły z wiersza — `cenniki_json`, a gdy pusta albo kolumny brak (baza bez magazyn/0003) — dawne pole. */
 function cennikiZWiersza(w: Wiersz | undefined): readonly RegulaCennika[] {
   if (!w) return DOMYSLNE_USTAWIENIA_OFERT.cenniki;
   const lista = json(w.cenniki_json);
@@ -426,7 +426,7 @@ export function zapiszUstawieniaOfertKonta(
     kolumny.push(opis[0]);
     wartosci.push(opis[1](v));
   }
-  // E3d.02 D4: `cennikDostaw` to alias jednej reguły „wszystko”; obu pól naraz nie wolno.
+  // `cennikDostaw` to alias jednej reguły „wszystko”; obu pól naraz nie wolno.
   if ('cenniki' in zmiany || 'cennikDostaw' in zmiany) {
     if ('cenniki' in zmiany && 'cennikDostaw' in zmiany) throw new Error('Podaj albo cenniki, albo cennikDostaw — nie oba naraz');
     const kolumna = maKolumneCennikow(db);
@@ -444,9 +444,9 @@ export function zapiszUstawieniaOfertKonta(
   return ustawieniaOfertKonta(db, klucz);
 }
 
-/** D32: zapisuje adres zdjęcia wgranego na konto Allegro i — w tej samej transakcji — oznacza zdjęcie karty jako
+/** Zapisuje adres zdjęcia wgranego na konto Allegro i — w tej samej transakcji — oznacza zdjęcie karty jako
  * wysłane (`zdjecia_kart.wyslane_at`, tylko gdy puste). Od tej chwili znacznika AI nie da się zmienić na karcie.
- * Ponowne wgranie (adres wygasł, D33) zmienia adres i daty w mapie; pierwsza data wysłania zostaje. */
+ * Ponowne wgranie (adres wygasł) zmienia adres i daty w mapie; pierwsza data wysłania zostaje. */
 export function zapiszWgraneZdjecie(
   db: DatabaseSync,
   z: { zdjecieId: number; konto: string; adres: string; ai: number; wygasaAt?: string | null },
@@ -462,7 +462,7 @@ export function zapiszWgraneZdjecie(
   try {
     const zdj = db.prepare('SELECT ai FROM zdjecia_kart WHERE id = ?').get(zdjecieId) as { ai: number | null } | undefined;
     if (!zdj) throw new Error(`Zdjęcie ${zdjecieId} nie istnieje`);
-    // Znacznik na karcie mógł się zmienić, gdy zdjęcie szło do Allegro — nie zamrażamy sprzeczności (D32).
+    // Znacznik na karcie mógł się zmienić, gdy zdjęcie szło do Allegro — nie zamrażamy sprzeczności.
     if (zdj.ai === null || zdj.ai !== z.ai) {
       throw new Error(`Znacznik AI zdjęcia ${zdjecieId} zmienił się w trakcie wgrywania (karta: ${zdj.ai ?? 'brak'}, wgrane: ${z.ai})`);
     }
@@ -498,7 +498,7 @@ function zatwierdzenie(w: Wiersz | undefined): ZatwierdzenieStanow | null {
   };
 }
 
-/** D51: zapis zatwierdzenia stanów dla przełączenia magazynu (`magazyn_przelaczenia.id`). Kolejne zatwierdzenie
+/** Zapis zatwierdzenia stanów dla przełączenia magazynu (`magazyn_przelaczenia.id`). Kolejne zatwierdzenie
  * tego samego przełączenia dopisuje nowy wiersz — obowiązuje ostatnie. */
 export function zapiszZatwierdzenieStanow(
   db: DatabaseSync, dane: { przelaczenieId: number; zatwierdzil: string | null; ofert: number; skrot: string }, opcje?: Opcje,
@@ -512,13 +512,13 @@ export function zapiszZatwierdzenieStanow(
   return zatwierdzenie(db.prepare('SELECT * FROM stany_zatwierdzenia WHERE id = ?').get(Number(wynik.lastInsertRowid)) as Wiersz) as ZatwierdzenieStanow;
 }
 
-/** D51: obowiązujące (ostatnie) zatwierdzenie stanów dla przełączenia; brak → null. */
+/** Obowiązujące (ostatnie) zatwierdzenie stanów dla przełączenia; brak → null. */
 export function zatwierdzenieStanow(db: DatabaseSync, przelaczenieId: number): ZatwierdzenieStanow | null {
   return zatwierdzenie(db.prepare('SELECT * FROM stany_zatwierdzenia WHERE przelaczenie_id = ? ORDER BY id DESC LIMIT 1')
     .get(przelaczenieId) as Wiersz | undefined);
 }
 
-/** D59: ślad przepięcia powiązania produktu kanału z karty `zKarty` na kartę `naKarte` (null = brak karty po tej
+/** Ślad przepięcia powiązania produktu kanału z karty `zKarty` na kartę `naKarte` (null = brak karty po tej
  * stronie) z ilością cofniętą wstecz. Ta sama karta po obu stronach to nie przepięcie. */
 export function zapiszPrzepiecie(
   db: DatabaseSync,

@@ -26,8 +26,8 @@ const MAKS_PROB = 10;
  * z tego, co indeks `przesylki_kolejnosc_zywa` uznaje za JEDNA zywa paczke. Dwa rownolegle
  * klikniecia dostaja wiec ten sam klucz nawet wtedy, gdy oba przejda przez rezerwacje.
  *
- * To nie jest ostroznosc teoretyczna: 10.08.2026 wlasciciel kupil w panelu Allegro dwie
- * etykiety do zamowienia #1140, dwie minuty od siebie. Panel Allegro takiej oslony nie ma.
+ * To nie jest ostrożność teoretyczna: w panelu Allegro da się kupić dwie etykiety do tego
+ * samego zamówienia w odstępie kilku minut. Panel Allegro takiej osłony nie ma.
  *
  * Ksztalt UUID (wersja 5, wariant RFC 4122) — Allegro innego nie przyjmie.
  */
@@ -44,7 +44,7 @@ const czekaj = (ms) => new Promise((r) => { setTimeout(r, ms); });
 
 // ⚠️⚠️ NUMER LISTU NIE JEST W ODPOWIEDZI KOMENDY — i to kosztowalo jedno wdrozenie.
 //
-// ZMIERZONE 11.08.2026 na pierwszej prawdziwej paczce (`AD0LHNWJ8L661FQRL`). Komenda
+// ZMIERZONE na pierwszej prawdziwej paczce. Komenda
 // tworzenia oddaje przy powodzeniu DOKLADNIE tyle:
 //   {"commandId":"…","status":"SUCCESS","errors":null,"shipmentId":"…"}
 // Numeru listu tam nie ma i nie bedzie. Trzeba pojsc po niego do OSOBNEGO zasobu przesylki,
@@ -52,9 +52,9 @@ const czekaj = (ms) => new Promise((r) => { setTimeout(r, ms); });
 // i `waybill` — obu tych pol Allegro nie zwraca NIGDZIE, wiec paczka konczyla jako
 // „tworzona u kuriera" mimo statusu SUCCESS: kupiona, oplacona i bez etykiety.
 //
-// ⚠️ Ksztalt byl ZGADNIETY, nie zmierzony — rozpoznanie 10.08 nie umialo tego sprawdzic,
-// bo GET na komende bez prawdziwej paczki oddaje `404 SHIPMENT_NOT_FOUND`. Domysl przeszedl
-// przez testy, bo atrapa zwracala to, co zalozylem.
+// ⚠️ Kształtu nie da się zmierzyć bez prawdziwej paczki — GET na komendę bez niej oddaje
+// `404 SHIPMENT_NOT_FOUND`. Zgadnięty kształt przechodzi przez testy, bo atrapa zwraca to,
+// co w niej założono.
 const numerListuZPrzesylki = (p) => p?.packages?.find((x) => x?.waybill)?.waybill ?? null;
 
 // Numer u PRZEWOZNIKA (DPD: `1000987654321U`) — inny niz allegrowy „AD…". Zapisujemy oba,
@@ -63,7 +63,7 @@ const numerPrzewoznika = (p) => p?.packages
   ?.flatMap((x) => x?.transportingInfo ?? [])
   .find((t) => t?.carrierWaybill)?.carrierWaybill ?? null;
 
-// ⚠️ KLIENT WYBIERANY PER ZAMOWIENIE, a nie jeden na cala usluge. Kanaly Allegro sa DWA
+// ⚠️ KLIENT WYBIERANY PER ZAMÓWIENIE, a nie jeden na całą usługę. Kanałów Allegro bywa kilka
 // (np. `allegro_a`, `allegro_b`) i to OSOBNE KONTA: przesylka kupiona na koncie A
 // nie istnieje dla konta B. Jeden klient na mape kurierow znaczylby, ze paczka z drugiego
 // kanalu jedzie na cudzej umowie — i nikt by tego nie zobaczyl, bo etykieta by powstala.
@@ -100,9 +100,8 @@ export function createAllegroWzaClient({
       // ⚠️⚠️ TEKST, NIGDY OBIEKT. Kolumna `przesylki.odpowiedz_surowa` jest tekstowa,
       // a `node:sqlite` na obiekcie RZUCA („Provided value cannot be bound to SQLite
       // parameter 4") — i rzuca DOPIERO PO tym, jak przewoz u Allegro juz powstal
-      // i kosztowal. Zdarzylo sie 11.08.2026 na zamowieniach 1142 i 1145: paczki
-      // kupione, a panel pokazywal „blad techniczny". To ta sama rodzina, co pulapka
-      // z `ksef_data` (notatka 2026-08-05, §1.2). DPD i InPost oddaja tu surowy TEKST
+      // i kosztował: paczka kupiona, a panel pokazuje „błąd techniczny”. DPD i InPost
+      // oddają tu surowy TEKST
       // odpowiedzi — trzymamy sie tej samej umowy.
       surowa: JSON.stringify(przesylka),
       };
@@ -129,7 +128,7 @@ export function createAllegroWzaClient({
       const shipmentId = stan?.shipmentId ?? null;
       if (shipmentId) {
         // Od tej chwili KAZDY wyjatek musi niesc `shipmentId`: przewoz istnieje i kosztowal,
-        // a bez identyfikatora nie da sie o niego zapytac (4.9).
+        // a bez identyfikatora nie da się o niego zapytać (reguła: każdy stan ma wyjście).
         try {
           const przesylka = await allegro.pobierzPrzesylkeWza(shipmentId);
           const numerListu = numerListuZPrzesylki(przesylka);
@@ -150,7 +149,7 @@ export function createAllegroWzaClient({
     return { shipmentId: commandId, numerListu: null, wTrakcieTworzenia: true, etykietaPdf: null, etykietaZpl: null, surowa: null };
   }
 
-  // ⚠️⚠️ `pobranieNaTejPaczce` (PRZ-142.02): kwota pobrania nalezy do ZAMOWIENIA, a podpowiedz
+  // ⚠️⚠️ `pobranieNaTejPaczce`: kwota pobrania nalezy do ZAMOWIENIA, a podpowiedz
   // Allegro niesie ja przy KAZDYM zapytaniu — takze przy dosylce. Domyslnie `kolejnosc === 1`,
   // jak w dpd.js i inpost.js; na paczce N > 1 inkaso jedzie wylacznie z jawnej decyzji operatora,
   // inaczej kupujacy placilby drugi raz.
@@ -160,7 +159,7 @@ export function createAllegroWzaClient({
     pobranieNaTejPaczce = kolejnosc === 1,
   }) {
     // ⚠️ ZYWY ODCZYT METODY, nie kolumna. Allegro nie podbija `updatedAt` przy zmianach
-    // w zamowieniu, wiec nasza kopia bywa nieswieza z definicji (zmierzone 05.08.2026).
+    // w zamówieniu, więc nasza kopia bywa nieświeża z definicji (zmierzone).
     const deliveryMethodIdZywy = await metodaZywa(zamowienie);
 
     // Bariera domenowa PRZED pierwszym bajtem, ktory cokolwiek kosztuje.
@@ -194,13 +193,13 @@ export function createAllegroWzaClient({
     // ⚠️⚠️ CZY ETYKIETA NIE ZOSTALA JUZ KUPIONA RECZNIE W PANELU ALLEGRO.
     //
     // `commandId` chroni przed powtorzeniem TEGO SAMEGO zadania, ale nie przed etykieta,
-    // ktora powstala INNA DROGA — a wlasnie ta droga jest dzis normalna: wlasciciel kupuje
-    // etykiety w panelu Allegro. Wiersze takich paczek trafiaja do nas dopiero przy
-    // odswiezeniu (`services/przesylki-allegro.js`), wiec rezerwacja w bazie moze ich
+    // która powstała INNĄ DROGĄ — a ta droga jest normalna: sprzedawca kupuje
+    // etykiety w panelu Allegro. Wiersze takich paczek trafiają do nas dopiero przy
+    // odświeżeniu (`moduly/wysylka/services/przesylki-allegro.js`), więc rezerwacja w bazie moze ich
     // JESZCZE NIE ZNAC — a wtedy klikniecie w OMS kupiloby DRUGI, platny przewoz do klienta,
     // ktory swoj juz ma. Pytamy wiec ALLEGRO, a nie siebie: to jedyne zrodlo, ktore wie
-    // o obu drogach naraz. Zmierzone 10.08.2026: `GET .../shipments` oddaje 200 i liste
-    // (przy zamowieniu #1140 pokazal obie recznie kupione etykiety).
+    // o obu drogach naraz. Zmierzone: `GET .../shipments` oddaje 200 i listę
+    // (także etykiet kupionych ręcznie w panelu Allegro).
     //
     // ⚠️ Awarii tego odczytu NIE POLYKAMY. „Nie wiem, czy paczka juz jest" musi znaczyc
     // ODMOWE, a nie zakup — bo cicha zgoda kosztuje tu prawdziwe pieniadze.
@@ -223,7 +222,7 @@ export function createAllegroWzaClient({
     const input = {
       ...p,
       // ⚠️ NADPISUJEMY podpowiedz, a nie uzupelniamy ja: Allegro oddaje tu ZAWSZE `null`
-      // (zmierzone 10.08.2026), a puste pole znaczyloby, ze usluge dobiera Allegro.
+      // (zmierzone), a puste pole znaczyloby, ze usluge dobiera Allegro.
       deliveryMethodId: zgoda.deliveryMethodId,
       // ⚠️ WYMIARY WLASNE. Podpowiedz bierze je z OFERTY i bywaja fikcyjne — zmierzone
       // 120 × 80 × 55 cm przy 0,5 kg. O wlasnej paczce wiemy wiecej niz Allegro.
@@ -237,13 +236,13 @@ export function createAllegroWzaClient({
       labelFormat: drukowac ? 'ZPL' : 'PDF',
     };
 
-    // ⚠️⚠️ POBRANIE — PIENIADZE KUPUJACEGO. Regula jest CZYSTA (domain/allegro-wysylka.js),
+    // ⚠️⚠️ POBRANIE — PIENIADZE KUPUJACEGO. Regula jest CZYSTA (domena/allegro-wysylka.js),
     // tu tylko podajemy jej fakty. Limit bierzemy z TEJ SAMEJ podpowiedzi, ktora dala kwote,
     // a nie ze stalej w kodzie: Allegro rozni go miedzy uslugami (6000 zl przy DPD (AD),
     // 15000 przy „DPD Polska") i moze zmienic bez pytania nas o zdanie.
     const limitPobrania = (propozycja?.deliveryOptions ?? [])
       .find((o) => o?.limits?.cashOnDelivery?.amount)?.limits?.cashOnDelivery?.amount ?? null;
-    // Pomijamy regule TYLKO na dosylce: paczka nr 1 zawsze slucha podpowiedzi Allegro (recenzja 142-02).
+    // Pomijamy regule TYLKO na dosylce: paczka nr 1 zawsze słucha podpowiedzi Allegro.
     const pobranie = kolejnosc > 1 && !pobranieNaTejPaczce ? { wolno: true, cashOnDelivery: null } : pobranieDoWysylki({
       pobranieUslugi: zgoda.pobranie,
       cashOnDelivery: p.cashOnDelivery,
@@ -289,10 +288,9 @@ export function createAllegroWzaClient({
     //  - droga awaryjna (`oznaczTworzonaUKuriera`) zapisuje to, co niosl wyjatek — czyli
     //    RAZ `commandId`, a RAZ `shipmentId`, zaleznie od tego, jak daleko doszlo.
     //
-    // Zamowienie 1145 (11.08.2026) mialo w tej kolumnie `shipmentId`, a „Sprawdz ponownie"
-    // pytalo o nie jak o `commandId` — Allegro odpowiadalo `404`, wiec paczka KUPIONA
-    // I GOTOWA (etykieta widoczna w panelu Allegro) wisiala w panelu jako „tworzona
-    // u kuriera", bez wyjscia (4.9).
+    // Gdy w kolumnie jest `shipmentId`, a „Sprawdź ponownie” pyta o niego jak o `commandId`,
+    // Allegro odpowiada `404`, więc paczka KUPIONA I GOTOWA (etykieta widoczna w panelu
+    // Allegro) wisi w panelu jako „tworzona u kuriera”, bez wyjścia (reguła: każdy stan ma wyjście).
     //
     // Zamiast zgadywac po ksztalcie (commandId jest UUID-em wersji 5, shipmentId wersji 4 —
     // to prawda DZIS i zadna umowa na jutro), PYTAMY. Najpierw jako o przesylke, bo to jest
@@ -317,19 +315,18 @@ export function createAllegroWzaClient({
     // ⚠️ ZADEKLAROWANY BRAK SLEDZENIA W TYM ADAPTERZE, a nie przeoczona metoda. Zasob
     // przesylki (`GET /shipment-management/shipments/{id}`) niesie NUMERY (`waybill`,
     // `carrierWaybill`), nie historie. Karta nie pyta TEGO adaptera; wybor w
-    // domain/sledzenie-przesylki.js kieruje DPD do DPD, a pozostale WzA do klienta
-    // sledzenia Allegro. Bez tej flagi karta dopisywala „BLAD TECHNICZNY" do logu
-    // przy KAZDYM otwarciu (zgloszenie wlasciciela 11.08.2026).
+    // domena/sledzenie-przesylki.js kieruje DPD do DPD, a pozostale WzA do klienta
+    // śledzenia Allegro. Bez tej flagi karta dopisywałaby „BŁĄD TECHNICZNY” do logu
+    // przy KAŻDYM otwarciu.
     //
-    // ⚠️⚠️ SPROSTOWANIE 25.08.2026. Do tego dnia stalo tu zdanie „Allegro nie oddaje przez
-    // to API zdarzen przewozu" — prawdziwe o TYM zasobie i FALSZYWE jako wniosek o calym
-    // API. Zasob obok, `GET /order/carriers/{carrierId}/tracking?waybill=`, oddaje PELNA
-    // historie zdarzen (publiczny od 16.08.2022; zmierzone sonda na zywym koncie). Ten
-    // za szeroki wniosek kazal uznac caly kanal Allegro za slepy: szesc paczek wisialo
-    // w zakladce jako „bez ruchu", bedac w rzeczywistosci DORECZONYMI.
+    // ⚠️⚠️ „Allegro nie oddaje przez to API zdarzeń przewozu” jest prawdą o TYM zasobie
+    // i FAŁSZEM jako wniosek o całym API. Zasób obok, `GET /order/carriers/{carrierId}/tracking?waybill=`,
+    // oddaje PEŁNĄ historię zdarzeń (zmierzone sondą na żywym koncie). Za szeroki wniosek
+    // kazałby uznać cały kanał Allegro za ślepy: doręczone paczki wisiałyby
+    // w zakładce jako „bez ruchu”.
     //
-    // Flaga tutaj ZOSTAJE: adapter NADANIA nie ma metody statusPrzesylki. Od 22.09.2026
-    // WzA inne niz DPD korzystaja z tego samego klienta ODCZYTU Allegro, ktory sluzy
+    // Flaga tutaj ZOSTAJE: adapter NADANIA nie ma metody statusPrzesylki.
+    // WzA inne niż DPD korzystaja z tego samego klienta ODCZYTU Allegro, ktory sluzy
     // paczkom nadanym poza OMS; zrodlo `carrier`/`packages.waybill` jest zmierzone na
     // One Box i potwierdzone oficjalnym kontraktem API.
     //

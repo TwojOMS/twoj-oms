@@ -2,12 +2,12 @@ import { czyKanalAllegro } from './wysylka.js';
 import { idDokumentu } from './dokument-programu.js';
 import { dzienWarszawa } from './format-daty.js';
 
-// PRZ-126 C09e — brzmienia zdań o stanie D w JEDNYM miejscu (do akceptacji właściciela, plan C09 §7 pkt 4).
+// Brzmienia zdań o stanie D (niżej) w JEDNYM miejscu.
 export const ODMOWA_ALLEGRO_PO_ZAMIANIE_NIP = 'Kupujący ma w Allegro poprzednią fakturę (sprzed zamiany NIP-u) — '
   + 'nowej panel nie wysyła sam; wyślij ją z panelu Allegro albo zakładką Wiadomości.';
 
 /**
- * PRZ-126 C09e — znacznik D (plan C09, Z10): zamówienie przepięte na fakturę zastępczą (zły NIP), gdy poprzednia
+ * Znacznik D: zamówienie przepięte na fakturę zastępczą (zły NIP), gdy poprzednia
  * faktura mogła już być u kupującego. `przepnijNaZastepcza` zostawia wtedy `allegro_wyslana_at` i zeruje
  * `allegro_invoice_id`; zwykła wysyłka takiego wiersza nie tworzy (id zapisywane przed `PUT`). `program` zawęża do
  * TwojeFaktury — ewentualne stare wiersze inFaktu bez id nie są zamianą. `REJECTED` (także spóźniony zapis czuwacza
@@ -27,67 +27,65 @@ export function zdanieKartyPoZamianieNip(f) {
 }
 
 /**
- * Czy te fakture wolno wyslac kupujacemu przez Allegro. Czysta decyzja: zadnego HTTP,
- * zadnego zapisu, nigdy nie rzuca.
+ * Czy tę fakturę wolno wysłać kupującemu przez Allegro. Czysta decyzja: żadnego HTTP,
+ * żadnego zapisu, nigdy nie rzuca.
  *
- * ⚠️⚠️ TO JEST BARIERA PRZED OPERACJA NIEODWRACALNA — najbardziej nieodwracalna w calym
- * panelu. Dokument laduje na koncie kupujacego i panel NIE MA CZYM go stamtad zabrac:
- * skasowanie faktury w inFakcie nie zabiera jej kupujacemu z rak, a Allegro nie daje
- * zadnego „cofnij". Dlatego WSZYSTKIE przeslanki stoja TUTAJ, w czystej funkcji, ktora
- * da sie sprawdzic bez sieci i bez bazy — a nie w usludze, gdzie kazda z nich musialaby
- * byc odczytana z prawdziwej odpowiedzi HTTP, zeby ktokolwiek zobaczyl, ze zniknela.
+ * ⚠️⚠️ TO JEST BARIERA PRZED OPERACJĄ NIEODWRACALNĄ — najbardziej nieodwracalną w całym
+ * panelu. Dokument ląduje na koncie kupującego i panel NIE MA CZYM go stamtąd zabrać:
+ * skasowanie faktury w inFakcie nie zabiera jej kupującemu z rąk, a Allegro nie daje
+ * żadnego „cofnij". Dlatego WSZYSTKIE przesłanki stoją TUTAJ, w czystej funkcji, którą
+ * da się sprawdzić bez sieci i bez bazy — a nie w usłudze, gdzie każda z nich musiałaby
+ * być odczytana z prawdziwej odpowiedzi HTTP, żeby ktokolwiek zobaczył, że zniknęła.
  *
- * ⚠️ ODMOWA MOWI, CO ZROBIC — nie samo „nie wolno". Bariera bez wyjscia jest stanem bez
- * wyjscia (PRZEWODNIK.md 4.9): operator, ktory widzi brak przycisku i nie wie, czego
- * brakuje, konczy grzebaniem w bazie albo wysylaniem faktury reka z inFaktu.
+ * ⚠️ ODMOWA MÓWI, CO ZROBIĆ — nie samo „nie wolno". Bariera bez wyjścia jest stanem bez
+ * wyjścia (reguła: odmowa ma powód): operator, który widzi brak przycisku i nie wie, czego
+ * brakuje, kończy grzebaniem w bazie albo wysyłaniem faktury ręką z inFaktu.
  *
- * ⚠️⚠️ FURTKA `bezKsef` ZNIKNELA 01.09.2026 (decyzja właściciela). Do tego dnia jedna przeslanka —
- * brak numeru KSeF — dawala sie zdjac swiadoma decyzja czlowieka, a przycisk otwieral sie po
- * DOBIE czekania. Powod usuniecia jest prosty i wypowiedziany wprost: „fv ida zawsze z ksef",
- * a dokument bez numeru wysyla sie recznie z panelu Allegro albo zakladka „Wiadomosci" —
- * poza panelem, swiadomie, a nie jednym klawiszem obok zwyklej wysylki.
+ * ⚠️⚠️ FURTKI „BEZ NUMERU KSeF" NIE MA. Brak numeru KSeF nie daje się zdjąć decyzją
+ * człowieka: do kupującego faktura idzie zawsze z numerem KSeF, a dokument bez numeru
+ * wysyła się ręcznie z panelu Allegro albo zakładką „Wiadomości" — poza panelem, świadomie,
+ * a nie jednym klawiszem obok zwykłej wysyłki.
  *
- * ⚠️ TO NIE ZOSTAWIA STANU BEZ WYJSCIA (niezmiennik 4.9), i to jest cala roznica wobec sierpnia,
- * kiedy furtke dokladano: panel UMIE dzis sam wyslac fakture do KSeF (zakladka FAKTURY,
- * `POST /faktury/ksef/wyslij`). Wyjsciem z „czeka na KSeF" jest wiec wyslanie jej do KSeF,
- * a nie ominiecie numeru.
+ * ⚠️ TO NIE ZOSTAWIA STANU BEZ WYJŚCIA (reguła: każdy stan ma wyjście): panel sam wysyła
+ * fakturę do KSeF (zakładka FAKTURY, `POST /faktury/ksef/wyslij`). Wyjściem z „czeka na KSeF"
+ * jest więc wysłanie jej do KSeF, a nie ominięcie numeru.
  */
 export function wolnoWyslacDoAllegro(z) {
   const nie = (powod) => ({ wolno: false, powod });
   if (!z) return nie('Nie ma takiego zamówienia.');
-  // Rozpoznanie kanalu WYLACZNIE wspolnym predykatem — nigdy wlasna kopia
-  // `startsWith('allegro_')` (Global Constraints planu B).
+  // Rozpoznanie kanału WYŁĄCZNIE wspólnym predykatem — nigdy własna kopia
+  // `startsWith('allegro_')`.
   if (!czyKanalAllegro(z)) return nie('To zamówienie nie przyszło z Allegro — nie ma dokąd wysłać faktury.');
-  // `chce_fakture` przy kanale to `invoice.required` od Allegro. Decyzja wlasciciela:
-  // faktura idzie TYLKO na zadanie kupujacego. Wyslanie dokumentu komus, kto o niego nie
-  // prosil, jest tak samo nieodwracalne jak kazde inne — a przy zakupie prywatnym oznacza
-  // dokument, ktorego kupujacy u siebie nie chcial.
+  // `chce_fakture` przy kanale to `invoice.required` od Allegro. Faktura idzie TYLKO na
+  // żądanie kupującego. Wysłanie dokumentu komuś, kto o niego nie prosił, jest tak samo
+  // nieodwracalne jak każde inne — a przy zakupie prywatnym oznacza dokument, którego
+  // kupujący u siebie nie chciał.
   if (!z.chce_fakture) return nie('Kupujący nie prosił o fakturę.');
   const f = z.faktura;
   // Numer ORAZ UUID: bez numeru kupujacy nie polaczy dokumentu z nasza ksiegowoscia,
   // a bez UUID-a nie ma skad wziac PDF-u (panel nie trzyma kopii dokumentu).
   if (!f || !f.numer || !idDokumentu(f)) return nie('To zamówienie nie ma jeszcze wystawionej faktury.');
-  // ⚠️⚠️ `allegro_wyslana_at` NIE JEST DOWODEM „DOKUMENT U KUPUJACEGO" (recenzja Partii 3, K2).
-  // Kolumna niesie wylacznie „PUT .../file sie udal" — a Allegro sprawdza plik antywirusem
-  // JUZ POTEM. Przy `REJECTED` kupujacy faktury NIE MA, choc kolumna jest wypelniona.
+  // ⚠️⚠️ `allegro_wyslana_at` NIE JEST DOWODEM „DOKUMENT U KUPUJĄCEGO".
+  // Kolumna niesie wyłącznie „PUT .../file się udał" — a Allegro sprawdza plik antywirusem
+  // JUŻ POTEM. Przy `REJECTED` kupujący faktury NIE MA, choć kolumna jest wypełniona.
   //
-  // Do 06.08.2026 ta odmowa gryzla takze przy `REJECTED` i robila z niego STAN BEZ WYJSCIA
-  // (niezmiennik 4.9): pasek spraw kazal wyslac dokument jeszcze raz, obie trasy odmawialy,
-  // przycisku nie bylo, a „Skasowalem w inFakcie" tez odmawia. Panel kazal ponowic, sam
-  // odmawial i przy okazji klamal, ze kupujacy fakture ma.
+  // Gdyby ta odmowa gryzła także przy `REJECTED`, robiłaby z niego STAN BEZ WYJŚCIA
+  // (reguła: każdy stan ma wyjście): pasek spraw każe wysłać dokument jeszcze raz, obie trasy
+  // odmawiają, przycisku nie ma, a odnotowanie skasowania w inFakcie też odmawia. Panel
+  // kazałby ponowić, sam odmawiał i przy okazji kłamał, że kupujący fakturę ma.
   //
-  // ⚠️ `REJECTED` JEST JEDYNYM STANEM, W KTORYM PONOWIENIE JEST BEZPIECZNE I DARMOWE:
-  // `allegro_invoice_id` juz mamy, wiec usluga idzie sciezka ADOPCJI i robi sam
-  // `PUT .../file`, ktory PODMIENIA plik przy istniejacym zgloszeniu. ZADNEGO drugiego
-  // POST-u, wiec ani jednego z dziesieciu slotow wiecej i ani jednego duplikatu.
+  // ⚠️ `REJECTED` JEST JEDYNYM STANEM, W KTÓRYM PONOWIENIE JEST BEZPIECZNE I DARMOWE:
+  // `allegro_invoice_id` już mamy, więc usługa idzie ścieżką ADOPCJI i robi sam
+  // `PUT .../file`, który PODMIENIA plik przy istniejącym zgłoszeniu. ŻADNEGO drugiego
+  // POST-u, więc ani jednego z dziesięciu slotów więcej i ani jednego duplikatu.
   //
-  // ⚠️ LISTA STANOW PRZEPUSZCZAJACYCH JEST BIALA — dokladnie jak STANY_KONCOWE_WERYFIKACJI
-  // nizej i z tego samego powodu. `ACCEPTED`, `WAITING`, pusto ORAZ status, ktorego dzis
-  // nie znamy, to dalej „dokument moze byc u kupujacego" i dalej ODMAWIAMY. Czarna lista
-  // („wszystko oprocz ACCEPTED") otwieralaby ponowienie przy kazdym nowym statusie Allegro.
+  // ⚠️ LISTA STANÓW PRZEPUSZCZAJĄCYCH JEST BIAŁA — dokładnie jak STANY_KONCOWE_WERYFIKACJI
+  // niżej i z tego samego powodu. `ACCEPTED`, `WAITING`, pusto ORAZ status, którego dziś
+  // nie znamy, to dalej „dokument może być u kupującego" i dalej ODMAWIAMY. Czarna lista
+  // („wszystko oprócz ACCEPTED") otwierałaby ponowienie przy każdym nowym statusie Allegro.
   //
-  // ⚠️ PRZ-126 C09e — ZNACZNIK D PRZED zdaniem nizej: po zamianie faktury (zly NIP) wiersz wskazuje NOWA
-  // fakture, a „wyslana" byla STARA. Zdanie „Faktura <numer> zostala juz wyslana" podaloby numer nowej — klamstwo.
+  // ⚠️ ZNACZNIK D PRZED zdaniem niżej: po zamianie faktury (zły NIP) wiersz wskazuje NOWĄ
+  // fakturę, a „wysłana" była STARA. Zdanie „Faktura <numer> została już wysłana" podałoby numer nowej — kłamstwo.
   if (poZamianieNipWAllegro(f)) return nie(ODMOWA_ALLEGRO_PO_ZAMIANIE_NIP);
   if (f.allegro_wyslana_at && f.allegro_weryfikacja !== 'REJECTED') {
     return nie(
@@ -95,12 +93,10 @@ export function wolnoWyslacDoAllegro(z) {
       + 'Panel nie ma czym jej stamtąd zabrać; jeśli dokument jest błędny, potrzebna jest KOREKTA.',
     );
   }
-  // ⚠️⚠️ KOMUNIKAT SKROCONY 01.09.2026 (zgloszenie właściciela) — i to nie byla sama kosmetyka.
-  // Zdanie drugie brzmialo „Wyślij ją do KSeF w inFakcie (panel tego nie robi)" i bylo
-  // NIEPRAWDA od czasu zakladki FAKTURY: panel wysyla do KSeF sam (`POST /faktury/ksef/wyslij`,
-  // domain/wysylka-ksef.js). Odsylal wiec operatora poza panel do czynnosci, ktora panel ma
-  // dwie zakladki dalej. Trzecie zdanie kierowalo do przycisku „bez numeru KSeF", ktorego
-  // dzis nie ma w ogole.
+  // ⚠️⚠️ KOMUNIKAT NIE ODSYŁA DO inFAKTU ani do przycisku „bez numeru KSeF" (takiego nie ma).
+  // Panel wysyła do KSeF sam (`POST /faktury/ksef/wyslij`, domena/wysylka-ksef.js), więc zdanie
+  // „wyślij ją do KSeF w inFakcie" odsyłałoby operatora poza panel do czynności, którą panel
+  // ma dwie zakładki dalej.
   if (!f.ksef_numer) {
     return nie(
       `Faktura ${f.numer} nie jest jeszcze w KSeF — a do kupującego ma iść dokument z numerem KSeF.`,
@@ -138,9 +134,9 @@ const STANY_KONCOWE_WERYFIKACJI = ['ACCEPTED', 'REJECTED'];
 
 /**
  * JEDNA definicja „weryfikacja pliku jeszcze nierozstrzygnięta" — w dwóch postaciach, dokładnie
- * tym samym wzorcem, co „faktura czekająca na KSeF" (domain/ksef-oczekiwanie.js) i z tego samego
+ * tym samym wzorcem, co „faktura czekająca na KSeF" (domena/ksef-oczekiwanie.js) i z tego samego
  * powodu: pyta o to zapytanie czuwacza (services/czuwacz-ksef.js), a melduje pasek spraw na
- * karcie (domain/sprawy-karty.js). Dwie kopie warunku rozjeżdżają się przy pierwszej zmianie
+ * karcie (domena/sprawy-karty.js). Dwie kopie warunku rozjeżdżają się przy pierwszej zmianie
  * reguły — a rozjazd TUTAJ znaczy albo setki wywołań miesięcznie bez ani jednej nowej informacji,
  * albo milczenie panelu przy dokumencie, którego kupujący nie dostał.
  *
@@ -176,10 +172,10 @@ export function weryfikacjaNierozstrzygnieta(f) {
 /**
  * Nazwa pliku WIDOCZNA DLA KUPUJACEGO na jego koncie Allegro.
  *
- * ⚠️ Ukosnik z numeru faktury („12/08/2026") musi zniknac: w nazwie pliku znaczy katalog,
- * a nie da sie przewidziec, co z tym zrobi przegladarka kupujacego przy pobieraniu. Ta sama
- * zasada, co przy nazwie PDF-u proformy (routes/zamowienia.js: bezpiecznaNazwa) — tyle ze
- * tam plik ladowal u nas, a tu laduje u obcego czlowieka i nie da sie go podmienic.
+ * ⚠️ Ukośnik z numeru faktury („12/08/2026") musi zniknąć: w nazwie pliku znaczy katalog,
+ * a nie da się przewidzieć, co z tym zrobi przeglądarka kupującego przy pobieraniu. Ta sama
+ * zasada, co przy nazwie PDF-u proformy (`bezpiecznaNazwa` z domena/pliki.js) — tyle że
+ * tam plik ląduje u nas, a tu ląduje u obcego człowieka i nie da się go podmienić.
  */
 export function nazwaPlikuFaktury(numer) {
   if (!numer) return 'faktura.pdf';

@@ -1,9 +1,9 @@
-<%# PRZ-101.03: Ustawienia → Szablony wiadomości — lista. Edycja pod /ustawienia/szablony-wiadomosci/:id. %>
+<%# Ustawienia → Szablony wiadomości — lista. Edycja pod /ustawienia/szablony-wiadomosci/:id. %>
 <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Szablony wiadomości"}) %>
 
 <% if (komunikat) { %><div class="pas-potwierdzenie"><p><%= komunikat %></p></div><% } %>
 
-<%# PRZ-108.11 (decyzja właściciela 22.10): „Szablony własne” na samej górze ekranu. %>
+<%# Sekcja „Szablony własne” stoi na samej górze ekranu, nad mailami wbudowanymi. %>
 <section class="ust-sekcja szw-sekcja" id="szablony-wlasne">
   <h2>Szablony własne <span class="szw-licznik"><%= wlasne.length %> z <%= maks.wlasnych %></span></h2>
   <p>Twoje maile na typowe sytuacje, np. opóźnienie wysyłki albo brak towaru. Wybierasz je na karcie zamówienia pod mailami wbudowanymi, a w wiadomościach Allegro — listą „Wstaw szablon” nad polem odpowiedzi.</p>
@@ -38,7 +38,7 @@
 <section class="ust-sekcja szw-sekcja" id="szablony-wbudowane">
   <h2>Maile z karty zamówienia</h2>
   <p>Te maile wysyłasz z karty zamówienia, sekcja Wiadomości. Zmiana działa od następnego maila. Kwoty, dane do przelewu i załączniki PDF liczy panel — w treści wstawiasz je polami.</p>
-  <%# Przewijak: na telefonie tabela jedzie w bok u siebie, zamiast rozpychać stronę (PRZ-101.10). %>
+  <%# Przewijak: na telefonie tabela jedzie w bok u siebie, zamiast rozpychać stronę. %>
   <div class="przewijak-tabeli">
   <table class="tab-pozycje szw-tabela">
     <thead><tr><th>Mail</th><th>Temat</th><th>Treść</th><th></th></tr></thead>
@@ -56,7 +56,7 @@
   </div>
 </section>
 
-<%# PRZ-102.17: treść zdań, które panel sam dobiera do maili o płatności. Wybór zdania (która sytuacja) liczy kod. %>
+<%# Treść zdań, które panel sam dobiera do maili o płatności. Wybór zdania (która sytuacja) liczy kod. %>
 <section class="ust-sekcja szw-sekcja" id="zdania-platnosci">
   <h2>Zdania o płatności</h2>
   <p>Te zdania panel sam wstawia do maili z proformą, fakturą i przypomnieniem — przez pola <code>{zamkniecie}</code> i <code>{dane_platnosci}</code>. Które z nich padnie, zależy od zamówienia: za pobraniem, już opłacone albo do zapłaty przelewem. Kwotę, odbiorcę, rachunek, tytuł i termin przelewu liczy panel — tu zmienisz tylko napisy obok nich (część „Etykiety i stałe teksty”). Puste pole oznacza tekst domyślny. Zmiana działa od następnego maila.</p>
@@ -64,7 +64,7 @@
   <form method="post" action="/ustawienia/szablony-wiadomosci/zdania-platnosci" class="szw-zdania">
     <% [['zamkniecie', 'Zdanie zamykające — pole {zamkniecie}', 'Jedno zdanie nad podpisem, oddzielone kreską. Panel wybiera je według stanu płatności zamówienia.'],
         ['blok', 'Blok z danymi do przelewu — {dane_platnosci}', 'Nagłówki sekcji i zdania o dołączonych dokumentach. Dane pod nagłówkami wstawia panel.'],
-        /* PRZ-102.19: druga część sekcji — krótkie napisy przy danych, które liczy panel. */
+        /* Druga część sekcji — krótkie napisy przy danych, które liczy panel. */
         ['przelew', 'Etykiety danych do przelewu — {dane_platnosci}', 'Napisy przy kwocie i w tabeli przelewu. Kwotę, odbiorcę, numer rachunku, tytuł i termin wstawia panel — tu ich nie zmienisz.', 'Etykiety i stałe teksty'],
         ['zamowienie', 'Bloki zamówienia — {pozycje}, {sposob_platnosci}, {wysylka}, {dane_do_faktury}', 'Nagłówki, kolumny tabeli i stałe zwroty w potwierdzeniu przyjęcia i w szablonach własnych. Pozycje, kwoty, adres i dane nabywcy wstawia panel.'],
         ['podpis', 'Podpis — {podpis}', 'Linia nad marką na końcu każdego maila do klienta. Markę ustawisz w Ustawienia → Komunikacja → Podpis i stopka.']].forEach(function (g) { %>
@@ -101,7 +101,7 @@
   </form>
 </section>
 
-<%# PRZ-101.06: maile do pracowników — osobno od maili do klientów. %>
+<%# Maile do pracowników — osobno od maili do klientów. %>
 <section class="ust-sekcja szw-sekcja" id="szablony-zespol">
   <h2>Maile do zespołu</h2>
   <p>Do pracowników, nie do klientów: zaproszenie do panelu i link do ustawienia nowego hasła<% if (admin) { %> (Ustawienia → Zespół i dostęp → Użytkownicy).<% } else { %>. Poproś administratora o dodanie pracownika.<% } %> Link wstawia panel — pole <code>{link}</code> musi zostać w treści.</p>

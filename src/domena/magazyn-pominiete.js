@@ -1,11 +1,11 @@
 // Produkty, z ktorych karta NIE powstala, ulozone tak, zeby dalo sie na nie patrzec.
 //
-// ⚠️⚠️ CALY POWOD ISTNIENIA TEGO PLIKU (mina zmierzona przy Zadaniu 8): pominietych jest
-// okolo 473, z czego **447 to oferty Allegro**, ktore kart nie zakladaja CELOWO (karta
-// powstaje z katalogu sklepu, a oferte wiaze sie z nim recznie — patrz `powodPominiecia`
-// w domain/karta-z-produktu.js). Realnej roboty jest okolo 26. Plaska lista 473 wierszy
-// utopilaby te 26 w tamtych 447, a pierwsza reakcja czlowieka na ekran pelen „pominietych"
-// brzmi „to blad, napraw" — i tak zniknelaby jedyna informacja, po ktora sie tu przychodzi.
+// ⚠️⚠️ CAŁY POWÓD ISTNIENIA TEGO PLIKU (mina zmierzona): pominiętych bywają setki, z czego
+// **zdecydowana większość to oferty Allegro**, które kart nie zakładają CELOWO (karta
+// powstaje z katalogu sklepu, a ofertę wiąże się z nim ręcznie — patrz `powodPominiecia`
+// w domena/karta-z-produktu.js). Realnej roboty jest kilkadziesiąt pozycji. Płaska lista
+// utopiłaby je w tamtych setkach, a pierwsza reakcja człowieka na ekran pełen „pominiętych"
+// brzmi „to błąd, napraw" — i tak zniknęłaby jedyna informacja, po którą się tu przychodzi.
 //
 // Stad trzy rzeczy naraz: GRUPY po powodzie, LICZBA przy grupie i ROBOTA NA GORZE.
 import { czyPominietyCelowo } from './karta-z-produktu.js';
@@ -16,13 +16,13 @@ import { wymagajListyKanalow } from './lista-kanalow.js';
  *
  * `celowo` znaczy „tak ma byc, nie ma tu nic do zrobienia". Rozstrzyga SAMA POZYCJA, a nie
  * tresc powodu: grupa jest celowa dokladnie wtedy, gdy ANI JEDNA jej pozycja nie jest robota.
- * Pyta o to `czyPominietyCelowo` z `domain/karta-z-produktu.js` — ta sama warstwa, ktora
+ * Pyta o to `czyPominietyCelowo` z `domena/karta-z-produktu.js` — ta sama warstwa, ktora
  * rozstrzyga o zakladaniu karty, nie druga jej kopia.
  *
- * ⚠️ DO 2026-08-11 STALA TU BIALA LISTA KANALOW („celowe = nie ze sklepu"), i to bylo za waskie.
- * Pomiar na produkcyjnej bazie pokazal 13 pozycji ZE SKLEPU, ktore kartami nie beda nigdy
- * (`Projekt indywidualny` — 12 wariantow rozniacych sie sama cena — i zaslepka panelu ofert).
- * Lezaly na gorze ekranu jako robota i udawaly usterke, ktorej naprawic sie nie da.
+ * ⚠️ BIAŁA LISTA KANAŁÓW („celowe = nie ze sklepu") JEST ZA WĄSKA. Pomiar na prawdziwej bazie
+ * pokazał pozycje ZE SKLEPU, które kartami nie będą nigdy (projekt indywidualny — warianty
+ * różniące się samą ceną — i zaślepka panelu ofert). Przy białej liście leżały na górze ekranu
+ * jako robota i udawały usterkę, której naprawić się nie da.
  *
  * ⚠️ `every`, a nie „pierwsza pozycja": grupa mieszana (ten sam powod trafil produkt ze
  * sklepu i oferte) jest ROBOTA. Falszywe „tak ma byc" na produkcie sklepowym schowaloby
@@ -35,7 +35,7 @@ import { wymagajListyKanalow } from './lista-kanalow.js';
  * ⚠️ `Map`, nie literal obiektu: powody sa napisami spoza naszej kontroli (niosa nazwe
  * kanalu z lustra cudzego API), wiec powod o tresci „constructor" na `{}` nie zalozylby
  * wlasnego klucza, tylko po cichu siegnal do prototypu — ta sama pulapka, co przy bialej
- * liscie sortowania w db/magazyn.js.
+ * liscie sortowania w oms/db/magazyn.js.
  */
 export function grupujPominiete(produkty, kanalySklepow) {
   wymagajListyKanalow(kanalySklepow);

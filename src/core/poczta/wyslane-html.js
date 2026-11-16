@@ -1,6 +1,6 @@
 import { KOLOR, FONT, esc, naglowekSekcji } from './mail-html.js';
 
-// MAIL „ZAMÓWIENIE WYSŁANE" — blok `{przesylki}` w HTML-u (PRZ-102.21). Model liczy domena
+// MAIL „ZAMÓWIENIE WYSŁANE" — blok `{przesylki}` w HTML-u. Model liczy domena
 // (`domena/wiadomosc-wyslane.js`: `modelWyslane`) — ten sam, z którego idą linie wersji tekstowej.
 //
 // ⚠️ ESCAPOWANE WSZYSTKO, TAKŻE ADRES W `href`. Numer listu bywa wpisany z ręki, a wzorzec przewoźnika może

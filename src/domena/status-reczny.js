@@ -2,23 +2,22 @@ import { ETYKIETY } from './status.js';
 import { idsDolaczonych } from './scalanie.js';
 
 // ⚠️ SEDNO: status w tym panelu NIE JEST KOLUMNA DO PRZESTAWIANIA — wynika z faktow
-// (patrz wyliczStatus w domain/status.js). „Ustaw status X" znaczy wiec: ZAPISZ TAKI
+// (patrz wyliczStatus w domena/status.js). „Ustaw status X" znaczy wiec: ZAPISZ TAKI
 // ZESTAW FAKTOW, zeby wyliczStatus oddal X. Ten plik jest czystym mapperem tej zamiany;
 // zapisu do bazy nie robi (to db/zamowienia.js: zapiszFaktyStatusu).
 //
-// Dokladnie ten sam wzorzec dziala w panelu zamowien indywidualnych (domain/manual-status.js
-// — factsForStatus). Powod jest w obu miejscach ten sam: dopoki status jest wynikiem, lista
-// i karta nie moga sie rozjechac, a cofniecie faktu cofa status samo. Kolumna `status`
-// zaczelaby zyc wlasnym zyciem juz przy pierwszej paczce nadanej z innego ekranu.
+// Powod: dopoki status jest wynikiem, lista i karta nie moga sie rozjechac, a cofniecie
+// faktu cofa status samo. Kolumna `status` zaczelaby zyc wlasnym zyciem juz przy pierwszej
+// paczce nadanej z innego ekranu.
 
 // Statusy osiagalne RECZNIE.
 //
-// ⚠️ „wyslane" JEST TU od 2026-07-31 i to jest zmiana wobec pierwotnej zasady. Wczesniej
+// ⚠️ „wyslane" JEST TU, choc pierwotna zasada byla inna. Wczesniej
 // status ten wynikal z istnienia nadanej paczki, wiec ustawienie go wprost byloby zdaniem
 // o stanie u kuriera, ktore panel zmyslil. Dzis wynika z wlasnego faktu (`wyslane_at`),
 // bo etykieta powstaje przy PAKOWANIU, a paczka wyjezdza dopiero z kurierem — panel nie
 // zna momentu wyjazdu i nie ma jak go zgadnac. Zna go czlowiek, wiec to on go zapisuje.
-// ⚠️ „zwrot" ZNIKL STAD 08.2026 i to nie jest przeoczenie. Zwrot niesie od tej pory kwote
+// ⚠️ „zwrot" NIE MA JUZ NA TEJ LISCIE i to nie jest przeoczenie. Zwrot niesie kwote
 // i pozycje (tabela `zwroty`), a druga droga ustawiajaca sam status produkowalaby
 // zwroty-widma: niewidoczne w raporcie, bez korekty, bez kwoty. Rejestracja idzie przez
 // /zamowienia/:id/zwrot. `faktyDlaStatusu` ma nadal galaz 'zwrot' wylacznie po to, zeby
@@ -30,7 +29,7 @@ export const STATUSY_RECZNE = ['nowe', 'w_realizacji', 'wyslane', 'anulowane'];
 export const OPCJE_STATUSU = STATUSY_RECZNE.map((klucz) => ({ klucz, etykieta: ETYKIETY[klucz] }));
 
 // Anulowanie ma DWA niezalezne zrodla i trzeba je umiec rozroznic:
-//  - `anulowane` — FAKT ZE SKLEPU (poller przepisuje te kolumne co dwie minuty);
+//  - `anulowane` — FAKT ZE SKLEPU (poller przepisuje te kolumne przy kazdej synchronizacji);
 //  - `anulowane_recznie` — decyzja czlowieka przy panelu, chroniona przed pollerem
 //    (kolumny nie ma na liscie pol w UPDATE zapiszZamowienie — to cala jej ochrona).
 //
@@ -65,7 +64,7 @@ export function powodOdmowyStatusu(z, docelowy) {
   // status: „"" nie mowiloby czlowiekowi absolutnie nic.
   if (!docelowy) return 'Nie wybrano statusu — panel niczego nie zmienił.';
   if (!STATUSY_RECZNE.includes(docelowy) && !(z?.statusy_wlasne ?? []).some(s => s.klucz === docelowy)) return `Nieznany status: „${docelowy}".`;
-  // PRZ-101.04: dołączone jest częścią głównego — jego „Wysłane” przenosi zapis głównego
+  // Dołączone jest częścią głównego — jego „Wysłane” przenosi zapis głównego
   // (oms/db/zamowienia.js). Anulowanie głównego zostawiłoby dołączone ukryte i bez właściciela.
   if (z?.scalone_do) {
     return `Zamówienie jest scalone z zamówieniem ${z.scalone_do_numer ?? `#${z.scalone_do}`} — status zmieniasz w zamówieniu głównym.`;

@@ -1,7 +1,7 @@
 <section class="ust-sekcja">
   <h2><%= krok.numer %>. <%= krok.tytul %></h2>
   <% if (locals.zwiniety) { %><p><%= locals.zwiniety %></p><details><summary><%= locals.pokaz ?? 'Pokaż formularz' %></summary><% } %>
-  <%# PRZ-149.04: wybór nad instrukcją należy do formularza kroku (atrybut form); punkt `wybor.punkt` ma wariant na każdą opcję.
+  <%# Wybór nad instrukcją należy do formularza kroku (atrybut form); punkt `wybor.punkt` ma wariant na każdą opcję.
      Bez `required`: wybór zawsze ma wartość (domyślna), a „required” w kroku z zapisanymi kluczami znaczy tylko puste pola sekretów. %>
   <% const wybor = krok.formularz ? krok.wybor : undefined; const formularzKroku = `konfigurator-${krok.id}-formularz`;
      const wybrane = wybor ? String(wartosci?.[wybor.pole.id] ?? wybor.pole.domyslna ?? '') : ''; %>

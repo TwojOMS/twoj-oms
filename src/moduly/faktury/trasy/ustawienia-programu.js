@@ -1,12 +1,12 @@
-// PRZ-121.02: Ustawienia → Integracje → Moduł faktur. Wybór modułu: Brak, inFakt, Fakturownia (wkrótce), TwojeFaktury
-// (wkrótce). Reguła, lista i zdania — domena/wybor-programu.js; zapis — oms/db/wybor-programu.js (wiersz
-// „program_fakturowy”, bez migracji).
+// Ustawienia → Integracje → Moduł faktur. Wybór modułu: Brak, inFakt, Fakturownia, TwojeFaktury (ta ostatnia
+// tylko za zgodą instalacji, bez niej „wkrótce”). Reguła, lista i zdania — domena/wybor-programu.js; zapis —
+// oms/db/wybor-programu.js (wiersz „program_fakturowy”, bez migracji).
 //
 // Dostęp: strażnik po prefiksie `/ustawienia` wpuszcza konto z uprawnieniem „ustawienia” — takie konto widzi ekran
 // tylko do odczytu. Zapis tylko admin (wyłączenie faktur dotyczy całej firmy). Wybór z pliku (OMS_PROGRAM_FAKTUROWY)
 // wygrywa: pola nieaktywne, zapis 409. Zmiana działa po ponownym uruchomieniu OMS-u (usługi składają się raz).
 // ⚠️ Klucz API nie trafia tu nigdy: ekran dostaje tylko informację, skąd klucz jest (plik / zapis / brak).
-// Nazwa programu fakturowego idzie przez `odmianaNazwyProgramu`/`ekranProgramu` (strażnik nazw PRZ-118.10).
+// Nazwa programu fakturowego idzie przez `odmianaNazwyProgramu`/`ekranProgramu` (strażnik nazwy programu fakturowego).
 import { odmianaNazwyProgramu, ekranProgramu } from '../../../domena/nazwa-programu.js';
 import { stronaOdmowy } from '../../../core/web/odmowa.js';
 import { EKRAN_FAKTUROWNI } from '../../../domena/konfiguracja-fakturownia.js';
@@ -19,7 +19,7 @@ import { PROG_UWAGI_KOPII_H } from '../../../domena/ostrzezenia.js';
 import { czyFakturaDlaKazdego, zapiszFakturaDlaKazdego, ZDANIE_KASA } from '../db/faktury-dla-kazdego.js';
 import { czyWysylacKonsumenckie } from '../db/ksef-konsumenckie.js';
 import { stanIntegracji, polaczeniaIntegracji } from '../../ustawienia/services/polaczenia-integracji.ts';
-// B16c/B16d: nośnik kopii ustawiony, ale kopia nie trafia na niego (zdania jak w tabelce ostrzeżeń, krócej).
+// Nośnik kopii ustawiony, ale kopia nie trafia na niego (zdania jak w tabelce ostrzeżeń, krócej).
 const UWAGI_NOSNIKA = {
   'brak-nosnika': 'Kopia poza dyskiem nie trafia na nośnik — podłącz nośnik kopii.',
   'ten-sam-dysk': 'Kopia poza dyskiem leży na dysku serwera — nośnik kopii nie jest zamontowany.',
@@ -53,7 +53,7 @@ export function zdanieOPrzelaczeniu(ile, gdzie) {
 
 const odmowaAdmina = (reply) => reply.code(403).view('brak-dostepu.ejs', { title: 'Brak dostępu', wlasnyUklad: true });
 
-// PRZ-121.06: przycisk „Uruchom OMS ponownie” (OMS_RESTART_Z_PANELU). `tak` — proces ma nadzorcę, który go podniesie
+// Przycisk „Uruchom OMS ponownie” (OMS_RESTART_Z_PANELU). `tak` — proces ma nadzorcę, który go podniesie
 // (Docker `restart: unless-stopped`): przycisk działa. `atrapa` (demo publiczne) — przycisk widoczny, nieaktywny.
 // Brak zmiennej albo inna wartość — bez przycisku (to nie błąd startu), zamiast niego zdanie z poleceniem.
 export const ZMIENNA_RESTARTU = 'OMS_RESTART_Z_PANELU';
@@ -94,7 +94,7 @@ export function registerUstawieniaProgramuRoutes(app, { db, wyborProgramu, konfi
       ? zdanieCzekaniaNaRestart(dziala, zapisany, { gotowy: wyborProgramu.gotowy?.() ?? true }) : null;
 
     const stanKlucza = k.atrapa ? 'niepotrzebny — działa atrapa piaskownicy' : k.zEnv ? 'w pliku konfiguracji' : k.kluczZapisany?.() ? 'zapisany w Ustawieniach' : 'nie wpisany';
-    // PRZ-119.07: Fakturownia — stan tokenu jednym zdaniem (bez wartości tokenu), te same trzy warianty co klucz inFaktu.
+    // Fakturownia — stan tokenu jednym zdaniem (bez wartości tokenu), te same trzy warianty co klucz inFaktu.
     const stanTokenu = !kf ? null : kf.atrapa ? 'niepotrzebny — działa atrapa piaskownicy' : kf.zEnv ? 'w pliku konfiguracji'
       : kf.tokenZapisany?.() ? 'zapisany w Ustawieniach' : 'jeszcze nie podany';
     const liczby = dziala.program === 'brak' ? {} : liczbaDokumentowWgProgramu(db);
@@ -117,7 +117,7 @@ export function registerUstawieniaProgramuRoutes(app, { db, wyborProgramu, konfi
         : m.id === 'twojefaktury' && zgoda ? 'OMS sam wystawia faktury i wysyła je do KSeF — token KSeF wpiszesz w Ustawienia → Integracje → KSeF (ten sam co do kosztów).' : (OPISY[m.id] ?? null),
       odnosnik: m.id === k.idModulu ? { adres: ekranProgramu(programKlucza), tekst: `Ustawienia ${nazwa.dopelniacz}` }
         : m.id === 'fakturownia' && kf ? { adres: EKRAN_FAKTUROWNI, tekst: `Ustawienia ${kf.nazwa.dopelniacz}` }
-        // PRZ-123.C04b: zgoda na wysyłkę do KSeF faktur TwojeFaktury (bez zgody instalacji — „wkrótce”, bez odnośnika).
+        // Zgoda na wysyłkę do KSeF faktur TwojeFaktury (bez zgody instalacji — „wkrótce”, bez odnośnika).
         : m.id === 'twojefaktury' && zgoda ? { adres: EKRAN_KSEF_SPRZEDAZY, tekst: 'Wysyłka do KSeF' } : null,
       kopia: m.id === 'twojefaktury' ? 'Faktury są tylko w bazie tego OMS-u. Kopia bazy musi trafiać poza ten dysk — instrukcja: Kopie zapasowe.' : null,
       ostrzezenie: m.id === 'twojefaktury' ? ostrzezenieKopii : m.id === 'brak' && ile > 0 ? zdanieOPrzelaczeniu(ile, gdzie) : null,
@@ -164,7 +164,7 @@ export function registerUstawieniaProgramuRoutes(app, { db, wyborProgramu, konfi
       reply.code(400);
       return widok(req, reply, { bledy: ['Nieprawidłowa wartość pola wystawiania faktur.'] });
     }
-    // PRZ-126 DRB: odmowa tylko przy WŁĄCZANIU — „Zapisz” bez zmian przy opcji już włączonej nie daje 400.
+    // Odmowa tylko przy WŁĄCZANIU — „Zapisz” bez zmian przy opcji już włączonej nie daje 400.
     if (wartosc === 'tak' && !czyFakturaDlaKazdego(db) && wyborProgramu.program === 'twojefaktury' && !czyWysylacKonsumenckie(db)) {
       reply.code(400);
       return widok(req, reply, { bledy: [BLAD_WLACZENIA_BEZ_KSEF] });
@@ -190,7 +190,7 @@ export function registerUstawieniaProgramuRoutes(app, { db, wyborProgramu, konfi
     return reply.code(303).redirect(`${EKRAN_WYBORU_PROGRAMU}?zapisano=zapisano`);
   });
 
-  // PRZ-121.06: ponowne uruchomienie OMS-u z panelu — tylko admin, tylko przy OMS_RESTART_Z_PANELU=tak (atrapa demo
+  // Ponowne uruchomienie OMS-u z panelu — tylko admin, tylko przy OMS_RESTART_Z_PANELU=tak (atrapa demo
   // i brak zmiennej: 404, nic się nie dzieje). Ochrona formularza (Origin) jak przy każdym POST panelu.
   app.post(ADRES_RESTARTU, async (req, reply) => {
     if (req.konto?.admin !== true) return odmowaAdmina(reply);

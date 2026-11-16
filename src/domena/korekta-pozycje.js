@@ -1,5 +1,5 @@
 import { grosze, zl } from './kwoty.js';
-// Nazwa pozycji dostawy na fakturze. Dawniej byla LITERALEM w `domain/pozycje-faktury.js`
+// Nazwa pozycji dostawy na fakturze. Dawniej byla LITERALEM w `domena/pozycje-faktury.js`
 // (`name: 'Dostawa'`); druga kopia rozjechalaby sie przy pierwszej zmianie i korekta
 // przestalaby rozpoznawac wlasna pozycje dostawy — po cichu. Eksportowana STAMTAD.
 import { NAZWA_DOSTAWY } from './pozycje-faktury.js';
@@ -9,32 +9,32 @@ import { powodOdmowyKorektyBezDostawy } from './zwrot.js';
 /**
  * Pary „stan przed / stan po" dla `POST /v3/async/corrective_invoices.json`.
  *
- * ⚠️⚠️ `services` W KOREKCIE TO PARY, A NIE LISTA ZWRACANYCH POZYCJI. Kazda pozycja
- * oryginalnej faktury musi wystapic — te nietkniete przepisujemy bez zmian.
+ * ⚠️⚠️ `services` W KOREKCIE TO PARY, A NIE LISTA ZWRACANYCH POZYCJI. Każda pozycja
+ * oryginalnej faktury musi wystąpić — te nietknięte przepisujemy bez zmian.
  *
  * ⚠️⚠️ PARA TO DWA WIERSZE, NIE JEDEN Z POLAMI `_before_correction`. Zmierzone na prawdziwej
- * korekcie tego konta (`1/KOR/07/2026`, 2026-08-14): dwa obiekty o tym samym `group`,
- * rozroznione flaga `correction` — `false` = stan PRZED, `true` = stan PO. Pol
+ * korekcie odczytanej z API: dwa obiekty o tym samym `group`,
+ * rozróżnione flagą `correction` — `false` = stan PRZED, `true` = stan PO. Pól
  * `quantity_before_correction` / `gross_price_before_correction` na encji NIE MA (jest
- * `sale_date_before_correction`, ale to inna sprawa — data sprzedazy, nie pozycja).
+ * `sale_date_before_correction`, ale to inna sprawa — data sprzedaży, nie pozycja).
  *
- * ⚠️ To pomiar ODCZYTU. Zapisu nikt jeszcze nie potwierdzil, a inFakt potrafi byc
- * asymetryczny. PIERWSZA PRAWDZIWA KOREKTA IDZIE POD NADZOREM WLASCICIELA i to ona
+ * ⚠️ To pomiar ODCZYTU. Zapisu nikt jeszcze nie potwierdził, a inFakt potrafi być
+ * asymetryczny. PIERWSZA PRAWDZIWA KOREKTA IDZIE POD NADZOREM CZŁOWIEKA i to ona
  * rozstrzyga ostatecznie.
  *
- * ⚠️⚠️ „PRZED" POCHODZI Z INFAKTU, NIE Z ZAMOWIENIA. Faktura mogla zostac poprawiona recznie
- * w inFakcie (inna cena, dopisana pozycja), a korekta odnoszaca sie do „przed", ktorego nigdy
- * nie bylo, jest dokumentem NIEPRAWDZIWYM — u organu i u nabywcy. Dlatego rozbieznosc
- * dostaje ODMOWE z nazwa pozycji, a nie ciche podstawienie.
+ * ⚠️⚠️ „PRZED" POCHODZI Z INFAKTU, NIE Z ZAMÓWIENIA. Faktura mogła zostać poprawiona ręcznie
+ * w inFakcie (inna cena, dopisana pozycja), a korekta odnosząca się do „przed”, którego nigdy
+ * nie było, jest dokumentem NIEPRAWDZIWYM — u organu i u nabywcy. Dlatego rozbieżność
+ * dostaje ODMOWĘ z nazwą pozycji, a nie ciche podstawienie.
  *
- * Modul jest CZYSTY (bazy ani sieci nie dotyka) i nigdy nie rzuca — kazda odmowa wraca
- * jako `{ services: null, blad }`, tak samo jak `parsujZwrot` w `domain/zwrot.js`.
+ * Moduł jest CZYSTY (bazy ani sieci nie dotyka) i nigdy nie rzuca — każda odmowa wraca
+ * jako `{ services: null, blad }`, tak samo jak `parsujZwrot` w `domena/zwrot.js`.
  *
- * `zwrot` to WIERSZ ODCZYTANY Z BAZY (db/zwroty.js: `zwrotyZamowienia`/`zwrot`), nie wynik
- * `parsujZwrot` — stad pola w snake_case (`kwota_dostawy`), a nie `kwotaDostawy`.
+ * `zwrot` to WIERSZ ODCZYTANY Z BAZY (oms/db/zwroty.js: `zwrotyZamowienia`/`zwrot`), nie wynik
+ * `parsujZwrot` — stąd pola w snake_case (`kwota_dostawy`), a nie `kwotaDostawy`.
  */
 export function paryKorekty(faktura, zwrot, { nazwaProgramu = NAZWA_ZAPASOWA } = {}) {
-  // PRZ-118.09: `nazwaProgramu` = odmiana nazwy programu fakturowego (domyślnie inFakt — domena/nazwa-programu.js).
+  // `nazwaProgramu` = odmiana nazwy programu fakturowego (domyślnie inFakt — domena/nazwa-programu.js).
   const odmowa = (blad) => ({ services: null, blad });
   const wProgramie = nazwaProgramu.miejscownik;
   const oryginalne = faktura?.services ?? [];
@@ -89,22 +89,22 @@ export function paryKorekty(faktura, zwrot, { nazwaProgramu = NAZWA_ZAPASOWA } =
   }
 
   const dostawaGr = zwrot?.kwota_dostawy ? grosze(zwrot.kwota_dostawy, 'zwrot dostawy') : 0;
-  // ⚠️ DOSTAWA MA DOSTAC TE SAMA ODMOWE, CO POZYCJA SPOZA FAKTURY (petla wyzej). Wczesniej
-  // pozycja nieznana na fakturze konczyla sie komunikatem, a zwrocona DOSTAWA przy fakturze
-  // bez linii „Dostawa" — NICZYM: `blad: null` i korekta bez tych pieniedzy. Raport zdejmuje
-  // kwote dostawy zawsze, wiec panel i dokument u organu rozjezdzaly sie po cichu, dokladnie
-  // o te 19 zl. Faktura bez linii dostawy zdarza sie normalnie: darmowa wysylka, dostawa
-  // wliczona w cene, dokument poprawiony recznie w inFakcie.
-  // PRZ-148.03: reguła i zdanie w domenie zwrotu — te same czyta karta zamówienia i ekran zwrotu.
+  // ⚠️ DOSTAWA MA DOSTAĆ TĘ SAMĄ ODMOWĘ, CO POZYCJA SPOZA FAKTURY (pętla wyżej). Bez niej
+  // pozycja nieznana na fakturze kończyłaby się komunikatem, a zwrócona DOSTAWA przy fakturze
+  // bez linii „Dostawa” — NICZYM: `blad: null` i korekta bez tych pieniędzy. Raport zdejmuje
+  // kwotę dostawy zawsze, więc panel i dokument u organu rozjechałyby się po cichu, dokładnie
+  // o kwotę dostawy. Faktura bez linii dostawy zdarza się normalnie: darmowa wysyłka, dostawa
+  // wliczona w cenę, dokument poprawiony ręcznie w inFakcie.
+  // Reguła i zdanie w domenie zwrotu — te same czyta karta zamówienia i ekran zwrotu.
   const bezDostawy = powodOdmowyKorektyBezDostawy(zwrot, faktura, { nazwa: nazwaProgramu });
   if (bezDostawy) return odmowa(bezDostawy);
 
-  // ⚠️⚠️ DWA ZRODLA DLA JEDNEJ LINII — ODMOWA, A NIE CICHE NADPISANIE (recenzja kontrolna
-  // 2026-08-15). Zwracana POZYCJA moze nazywac sie dokladnie „Dostawa" (bo tak nazywa sie
-  // pozycja faktury, a operator zaznaczyl ja w tabeli zwrotu) i JEDNOCZESNIE moze byc wpisana
-  // kwota zwrotu dostawy. Petla nizej liczyla wtedy `bruttoPo` z pozycji, po czym galaz dostawy
-  // liczyla je OD NOWA (`bruttoPrzed - dostawaGr`) i NADPISYWALA tamten wynik — kwota na
-  // dokumencie u organu rozjezdzala sie z kwota zwrotu w panelu PO CICHU.
+  // ⚠️⚠️ DWA ŹRÓDŁA DLA JEDNEJ LINII — ODMOWA, A NIE CICHE NADPISANIE. Zwracana POZYCJA
+  // może nazywać się dokładnie „Dostawa” (bo tak nazywa się
+  // pozycja faktury, a operator zaznaczył ją w tabeli zwrotu) i JEDNOCZEŚNIE może być wpisana
+  // kwota zwrotu dostawy. Pętla niżej policzyłaby wtedy `bruttoPo` z pozycji, po czym gałąź dostawy
+  // policzyłaby je OD NOWA (`bruttoPrzed - dostawaGr`) i NADPISAŁA tamten wynik — kwota na
+  // dokumencie u organu rozjechałaby się z kwotą zwrotu w panelu PO CICHU.
   //
   // ⚠️ ODMOWA, NIE SUMOWANIE, i to jest ten sam wybor, co przy zdublowanej nazwie wyzej:
   // zsumowanie zgadywaloby, czy to sa TE SAME pieniadze wpisane dwa razy (wtedy suma podwaja
@@ -112,14 +112,14 @@ export function paryKorekty(faktura, zwrot, { nazwaProgramu = NAZWA_ZAPASOWA } =
   // kwote dokumentu widocznego u nabywcy i u organu. Wyjscie dla czlowieka jest proste:
   // zostawic kwote dostawy w JEDNYM z dwoch pol.
   if (dostawaGr && zwracane.has(NAZWA_DOSTAWY)) {
-    // ⚠️⚠️ DROBIAZG 2 (recenzja 2026-08-15): RADA MUSI BYC WYKONALNA. Stalo tu „Zapisz zwrot
-    // jeszcze raz" bez wzgledu na stan zwrotu — a to jest krok DWUETAPOWY (skasuj, potem
-    // zapisz od nowa: modul nie umie EDYTOWAC istniejacego zwrotu, tylko dopisac nowy albo
-    // usunac stary), ktorego pierwszy etap `usunZwrot` (db/zwroty.js) ODMAWIA, gdy pieniadze
-    // za TEN zwrot juz wyszly do kupujacego (`powodOdmowyUsunieciaZwrotu`, domain/zwrot.js).
-    // Rada byla wiec radą NIEWYKONALNĄ dokładnie wtedy, gdy jest najpilniejsza — po oddaniu
-    // pieniędzy. `zwrot` tutaj to wiersz ODCZYTANY Z BAZY (docblock modulu wyzej), wiec
-    // `pieniadze_oddane_at` jest na nim dostepne bez dodatkowego zapytania.
+    // ⚠️⚠️ RADA MUSI BYĆ WYKONALNA. „Zapisz zwrot jeszcze raz” bez względu na stan zwrotu
+    // to krok DWUETAPOWY (skasuj, potem
+    // zapisz od nowa: moduł nie umie EDYTOWAĆ istniejącego zwrotu, tylko dopisać nowy albo
+    // usunąć stary), którego pierwszy etap `usunZwrot` (oms/db/zwroty.js) ODMAWIA, gdy pieniądze
+    // za TEN zwrot już wyszły do kupującego (`powodOdmowyUsunieciaZwrotu`, domena/zwrot.js).
+    // Taka rada byłaby NIEWYKONALNA dokładnie wtedy, gdy jest najpilniejsza — po oddaniu
+    // pieniędzy. `zwrot` tutaj to wiersz ODCZYTANY Z BAZY (docblock modułu wyżej), więc
+    // `pieniadze_oddane_at` jest na nim dostępne bez dodatkowego zapytania.
     const naprawa = zwrot?.pieniadze_oddane_at
       ? 'Pieniądze za ten zwrot zostały już oddane kupującemu, więc panel go nie skasuje —'
         + ` wystaw korektę ręcznie w ${wProgramie} i wpisz zwrot dostawy tylko RAZ, tą kwotą, która`

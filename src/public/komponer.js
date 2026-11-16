@@ -74,8 +74,7 @@
     decline: '✖ Odmowa',
   };
 
-  // Tryby, które w ogóle wolno odłożyć do rana — lustro `KIND_ODRACZALNE` z
-  // `routes/zaplanowane.js`. Projekt, proforma i odmowa muszą wyjść wtedy, gdy operator je
+  // Tryby, które w ogóle wolno odłożyć do rana — lustro reguły serwera. Projekt, proforma i odmowa muszą wyjść wtedy, gdy operator je
   // zatwierdza, a nie osiem godzin później, gdy stan po drugiej stronie bywa już inny.
   // ⚠️ To jest WYGODA, nie zabezpieczenie: rozstrzyga trasa, która odmawia z komunikatem.
   var ODRACZALNE = ['reply', 'quote'];
@@ -94,9 +93,8 @@
     return i === -1 ? '' : String(nazwa).slice(i + 1).toLowerCase();
   }
 
-  // Lustro reguł z src/domain/zalaczniki.js. ⚠️ To jest WYGODA, nie zabezpieczenie —
-  // rozstrzyga serwer (sprawdzKomplet w routes/reply.js). Wartości (lista rozszerzeń,
-  // limit) przychodzą z tamtego modułu przez atrybuty `data-`, więc nie ma dwóch list.
+  // Lustro reguł serwera o załącznikach. ⚠️ To jest WYGODA, nie zabezpieczenie — rozstrzyga
+  // serwer. Lista rozszerzeń i limit przychodzą atrybutami `data-rozszerzenia` i `data-limit`, więc nie ma drugiej listy.
   function zly(plik) {
     var ext = rozszerzenie(plik.name);
     if (!ext) return 'brak rozszerzenia';
@@ -255,7 +253,7 @@
       || Boolean(TRYBY[poleKind.value]);
   }
 
-  // ⚠️ Przycisk pokazuje się TYLKO wtedy, gdy jest co czyścić (decyzja właściciela, 19.08.2026);
+  // ⚠️ Przycisk pokazuje się TYLKO wtedy, gdy jest co czyścić;
   // przy pustym komponerze znika razem z paskiem. Wcześniej wisiał zawsze przy ustawionym
   // trybie i kasował WYŁĄCZNIE etykietę trybu — nie temat, nie treść, nie załączniki —
   // więc jego nazwa obiecywała coś, czego nie robił.
@@ -461,7 +459,7 @@
     poleTresc.focus();
   });
 
-  // ⚠️ KOPIOWANIE ŚCIEŻKI WYPROWADZONE DO `public/kopiuj.js` (19.08.2026). Stało tutaj
+  // ⚠️ KOPIOWANIA ŚCIEŻKI NIE WSTAWIAĆ DO KOMPONERA. Stało tutaj
   // i było martwe z dwóch niezależnych powodów naraz: wychodziło na `!navigator.clipboard`
   // (którego panel po HTTP w LAN-ie nie ma), a całe to IIFE i tak kończy się na `!form`
   // wcześniej, więc na stronie bez komponera nie podpinało się w ogóle. Nie wracać tu z tym.
@@ -578,8 +576,8 @@
    * o świcie TEGO SAMEGO dnia.
    *
    * ⚠️ ŻADNYCH STREF PO TEJ STRONIE. Liczymy z zegara laptopa, który chodzi w czasie
-   * warszawskim; przeliczenia Warszawa↔UTC mieszkają wyłącznie na serwerze
-   * (`src/domain/pora-wysylki.js`), bo tam kontener stoi w UTC.
+   * warszawskim; przeliczenia Warszawa↔UTC mieszkają wyłącznie na serwerze,
+   * bo tam kontener stoi w UTC.
    *
    * ⚠️ TO JEST DECYZJA WIDOKU, nigdy reguła. Serwer przyjmuje zaplanowanie o KAŻDEJ porze
    * i nie wolno tego zmienić — okno to wygoda operatora, nie zabezpieczenie.

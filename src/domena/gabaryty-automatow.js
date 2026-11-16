@@ -3,7 +3,7 @@ import { profilGabarytuAllegro, parsujGabarytAllegro } from './gabaryty-allegro.
 import { METODY_WZA } from './allegro-wysylka.js';
 import { odczytajSzablony } from './szablony-paczek.js';
 
-// PRZ-152.G11: domyślny gabaryt i waga dla paczkomatu InPost i automatów przez Allegro.
+// Domyślny gabaryt i waga dla paczkomatu InPost i automatów przez Allegro.
 //
 // JEDNO MIEJSCE dla karty nadania i nadania hurtem — `propozycjaAutomatu`. To tylko wartość
 // STARTOWA formularza: walidacja przy nadaniu zostaje w `parsujPaczkeInpost`/`parsujGabarytAllegro`,

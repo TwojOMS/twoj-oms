@@ -1,6 +1,6 @@
 import { KLUCZ_USTAWIEN, odczytajSzablony } from '../../domena/szablony-wiadomosci.js';
 
-// Szablony wiadomości (PRZ-101.03) — jeden wiersz tabeli `ustawienia` (klucz `szablony.wiadomosci`, JSON),
+// Szablony wiadomości — jeden wiersz tabeli `ustawienia` (klucz `szablony.wiadomosci`, JSON),
 // bez migracji. Reguły zapisu w domena/szablony-wiadomosci.js; tu tylko odczyt i zapis.
 //
 // Rozmiar: 30 szablonów własnych + 4 wbudowane po najwyżej 4000 znaków treści i 200 tematu ≈ 140 KB w najgorszym

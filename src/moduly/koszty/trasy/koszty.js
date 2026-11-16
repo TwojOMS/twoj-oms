@@ -14,7 +14,7 @@ import { uslugaKsefDostepna, powodNiedostepnosciKsef } from '../../../domena/kon
 import { createZestawienieKosztow } from '../services/zestawienie-kosztow.js';
 import { stronaOdmowy } from '../../../core/web/odmowa.js';
 
-// PRZ-152.G13k1: odmowa trasy wołanej linkiem albo formularzem — strona w układzie OMS z paskiem uwagi
+// Odmowa trasy wołanej linkiem albo formularzem — strona w układzie OMS z paskiem uwagi
 // i powrotem na listę kosztów (status i tekst bez zmian). Miesiąc powrotu przechodzi już przez `miesiacPowrotu`.
 const NAPIS_WROC = 'Wróć do kosztów';
 const odmowaKosztow = (reply, status, komunikat, tytul, wroc = '/koszty') =>
@@ -23,7 +23,7 @@ const listaMiesiaca = (miesiac) => `/koszty?miesiac=${encodeURIComponent(miesiac
 
 // Zakladka KOSZTY. Trasa jest CIENKA: parsuje zadanie, wola domene, renderuje — dokladnie
 // jak siostrzana zakladka FAKTURY (routes/faktury.js). Reguly widoku miesiaca stoja
-// w domain/lista-kosztow.js, zapytania w db/koszty.js, pobieranie w services/czuwacz-kosztow.js.
+// w domena/lista-kosztow.js, zapytania w db/koszty.js, pobieranie w services/czuwacz-kosztow.js.
 //
 // ⚠️ TEN MODUL NICZEGO NIE LICZY I NICZEGO NIE WYSYLA. Kwoty przychodza z `zlozWidok` juz
 // policzone (na groszach, calkowitych), a jedyne wywolanie „na zewnatrz" to `przebieg`
@@ -32,7 +32,7 @@ const listaMiesiaca = (miesiac) => `/koszty?miesiac=${encodeURIComponent(miesiac
 // ⚠️ BIALA LISTA TYPOW, mimo `CHECK`-a w schema.sql. Bez niej nieznana wartosc z formularza
 // dolatuje do bazy i wraca do operatora jako „SqliteError: CHECK constraint failed" —
 // komunikat prawdziwy i bezuzyteczny (ta sama zasada, co przy `RODZAJE_PDF` w routes/faktury.js).
-// ⚠️ LISTA JEST JEDNA NA CALY PANEL (domain/typy-kosztow.js) — druga kopia tutaj rozjechalaby
+// ⚠️ LISTA JEST JEDNA NA CALY PANEL (domena/typy-kosztow.js) — druga kopia tutaj rozjechalaby
 // sie z `CHECK`-iem w bazie przy pierwszym dolozeniu typu.
 const TYPY = TYPY_KOSZTU;
 
@@ -65,10 +65,10 @@ function opisPrzebiegu(wynik) {
 }
 
 // ⚠️ PACZKA Z DOKUMENTAMI (`GET /faktury/paczka`, zakladka FAKTURY) NIE MA NA TEJ ZAKLADCE
-// ODNOSNIKA — zdjety 14.09.2026 decyzja „jedno wejscie do PDF”. Zamiast niego stoi
-// `GET /koszty/zestawienie` (PRZ-086, na zyczenie wlasciciela 15.10): sama LISTA kosztow miesiaca
-// w dwoch osobnych czesciach — z KSeF i dopisane recznie. Czyta wylacznie baze (zadnego KSeF,
-// zadnego inFaktu), wiec dziala takze w panelu bez sekcji KSEF_* i nie potrzebuje `paczkaDlaBiura`.
+// ODNOŚNIKA — reguła „jedno wejście do PDF”. Zamiast niego stoi `GET /koszty/zestawienie`:
+// sama LISTA kosztów miesiąca w dwóch osobnych częściach — z KSeF i dopisane ręcznie. Czyta
+// wyłącznie bazę (żadnego KSeF, żadnego programu fakturowego), więc działa także w panelu bez
+// sekcji KSEF_* i nie potrzebuje `paczkaDlaBiura`.
 export function zarejestrujTrasyKosztow(app, {
   db, czuwaczKosztow = null, wizualizacjaKosztu = null, paczkaDlaBiura = null,
   zestawienieKosztow = createZestawienieKosztow({ db }),
@@ -103,7 +103,7 @@ export function zarejestrujTrasyKosztow(app, {
       // w bazie dalej sie oglada, tylko nie ma czym go odswiezyc — i przycisk ma tego
       // nie obiecywac.
       mozliwyOdswiez: uslugaKsefDostepna(czuwaczKosztow),
-      // PRZ-108.10 (recenzja): token z ekranu jest, NIP-u firmy brak — ekran mówi to wprost zamiast „nie ma KSeF”.
+      // Token z ekranu jest, NIP-u firmy brak — ekran mówi to wprost zamiast „nie ma KSeF”.
       powodBrakuKsef: powodNiedostepnosciKsef(czuwaczKosztow),
       // Przycisk „PDF" ma sie pokazac WYLACZNIE wtedy, gdy jest skad wziac XML — panel bez
       // sekcji KSEF_* dalej oglada lustro w bazie, ale wizualizacji nie ma z czego narysowac
@@ -123,7 +123,7 @@ export function zarejestrujTrasyKosztow(app, {
     try {
       return ekran(reply, miesiac);
     } catch (e) {
-      // ⚠️ `kosztyMiesiaca` RZUCA na miesiacu w zlym formacie i ma rzucac (db/koszty.js, W2):
+      // ⚠️ `kosztyMiesiaca` RZUCA na miesiacu w zlym formacie i ma rzucac (db/koszty.js):
       // pusta lista znaczylaby „w tym miesiacu nie bylo kosztow", czyli falsz, ktorego nikt
       // nie ma jak zakwestionowac. Trasa zamienia to na zdanie dla czlowieka — literowka
       // w adresie nie ma prawa dac piecsetki. Blad TECHNICZNY leci dalej, do logu.
@@ -151,15 +151,15 @@ export function zarejestrujTrasyKosztow(app, {
       .send(wynik.bajty);
   });
 
-  // ⚠️⚠️ WIZUALIZACJA POBIERA XML Z KSeF NA ZADANIE, A NIE Z ARCHIWUM. Archiwum na produkcji
-  // jest DZIS WYLACZONE (`KSEF_ARCHIWUM` nieustawione), wiec trasa oparta o `sciezka_pdf`
-  // w bazie oddawalaby 404 na kazdym dokumencie — czyli przycisk widoczny i nieczynny.
-  // Ta trasa dziala NIEZALEZNIE od tego, czy cokolwiek lezy na NAS-ie.
+  // ⚠️⚠️ WIZUALIZACJA POBIERA XML Z KSeF NA ŻĄDANIE, A NIE Z ARCHIWUM. Archiwum jest
+  // OPCJONALNE (`KSEF_ARCHIWUM` bywa nieustawione), więc trasa oparta o `sciezka_pdf`
+  // w bazie oddawałaby wtedy 404 na każdym dokumencie — czyli przycisk widoczny i nieczynny.
+  // Ta trasa działa NIEZALEŻNIE od tego, czy cokolwiek leży w archiwum na dysku.
   //
   // ⚠️ TRASA NICZEGO NIE RYSUJE I NICZEGO NIE LICZY: sklada to `services/wizualizacja-kosztu.js`
-  // (pobranie XML-a), `domain/koszt-xml.js` (pozycje) i `pdf/koszt-pdf.js` (rysunek).
+  // (pobranie XML-a), `domena/koszt-xml.js` (pozycje) i `pdf/koszt-pdf.js` (rysunek).
   app.get('/koszty/:ksefNumber/pdf', async (req, reply) => {
-    // PRZ-102.22: usługa z modułu odpowiada przy każdym żądaniu (token z Ustawień, bez restartu).
+    // Usługa z modułu odpowiada przy każdym żądaniu (token z Ustawień, bez restartu).
     if (!uslugaKsefDostepna(wizualizacjaKosztu)) {
       return odmowaKosztow(reply, 503, powodNiedostepnosciKsef(wizualizacjaKosztu) ?? 'Panel nie ma podpiętego KSeF — nie ma skąd pobrać dokumentu.', 'Nie da się pobrać dokumentu');
     }
@@ -182,9 +182,9 @@ export function zarejestrujTrasyKosztow(app, {
     const { nip, kategoria, typ } = req.body ?? {};
     const miesiac = miesiacPowrotu(req.body?.miesiac);
     const nazwa = String(kategoria ?? '').trim();
-    // ⚠️ DOKUMENT ZAMIAST NIP-U, gdy NIP-u nie ma (2026-08-13). Google, Meta czy Anthropic nie
-    // maja polskiego NIP-u, a mapa kategorii jest nim KLUCZOWANA — bez tej galezi ich faktury
-    // zostawaly by w pasie „bez kategorii" na zawsze. To ten SAM formularz i ta sama nazwa
+    // ⚠️ DOKUMENT ZAMIAST NIP-U, gdy NIP-u nie ma. Zagraniczni dostawcy (np. platformy reklamowe)
+    // nie mają polskiego NIP-u, a mapa kategorii jest nim KLUCZOWANA — bez tej gałęzi ich faktury
+    // zostawałyby w pasie „bez kategorii" na zawsze. To ten SAM formularz i ta sama nazwa
     // kategorii; rozne jest wylacznie to, do czego decyzja sie przypina.
     const dokument = String(req.body?.ksefNumber ?? '').trim();
     if ((!nip && !dokument) || !nazwa || !TYPY.includes(typ)) {
@@ -211,7 +211,7 @@ export function zarejestrujTrasyKosztow(app, {
   // zrobilby NIC i wygladalby na zepsuty.
   //
   // ⚠️ TA TRASA NIE MA WLASNEGO LIMITU CZASU i nie ma go dostac. Pelne logowanie do KSeF
-  // potrafi trwac ~31 minut, a panel celowo stoi na `requestTimeout: 0` (web/server.js).
+  // potrafi trwać ~31 minut, a panel celowo stoi na `requestTimeout: 0` (core/aplikacja.ts).
   app.post('/koszty/odswiez', async (req, reply) => {
     const miesiac = miesiacPowrotu(req.body?.miesiac);
     if (!uslugaKsefDostepna(czuwaczKosztow)) {
@@ -229,8 +229,8 @@ export function zarejestrujTrasyKosztow(app, {
       // swiadome. Czuwacz zapisuje DOKLADNIE ten sam napis do `stan_kosztow.ostatni_blad`
       // (services/czuwacz-kosztow.js), a pas stanu tej zakladki go pokazuje; filtrowanie go
       // tutaj dawaloby dwa rozne zdania o jednej awarii na jednym ekranie. Poswiadczen ten
-      // napis nie niesie: klient KSeF trzyma tokeny w naglowkach, nie w komunikatach
-      // (niezmiennik 4.10).
+      // napis nie niesie: klient KSeF trzyma tokeny w nagłówku `Authorization`, nie
+      // w komunikatach błędów (reguła: sekrety nie wychodzą).
       komunikat = { zle: true, tresc: e.message };
     }
     try {
@@ -241,9 +241,9 @@ export function zarejestrujTrasyKosztow(app, {
     }
   });
 
-  // ⚠️⚠️ RECZNE FAKTURY KOSZTOWE (2026-08-13) — koszty, ktorych w KSeF NIE MA I NIE BEDZIE:
-  // Facebook, Google, Anthropic, zakupy zagraniczne, paragony. Trasy sa CIENKIE jak reszta
-  // tego pliku: co jest kosztem, rozstrzyga `naWierszReczny` (domain/koszt-reczny.js), a co
+  // ⚠️⚠️ RĘCZNE FAKTURY KOSZTOWE — koszty, których w KSeF NIE MA I NIE BĘDZIE: zagraniczne
+  // platformy reklamowe i usługi, zakupy zagraniczne, paragony. Trasy są CIENKIE jak reszta
+  // tego pliku: co jest kosztem, rozstrzyga `naWierszReczny` (domena/koszt-reczny.js), a co
   // wolno ruszyc — `zapiszRecznyKoszt` / `zaktualizujRecznyKoszt` / `usunRecznyKoszt`
   // (db/koszty.js). Tutaj zostaje wylacznie parsowanie zadania i wybor ekranu powrotu.
   //

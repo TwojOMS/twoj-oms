@@ -1,15 +1,14 @@
-// CZUWACZ OSTRZEŻEŃ (2026-08-29) — osobny zegar godzinowy piszący LUSTRA dla tabelki
-// ostrzeżeń strony głównej (spec docs/superpowers/specs/2026-08-29-oms-ostrzezenia-
-// strona-glowna-design.md, przewodnik 4.72). Strona główna nie dotyka sieci — sieć jest
-// tutaj.
+// CZUWACZ OSTRZEŻEŃ — osobny zegar godzinowy piszący LUSTRA dla tabelki ostrzeżeń strony głównej
+// (reguła „ostrzeżenia z luster”: tabelka czyta tylko lustra zapisane przez ten czuwacz). Strona główna
+// nie dotyka sieci — sieć jest tutaj.
 //
 // ⚠️⚠️ DLACZEGO OSOBNY ZEGAR, a nie kolejny krok czuwacza KSeF (wzorzec `zweryfikujPliki`):
 // ARYTMETYKA BUDŻETU. Najgorszy przebieg czuwacza KSeF to 54:10 (50×60 s + 50×5 s);
 // krok luk dokładał 5:00 (59:10 — mieściło się o włos), a krok terminów dokłada kolejne
 // 11:00 (pełna paginacja pasa długów do globalnego sufitu klienta) — razem 70:10 > 60:00,
-// więc strażnik w bootstrapie słusznie położyłby panel przy starcie. Luster będzie
+// więc strażnik startu w zdrowie/modul.ts słusznie położyłby panel przy starcie. Luster będzie
 // przybywać razem z typami ostrzeżeń, więc dostają własny zegar z własnym budżetem
-// (dziś 16:00 z zapasem 44 min) i własnym wpisem w pulsie /health.
+// (dla inFaktu 16:00 z zapasem 44 min) i własnym wpisem w pulsie /health.
 //
 // Dwa kroki, IZOLOWANE: awaria jednego lustra nie zabiera drugiego, ale przebieg kończy
 // się wtedy błędem — puls zgłosi „ostatni przebieg zakończył się błędem", czyli wiersz
@@ -24,13 +23,13 @@ import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 const teraz = () => new Date().toISOString();
 
 // Okno odczytu luk: od pierwszego dnia POPRZEDNIEGO miesiąca do dziś (zakładka faktur
-// jest miesięczna, a wysyłanie dokumentów z zeszłego miesiąca to zwykły tryb właściciela).
+// jest miesięczna, a wysyłanie dokumentów z zeszłego miesiąca to zwykły tryb pracy).
 // Sufit 20 stron = 200 dokumentów w oknie. ⚠️ POLICZONE, NIE ZAOKRĄGLONE: pełne dwa
-// miesiące to dziś ~122 dokumenty (lipiec 64 — pomiar 06.08, sierpień 58 — stan 28.08;
-// sonda 29.08 potwierdziła 122), więc sufit 12 odmawiałby OD PIERWSZEGO PRZEBIEGU.
+// miesiące to przy średnim ruchu rząd 120 dokumentów, więc sufit 12 stron (też 120 dokumentów)
+// odmawiałby OD PIERWSZEGO PRZEBIEGU.
 // Przekroczenie to głośna ODMOWA klienta (błąd przebiegu → puls → `integracja`), nigdy
 // cicha część wyniku. Gdy sprzedaż urośnie: podnieść sufit — budżet niżej przeliczy się
-// sam, a strażnik w bootstrapie pilnuje sumy.
+// sam, a strażnik startu w zdrowie/modul.ts pilnuje sumy.
 export const SUFIT_STRON_LUK = 20;
 
 // Ile SEKWENCYJNYCH tur żądań kosztuje paginacja przy danym sufcie stron: pierwsza
@@ -39,7 +38,7 @@ const tury = (sufitStron, rownolegle) => 1 + Math.ceil((sufitStron - 1) / rownol
 
 // Krok terminów jedzie listą nieopłaconych (fakturyWidok.nieoplacone) — ta paginuje do
 // sufitu `limity.sufitStron` programu (dla inFaktu: 60 stron = 600 dokumentów).
-// PRZ-118.08: ta sama arytmetyka z limitów programu fakturowego (`opis.limity`, core/kontrakty.ts) — czuwacz wystawia
+// Ta sama arytmetyka z limitów programu fakturowego (`opis.limity`, core/kontrakty.ts) — czuwacz wystawia
 // budżet programu, który naprawdę za nim stoi.
 export function limitKrokuLukMs(limity) {
   return tury(SUFIT_STRON_LUK, limity.rownolegleStron) * limity.zadanieMs;
@@ -61,7 +60,7 @@ export function oknoLukKsef(dzis) {
   return { od, do: dzis };
 }
 
-// PRZ-118.08: listę dokumentów daje PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`).
+// Listę dokumentów daje PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`).
 export function createCzuwaczOstrzezen({ db, program: programPodany = null, infakt = null, fakturyWidok = null }) {
   const program = zProgramu({ program: programPodany, infakt });
   // ⚠️ JEDEN PRZEBIEG NARAZ — ten sam strażnik, co w pollerze i czuwaczu KSeF, i z tego
@@ -84,7 +83,7 @@ export function createCzuwaczOstrzezen({ db, program: programPodany = null, infa
    * Lustro „dokumentów, które WOLNO wysłać do KSeF, a nikt nie wysłał". Zakres liczy
    * `coWolnoWyslac` — DOKŁADNIE ta sama bariera, co pola wyboru na /faktury (rodzaj vat,
    * brak numeru KSeF, brak rezerwacji panelu) — nigdy własna kopia. B2C domyślnie poza lukami;
-   * po włączeniu przez właściciela trafia do lustra i `ostrzezeniaFaktur` przy kolejnym przebiegu.
+   * po włączeniu wysyłki B2C trafia do lustra i `ostrzezeniaFaktur` przy kolejnym przebiegu.
    *
    * ⚠️ `ksefZleconaAt` DOKLEJAMY Z `wysylki_ksef` przed barierą, tak samo jak robi to
    * services/faktury-widok.js: świeżo pobrana lista jest przez ~70 s ślepa na wysyłkę

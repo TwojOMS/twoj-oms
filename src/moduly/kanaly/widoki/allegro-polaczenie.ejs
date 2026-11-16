@@ -3,8 +3,8 @@
 <p><a href="/ustawienia/integracje">← Moje połączenia</a></p>
 <% if (blad) { %><div class="pas-blad" role="alert"><p><%= blad %></p></div><% } %>
 <% if (komunikat) { %><div class="pas-potwierdzenie" role="status"><p><%= komunikat %></p></div><% } %>
-<%# U25: steper tylko w kreatorze; działające konto (krok 5) pokazuje stan. %>
-<%# PRZ-146.03 (B5/B6): szkic, który nigdy nie był połączony — bez sekcji Połączenie, Nazwa i Odłączenie; zamiast nich „Przerwij podłączanie”. %>
+<%# Steper tylko w kreatorze; działające konto (krok 5) pokazuje stan. %>
+<%# Szkic, który nigdy nie był połączony — bez sekcji Połączenie, Nazwa i Odłączenie; zamiast nich „Przerwij podłączanie”. %>
 <% const szkic = numerKroku !== 5 && k.zrodlo === 'panel' && !k.kontoId && (k.autoryzacja === 'brak' || k.autoryzacja === 'oczekuje_potwierdzenia') && historia === 0; %>
 <% const krok1 = szkic && k.autoryzacja === 'brak' ? adres + '/krok-1' : null; %>
 <% if (numerKroku !== 5) { %><%- include('../../../core/web/konfigurator/kroki-konfiguratora.ejs',{kroki: kroki.map(x => x.numer === 1 && krok1 ? {...x, href: krok1} : x)}) %><% } %>
@@ -21,7 +21,7 @@
     <input type="hidden" name="potwierdz" value="tak">
     <p>Podłączasz konto Allegro <strong><%= kandydat.login %></strong> (ID <%= kandydat.kontoId %>), środowisko <%= k.srodowisko === 'sandbox' ? 'Sandbox' : 'sprzedażowe' %>.</p>
     <% if (k.zrodlo === 'panel' && k.autoryzacja === 'polaczone') { %>
-    <%# PRZ-160 E3d.01: ponowna zgoda tego samego konta wymienia tylko dane dostępu. %>
+    <%# Ponowna zgoda tego samego konta wymienia tylko dane dostępu. %>
     <input type="hidden" name="pobieraj" value="nie">
     <p>To samo konto co dotychczas — OMS zapisze tylko nowe dane dostępu. Pobieranie zamówień, data startu i ustawienia zostają bez zmian.</p>
     <button class="btn btn--glowny" type="submit">Zapisz nową zgodę</button>
@@ -31,7 +31,7 @@
     <button class="btn btn--glowny" type="submit">Podłącz konto</button>
     <% } %>
   </form>
-<%# PRZ-148.06 (5): formularz /aktywuj w karcie kroku 4. %>
+<%# Formularz /aktywuj w karcie kroku 4. %>
 </section>
 <% } else if (numerKroku === 5) { %>
 <%- include('allegro-stan.ejs') %>
@@ -72,7 +72,7 @@
   <p>Odłączenie zatrzyma cały dostęp tego kanału do Allegro i usunie aktywne poświadczenia z OMS. Zachowasz <%= historia %> zamówień i ich historię. Zgoda w Allegro pozostanie do odwołania w ustawieniach konta Allegro.</p>
   <form method="post" action="<%= adres %>/odlacz"><input type="hidden" name="wersja" value="<%= k.wersja %>"><p><label><input type="checkbox" name="potwierdz" value="tak" required> Chcę odłączyć to konto</label></p><button class="btn btn--maly btn--groza" type="submit">Odłącz konto</button></form>
 </section>
-<%# B9: bez JS zostaje „required” na polu wyboru; z JS przycisk jest nieaktywny do zaznaczenia. %>
+<%# Bez JS zostaje „required” na polu wyboru; z JS przycisk jest nieaktywny do zaznaczenia. %>
 <script>(function(){var f=document.querySelector('.allegro-konfiguracja form[action$="/odlacz"]');if(!f)return;var c=f.querySelector('input[name="potwierdz"]'),b=f.querySelector('button[type="submit"]');if(!c||!b)return;var u=function(){b.disabled=!c.checked;};c.addEventListener('change',u);u();})();</script>
 <% } %>
 </div>

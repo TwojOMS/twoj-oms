@@ -3,7 +3,7 @@
 <%# zmienic sie wtedy, a nie przy wczytywaniu strony. %>
 <%# %>
 <%# ⚠️ SKRYPT NIE ZNA ZADNEJ KWOTY. Mapa metoda → kwota jedzie z SERWERA, z tej samej %>
-<%# funkcji, ktora wypelnila pole (domain/ustawienia-panelu.js: kwotyDostawy). Druga kopia %>
+<%# funkcji, ktora wypelnila pole (domena/ustawienia-panelu.js: kwotyDostawy). Druga kopia %>
 <%# liczb w JS bylaby dokladnie tym bledem, przed ktorym broni sie podglad sumy — tam plik %>
 <%# przegladarki i parser serwera sa PORÓWNYWANE testem, wlasnie dlatego, ze rozjazd dwoch %>
 <%# implementacji tej samej reguly jest cichy. %>
@@ -16,7 +16,7 @@
 <%# ⚠️ W KOMENTARZU EJS NIE WOLNO WPISAC OTWIERAJACEGO ZNACZNIKA SZABLONU, nawet %>
 <%# w cudzyslowie. Skaner EJS rozpoznaje znaczniki PRZED trybami, wiec taki napis konczy %>
 <%# komentarz w polowie zdania i strona pada na „Could not find matching close tag" — %>
-<%# sprawdzone na tym pliku 17.08.2026, 500 na CALYM ekranie zakladania zamowienia. %>
+<%# sprawdzone na tym pliku: 500 na CAŁYM ekranie zakładania zamówienia. %>
 <script type="application/json" id="kwoty-dostawy"><%- JSON.stringify(kwotyDostawy) %></script>
 <script>
   (function () {

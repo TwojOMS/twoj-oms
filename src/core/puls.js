@@ -6,7 +6,7 @@
 // DRUGIM zrodlem prawdy obok bazy — i pierwszym miejscem, w ktorym oba klamia inaczej.
 //
 // ⚠️ PAMIEC PROCESU, I TO JEST WLASCIWOSC, NIE WADA: po restarcie kontenera puls startuje
-// pusty, a ocena w domain/zdrowie.js daje mlodemu procesowi lagodny start (pierwszy przebieg
+// pusty, a ocena w domena/zdrowie.js daje mlodemu procesowi lagodny start (pierwszy przebieg
 // czuwacza ma prawo przyjsc dopiero za godzine). Zawieszony czuwacz NIE bije pulsu wcale —
 // wiek ostatniego sukcesu rosnie i to jest dokladnie ten sygnal, ktory /health ma pokazac.
 

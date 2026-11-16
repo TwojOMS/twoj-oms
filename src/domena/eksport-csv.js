@@ -1,7 +1,7 @@
 import { zl } from './kwoty.js';
 
 // Eksport sprzedazy do CSV — plik, ktory wychodzi z panelu i ma sie otworzyc w Excelu bez
-// zadnego kroku posredniego (2026-08-23).
+// zadnego kroku posredniego.
 //
 // ⚠️ NIC TU NIE LICZY. Wiersze przychodza gotowe ze `sprzedazWOkresie` — tej samej funkcji,
 // ktora rysuje ekran. Druga sciezka liczaca sprzedaz rozjechalaby sie o grosz przy pierwszej
@@ -65,7 +65,7 @@ export function nazwaPlikuSprzedazy(od, doDnia) {
  *
  * ⚠️ E-MAIL JEST WYLACZONY DOMYSLNIE. Do uzgodnienia z KPiR wystarcza numer i kwota, a plik
  * z adresami klientow wynosi dane osobowe z panelu na czyjs dysk — i zyje tam potem wlasnym
- * zyciem (audyt bezpieczenstwa 17.08: retencja RODO jest sprawa otwarta). Kto potrzebuje
+ * zyciem (retencja RODO takich plików jest sprawą otwartą). Kto potrzebuje
  * adresow, dopisuje `klient=1` swiadomie.
  */
 export function csvSprzedazy(wiersze, { zKlientem = false } = {}) {

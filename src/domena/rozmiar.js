@@ -1,5 +1,5 @@
-// Rozmiar karty bywa w sklepie wylacznie TEKSTEM — w katalogu zmierzonym 2026-08-06 pole
-// `dimensions` WooCommerce bylo puste w 769 produktach na 769, wiec zrodlem byl atrybut
+// Rozmiar karty bywa w sklepie wyłącznie TEKSTEM — w zmierzonym katalogu pole
+// `dimensions` WooCommerce było puste we wszystkich produktach, więc źródłem był atrybut
 // „Rozmiar" i nazwa produktu. Wymiary podane przez sklep wprost czyta sekcja na dole pliku.
 //
 // ⚠️ TA FUNKCJA NIGDY NIE ZGADUJE. Napis niejednoznaczny oddaje null, a karta powstaje
@@ -71,12 +71,12 @@ export function centymetryZMilimetrow(mm) {
 /**
  * Wymiary karty na napis dla czlowieka („70 × 100 cm") albo `null`, gdy wymiarow nie ma.
  *
- * Liczy TRASA, nie widok (przewodnik: widok magazynu niczego nie liczy) — a regula stoi
+ * Liczy TRASA, nie widok (widok magazynu niczego nie liczy) — a regula stoi
  * tutaj, przy pozostalych regulach rozmiaru, zeby lista i przyszly ekran edycji nie mialy
  * jak nazwac tego samego wymiaru inaczej.
  *
  * ⚠️ POLOWICZNY WYMIAR TO NADAL BRAK WYMIAROW — dokladnie ta sama regula, co w filtrze
- * braków (`db/magazyn.js`: potrzebne sa oba). Gdyby ta funkcja pokazywala
+ * braków (`oms/db/magazyn.js`: potrzebne sa oba). Gdyby ta funkcja pokazywala
  * „70 × — cm", wiersz twierdzilby, ze wymiar zna, i JEDNOCZESNIE wpadal do filtru
  * „bez wymiarów" — na ekranie, ktorego cala robota polega na uzupelnianiu tych brakow.
  */
@@ -84,7 +84,7 @@ export function opisWymiarow(karta) {
   const szerokosc = centymetryZMilimetrow(karta?.szerokosc_mm);
   const wysokosc = centymetryZMilimetrow(karta?.wysokosc_mm);
   if (szerokosc === null || wysokosc === null) return null;
-  // PRZ-090: glebokosc jest opcjonalna — produkt plaski ma dwa wymiary, pudelko trzy.
+  // Glebokosc jest opcjonalna — produkt plaski ma dwa wymiary, pudelko trzy.
   const glebokosc = centymetryZMilimetrow(karta?.glebokosc_mm);
   return glebokosc === null ? `${szerokosc} × ${wysokosc} cm` : `${szerokosc} × ${wysokosc} × ${glebokosc} cm`;
 }
@@ -250,7 +250,7 @@ export function nazwaBezRozmiaru(nazwa) {
   return wynik || nazwa;
 }
 
-// ——— WYMIARY I WAGA PODANE PRZEZ SKLEP (PRZ-090) ————————————————————————————————
+// ——— WYMIARY I WAGA PODANE PRZEZ SKLEP ————————————————————————————————
 //
 // Sklep WooCommerce trzyma wymiary w `dimensions` (length/width/height) i wage w `weight`, kazde w jednostce
 // ze swoich ustawien. Lustro zapisuje je razem z jednostka (services/magazyn-sync.js): `wymiary_json`

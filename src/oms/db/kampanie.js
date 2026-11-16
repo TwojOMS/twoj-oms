@@ -1,13 +1,13 @@
-// Warstwa zapytan zakladki /kampania (2026-08-25, kampania WRZESIEN30).
+// Warstwa zapytań zakładki /kampania.
 //
 // Tu mieszka WYLACZNIE odczyt konfiguracji kampanii i wybor zamowien z kuponami —
-// cala arytmetyka (kafle, dni, agregaty) siedzi w domain/kampania.js, a status i kwoty
+// cala arytmetyka (kafle, dni, agregaty) siedzi w domena/kampania.js, a status i kwoty
 // zamowienia przychodza z pobierzZamowienie (zLinii), zeby zadna regula statusu nie
 // miala tu drugiej kopii.
 
 import { pobierzZamowienie } from './zamowienia.js';
 
-// ——— LUSTRO DANYCH ZE ZRODEL ZEWNETRZNYCH (Etapy 1-2) ————————————————————————————
+// ——— LUSTRO DANYCH ZE ZRODEL ZEWNETRZNYCH ————————————————————————————
 //
 // ⚠️ `ON CONFLICT DO UPDATE`, nie `INSERT OR IGNORE`: statystyki dnia dojrzewaja jeszcze
 // przez dobe po jego zakonczeniu (Meta domyka wydatki, GA4 dolicza sesje), wiec przebieg
@@ -78,7 +78,7 @@ export function listaKampanii(db) {
 // Filtrowanie po KONKRETNYM kodzie robi domena na sparsowanej liscie kuponow — LIKE po
 // kodzie w SQL mylilby sie na kodach bedacych przedrostkiem innych.
 //
-// N+1 jest tu SWIADOME: zbior to zamowienia z kuponami (dzis: 6), a pobierzZamowienie
+// N+1 jest tu ŚWIADOME: zbiór to zamówienia z kuponami (zwykle nieliczne), a pobierzZamowienie
 // jest jedynym miejscem znajacym komplet regul odczytu. Gdyby zbior kiedys urosl do
 // setek, właściwa droga to poszerzenie warstwy zLinii o odczyt partiami, nie druga
 // kopia regul tutaj.
@@ -94,7 +94,7 @@ export function zamowieniaZKuponami(db) {
 // to nasza wlasna serializacja (JSON.stringify w db/zamowienia.js), wiec klucz ma zawsze
 // postac `"kampania":"..."` bez spacji; dokladne dopasowanie KODU robi domena na
 // sparsowanym JSON (prefiksy kod30/kod305 — ta sama zasada, co przy kuponach).
-// N+1 swiadome, jak wyzej: zbior to zamowienia z kampania w utm (dzis: zero).
+// N+1 świadome, jak wyżej: zbiór to zamówienia z kampanią w utm (zwykle nieliczne).
 export function zamowieniaZAtrybucjaKampanii(db) {
   const idy = db.prepare(
     `SELECT id FROM zamowienia WHERE atrybucja_json LIKE '%"kampania":"%' ORDER BY utworzone_at DESC`,

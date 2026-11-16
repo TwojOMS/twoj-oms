@@ -4,16 +4,15 @@ import { lookup as lookupDns } from 'node:dns/promises';
 // Sprawdzenie osiagalnosci uslug — DWIE WARSTWY OSOBNO: najpierw nazwa (DNS), potem
 // polaczenie (HTTP). Rozdzielenie ich jest cala wartoscia tego modulu.
 //
-// ⚠️ „fetch failed" NIE ODROZNIA „nie znam nazwy" od „usluga nie odpowiada". 17.08.2026
-// panel pokazywal ten komunikat przy sklepach, Allegro i inFakcie naraz — a padl DNS na
-// NAS-ie. Ekran, ktory mowi „nie rozwiazuje sie nazwa sklep-b.example", wysyla czlowieka
-// od razu do sieci; „fetch failed" wysylal go w kod panelu.
+// ⚠️ „fetch failed" NIE ODRÓŻNIA „nie znam nazwy" od „usługa nie odpowiada". Gdy pada DNS
+// serwera, panel pokazuje ten komunikat przy sklepach, Allegro i inFakcie naraz. Ekran,
+// który mówi „nie rozwiązuje się nazwa sklep-b.example", wysyła człowieka od razu do sieci;
+// „fetch failed" wysyłał go w kod panelu.
 //
-// ⚠️⚠️ ANI JEDEN TOKEN, ANI JEDEN KLUCZ. Sprawdzamy WYLACZNIE, czy da sie dojsc pod adres —
-// bez naglowka autoryzacji, bez odswiezania tokenow. Powod jest zmierzony: refresh token
-// Allegro jest JEDNORAZOWY i 14.08.2026 dwa procesy, ktore wyslaly ten sam, polozyly kanal
-// na siedem godzin. Ekran diagnostyczny bywa odswiezany co chwile przy awarii — nie ma
-// prawa niczego zuzyc.
+// ⚠️⚠️ ANI JEDEN TOKEN, ANI JEDEN KLUCZ. Sprawdzamy WYŁĄCZNIE, czy da się dojść pod adres —
+// bez nagłówka autoryzacji, bez odświeżania tokenów. Powód: refresh token Allegro jest
+// JEDNORAZOWY, a dwa procesy, które wysłały ten sam, położyły kanał na kilka godzin.
+// Ekran diagnostyczny bywa odświeżany co chwilę przy awarii — nie ma prawa niczego zużyć.
 
 const LIMIT_MS = 5000;
 
@@ -27,18 +26,18 @@ export async function sprawdzLacznosc({
   fetchImpl, http = transport({ fetchImpl }),
   teraz = () => Date.now(),
 } = {}) {
-  // ⚠️⚠️ PO KOLEI, NIE RÓWNOLEGLE — i to jest decyzja o PRAWDZIWOSCI LICZB, nie o wydajnosci.
+  // ⚠️⚠️ PO KOLEI, NIE RÓWNOLEGLE — i to jest decyzja o PRAWDZIWOŚCI LICZB, nie o wydajności.
   //
-  // Pierwsza wersja sprawdzala wszystko naraz (`Promise.all`) i na produkcji pokazala
-  // **4059 ms przy siedmiu roznych hostach, co do milisekundy** — podczas gdy pojedyncze
-  // wywolanie z tego samego kontenera trwa ~300 ms (zmierzone). Powod: kazde sprawdzenie
-  // robi DWA rozwiazania nazwy (nasze + wewnetrzne `fetch`), a `dns.lookup` chodzi przez
-  // czterowatkowa pule libuv; dziewiec celow naraz ustawia sie w kolejce, ktora dodatkowo
-  // czeka na ~1-sekundowe ogony resolwera. Ekran raportowal wiec WLASNE zatkanie jako czas
-  // odpowiedzi cudzej uslugi — czyli wysylalby szukac awarii wydajnosci, ktorej nie ma.
+  // Sprawdzanie wszystkiego naraz (`Promise.all`) pokazuje przy kilku różnych hostach
+  // ten sam czas, około 4 s, co do milisekundy — podczas gdy pojedyncze wywołanie
+  // z tego samego kontenera trwa kilkaset ms. Powód: każde sprawdzenie robi DWA
+  // rozwiązania nazwy (nasze + wewnętrzne `fetch`), a `dns.lookup` chodzi przez
+  // czterowątkową pulę libuv; kilka celów naraz ustawia się w kolejce, która dodatkowo
+  // czeka na ~1-sekundowe ogony resolwera. Ekran raportowałby więc WŁASNE zatkanie jako czas
+  // odpowiedzi cudzej usługi — czyli wysyłałby szukać awarii wydajności, której nie ma.
   //
-  // Sekwencyjnie kazdy pomiar jest prawdziwy, a caly ekran i tak konczy sie w kilka sekund
-  // (dziewiec uslug × ~0,3 s). Diagnostyka ma nie klamac; szybkosc jest tu drugorzedna.
+  // Sekwencyjnie każdy pomiar jest prawdziwy, a cały ekran i tak kończy się w kilka sekund
+  // (kilka usług × kilkaset ms). Diagnostyka ma nie kłamać; szybkość jest tu drugorzędna.
   const wyniki = [];
   for (const cel of cele) {
     // eslint-disable-next-line no-await-in-loop -- patrz komentarz wyzej: to jest cel, nie przeoczenie

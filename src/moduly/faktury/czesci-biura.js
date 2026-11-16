@@ -1,2 +1,2 @@
-// Ten sam wybór części, którego używa rzeczywista usługa paczki PRZ-025.
+// Ten sam wybór części, którego używa rzeczywista usługa paczki dla biura.
 export { CZESCI } from '../koszty/services/paczka-dla-biura.js';

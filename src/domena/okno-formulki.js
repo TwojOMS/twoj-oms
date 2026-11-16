@@ -1,8 +1,6 @@
-// src/oms/domain/okno-formulki.js
-// ⚠️⚠️ TO JEST DRUGIE MIEJSCE W OMS-ie, KTORE ZNA STREFE WARSZAWY (pierwsze:
-// domain/pora-pobrania.js). Ta sama zasada, co tam: strefa sluzy WYLACZNIE do ODCZYTU
-// godziny i dnia — zadnego dodawania godzin, zadnego `setHours`, zadnej arytmetyki dat.
-// Kontener chodzi w UTC, a wlasciciel ustawia okno w czasie, ktory widzi na zegarze.
+// ⚠️⚠️ TEN PLIK ZNA STREFE WARSZAWY. Ta sama zasada, co w domena/pora-pobrania.js:
+// strefa sluzy WYLACZNIE do ODCZYTU godziny i dnia — zadnego dodawania godzin, zadnego `setHours`, zadnej arytmetyki dat.
+// Kontener chodzi w UTC, a sprzedawca ustawia okno w czasie, ktory widzi na zegarze.
 //
 // ⚠️ OKNO PRZECHODZI PRZEZ POLNOC i to jest przypadek TYPOWY, nie brzegowy: „18-8" znaczy
 // „po godzinach". Naiwne `godzina >= od && godzina < do` daje wtedy ZAWSZE false, czyli

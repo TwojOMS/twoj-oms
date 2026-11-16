@@ -1,5 +1,5 @@
 import { tytulEkranuDlaAdresu } from '../../../domena/ekrany.js';
-// PRZ-092: Ustawienia → Integracje → Kurier DPD (wzór: „Nowy kurier — DPD Polska” w Apilo).
+// Ustawienia → Integracje → Kurier DPD (wzór: „Nowy kurier — DPD Polska” w Apilo).
 //
 // Dostęp: strażnik po prefiksie `/ustawienia` wpuszcza tylko konto z uprawnieniem „ustawienia”, a gościa demo
 // zatrzymuje na każdym POST-cie (core/bezpieczenstwo/podglad-demo.js) — tu tych blokad nie powtarzamy.
@@ -21,7 +21,7 @@ export function registerUstawieniaDpdRoutes(app, { db, kurierDpd }) {
     const stan = stanDlaEkranu(wczytajKonfiguracjeIntegracji(db, 'dpd'));
     return reply.view('ustawienia-dpd.ejs', { szerokosc: 'formularz',
       nawigacja: nawigacjaUstawien(req, reply), title: tytulEkranuDlaAdresu(req.url),
-      // PRZ-093.08: adres nadawcy = adres firmy (plik albo Ustawienia → Firma), czytany przy każdym widoku.
+      // Adres nadawcy = adres firmy (plik albo Ustawienia → Firma), czytany przy każdym widoku.
       zEnv: kurierDpd.zEnv, adresFirmy: kurierDpd.adresFirmy(), ekranAdresu: EKRAN_ADRESU_FIRMY, stan,
       pola: { ...PUSTY, ...(stan?.ustawienia ?? {}), ...(wpisane ?? {}) },
       typy: TYPY_ETYKIET_DPD, bledy, test,
@@ -29,7 +29,7 @@ export function registerUstawieniaDpdRoutes(app, { db, kurierDpd }) {
       wymagaRestartu: kurierDpd.wymagaRestartu(),
     });
   }
-  // PRZ-152.G13: strona OMS z powrotem na ekran DPD; tekst stały — nic z pliku konfiguracji nie trafia na stronę.
+  // Strona OMS z powrotem na ekran DPD; tekst stały — nic z pliku konfiguracji nie trafia na stronę.
   const zEnv = (reply) => stronaOdmowy(reply, 409, 'Kurier DPD jest ustawiony w pliku konfiguracji (oms.env) — tam go zmień. Formularz niczego nie zapisał.',
     { tytul: 'Kurier DPD jest ustawiony w pliku konfiguracji', wroc: ADRES, napisWroc: 'Wróć do ustawień DPD' });
 

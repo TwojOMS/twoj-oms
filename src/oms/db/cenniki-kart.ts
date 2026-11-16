@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 
-// PRZ-160 E3d.02 D3 — wyjątek cennika dostaw na karcie, osobno dla każdego konta (tabela z magazyn/0003).
+// Wyjątek cennika dostaw na karcie, osobno dla każdego konta (tabela z magazyn/0003).
 // Baza bez tej migracji (moduł w starszej wersji) nie ma wyjątków: odczyt daje null / [].
 
 type Klucz = { kartaId: number; konto: string };

@@ -18,10 +18,10 @@ export function platnosciZamowienia(db, zamowienieId) {
 }
 
 /**
- * Wpłaty WIELU zamówień jednym zapytaniem (PRZ-051) — mapa id → lista w TYM SAMYM porządku,
+ * Wpłaty WIELU zamówień jednym zapytaniem — mapa id → lista w TYM SAMYM porządku,
  * co `platnosciZamowienia`, bo od porządku zależy data opłacenia. Lista zamówień pytała
  * dotąd o wpłaty osobno przy każdym wierszu: kompilacja zapytania na wiersz była połową
- * kosztu otwarcia listy (pomiar PRZ-051). Wołający dzieli identyfikatory na porcje.
+ * kosztu otwarcia listy. Wołający dzieli identyfikatory na porcje.
  */
 export function platnosciDlaZamowien(db, zamowienieIds) {
   const mapa = new Map();
@@ -37,7 +37,7 @@ export function platnosciDlaZamowien(db, zamowienieIds) {
   return mapa;
 }
 
-// ⚠️ TU PRZEBIEGA GRANICA WLASNOSCI DANYCH (przewodnik OMS, 4.7). Ta funkcja jest wolana
+// ⚠️ TU PRZEBIEGA GRANICA WLASNOSCI DANYCH (reguła: dane ręczne obok danych sklepu). Ta funkcja jest wolana
 // przez pollera przy KAZDEJ synchronizacji (co dwie minuty) i KAZDE jej zapytanie niesie
 // `zrodlo = 'sklep'`. To jest cala ochrona wplat recznych: nie ma tu sciezki, ktora moglaby
 // dotknac wiersza dopisanego przez czlowieka. Wplata reczna skasowana przez pollera to
@@ -81,9 +81,9 @@ export function dodajWplateReczna(db, zamowienieId, { kwota, data, metoda = null
   return { kwota: String(kwota), data, metoda, uwaga };
 }
 
-// WYJSCIE ze stanu, w ktory panel sam pozwala wejsc (przewodnik OMS, 4.9): omylkowo
+// WYJSCIE ze stanu, w ktory panel sam pozwala wejsc (reguła: każdy stan ma wyjście): omylkowo
 // dopisana wplata reczna przewracalaby saldo zamowienia i — gdy domyka kwote — kazalaby
-// panelowi uznac je za oplacone. Bez tej trasy jedynym wyjsciem bylby SQL na produkcji.
+// panelowi uznac je za oplacone. Bez tej trasy jedynym wyjściem byłby SQL na bazie.
 //
 // ⚠️ Wplaty ZE SKLEPU usunac sie nie da i to nie jest niedorobka: nalezy do sklepu,
 // a poller odtworzylby ja przy najblizszym przebiegu — panel obiecywalby skasowanie,
@@ -91,7 +91,7 @@ export function dodajWplateReczna(db, zamowienieId, { kwota, data, metoda = null
 //
 // Wiersz szukamy po PARZE (id wplaty, id zamowienia): w swiezej bazie liczniki
 // AUTOINCREMENT roznych tabel zbiegaja sie, wiec sam `id` przepuscilby pomylke argumentu
-// w trasie (przewodnik OMS, sekcja 6, punkt 3).
+// w trasie.
 export function usunWplateReczna(db, zamowienieId, platnoscId) {
   const w = db.prepare('SELECT * FROM platnosci WHERE id = ? AND zamowienie_id = ?')
     .get(platnoscId, zamowienieId);
@@ -106,7 +106,7 @@ export function usunWplateReczna(db, zamowienieId, platnoscId) {
   return w;
 }
 
-// ⚠️ WPLATY OKRESU ZYJA W OSOBNEJ TABELI (`platnosci_okresu`, patrz schema.sql). Nie da sie
+// ⚠️ WPLATY OKRESU ZYJA W OSOBNEJ TABELI (`platnosci_okresu`). Nie da sie
 // ich trzymac w `platnosci`: tam `zamowienie_id` jest NOT NULL, a klient zbiorczy placi RAZ
 // za caly miesiac — ta wplata nie nalezy do zadnego pojedynczego zamowienia.
 //
@@ -115,16 +115,15 @@ export function usunWplateReczna(db, zamowienieId, platnoscId) {
 // skasowac. Kolumne trzymamy mimo to, zeby ksztalt byl ten sam co w `platnosci` i zeby
 // pozniejsze zrodlo (np. import z banku) mialo gdzie sie zapisac.
 // ⚠️ KWOTA JEST SPRAWDZANA PRZED INSERT-em, i to nie jest kosmetyka. `String(kwota)` na
-// `undefined` zapisywalo w bazie napis 'undefined' — po czym KAZDY odczyt salda tego okresu
-// rzucal (`grosze()` slusznie odmawia), a w panelu nie bylo trasy, ktora taka wplate usuwa.
-// Jeden bledny zapis zatruwal miesiac NA ZAWSZE, a jedynym wyjsciem zostawal SQL na produkcji.
+// `undefined` zapisałoby w bazie napis 'undefined' — po czym KAŻDY odczyt salda tego okresu
+// rzucałby (`grosze()` słusznie odmawia), więc jeden błędny zapis zatruwałby cały miesiąc.
 //
 // Walidujemy przez `grosze()` — TE SAMA funkcje, ktora pozniej te kwote czyta. Wlasny
 // `Number.isFinite` byby DRUGA kopia reguly i przepuscilby to, co `grosze()` odrzuca (albo
 // odwrotnie). Odmowa jest otagowana `bladOperatora`, inaczej trasa zamieni ja w „blad
 // techniczny panelu" i czlowiek nie dowie sie, co poprawic.
 //
-// Zero i kwoty ujemne odrzucamy WPROST, dokladnie jak `parsujWplate` w domain/platnosci.js:
+// Zero i kwoty ujemne odrzucamy WPROST, dokladnie jak `parsujWplate` w domena/platnosci.js:
 // wplata na 0 zl nie jest zdarzeniem, a ujemna po cichu zmniejszalaby saldo okresu.
 function sprawdzKwoteWplaty(kwota) {
   const kwotaGr = grosze(kwota, 'wpłata za okres rozliczeniowy');
@@ -142,7 +141,7 @@ export function dodajWplateOkresu(db, okresId, { kwota, data, metoda, uwaga }) {
   // walidacja przechodzila (`grosze(true)` = 100 gr), ale stary `String(kwota)` zapisywal w
   // bazie napis „true", ktorego zaden kolejny odczyt salda juz nie parsuje — dokladnie ten
   // zatruty okres, przed ktorym `sprawdzKwoteWplaty` mial bronic. Ten sam wzorzec stosuje
-  // `parsujWplate` w domain/platnosci.js.
+  // `parsujWplate` w domena/platnosci.js.
   const wynik = db.prepare(
     'INSERT INTO platnosci_okresu (okres_rozliczeniowy_id, kwota, data, metoda, uwaga, zrodlo, utworzona_at)'
     + " VALUES (?, ?, ?, ?, ?, 'reczna', ?)",
@@ -157,13 +156,13 @@ function wplataOkresu(db, platnoscId) {
   return db.prepare('SELECT * FROM platnosci_okresu WHERE id = ?').get(platnoscId);
 }
 
-// WYJSCIE ze stanu, w ktory panel sam pozwala wejsc (przewodnik OMS, 4.9) — odpowiednik
+// WYJSCIE ze stanu, w ktory panel sam pozwala wejsc (reguła: każdy stan ma wyjście) — odpowiednik
 // `usunWplateReczna` wyzej i istnieje z dokladnie tego samego powodu: omylkowo dopisana
 // wplata przewraca saldo miesiaca, a gdy domyka kwote, kaze panelowi uznac okres za oplacony.
 //
 // Wiersz szukamy po PARZE (id wplaty, id okresu), tak samo jak przy zamowieniu: w swiezej
 // bazie liczniki AUTOINCREMENT roznych tabel zbiegaja sie, wiec sam `id` przepuscilby
-// pomylke argumentu w trasie (przewodnik OMS, sekcja 6, punkt 3).
+// pomyłkę argumentu w trasie.
 //
 // Odmowy dla zrodla innego niz 'reczna' NIE MA, bo nie ma jeszcze czego odmawiac: sklep
 // nie wie o fakturze zbiorczej, wiec zaden poller tych wierszy nie dopisuje ani nie kasuje
@@ -187,7 +186,7 @@ export function usunWplateOkresu(db, okresId, platnoscId) {
  * z 10 sierpnia tylko dlatego, ze ktos dopisal ja pozniej.
  *
  * Kwoty wracaja jako NAPISY (kolumna TEXT) — dokladnie tak, jak przyszly. Sumowac je wolno
- * wylacznie przez `sumaWplatGrosze` z domain/platnosci.js (robi to `saldoOkresuGrosze`),
+ * wylacznie przez `sumaWplatGrosze` z domena/platnosci.js (robi to `saldoOkresuGrosze`),
  * nigdy wlasnym `Number(a) + Number(b)`.
  */
 export function wplatyOkresu(db, okresId) {

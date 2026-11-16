@@ -1,18 +1,18 @@
-// Kupony rabatowe ze sklepu (kampania WRZESIEN30, 2026-08-25). Woo oddaje je przy
-// zamowieniu w `coupon_lines` (kod + `discount` netto + `discount_tax`), a panel trzyma
-// wyciag w kolumnie `zamowienia.kupony_json` — bo lista i zakladka /kampania nie moga
-// parsowac pelnego `surowe_json` (dziesiatki KB) przy kazdym wierszu ekranu.
+// Kupony rabatowe ze sklepu. Woo oddaje je przy
+// zamówieniu w `coupon_lines` (kod + `discount` netto + `discount_tax`), a panel trzyma
+// wyciąg w kolumnie `zamowienia.kupony_json` — bo lista i zakładka /kampania nie mogą
+// parsować pełnego `surowe_json` (dziesiątki KB) przy każdym wierszu ekranu.
 //
-// ⚠️ Rabat wychodzi BRUTTO (netto + VAT) i NAPISEM z dwoma miejscami — jak kazda kwota
-// w panelu (przewodnik OMS, 4.5). Wszystkie kwoty obok (kwota zamowienia, ceny pozycji)
-// sa brutto; rabat w innej skali bylby liczba nie do zestawienia z niczym na ekranie.
+// ⚠️ Rabat wychodzi BRUTTO (netto + VAT) i NAPISEM z dwoma miejscami — jak każda kwota
+// w panelu (reguła: pieniądze w groszach). Wszystkie kwoty obok (kwota zamówienia, ceny pozycji)
+// są brutto; rabat w innej skali byłby liczbą nie do zestawienia z niczym na ekranie.
 //
-// ⚠️ Kupon to informacja OPISOWA, nie korekta kwot: ceny pozycji ze sklepu sa juz PO
-// rabacie (mapowanie.js, `total` linii), wiec niczego sie tu nie odejmuje ani nie dolicza.
+// ⚠️ Kupon to informacja OPISOWA, nie korekta kwot: ceny pozycji ze sklepu są już PO
+// rabacie (mapowanie.js, `total` linii), więc niczego się tu nie odejmuje ani nie dolicza.
 //
-// Czytaja to dwa przebiegi — poller (mapowanie.js) i przeliczenie wstecz (db.js,
-// uzupelnijKupony) — dokladnie ten sam uklad, co punktOdbioruZeSurowych: jedna regula,
-// nigdy druga rozjezdzajaca sie kopia.
+// Czytają to dwa przebiegi — poller (mapowanie.js) i przeliczenie wstecz
+// (oms/db/uzupelnienia-zamowien.js, uzupelnijKupony) — dokładnie ten sam układ, co
+// punktOdbioruZeSurowych: jedna reguła, nigdy druga rozjeżdżająca się kopia.
 
 export function kuponyZeSurowych(surowe) {
   const linie = Array.isArray(surowe?.coupon_lines) ? surowe.coupon_lines : [];

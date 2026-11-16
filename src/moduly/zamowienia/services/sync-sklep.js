@@ -8,8 +8,8 @@ import { czyTylkoOdczyt, TYLKO_ODCZYT } from '../../../domena/woo-uprawnienia.js
 
 /**
  * Odesłanie statusu zamówienia tam, skąd przyszło: do sklepu (WooCommerce) albo do kanału
- * (Allegro). Decyzję CO wysłać (i czy w ogóle) podejmuje domena — `domain/sync-sklep.js`
- * dla sklepów, `domain/allegro-status.js` dla kanałów — tutaj jest wyłącznie wykonanie,
+ * (Allegro). Decyzję CO wysłać (i czy w ogóle) podejmuje domena — `domena/sync-sklep.js`
+ * dla sklepów, `domena/allegro-status.js` dla kanałów — tutaj jest wyłącznie wykonanie,
  * zapis śladu i log.
  *
  * ⚠️ NIGDY NIE RZUCA. Zmiana statusu w panelu jest zapisem faktu stwierdzonego przez
@@ -19,42 +19,37 @@ import { czyTylkoOdczyt, TYLKO_ODCZYT } from '../../../domena/woo-uprawnienia.js
  * operatora.
  */
 /**
- * ⚠️ KLIENT WYBIERANY PO SKLEPIE ZAMOWIENIA (Etap 2, 2026-08-01), a nie „ten jedyny".
- * Od kiedy panel obsluguje dwa sklepy, staly klient znaczylby, ze status zamowienia
+ * ⚠️ KLIENT WYBIERANY PO SKLEPIE ZAMOWIENIA, a nie „ten jedyny".
+ * Panel obsluguje kilka sklepow, wiec staly klient znaczylby, ze status zamowienia
  * ze sklepu A jedzie do sklepu B — czyli do ZUPELNIE INNEGO zamowienia o tym samym numerze
  * albo do zadnego. Mapa jest kluczowana wartoscia kolumny `zamowienia.sklep`, ta sama,
  * ktora rozdziela pollery. Dokladnie tak samo dziala mapa kanalow.
  */
 // ⚠️ MIEJSCE OPISANE W DWOCH PRZYPADKACH, A NIE GOLYM RZECZOWNIKIEM — i to nie jest
-// czepianie sie polszczyzny (D1, recenzja Partii 1 Planu B). Plan B wprowadzil szablony
-// `w ${gdzie}` i `do ${gdzie}` z jednym slowem w mianowniku: dla Allegro wychodzilo dobrze
-// („w Allegro", „do Allegro"), a dla sklepu — „status w sklep ustawiony na „completed"" i
-// „nie dojechal do sklep". Przed Planem B log brzmial poprawnie („status w sklepie…"),
-// wiec byla to REGRESJA, ktora przeszla przez cala partie, bo na te napisy nie bylo
-// zadnego testu. Slad bledu laduje na pasku „Do zalatwienia" na karcie — czyta go operator.
+// czepianie sie polszczyzny. Szablony `w ${gdzie}` i `do ${gdzie}` z jednym slowem w mianowniku
+// dawalyby dla Allegro dobrze („w Allegro", „do Allegro"), a dla sklepu — „status w sklep
+// ustawiony na „completed"" i „nie dojechal do sklep". Slad bledu laduje na pasku „Do zalatwienia" na karcie — czyta go operator.
 const SKLEP = { nazwa: 'sklep', w: 'w sklepie', dokad: 'do sklepu' };
 const KANAL_ALLEGRO = { nazwa: 'Allegro', w: 'w Allegro', dokad: 'do Allegro' };
 
 export function createSyncSklep({ db, klienci = {}, klienciKanalow = {}, czynny = () => true }) {
-  // ⚠️ JEDNA USLUGA, DWIE GALEZIE — a nie druga usluga obok (spec §7). Trasy wolaja
-  // `odeslijStatus` w CZTERECH miejscach (zmiana statusu z karty, zmiana MASOWA, paczka
-  // nadana poza panelem, „Wyslij ponownie") i zadne z nich nie ma prawa wiedziec, czy
-  // zamowienie przyszlo ze sklepu, czy z Allegro. Druga usluga znaczylaby cztery nowe
-  // rozgalezienia w trasach — i pewnosc, ze przy piatym miejscu wywolania ktos o jednym
-  // zapomni.
+  // ⚠️ JEDNA USLUGA, DWIE GALEZIE — a nie druga usluga obok. Trasy wolaja
+  // `odeslijStatus` w wielu miejscach (zmiana statusu z karty, zmiana MASOWA, wpisanie
+  // paczki nadanej poza panelem, „Wyslij ponownie") i zadne z nich nie ma prawa wiedziec, czy zamowienie przyszlo
+  // ze sklepu, czy z Allegro. Druga usluga znaczylaby nowe rozgalezienie w kazdej z tras —
+  // i pewnosc, ze przy kolejnym miejscu wywolania ktos o jednym zapomni.
   //
   // Slad bledu idzie do TEJ SAMEJ kolumny `sync_woo_blad`: pasek „Do zalatwienia" na karcie
   // jest jeden i ma go czytac z jednego miejsca. Nazwa kolumny mowi „woo" i tak zostaje —
-  // migracja na zywej bazie nie jest tego warta, a `sprawy-karty.js` dobiera brzmienie
+  // migracja na zywej bazie nie jest tego warta, a `domena/sprawy-karty.js` dobiera brzmienie
   // komunikatu po KANALE zamowienia, nie po nazwie kolumny.
   //
-  // ⚠️ PANEL BEZ ANI JEDNEGO SKONFIGUROWANEGO KANALU zachowuje sie dokladnie tak, jak przed
-  // Planem B: kanaly milcza. To nie jest wygoda, tylko ochrona przed sprawa NIE DO
-  // ZALATWIENIA na pasku karty — panel, ktoremu zdjeto zmienne ALLEGRO_*, ma w bazie stare
+  // ⚠️ PANEL BEZ ANI JEDNEGO SKONFIGUROWANEGO KANALU: kanaly milcza. To nie jest wygoda, tylko ochrona przed sprawa NIE DO
+  // ZALATWIENIA na pasku karty — panel bez skonfigurowanego konta Allegro (z pliku albo z Ustawien) ma w bazie stare
   // zamowienia z Allegro i kazda zmiana ich statusu wieszalaby „panel nie ma polaczenia",
-  // czyli usterke, ktora domknal Etap 4 (04.08.2026). Kanal NIEOBECNY W NIEPUSTEJ MAPIE to
-  // co innego — to prawdziwa dziura w konfiguracji jednego z dwoch kont i ma byc widoczna.
-  // PRZ-157.12b: mapa ma też klientów innych typów (ERLI) — liczą się tylko kanały typu zamówienia.
+  // czyli usterke. Kanal NIEOBECNY W NIEPUSTEJ MAPIE to
+  // co innego — to prawdziwa dziura w konfiguracji konta Allegro (z pliku albo z Ustawien) i ma byc widoczna.
+  // Mapa ma też klientów innych typów (ERLI) — liczą się tylko kanały typu zamówienia.
   const znaKanaly = (z) => {
     const typ = modulZamowienia(z).typ;
     return Object.keys(klienciKanalow).some((k) => modulZamowienia({ sklep: k }).typ === typ);
@@ -63,7 +58,7 @@ export function createSyncSklep({ db, klienci = {}, klienciKanalow = {}, czynny 
   // ⚠️ GALAZ ALLEGRO JEST ASYNCHRONICZNA, A SKLEPOWA NIE — i to nie jest niekonsekwencja.
   // Stan realizacji w Allegro trzeba przeczytac NA ZYWO tuz przed decyzja, bo nasza kopia
   // bywa nieaktualna NA ZAWSZE (Allegro nie podbija `updatedAt` przy zmianie tego pola —
-  // zmierzone 05.08.2026 na 5 z 10 zamowien). Decyzja oparta na kolumnie milczalaby
+  // w pomiarze dotyczylo to polowy zamowien). Decyzja oparta na kolumnie milczalaby
   // dokladnie wtedy, gdy jest rozjazd. Sklepy tego problemu nie maja: `status_woo`
   // odswieza poller, a status w WooCommerce zmienia wylacznie panel.
   async function cel(z) {
@@ -85,8 +80,8 @@ export function createSyncSklep({ db, klienci = {}, klienciKanalow = {}, czynny 
       // a `odeslijStatus` zapisuje to jako blad synchronizacji z przyciskiem „Wyslij ponownie".
       const wAllegro = await klient.pobierzStanRealizacji(z.zrodlo_id);
       // Odswiezamy kolumne TYM SAMYM odczytem. ⚠️ NIE DLA KARTY — `status_realizacji` NIE
-      // JEST DZIS RENDEROWANY PRZEZ ZADEN WIDOK (`grep status_realizacji src/oms/web/` →
-      // zero trafien) i zadna regula z niego nie korzysta: `statusDlaAllegro` dostaje stan
+      // JEST DZIS RENDEROWANY PRZEZ ZADEN WIDOK (zaden szablon
+      // go nie czyta) i zadna regula z niego nie korzysta: `statusDlaAllegro` dostaje stan
       // ARGUMENTEM, ze swiezego odczytu. Wartosc sluzy DIAGNOSTYCE (zajrzeniu do bazy, gdy
       // kanal zachowuje sie dziwnie) i przyszlym odbiorcom — poller nie odczyta tego
       // zamowienia ponownie NIGDY, wiec bez tego zapisu kolumna zostawalaby przy wartosci
@@ -98,7 +93,7 @@ export function createSyncSklep({ db, klienci = {}, klienciKanalow = {}, czynny 
       zapiszStanRealizacji(db, z.id, wAllegro);
       const status = statusDlaAllegro(z, wAllegro);
       if (status) return { status, klient, gdzie: KANAL_ALLEGRO, akcja: 'sync-allegro.status' };
-      // ⚠️ „NIE MA CZEGO WYSYLAC" MA TU DWA ZUPELNIE ROZNE ZNACZENIA (K2). Jesli swiezy
+      // ⚠️ „NIE MA CZEGO WYSYLAC" MA TU DWA ZUPELNIE ROZNE ZNACZENIA. Jesli swiezy
       // odczyt pokazuje, ze Allegro MA JUZ dokladnie ten status, ktory chcielismy wyslac —
       // to jest DOWOD, ze rozjazdu nie ma. Kazdy inny powod odmowy (anulowane, zwrot, brak
       // wpisu w mapie) nie mowi o stanie w Allegro NIC. Rozroznienie robi domena, zeby
@@ -111,7 +106,7 @@ export function createSyncSklep({ db, klienci = {}, klienciKanalow = {}, czynny 
     return status ? { status, klient: klienci[z.sklep], gdzie: SKLEP, akcja: 'sync-woo.status' } : null;
   }
 
-  // PRZ-101.04: odesłanie statusu GŁÓWNEGO obejmuje jego dołączone — każde do swojego sklepu
+  // Odesłanie statusu GŁÓWNEGO obejmuje jego dołączone — każde do swojego sklepu
   // (dołączone ma już przeniesione `wyslane_at`, oms/db/zamowienia.js). Wszystkie trasy wołają
   // właśnie to (karta, zmiana masowa, przesyłka ręczna, „Wyślij ponownie”), więc żadna nie musi
   // wiedzieć o grupie. Dołączone jest ukryte z listy, więc jego nieudane odesłanie ląduje także
@@ -156,11 +151,11 @@ export function createSyncSklep({ db, klienci = {}, klienciKanalow = {}, czynny 
       return { wyslany: null, blad: e.message };
     }
 
-    // ⚠️ JEDYNE „NIE MA CZEGO WYSYŁAĆ", KTÓRE COKOLWIEK DOWODZI (K2, niezmiennik 4.9).
+    // ⚠️ JEDYNE „NIE MA CZEGO WYSYŁAĆ", KTÓRE COKOLWIEK DOWODZI (reguła: każdy stan ma wyjście).
     // Świeży odczyt pokazał, że Allegro stoi dokładnie na tym, co chcieliśmy wysłać — czyli
     // rozjazdu nie ma, a ślad po starej awarii jest od tej chwili NIEPRAWDĄ na karcie.
     //
-    // Do tej poprawki człowiek, który zrobił dokładnie to, co podpowiadał komunikat
+    // Bez tego człowiek, który zrobił dokładnie to, co podpowiadał komunikat
     // (ustawił status ręcznie w panelu Allegro) i kliknął „Wyślij ponownie", zostawał ze
     // sprawą o wadze `blokada` wiszącą na karcie NA ZAWSZE — jedynym wyjściem był ręczny
     // UPDATE w pliku SQLite.
@@ -196,7 +191,7 @@ export function createSyncSklep({ db, klienci = {}, klienciKanalow = {}, czynny 
       return { wyslany: null, blad: opis };
     }
 
-    // PRZ-149.04: sklep „Odczyt” — status zmienia człowiek w sklepie. To nie awaria (ponowienie nic nie da),
+    // Sklep „Odczyt” — status zmienia człowiek w sklepie. To nie awaria (ponowienie nic nie da),
     // więc bez śladu `sync_woo_blad`; komunikat idzie do wyniku i logu. Ślad sprzed przełączenia na „Odczyt”
     // (np. odmowa klucza tylko do odczytu) znika — inaczej karta trzymałaby blokadę z martwym „Wyślij ponownie”.
     if (czyTylkoOdczyt(c.klient)) {
@@ -228,7 +223,7 @@ export function createSyncSklep({ db, klienci = {}, klienciKanalow = {}, czynny 
     return { wyslany: c.status };
   }
 
-  // PRZ-117: zegar modułu zamówień (modul.ts) ponawia odesłanie statusu po błędzie PRZEJŚCIOWYM. Bezpieczne, bo
+  // Zegar modułu zamówień (modul.ts) ponawia odesłanie statusu po błędzie PRZEJŚCIOWYM. Bezpieczne, bo
   // obie gałęzie są idempotentne: Allegro czyta stan na żywo i nie wysyła tego, co już ma, a sklep porównuje
   // z `status_woo`. Po kolei, jak poller po sklepach — kanał nie dostaje serii naraz.
   async function ponowPrzejsciowe({ teraz = new Date() } = {}) {
@@ -246,7 +241,7 @@ export function createSyncSklep({ db, klienci = {}, klienciKanalow = {}, czynny 
     return { kandydatow: ids.length, wyslane, bledy };
   }
 
-  // PRZ-149.04: dla karty — czy sklep zamówienia jest podłączony kluczem „Odczyt”. Klient niepołączonego
+  // Dla karty — czy sklep zamówienia jest podłączony kluczem „Odczyt”. Klient niepołączonego
   // sklepu potrafi rzucić już przy odczycie (rejestr kanałów) — wtedy po prostu „nie”.
   function tylkoOdczyt(sklep) {
     try { return czyTylkoOdczyt(klienci[sklep]); } catch { return false; }
@@ -255,7 +250,7 @@ export function createSyncSklep({ db, klienci = {}, klienciKanalow = {}, czynny 
   return { odeslijStatus, ponowPrzejsciowe, tylkoOdczyt };
 }
 
-// PRZ-117: zamówienia starsze niż dwa tygodnie zegar zostawia człowiekowi („Wyślij ponownie” dalej działa).
+// Zamówienia starsze niż dwa tygodnie zegar zostawia człowiekowi („Wyślij ponownie” dalej działa).
 export const OKNO_PONAWIANIA_STATUSU_DNI = 14;
 export const ODSTEP_PONAWIANIA_STATUSU_MS = 15 * 60 * 1000;
 

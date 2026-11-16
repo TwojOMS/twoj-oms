@@ -6,8 +6,8 @@ export function kanalyWidoku(definicje) {
   if (!Array.isArray(definicje)) throw new TypeError('Wymagana jawna lista definicji kanałów');
   return [...definicje.map(k=>({klucz:k.klucz,etykieta:k.etykieta ?? k.klucz})),...WBUDOWANE.map(k=>({...k}))];
 }
-// PRZ-137.01: kanał OMS-u (zamówienie ręczne, indywidualne), a nie sklepu. Pobranie przy takim
-// zamówieniu zaproponował OMS, więc obowiązuje je przełącznik umowy na pobranie (D1/D2 planu PRZ-137).
+// Kanał OMS-u (zamówienie ręczne, indywidualne), a nie sklepu. Pobranie przy takim
+// zamówieniu zaproponował OMS, więc obowiązuje je przełącznik umowy na pobranie.
 export function czyKanalWbudowany(kanal) {
   return WBUDOWANE.some((k) => k.klucz === kanal);
 }
@@ -16,7 +16,7 @@ export function adresKanalu(sklep, definicje) {
   return kanaly.find(k=>k.klucz===sklep)?.etykieta ?? sklep;
 }
 
-// RODZAJ KANAŁU DO PLAKIETKI NA LIŚCIE ZAMÓWIEŃ (PRZ-094.17). Bierzemy go z `typ` w definicji
+// RODZAJ KANAŁU DO PLAKIETKI NA LIŚCIE ZAMÓWIEŃ. Bierzemy go z `typ` w definicji
 // kanału (OMS_KANALY), NIGDY z nazwy: nazwę sklepu wpisuje firma („Pracownia Półcień"), a „typ"
 // mówi, czy za kluczem stoi Allegro, czy WooCommerce. Kanały bez marki (ręczne, indywidualne,
 // nieznany klucz) → `null`, czyli bez plakietki. `znak` to jedyna litera plakietki; pełna nazwa

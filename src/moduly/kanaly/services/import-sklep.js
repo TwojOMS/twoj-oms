@@ -7,7 +7,7 @@ import {
 //
 // ⚠️ TO NIE JEST CZUWACZ I NIE MA NIM ZOSTAC. Historia jest niezmienna, a poller ma wlasna
 // podloge (`<PREFIKS>_OD`) postawiona dokladnie po to, zeby panel NIE czytal archiwum:
-// pierwszy przebieg bez niej wciagnal 01.08.2026 osiem tysiecy zamowien i nie zdazyl sie
+// pierwszy przebieg bez niej wciagnal wiele tysiecy zamowien i nie zdazyl sie
 // skonczyc miedzy dwoma tyknieniami zegara.
 
 /** Dzien +/- n dni, na napisach `RRRR-MM-DD`. */
@@ -43,7 +43,7 @@ export function createImportSklepu({ db, sklep, klient, konfiguracja, log = () =
       }
     }
 
-    // ⚠️ OKNO JEST CZESCIA KURSORA (patrz schema.sql). Kursor z innego okna nie mowi nic
+    // ⚠️ OKNO JEST CZESCIA KURSORA (tabela `stan_importu_sklepu`, kolumny od_dnia i do_dnia). Kursor z innego okna nie mowi nic
     // o tym przebiegu — numer strony ma sens wylacznie w zbiorze, w ktorym go policzono.
     const k = kursorSklepu(db, sklep);
     let strona = (k && k.odDnia === od && k.doDnia === doDnia ? k.ostatniaStrona : 0) + 1;

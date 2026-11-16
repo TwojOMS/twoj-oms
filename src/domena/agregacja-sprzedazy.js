@@ -7,12 +7,11 @@ import { czyPozycjaNieTowar } from './pozycje-niesprzedazowe.js';
 /**
  * ⚠️ WYSYLKA I „REALIZACJA PRIORYTETOWA" PRZYCHODZA JAKO POZYCJE PRODUKTOWE (`type: 1`) —
  * wtyczka panelu nie ustawia typow, bo wszystko idzie tym samym placeholderem. Bez tej laty
- * „wysyłka kurierem DPD" konkuruje z szablonami o miejsce w rankingu i zawyza licznik sztuk
- * (w tygodniu 30/2026 bylo to 5 pozycji wysylki + 2 ekspresy = 7 falszywych „sztuk").
+ * „wysyłka kurierem DPD” konkuruje z szablonami o miejsce w rankingu i zawyża licznik sztuk.
  * Wlasciwa naprawa jest we wtyczce i czeka na zrobienie.
  *
- * ⚠️ SAMA LISTA WZORCOW WYPROWADZILA SIE STAD 21.08.2026 (domain/pozycje-niesprzedazowe.js):
- * czyta ja teraz takze karta zamowienia, zeby nie rysowac pustego wiersza „Wysylka 0,00"
+ * ⚠️ SAMA LISTA WZORCÓW MIESZKA W domena/pozycje-niesprzedazowe.js: czyta ją także karta
+ * zamówienia, żeby nie rysować pustego wiersza „Wysyłka 0,00”
  * pod pozycja, ktora tym transportem jest. Dwie kopie tej samej zgadywanki po nazwie
  * rozjechalyby sie po cichu.
  */
@@ -175,9 +174,9 @@ export function dokumenty(wiersze) {
 }
 
 /**
- * Udzialy faktury i paragonu — osobno po LICZBIE zamowien i po WARTOSCI (17.08.2026).
+ * Udzialy faktury i paragonu — osobno po LICZBIE zamowien i po WARTOSCI.
  *
- * ⚠️ PROCENTY LICZY DOMENA, NIE WIDOK (przewodnik, sekcja 3). Ta sama liczba steruje
+ * ⚠️ PROCENTY LICZY DOMENA, NIE WIDOK. Ta sama liczba steruje
  * SZEROKOSCIA paska i napisem w jego srodku; policzona dwa razy rozjechalaby sie przy
  * pierwszym zaokragleniu i pasek klamalby o wlasnej etykiecie.
  *

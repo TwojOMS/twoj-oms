@@ -4,50 +4,47 @@ import { oczyscNazweDostawy } from './allegro-dostawa.js';
 import { bezEtykietyNip } from './dane-faktury.js';
 
 //
-// Zmierzone na 60 prawdziwych zamowieniach (notatka 2026-08-04-allegro-rozpoznanie.md):
-//   Σ(price × quantity) + delivery.cost + Σ surcharges == summary.totalToPay  — 60/60.
+// Zmierzone na prawdziwych zamówieniach — zgadza się na każdym z próbki:
+//   Σ(price × quantity) + delivery.cost + Σ surcharges == summary.totalToPay
 //
-// ⚠️ `price` to CENA JEDNOSTKOWA BRUTTO, inaczej niz `line_items[].total` w WooCommerce,
-// ktore jest SUMA LINII i BEZ VAT-u. Pomylka w te strone zanizylaby fakture o VAT i o cala
-// reszte sztuk, a bariera arytmetyczna zablokowalaby wystawienie — deterministycznie,
-// czyli operator klikalby w kolko ten sam komunikat.
+// ⚠️ `price` to CENA JEDNOSTKOWA BRUTTO, inaczej niż `line_items[].total` w WooCommerce,
+// które jest SUMĄ LINII i BEZ VAT-u. Pomyłka w tę stronę zaniżyłaby fakturę o VAT i o całą
+// resztę sztuk, a bariera arytmetyczna zablokowałaby wystawienie — deterministycznie,
+// czyli operator klikałby w kółko ten sam komunikat.
 
-// Kwoty od Allegro sa NAPISAMI („99.00"). Liczymy na groszach jako liczbach calkowitych:
-// float po dwoch dodawaniach przestaje sie zgadzac z bariera co do grosza.
+// Kwoty od Allegro są NAPISAMI („99.00"). Liczymy na groszach jako liczbach całkowitych:
+// float po dwóch dodawaniach przestaje się zgadzać z barierą co do grosza.
 //
-// ⚠️ ZERO ZA NIEPARSOWALNA KWOTE JEST WYJATKIEM O WASKIM ZAKRESIE i wolno go uzyc WYLACZNIE
-// tam, gdzie brak kwoty jest normalnym stanem zamowienia: `delivery.cost` (darmowa dostawa)
-// i `surcharges` (w probce 60 zamowien doplaty nie bylo ANI RAZU). Dla kwoty zamowienia
-// I DLA CENY POZYCJI obowiazuje regula ODWROTNA — patrz `groszeWymagane` nizej.
+// ⚠️ ZERO ZA NIEPARSOWALNĄ KWOTĘ JEST WYJĄTKIEM O WĄSKIM ZAKRESIE i wolno go użyć WYŁĄCZNIE
+// tam, gdzie brak kwoty jest normalnym stanem zamówienia: `delivery.cost` (darmowa dostawa)
+// i `surcharges` (dopłata to rzadkość). Dla kwoty zamówienia I DLA CENY POZYCJI obowiązuje
+// reguła ODWROTNA — patrz `groszeWymagane` niżej.
 //
-// ⚠️ CENA POZYCJI DOLACZYLA DO WARTOSCI WYMAGANYCH 04.08.2026 (recenzja calej galezi, M-1).
-// Do tej chwili komentarz mowil jedno, a `pozycjeAllegro` robilo drugie: nieparsowalna cena
-// pozycji schodzila po cichu do zera i ladowala na karcie jako `0,00 zl` — nie jako brak
-// danych, tylko jako FAKT, ktorego nikt nie ma powodu kwestionowac. Rozstrzygniecie poszlo
-// w strone KOMENTARZA, a nie kodu, i to z trzech powodow:
-//   1. regula tego pliku jest sluszna: zero wolno tam, gdzie „brak kwoty" jest normalnym
-//      stanem zamowienia. Oferta BEZ CENY nie jest normalnym stanem — w probce 60 zamowien
-//      cene mialo 60/60. To nie jest „darmowa pozycja", tylko dana nie do odczytania;
-//   2. zero klamie w DWOCH miejscach naraz: na karcie (kwota, ktora czyta czlowiek) i w sumie
-//      pozycji, ktora karmi bariere arytmetyczna faktury. Faktury i tak nie da sie wtedy
-//      wystawic (suma pozycji < kwota zamowienia), ale odmowa mowi o niezgodnosci sum, a nie
-//      o prawdziwej przyczynie — operator klika w kolko przy pozycji, ktora wyglada poprawnie;
-//   3. odmowa przestala byc kosztowna: od poprawki C-2 (services/poller.js) rzut z mapowania
-//      pomija JEDNO zamowienie z zapisanym powodem i przesuwa kursor, zamiast zatrzymywac
-//      caly kanal. Przed C-2 ten wybor bylby nie do przyjecia — i wlasnie dlatego obie
-//      poprawki jada razem.
+// ⚠️ CENA POZYCJI JEST WARTOŚCIĄ WYMAGANĄ. Gdyby nieparsowalna cena pozycji schodziła po cichu
+// do zera, lądowałaby na karcie jako `0,00 zł` — nie jako brak danych, tylko jako FAKT, którego
+// nikt nie ma powodu kwestionować. Odmowa zamiast zera, z trzech powodów:
+//   1. reguła tego pliku: zero wolno tam, gdzie „brak kwoty" jest normalnym stanem
+//      zamówienia. Oferta BEZ CENY nie jest normalnym stanem — w zmierzonych zamówieniach
+//      cenę miała każda pozycja. To nie jest „darmowa pozycja", tylko dana nie do odczytania;
+//   2. zero kłamie w DWÓCH miejscach naraz: na karcie (kwota, którą czyta człowiek) i w sumie
+//      pozycji, która karmi barierę arytmetyczną faktury. Faktury i tak nie da się wtedy
+//      wystawić (suma pozycji < kwota zamówienia), ale odmowa mówi o niezgodności sum, a nie
+//      o prawdziwej przyczynie — operator klika w kółko przy pozycji, która wygląda poprawnie;
+//   3. odmowa nie jest kosztowna: rzut z mapowania pomija JEDNO zamówienie z zapisanym
+//      powodem i przesuwa kursor (services/poller.js), zamiast zatrzymywać cały kanał.
+//      Bez tej izolacji w pollerze ten wybór byłby nie do przyjęcia.
 //
-// ⚠️ CENA TEJ DECYZJI, wprost: pominietego zamowienia panel NIE POKAZE, a kursor przez nie
-// przeskoczy, wiec samo z siebie NIE WROCI (wroci dopiero, gdy Allegro je zmodyfikuje).
-// Powod stoi w `stan_pollera.ostatni_blad` i na pasku listy zamowien. Przy tym kanale koszt
-// jest znosny: paczki Allegro i tak nadaje sie w panelu Allegro, wiec brak zamowienia
-// w OMS-ie nie zatrzymuje wysylki — zabiera fakture i widok, a nie paczke.
+// ⚠️ CENA TEJ DECYZJI, wprost: pominiętego zamówienia panel NIE POKAŻE, a kursor przez nie
+// przeskoczy, więc samo z siebie NIE WRÓCI (wróci dopiero, gdy Allegro je zmodyfikuje).
+// Powód stoi w `stan_pollera.ostatni_blad` i na pasku listy zamówień. Przy tym kanale koszt
+// jest znośny: paczkę Allegro da się nadać także w panelu Allegro, więc brak zamówienia
+// w OMS-ie nie zatrzymuje wysyłki — zabiera fakturę i widok, a nie paczkę.
 export const groszeZKwoty = (k) => {
   const n = Number(k?.amount ?? 0);
   return Number.isFinite(n) ? Math.round(n * 100) : 0;
 };
 
-// Kwota, ktora MUSI byc liczba. To jest `grosze` z domain/suma-pozycji.js — DOKLADNIE ta sama
+// Kwota, ktora MUSI byc liczba. To jest `grosze` z domena/suma-pozycji.js — DOKLADNIE ta sama
 // funkcja, ktora steruje bariera arytmetyczna faktury, z tym samym uzasadnieniem: „pusta
 // /nieliczbowa kwota ma RZUCIC, a nie zamienic sie w NaN". Wlasna kopia tej reguly tutaj
 // rozjechalaby sie z bariera przy pierwszej zmianie po ktorejkolwiek stronie.
@@ -62,7 +59,7 @@ const groszeWymagane = (k, opis) => grosze(k?.amount, opis);
 const zGroszy = (g) => (g / 100).toFixed(2);
 
 // Netto z brutta TA SAMA arytmetyka, co na podsumowaniu VAT proformy
-// (domain/podsumowanie-vat.js): round(bruttoGr * 100 / (100 + stawka)), na groszach
+// (domena/podsumowanie-vat.js): round(bruttoGr * 100 / (100 + stawka)), na groszach
 // jako liczbach calkowitych. Dzielenie przez „1,23" wpisane wprost dawaloby te sama
 // liczbe przy 23%, ale rozjechaloby sie przy kazdej innej stawce — a stawka jest tu DANA
 // (`lineItems[].tax.rate`), nie stala.
@@ -90,7 +87,7 @@ const tekstAlboNull = (v) => {
 //
 // Panel czyta adresy JEDNYM kompletem kluczy (Woo `billing`/`shipping`): `first_name`,
 // `last_name`, `company`, `address_1`, `address_2`, `postcode`, `city`, `country`.
-// Robia to domain/adres-odbiorcy.js i domain/dane-faktury.js, czyli karta, ekran nadania
+// Robia to domena/adres-odbiorcy.js i domena/dane-faktury.js, czyli karta, ekran nadania
 // i nabywca wysylany do inFaktu. Wpisanie tam surowego obiektu Allegro
 // (`street`/`zipCode`/`company: {name, taxId}`) NIE WYWALA NICZEGO — po prostu wszystkie te
 // pola robia sie puste, a `company` staje sie OBIEKTEM, ktory na fakturze wyladowalby jako
@@ -129,11 +126,11 @@ const tekstAlboNull = (v) => {
 // Odwrotna granica jest rownie wazna: JEDNO niepuste pole bloku (choćby samo miasto) znaczy
 // DANA i caly blok schodzi do panelu. To nie jest zamrozenie adresu.
 //
-// ⚠️ IMIE, NAZWISKO I FIRMA LICZA SIE JAKO TRESC, choc nie sa adresem POCZTOWYM — i to jest
-// wybor, nie przeoczenie. Nie wiemy, czy przy przesylce do paczkomatu (13 z 60 zamowien
-// w rozpoznaniu) `delivery.address` w ogole niesie ulice i miasto; gdyby nie niosla, regula
-// liczaca WYLACZNIE ulice/kod/miasto oddawalaby `null` przy KAZDEJ synchronizacji i panel
-// nie zapisalby nazwiska odbiorcy ANI RAZU — awaria na ruchu normalnym, a nie na wygasnieciu.
+// ⚠️ IMIĘ, NAZWISKO I FIRMA LICZĄ SIĘ JAKO TREŚĆ, choć nie są adresem POCZTOWYM — i to jest
+// wybór, nie przeoczenie. Nie wiemy, czy przy przesyłce do paczkomatu (spora część zamówień)
+// `delivery.address` w ogóle niesie ulicę i miasto; gdyby nie niosła, reguła
+// licząca WYŁĄCZNIE ulicę/kod/miasto oddawałaby `null` przy KAŻDEJ synchronizacji i panel
+// nie zapisałby nazwiska odbiorcy ANI RAZU — awaria na ruchu normalnym, a nie na wygaśnięciu.
 // Ryzyko odwrotne — Allegro kasuje adres, ale przez chwile oddaje jeszcze samo nazwisko —
 // zostaje otwarte i jest tu nazwane wprost. Jest mniejsze (nazwisko to dana osobowa, wiec
 // wygasa RAZEM z adresem, inaczej niz mail posrednika) i odwracalne: operator ma „Przywroc
@@ -146,7 +143,7 @@ function adresPanelu(a, { imie = null, nazwisko = null, firma = null } = {}) {
     last_name: tekstAlboNull(nazwisko ?? a.lastName),
     company: tekstAlboNull(firma ?? a.companyName),
     // Allegro trzyma numer domu W ULICY (jedno pole `street`), wiec `address_2` zostaje
-    // puste — `sklejUlice` w domain/dane-reczne.js zlozy z tego dokladnie `street`.
+    // puste — `sklejUlice` w domena/dane-reczne.js zlozy z tego dokladnie `street`.
     address_1: tekstAlboNull(a.street),
     address_2: null,
     postcode: tekstAlboNull(a.zipCode ?? a.postCode),
@@ -160,11 +157,11 @@ function adresPanelu(a, { imie = null, nazwisko = null, firma = null } = {}) {
 
 // Nabywca (blok `klient`, odpowiednik Woo `billing`).
 //
-// ⚠️ ADRES BIERZEMY BLOKIEM, NIE POLE PO POLU. `invoice.address` jest na 39 z 60 zamowien,
-// przy pozostalych nabywca to kupujacy — ale gdy Allegro poda adres faktury NIEPELNY,
+// ⚠️ ADRES BIERZEMY BLOKIEM, NIE POLE PO POLU. `invoice.address` jest na części zamówień,
+// przy pozostałych nabywca to kupujący — ale gdy Allegro poda adres faktury NIEPELNY,
 // brakujace pola maja zostac PUSTE, a nie doklejone z adresu kupujacego. Sklejony adres
 // wyglada na poprawny i nikt go nie zakwestionuje, a dokument idzie pod miejsce, ktore
-// nigdy nie istnialo. Ta sama zasada, co przy `nettoIPodatekLinii` w domain/mapowanie.js:
+// nigdy nie istnialo. Ta sama zasada, co przy `nettoIPodatekLinii` w domena/mapowanie.js:
 // fallback dziala PARAMI, nie polami.
 //
 // WYJATKI OD REGULY BLOKU sa TRZY i wszystkie swiadome:
@@ -196,10 +193,10 @@ function klientAllegro(surowe) {
   if (!podstawa) return null;
   return {
     ...podstawa,
-    // Mail kupujacego jest zawsze niepusty (60/60) i jest to adres posrednika
+    // Mail kupującego jest zawsze niepusty i jest to adres pośrednika
     // („…@allegromail.pl"), a nie prywatny mail klienta.
     email: tekstAlboNull(buyer?.email),
-    // Login kupującego na Allegro (PRZ-094.19) — lista zamówień pokazuje go pod imieniem i nazwiskiem.
+    // Login kupującego na Allegro — lista zamówień pokazuje go pod imieniem i nazwiskiem.
     // Dodatkowy klucz bloku, nie osobna kolumna: czyta go wyłącznie lista, a poller i tak przepisuje blok
     // przy każdej synchronizacji. ⚠️ Dotyczy zamówień zapisanych OD tej zmiany — starsze go nie mają.
     // Blok z loginem powstaje tylko wtedy, gdy jest adres (`return null` wyżej): sam login nie zastąpi adresu.
@@ -207,15 +204,15 @@ function klientAllegro(surowe) {
     // ⚠️ TELEFON DO PACZKI JEST W BLOKU DOSTAWY, A CZYTANY JEST STAD — i dlatego sklejamy go
     // WLASNIE TUTAJ, a nie w adres-odbiorcy.js.
     //
-    // `surowyAdres` (domain/adres-odbiorcy.js) — jedyny czytelnik telefonu dla karty, ekranu
+    // `surowyAdres` (domena/adres-odbiorcy.js) — jedyny czytelnik telefonu dla karty, ekranu
     // nadania, wyszukiwarki i obu klientow kurierskich — bierze `phone` WYLACZNIE z bloku
     // `klient`. Numer wpisany do `dostawa.phone` nie ma dzis ANI JEDNEGO czytelnika, wiec
     // przy `buyer.phoneNumber = null` karta pokazywala pusty telefon, choc Allegro podalo go
     // w `delivery.address.phoneNumber`. InPost bez telefonu nie wysle SMS-a z kodem do
-    // paczkomatu, a paczkomaty to 13 z 60 zamowien w rozpoznaniu.
+    // paczkomatu, a paczkomaty to spora część zamówień.
     //
     // ⚠️ POPRAWKA NIE MOZE ISC DO `surowyAdres`, bo ta funkcja obsluguje TAKZE WooCommerce:
-    // blok `dostawa` sklepu to `surowe.shipping` przepisany SUROWO (domain/mapowanie.js),
+    // blok `dostawa` sklepu to `surowe.shipping` przepisany SUROWO (domena/mapowanie.js),
     // a WooCommerce od 5.6 potrafi wypelnic `shipping.phone` innym numerem niz `billing`.
     // Zmiana pierwszenstwa tam po cichu podmienilaby numer na etykietach DPD dla zywego
     // kanalu sklepowego — bez zadnego pomiaru, ze nowy jest lepszy. Zamowienie zakladane
@@ -259,18 +256,17 @@ function opisPunktu(p) {
 /**
  * Formularz zakupowy Allegro → model panelu (te same klucze, co `mapujZamowienie`).
  *
- * `metodaZId` jest WSTRZYKNIETA ZALEZNOSCIA (domain/allegro-dostawa.js): mapowanie nie ma
+ * `metodaZId` jest WSTRZYKNIETA ZALEZNOSCIA (domena/allegro-dostawa.js): mapowanie nie ma
  * prawa znac slownika metod, bo slownik sie zmienia, a ta regula nie.
  */
 export function mapujZamowienieAllegro(surowe, { metodaZId }) {
-  // ⚠️ `?? {}` i `?? 'nieznana'` nie sa ostroznoscia na wyrost: osiem roznych metod na 60
-  // zamowien znaczy, ze slownik NIGDY nie bedzie kompletny (notatka, sekcja 4), a
-  // `metoda_wysylki` jest kolumna NOT NULL. `undefined` wiazane do node:sqlite konczy sie
-  // wywalonym zapisem albo — gorzej — cisza. Nieznana metoda nie ma prawa zatrzymac kanalu,
-  // na ktorym i tak nie nadajemy paczek.
-  // ⚠️ BIERZEMY TEZ `etykieta` — do 25.08.2026 szla do kosza. To pelna nazwa uslugi
-  // („Allegro One Box, One Kurier"), ktora Allegro podaje w `delivery.method.name`;
-  // panel pokazywal zamiast niej kubelek („Allegro punkt / automat") w 12 z 65 zamowien.
+  // ⚠️ `?? {}` i `?? 'nieznana'` nie są ostrożnością na wyrost: metod dostawy jest wiele
+  // i przybywają, więc słownik NIGDY nie będzie kompletny, a `metoda_wysylki` jest kolumną
+  // NOT NULL. `undefined` wiązane do node:sqlite kończy się wywalonym zapisem albo — gorzej —
+  // ciszą. Nieznana metoda nie ma prawa zatrzymać całego kanału.
+  // ⚠️ BIERZEMY TEŻ `etykieta`. To pełna nazwa usługi („Allegro One Box, One Kurier"),
+  // którą Allegro podaje w `delivery.method.name`; bez niej panel pokazywałby zamiast niej
+  // kubełek („Allegro punkt / automat").
   // ⚠️ Nazwa NIE STERUJE NICZYM — decyduje `metoda`, liczona po `delivery.method.id`.
   const { metoda, etykieta } = metodaZId(surowe?.delivery?.method?.id, surowe?.delivery?.method?.name) ?? {};
   // ⚠️ POBRANIE Z PLATNOSCI, NIGDY Z NAZWY DOSTAWY. Nazwa jest tekstem — dokladnie ta
@@ -296,7 +292,7 @@ export function mapujZamowienieAllegro(surowe, { metodaZId }) {
     klient: klientAllegro(surowe),
     dostawa: dostawaAllegro(surowe),
     metoda_wysylki: metoda ?? 'nieznana',
-    // ⚠️ NAZWA WPROST OD ALLEGRO, slownik dopiero jako zapasowa (decyzja właściciela 25.08).
+    // ⚠️ NAZWA WPROST OD ALLEGRO, słownik dopiero jako zapasowa.
     // Dla znanych uslug te dwie WARTOSCI SIE ROZNIA, i to na korzysc Allegro:
     //   slownik „Allegro One Box"    → Allegro „Allegro One Box, One Kurier"
     //   slownik „Allegro One Kurier" → Allegro „Allegro One Kurier - dostawa jutro"
@@ -308,26 +304,26 @@ export function mapujZamowienieAllegro(surowe, { metodaZId }) {
     pobranie,
     // Za pobraniem kurier inkasuje CALOSC zamowienia.
     kwota_pobrania: pobranie ? zGroszy(razem) : null,
-    // Kod automatu/punktu przychodzi gotowy — 13 z 60 zamowien w probce go mialo.
+    // Kod automatu/punktu przychodzi gotowy (tylko przy dostawie do punktu).
     punkt_odbioru: surowe?.delivery?.pickupPoint?.id ?? null,
     punkt_odbioru_opis: opisPunktu(surowe?.delivery?.pickupPoint),
     chce_fakture: surowe?.invoice?.required ? 1 : 0,
-    // Bez etykiety „NIP” wpisanej przez kupującego (zgłoszenie 14.10.2026, 422 z inFaktu).
+    // Bez etykiety „NIP” wpisanej przez kupującego (inFakt odrzuca taki NIP błędem 422).
     nip: bezEtykietyNip(firma?.taxId),
     kwota_brutto: zGroszy(razem),
     koszt_dostawy_brutto: zGroszy(dostawa),
     // ⚠️ Netto dostawy liczymy ze stawki VAT pozycji, bo Allegro netta dostawy nie podaje.
-    // To NIE jest zlamanie zasady „netto wprost ze zrodla" (niezmiennik 4.5) — do inFaktu
-    // i tak idzie BRUTTO, a ta wartosc sluzy WYLACZNIE kolumnie „netto" na karcie.
+    // To NIE jest złamanie zasady „netto wprost ze źródła" — do inFaktu
+    // i tak idzie BRUTTO, a ta wartość służy WYŁĄCZNIE kolumnie „netto" na karcie.
     koszt_dostawy_netto: zGroszy(nettoZBruttaGr(dostawa, stawkaDostawy)),
     // ⚠️ Status ZAMOWIENIA idzie BEZ walidacji wobec listy z dokumentacji: `CANCELLED`
     // wystepuje na zywym koncie takze jako `fulfillment.status`, choc dokumentacja go tam
     // nie wymienia. Parser, ktory sie na tym wywala, zatrzymalby caly kanal z powodu
     // wartosci, ktorej Allegro nie musialo z nami uzgadniac.
     status_woo: surowe?.status ?? null,
-    // ⚠️ STATUS REALIZACJI, ODDZIELNIE OD STATUSU ZAMÓWIENIA WYŻEJ. Wchodzi do modelu
-    // dopiero teraz (Plan B), bo dopiero teraz jest do czegoś potrzebny: `domain/allegro-status.js`
-    // czyta go, żeby NIE WYSŁAĆ do Allegro stanu, który tam już jest — i żeby nie cofnąć
+    // ⚠️ STATUS REALIZACJI, ODDZIELNIE OD STATUSU ZAMÓWIENIA WYŻEJ. Trafia do kolumny `status_realizacji`
+    // dla diagnostyki — żadna reguła dziś z niej nie czyta: `statusDlaAllegro` (`domena/allegro-status.js`)
+    // dostaje stan ze świeżego odczytu, żeby NIE WYSŁAĆ do Allegro stanu, który tam już jest, i nie cofnąć
     // `SENT` ustawionego ręcznie w panelu Allegro z powrotem na `PROCESSING`.
     //
     // Wartość idzie SUROWA i bez walidacji, z tego samego powodu co `status_woo`: `CANCELLED`
@@ -355,15 +351,15 @@ export function mapujZamowienieAllegro(surowe, { metodaZId }) {
  *
  * ⚠️ WYCIAGNIETE DO OSOBNEJ, EKSPORTOWANEJ FUNKCJI, bo czytelnikow jest DWOCH: mapowanie
  * (nizej) i przeliczenie wsteczne dla wierszy sprzed kolumny `pozycje.oferta_id`
- * (uzupelnijOfertaIdPozycji w db/db.js). Druga kopia tej reguly rozjechalaby sie z pierwsza
- * przy pierwszej zmianie ksztaltu odpowiedzi Allegro — dokladnie ten sam powod, dla ktorego
- * db/db.js importuje `bruttoLinii` i `cenaJednostkowaNetto` z domain/mapowanie.js, zamiast
- * liczyc je u siebie.
+ * (`uzupelnijOfertaIdPozycji` w oms/db/uzupelnienia-zamowien.js). Druga kopia tej reguły
+ * rozjechałaby się z pierwszą przy pierwszej zmianie kształtu odpowiedzi Allegro — dokładnie
+ * ten sam powód, dla którego oms/db/uzupelnienia-zamowien.js importuje `bruttoLinii`
+ * i `cenaJednostkowaNetto` z domena/mapowanie.js, zamiast liczyć je u siebie.
  *
- * ⚠️ ZAWSZE NAPIS. Allegro przysyla `offer.id` jako napis dziesieciocyfrowy („1234567890")
- * i taki ma dojechac do bazy — kolumna jest TEXT wlasnie po to, zeby po drodze nie zamienil
- * sie w liczbe (uzasadnienie w calosci przy tej kolumnie w db/schema.sql). `String()` stoi
- * tu, a nie przy zapisie, bo to mapowanie odpowiada za ksztalt modelu panelu.
+ * ⚠️ ZAWSZE NAPIS. Allegro przysyła `offer.id` jako napis dziesięciocyfrowy („1234567890")
+ * i taki ma dojechać do bazy — kolumna jest TEXT właśnie po to, żeby po drodze nie zamienił
+ * się w liczbę. `String()` stoi tu, a nie przy zapisie, bo to mapowanie odpowiada za kształt
+ * modelu panelu.
  */
 export function ofertaLinii(li) {
   const id = String(li?.offer?.id ?? '').trim();
@@ -373,9 +369,9 @@ export function ofertaLinii(li) {
 function pozycjeAllegro(surowe) {
   const pozycje = (surowe?.lineItems ?? []).map((li) => {
     const ilosc = Number(li.quantity) || 1;
-    // ⚠️ CENA POZYCJI MUSI BYC LICZBA (M-1) — zero po cichu daloby `0,00 zl` na karcie jako
-    // FAKT i zaniżoną sumę pozycji, czyli fakture nie do wystawienia z powodu, ktorego
-    // w komunikacie bariery nie widac. Uzasadnienie w calosci — przy `groszeZKwoty` wyzej.
+    // ⚠️ CENA POZYCJI MUSI BYĆ LICZBĄ — zero po cichu dałoby `0,00 zł` na karcie jako
+    // FAKT i zaniżoną sumę pozycji, czyli fakturę nie do wystawienia z powodu, którego
+    // w komunikacie bariery nie widać. Uzasadnienie w calosci — przy `groszeZKwoty` wyzej.
     // Opis niesie nazwe oferty i identyfikator zamowienia, bo to jedyne, po czym czlowiek
     // odnajdzie te pozycje w panelu Allegro po przeczytaniu powodu pominiecia.
     const jednostkowoGr = groszeWymagane(
@@ -387,8 +383,8 @@ function pozycjeAllegro(surowe) {
     return {
       zrodlo_id: li.id ?? null,
       nazwa: li?.offer?.name ?? '(bez nazwy)',
-      // ⚠️ `offer.external` jest NULL na tym koncie — nasze SKU nie przychodzi z Allegro.
-      // Kolumna zostaje pusta swiadomie (notatka rozpoznania, sekcja 8).
+      // ⚠️ `offer.external` bywa NULL — wtedy SKU sprzedawcy nie przychodzi z Allegro.
+      // Kolumna zostaje wtedy pusta świadomie.
       sku: li?.offer?.external?.id ?? null,
       ilosc,
       cena_brutto: zGroszy(jednostkowoGr),
@@ -396,18 +392,18 @@ function pozycjeAllegro(surowe) {
       brutto_linii: zGroszy(liniaGr),
       netto_linii: zGroszy(nettoZBruttaGr(liniaGr, stawka)),
       vat: String(stawka),
-      // ⚠️ FORMULARZ ZAKUPOWY ZDJECIA NIE NIESIE, wiec przy zapisie NIE MA CZEGO WPISAC —
-      // i to zostaje NULL-em na zawsze, takze po dolozeniu miniatur (05.08.2026). Adres
-      // dopytujemy osobno (`GET /sale/product-offers/{offerId}`) i trzymamy w pamieci
-      // podrecznej kluczowanej OFERTA (`zdjecia_ofert`), bo poller kasuje i wstawia pozycje
-      // co dwie minuty (przewodnik OMS, 4.7) — adres wpisany tutaj przepadalby przy kazdej
-      // synchronizacji, a panel pytalby Allegro o to samo 720 razy na dobe. Doklejenie
-      // adresu do pozycji robi ODCZYT (db/zamowienia.js), nie mapowanie.
+      // ⚠️ FORMULARZ ZAKUPOWY ZDJĘCIA NIE NIESIE, więc przy zapisie NIE MA CZEGO WPISAĆ —
+      // i to zostaje NULL-em na zawsze, także przy miniaturach. Adres dopytujemy osobno
+      // (`GET /sale/product-offers/{offerId}`) i trzymamy w pamięci podręcznej kluczowanej
+      // OFERTĄ (`zdjecia_ofert`), bo poller kasuje i wstawia pozycje przy każdej synchronizacji
+      // (reguła: dane ręczne obok danych sklepu) — adres wpisany tutaj przepadałby za każdym
+      // razem, a panel pytałby Allegro o to samo setki razy na dobę. Doklejenie adresu
+      // do pozycji robi ODCZYT (oms/db/zamowienia.js), nie mapowanie.
       zdjecie_url: null,
       // ⚠️ `produkt_id` ZOSTAJE PUSTE i to nie jest miejsce na identyfikator oferty. Ta
       // kolumna znaczy „produkt W SKLEPIE" (Woo `product_id`), jest typu INTEGER i wchodzi
       // do adresu `?post_type=product&p=…`, ktory dla Allegro nie ma sensu. Identyfikator
-      // oferty jedzie WLASNA kolumna TEXT — patrz `oferta_id` w db/schema.sql.
+      // oferty jedzie WŁASNĄ kolumną TEXT — `oferta_id` niżej.
       produkt_id: null,
       oferta_id: ofertaLinii(li),
     };
@@ -419,11 +415,11 @@ function pozycjeAllegro(surowe) {
   // pierwsza doplata w kanale = pierwsza faktura, ktorej nie da sie wystawic, i odmowa
   // deterministyczna (ponowienie nie pomaga).
   //
-  // W probce 60 zamowien doplat nie bylo ANI RAZU, wiec ta sciezka uruchomi sie pierwszy raz
-  // na produkcji — i dlatego jest napisana tak, zeby pomylka w jej zalozeniu tez byla
-  // BEZPIECZNA: gdyby doplata jednak NIE wchodzila do `totalToPay`, suma pozycji przerosnie
-  // kwote zamowienia i bariera zablokuje wystawienie. Zaden wariant nie daje faktury na zla
-  // kwote — daje albo poprawna, albo zadna.
+  // Dopłata to rzadkość i tej ścieżki nie potwierdził żaden zmierzony przypadek — dlatego jest
+  // napisana tak, żeby pomyłka w jej założeniu też była BEZPIECZNA: gdyby dopłata jednak
+  // NIE wchodziła do `totalToPay`, suma pozycji przerośnie kwotę zamówienia i bariera
+  // zablokuje wystawienie. Żaden wariant nie daje faktury na złą kwotę — daje albo
+  // poprawną, albo żadną.
   const doplataGr = (surowe?.surcharges ?? []).reduce((s, d) => s + groszeZKwoty(d?.amount), 0);
   if (doplataGr > 0) {
     const stawka = stawkaLinii(surowe?.lineItems?.[0]);
@@ -439,11 +435,10 @@ function pozycjeAllegro(surowe) {
       vat: String(stawka),
       zdjecie_url: null,
       produkt_id: null,
-      // ⚠️ Doplata NIE JEST oferta, wiec nie ma dokad prowadzic — i to jest wazniejsze,
-      // niz wyglada. Wiersz doplaty niesie `zrodlo_id: 'doplata'`; podstawienie go tutaj
-      // daloby na karcie odnosnik do `allegro.pl/oferta/doplata`, czyli link otwierajacy
-      // pustke. Regula tego repo brzmi odwrotnie (domain/tracking.js): brak linku jest
-      // lepszy niz link donikad.
+      // ⚠️ Dopłata NIE JEST ofertą, więc nie ma dokąd prowadzić. Wiersz dopłaty niesie
+      // `zrodlo_id: 'doplata'` i to NIE jest identyfikator oferty — nie wolno go tu
+      // podstawiać. Brak linku jest lepszy niż link donikąd (ta sama zasada co
+      // w `adresSledzenia`, domena/przewoznik-przesylki.js).
       oferta_id: null,
     });
   }

@@ -12,13 +12,13 @@ import { STAWKA_VAT, nettoZBruttoDoPokazania } from './vat.js';
 import { czyWdt } from './wdt.js';
 import { bezEtykietyNip } from './dane-faktury.js';
 
-// PRZ-105: nabywca z UE po NIP-ie z formularza — ta sama droga, którą NIP idzie na dokument (daneFaktury zdejmuje
+// Nabywca z UE po NIP-ie z formularza — ta sama droga, którą NIP idzie na dokument (daneFaktury zdejmuje
 // etykietę „NIP:”), inaczej ekran liczyłby 23%, a faktura poszłaby z 0%.
-// PRZ-122.B07f: `zwolniona` (firma zwolniona z VAT, liczy trasa) — numer UE nabywcy to wtedy nie WDT.
+// `zwolniona` (firma zwolniona z VAT, liczy trasa) — numer UE nabywcy to wtedy nie WDT.
 export const wdtZFormularza = (f, { zwolniona = false } = {}) => czyWdt(bezEtykietyNip(f?.f_nip), { zwolniona });
 // Dzielenie imienia i nazwiska NIE jest zdefiniowane tutaj — mieszka we wspólnym module
-// src/domain/nazwa-osoby.js, bo panel (src/domain/oms-order.js) musi używać dokładnie tej
-// samej reguły podziału co ten ekran. Uzasadnienie patrz komentarz przy definicji.
+// domena/z-panelu/nazwa-osoby.js, bo panel zamówień indywidualnych (osobna aplikacja) musi używać
+// dokładnie tej samej reguły podziału co ten ekran. Uzasadnienie patrz komentarz przy definicji.
 import { rozbijNazwe } from './z-panelu/nazwa-osoby.js';
 
 // ⚠️ PO CO TO ISTNIEJE. Ekran „Nowe zamówienie" zakłada zamówienie RAZEM z adresem, danymi
@@ -27,7 +27,7 @@ import { rozbijNazwe } from './z-panelu/nazwa-osoby.js';
 // PRZED pierwszym zapisem do bazy. Odmowa w połowie zostawiłaby zamówienie z numerem,
 // bez pozycji i bez ani jednego śladu, że coś poszło nie tak.
 //
-// ⚠️ ŻADNE POLE NIE JEST OBOWIĄZKOWE (decyzja właściciela, 2026-08-01). Pusty formularz
+// ⚠️ ŻADNE POLE NIE JEST OBOWIĄZKOWE. Pusty formularz
 // zakłada zamówienie bez klienta, bez pozycji, na 0 zł — i to jest zamierzone: numer nadany
 // od razu przy telefonie jest wart więcej niż komplet danych, a karta i tak zapali blokady
 // przy nadaniu (brak adresu) i przy fakturze (bariera arytmetyczna). Odmowy zostają
@@ -35,21 +35,19 @@ import { rozbijNazwe } from './z-panelu/nazwa-osoby.js';
 
 /**
  * DWA OSOBNE PYTANIA zamiast jednej „metody wysyłki" — bo tak właśnie pyta się klienta przez
- * telefon („kurierem czy odbiór?", „przelew czy za pobraniem?"). Od 2026-08-01 tak samo
- * wygląda to w bazie: `metoda_wysylki` + `pobranie` to DWIE kolumny, a metodaWysylkiZWyboru
+ * telefon („kurierem czy odbiór?", „przelew czy za pobraniem?"). W bazie
+ * wygląda to tak samo: `metoda_wysylki` + `pobranie` to DWIE kolumny, a metodaWysylkiZWyboru
  * niżej niczego już nie skleja — tylko sprawdza, że para nie jest sprzeczna.
  *
  * Etykiety stąd idą prosto na ekran (widok NIE ma prawa wpisać ich u siebie drugi raz) —
  * ta sama zasada, co przy rodzajach zamówienia, które ten ekran zastąpił.
  */
-// ⚠️ LISTA MUSI BYĆ PODZBIOREM `METODY_WYSYLKI` (domain/wysylka.js) — to tamta rozstrzyga,
+// ⚠️ LISTA MUSI BYĆ PODZBIOREM `METODY_WYSYLKI` (domena/wysylka.js) — to tamta rozstrzyga,
 // co panel w ogóle umie nazwać i nadać. Metoda spoza niej dałaby zamówienie, którego karta
 // nie potrafi opisać, a ekran nadania nie potrafi obsłużyć.
 //
-// ⚠️ `inpost_paczkomat` DOSZEDŁ 07.08.2026 (prośba właściciela: „przy dodawaniu nowego
-// zamówienia nie da się dodać wysyłki paczkomatem"). Metoda istniała w panelu od 01.08, ale
-// ten ekran jej nie oferował — zamówienie telefoniczne do paczkomatu trzeba było zakładać
-// jako DPD i poprawiać na karcie.
+// ⚠️ `inpost_paczkomat` MUSI BYĆ NA LIŚCIE: metoda istnieje w panelu, więc bez niej zamówienie
+// telefoniczne do paczkomatu trzeba by zakładać jako DPD i poprawiać na karcie.
 //
 // Metod Allegro tu NIE MA i mieć nie będzie: zamówienie ręczne z metodą allegrową byłoby
 // zamówieniem udającym kanał, którego nie ma (patrz `czyKanalAllegro` — dyskryminatorem jest
@@ -69,7 +67,7 @@ export const PLATNOSCI = {
 /**
  * Wybór dostawy + wybór płatności → PARA `{ metoda, pobranie }`, czyli dwie kolumny.
  *
- * ⚠️ PARA, NIE JEDNA WARTOŚĆ (2026-08-01). Ekran zakładania od początku pytał o dostawę
+ * ⚠️ PARA, NIE JEDNA WARTOŚĆ. Ekran zakładania od początku pytał o dostawę
  * i płatność OSOBNO, a ta funkcja sklejała odpowiedzi w jedną nazwę (`dpd_pobranie`) —
  * czyli gubiła po drodze rozróżnienie, które człowiek właśnie zrobił. Teraz obie decyzje
  * jadą dalej w tej postaci, w jakiej zostały podjęte.
@@ -105,7 +103,7 @@ export function metodaWysylkiZWyboru(dostawa, platnosc) {
 const KOLUMNY_POZYCJI = ['nazwa', 'sku', 'ilosc', 'cena_netto', 'cena_brutto'];
 
 // ⚠️ TOZSAMOSC PRODUKTU JEDZIE OBOK, A NIE W `KOLUMNY_POZYCJI` — i to nie jest kosmetyka.
-// Te pola sa UKRYTE i wypelnia je wylacznie „dodaj z magazynu" (21.08.2026). Gdyby
+// Te pola sa UKRYTE i wypelnia je wylacznie „dodaj z magazynu". Gdyby
 // weszly do tablicy wyzej, decydowalyby o tym, czy wiersz jest PUSTY: wiersz z samym
 // identyfikatorem (a takim staje sie kazdy, ktoremu operator wyczyscil nazwe i cene)
 // przestalby byc pomijany i formularz odmawialby zalozenia zamowienia, wskazujac numer
@@ -114,15 +112,15 @@ const KOLUMNY_POZYCJI = ['nazwa', 'sku', 'ilosc', 'cena_netto', 'cena_brutto'];
 // ⚠️ `cena_katalogowa` NALEZY DO TEJ SAMEJ RODZINY, choc jest kwota: to nie jest cena, ktora
 // klient placi (ta stoi w `cena_brutto`), tylko cena SPRZED rabatu — zapisywana po to, zeby
 // dalo sie pokazac na karcie, skad wziela sie kwota, i przeliczyc zamowienie po zmianie
-// rabatu (domain/rabat.js). Wiersz, w ktorym zostala sama, jest tak samo pusty jak kazdy inny.
+// rabatu (domena/rabat.js). Wiersz, w ktorym zostala sama, jest tak samo pusty jak kazdy inny.
 const KOLUMNY_TOZSAMOSCI = ['produkt_id', 'wariant_id', 'cena_katalogowa'];
 
-// PRZ-105: stawka VAT wiersza (lista 23/8/5/0). Też OBOK `KOLUMNY_POZYCJI`: lista ma zawsze wybraną wartość,
+// Stawka VAT wiersza (lista 23/8/5/0). Też OBOK `KOLUMNY_POZYCJI`: lista ma zawsze wybraną wartość,
 // więc liczona do pustości robiłaby z każdego nietkniętego wiersza wiersz „zaczęty”.
 const KOLUMNY_STAWKI = ['vat'];
 
-// ⚠️ ILOŚĆ NIE CZYNI WIERSZA NIEPUSTYM (PRZ-106, 21.10.2026): nowy wiersz ma ilość 1 od razu
-// (prośba właściciela — podpowiedź „1” wyglądała na wpisaną wartość), więc nietknięty wiersz z samą
+// ⚠️ ILOŚĆ NIE CZYNI WIERSZA NIEPUSTYM: nowy wiersz ma ilość 1 od razu
+// (podpowiedź „1” wyglądała na wpisaną wartość), więc nietknięty wiersz z samą
 // ilością musi być pomijany; inaczej zamówienie bez pozycji odmawiałoby zapisu. Ta sama reguła
 // w przeglądarce: public/suma-podglad.js, `pustyWiersz` — pilnuje tego tests/domena/suma-podglad.test.js.
 const pusteWiersz = (w) => KOLUMNY_POZYCJI.filter((k) => k !== 'ilosc').every((k) => String(w[k] ?? '').trim() === '');
@@ -147,7 +145,7 @@ function tozsamoscWiersza(w) {
  * jest lepsze od odmowy. Pola nie ma na ekranie: operator go nie wpisuje, nie widzi
  * i nie umie poprawic, wiec odmowa zalozenia zamowienia mowilaby mu o polu, ktorego nie
  * znajdzie. Skutek braku jest przy tym maly i domkniety — pozycja bez ceny katalogowej jest
- * NIEWIDZIALNA dla przeliczenia rabatem (domain/rabat.js) i zachowuje sie dokladnie tak, jak
+ * NIEWIDZIALNA dla przeliczenia rabatem (domena/rabat.js) i zachowuje sie dokladnie tak, jak
  * pozycja wpisana z reki. Zadna kwota, ktora klient placi, od tego pola nie zalezy.
  */
 function cenaKatalogowaWiersza(surowa) {
@@ -161,7 +159,7 @@ function cenaKatalogowaWiersza(surowa) {
 }
 
 /**
- * Wstawienie pozycji z magazynu do FORMULARZA nowego zamówienia (21.08.2026).
+ * Wstawienie pozycji z magazynu do FORMULARZA nowego zamówienia.
  *
  * ⚠️ DO FORMULARZA, NIE DO BAZY — i to jest cała różnica wobec karty. Zamówienie jeszcze
  * nie istnieje: ekran zakładania tworzy je jednym „Załóż zamówienie" razem z adresem,
@@ -172,9 +170,9 @@ function cenaKatalogowaWiersza(surowa) {
  * nowy na końcu. Formularz rośnie razem z zamówieniem — pięć wierszy to była podpowiedź
  * dla operatora, a nie granica.
  */
-// PRZ-122.B07b: `zw: true` (program wbudowany) — domyślna „zw” liczy netto = brutto zamiast „NaN”.
+// `zw: true` (program wbudowany) — domyślna „zw” liczy netto = brutto zamiast „NaN”.
 export function wstawPozycjeDoFormularza(formularz = {}, pozycja, { stawkaDomyslna = STAWKA_VAT, zw = false, zwolniona = false } = {}) {
-  // PRZ-105 (uwaga właściciela 21.10: „Jeżeli dodam produkt z magazynu to nie ma ceny netto”): netto jest
+  // Netto jest
   // POKAZANE, liczone stawką wiersza (przy NIP-ie z UE stawką 0 — netto = brutto). Brutto zostaje
   // wartością przechowywaną: parser bierze brutto, gdy jest, więc netto niczego nie nadpisze.
   const stawka = String(stawkaDomyslna);
@@ -217,14 +215,14 @@ export function wstawPozycjeDoFormularza(formularz = {}, pozycja, { stawkaDomysl
 
 /**
  * Pola jednego wiersza pozycji na ekranie zakładania — razem z ukrytymi (tożsamość produktu,
- * cena sprzed rabatu). PRZ-103: dodanie i skasowanie wiersza dzieje się na WSZYSTKICH naraz.
+ * cena sprzed rabatu). Dodanie i skasowanie wiersza dzieje się na WSZYSTKICH naraz.
  */
 export const POLA_WIERSZA_POZYCJI = Object.freeze([
   'poz_nazwa', 'poz_sku', 'poz_ilosc', 'poz_cena_netto', 'poz_cena_brutto',
   'poz_produkt_id', 'poz_wariant_id', 'poz_cena_katalogowa', 'poz_vat',
 ]);
 
-// Prośba właściciela 21.10 („zrób 1 wiersz na start”) — kolejne dokłada „+ Dodaj wiersz”. Do PRZ-103 było pięć.
+// Na start jeden wiersz — kolejne dokłada „+ Dodaj wiersz”.
 const WIERSZE_NA_START = 1;
 
 /**
@@ -249,16 +247,16 @@ function tabliceWierszy(formularz, ile) {
   }));
 }
 
-/** „+ Dodaj wiersz” bez JavaScriptu (PRZ-103): jeden pusty wiersz na końcu. Nic nie zapisuje. */
+/** „+ Dodaj wiersz” bez JavaScriptu: jeden pusty wiersz na końcu. Nic nie zapisuje. */
 export function dodajWierszFormularza(formularz = {}) {
   const tablice = tabliceWierszy(formularz, liczbaWierszyFormularza(formularz));
-  // Ilość nowego wiersza to 1 (PRZ-106) — ta sama, którą widok wpisuje przy pierwszym wejściu.
+  // Ilość nowego wiersza to 1 — ta sama, którą widok wpisuje przy pierwszym wejściu.
   for (const [k, t] of Object.entries(tablice)) t.push(k === 'poz_ilosc' ? '1' : '');
   return { ...formularz, ...tablice };
 }
 
 /**
- * „Usuń” przy wierszu bez JavaScriptu (PRZ-103). ⚠️ Wiersz znika ze WSZYSTKICH tablic naraz —
+ * „Usuń” przy wierszu bez JavaScriptu. ⚠️ Wiersz znika ze WSZYSTKICH tablic naraz —
  * skasowany tylko w nazwach przesunąłby ceny i produkty o wiersz. Numer spoza tabeli
  * (podmieniony w HTML-u, stary formularz) nie kasuje niczego.
  */
@@ -280,11 +278,11 @@ export function usunWierszFormularza(formularz = {}, nr) {
  * nazwę przy telefonie i musi się dowiedzieć, że brakuje ceny. Ciche pominięcie zapisałoby
  * zamówienie bez pozycji, za którą klient ma zapłacić.
  */
-// PRZ-122.B07b (uwaga (1) z odbioru B07a): flaga `zw` dochodzi do `parsujNowaPozycje` — bez niej domyślna „zw” dawała
+// Flaga `zw` dochodzi do `parsujNowaPozycje` — bez niej domyślna „zw” dawała
 // netto „NaN”, a wiersz „zw” odmowę także przy programie wbudowanym.
 export function parsujPozycjeFormularza(body, { stawkaDomyslna = STAWKA_VAT, zw = false, zwolniona = false } = {}) {
   const wszystkie = [...KOLUMNY_POZYCJI, ...KOLUMNY_TOZSAMOSCI, ...KOLUMNY_STAWKI];
-  // PRZ-105: nabywca z UE (NIP faktury z formularza) — netto przelicza się stawką 0, jak policzy dokument.
+  // Nabywca z UE (NIP faktury z formularza) — netto przelicza się stawką 0, jak policzy dokument.
   const wdt = wdtZFormularza(body, { zwolniona });
   const kolumny = Object.fromEntries(
     wszystkie.map((k) => [k, jakoTablica(body?.[`poz_${k}`])]),
@@ -315,11 +313,10 @@ export function parsujPozycjeFormularza(body, { stawkaDomyslna = STAWKA_VAT, zw 
 
 /**
  * „Skopiuj dane do wysyłki" NA EKRANIE ZAKŁADANIA — dane nabywcy przepisane w pola adresu
- * paczki (prośba właściciela 07.08.2026; ten sam przycisk istnieje na karcie od pierwszej
- * fali tego dnia).
+ * paczki (ten sam przycisk istnieje na karcie).
  *
  * ⚠️ OPERUJE NA POLACH FORMULARZA, NIE NA BAZIE — i to jest cała różnica wobec bliźniaka
- * z karty (`kopiujDaneFakturyDoWysylki` w routes/zamowienia.js). Tam kopiuje się ZAPISANE
+ * z karty (`kopiujDaneFakturyDoWysylki` w moduly/zamowienia/kontekst.js). Tam kopiuje się ZAPISANE
  * zamówienie, więc trzeba je najpierw zapisać; tutaj nic jeszcze nie istnieje, więc kopia
  * jest przestawieniem wartości między polami i **nic nie zapisuje**. Wspólna funkcja dla obu
  * miejsc byłaby złożeniem dwóch różnych rzeczy: tamta rozstrzyga, co jest nadpisaniem wobec
@@ -353,7 +350,7 @@ export function skopiujFaktureDoWysylki(body = {}) {
  * jakiego oczekują adresOdbiorcy() i daneFaktury() — zamówienie ręczne nie ma sklepu, więc
  * to, co tu zapiszemy, JEST dla panelu daną źródłową.
  */
-// PRZ-105: `stawkaDomyslna` (Ustawienia → Firma) podaje trasa.
+// `stawkaDomyslna` (Ustawienia → Firma) podaje trasa.
 export function parsujNoweZamowienie(body = {}, {
   dzis = dzienWarszawa(new Date().toISOString()), stawkaDomyslna = STAWKA_VAT, zw = false, zwolniona = false,
 } = {}) {
@@ -407,17 +404,17 @@ export function parsujNoweZamowienie(body = {}, {
     // ⚠️ TO SA PIENIADZE — wlasna kolumna, nie skladnik nazwy metody. Zgubione tutaj
     // znaczy zamowienie telefoniczne przyjete „za pobraniem", ktore pojedzie bez inkasa.
     pobranie,
-    // ⚠️ ETYKIETA DLA CZLOWIEKA, nie klucz maszynowy (ustalenie recenzji 2026-08-01).
+    // ⚠️ ETYKIETA DLA CZLOWIEKA, nie klucz maszynowy.
     // Zamowienia ze sklepu trzymaja w tej kolumnie `payment_method_title` z Woo („Przelewy24",
     // „Płatność przy odbiorze"), a lista wyboru w filtrach buduje sie z DISTINCT tej kolumny
-    // (db/filtry.js). Klucz `przelew` obok tytulu „Przelewy24" dalby dwa slowniki w jednym
+    // (oms/db/filtry.js). Klucz `przelew` obok tytulu „Przelewy24" dalby dwa slowniki w jednym
     // rozwijanym polu i filtr, ktory dla czlowieka wyglada na powtorzony.
     metoda_platnosci: PLATNOSCI[platnosc],
     koszt_dostawy_brutto: parsujKosztDostawy(body?.koszt_dostawy_brutto),
     // ⚠️ KOD PACZKOMATU JEST ADRESEM TEJ PRZESYŁKI, nie ozdobą — bez niego nie ma czego
     // nadać. Zapisuje się WYŁĄCZNIE przy metodzie, która punkt odbioru w ogóle ma: kod
     // zostawiony po przełączeniu na DPD byłby śmieciem udającym adres (ta sama zasada
-    // i to samo zdanie, co w `sprawdzZmianeMetody` — domain/wysylka.js).
+    // i to samo zdanie, co w `sprawdzZmianeMetody` — domena/wysylka.js).
     //
     // Wielkie litery, bo tak wyglądają kody InPostu na etykietach i w ShipX: „kty01m"
     // przepisane ze słuchu zostałoby przez API odrzucone.
@@ -426,30 +423,30 @@ export function parsujNoweZamowienie(body = {}, {
       : null,
     // ⚠️ TO NIE JEST SPOSOB DOSTAWY, tylko odpowiedz na pytanie „kto placi za transport".
     // Każdy stały klient może nadawać na własnej etykiecie: dostawa jest wtedy zerowana,
-    // a włączona obsługa trafia jako pozycja opłaty (services/oplata.js).
+    // a włączona obsługa trafia jako pozycja opłaty (moduly/zamowienia/services/oplata.js).
     // Pole wyboru: przegladarka przysyla je WYLACZNIE gdy zaznaczone.
     etykietaKlienta: body?.etykieta_klienta !== undefined,
     // ⚠️ TO NIE JEST WIELKOSC ZAMOWIENIA, tylko odpowiedz na pytanie „dokad to jedzie".
     // Klient rozliczany zbiorczo sklada DWA rodzaje zamowien: drop do klienta koncowego
     // (jedna faktura na koniec miesiaca) i hurt do WLASNEJ siedziby (faktura od razu,
-    // z terminem). Hurt NIE wchodzi do okresu rozliczeniowego — services/okres.js.
+    // z terminem). Hurt NIE wchodzi do okresu rozliczeniowego — moduly/faktury/services/okres.js.
     // Pozostalych zamowien to pole nie dotyczy; pole wyboru, wiec jak wyzej.
     hurt: body?.hurt !== undefined,
-    // ⚠️ TO JEST KANAL RAPORTOWY, a nie etykietka na karcie (21.08.2026). Znacznik podstawia
+    // ⚠️ TO JEST KANAL RAPORTOWY, a nie etykietka na karcie. Znacznik podstawia
     // sie z bazy stalych klientow, ale od chwili zapisu rozstrzyga ZAMOWIENIE — patrz
-    // `kanalOms` w domain/kanaly-raportowe.js i uzasadnienie migawki tamze.
+    // `kanalOms` w domena/kanaly-raportowe.js i uzasadnienie migawki tamze.
     // Pole wyboru: przegladarka przysyla je WYLACZNIE gdy zaznaczone.
     b2b: body?.b2b !== undefined ? 1 : 0,
     // ⚠️ TERMIN UZGODNIONY Z KLIENTEM, nie wybor na fakturze. Zastepuje wylacznie zapasowe
     // „14 dni" w formularzu faktury i wchodzi do maila z potwierdzeniem — nigdy nie wygrywa
-    // z pobraniem ani z faktem oplacenia (domain/termin-platnosci.js: terminFaktury).
+    // z pobraniem ani z faktem oplacenia (domena/termin-platnosci.js: terminFaktury).
     termin_platnosci: parsujTerminZamowienia(body?.termin_platnosci),
-    // ⚠️ RABAT JEST SPRAWA WEWNETRZNA — klient widzi wylacznie ceny (decyzja wlasciciela).
+    // ⚠️ RABAT JEST SPRAWA WEWNETRZNA — klient widzi wylacznie ceny.
     // Kolumna sluzy DWOM rzeczom: pokazaniu na karcie, skad wziely sie kwoty, i przeliczeniu
     // pozycji po zmianie rabatu. Sam zapis kolumny NICZEGO nie przelicza; ceny licza sie
-    // przy wstawianiu pozycji z magazynu (domain/magazyn-do-zamowienia.js).
+    // przy wstawianiu pozycji z magazynu (domena/magazyn-do-zamowienia.js).
     rabat_procent: parsujRabat(body?.rabat_procent),
-    // PRZ-104: „najpóźniej do” — puste = standardowy termin (domena/termin-wysylki.js). Ta sama
+    // „najpóźniej do” — puste = standardowy termin (domena/termin-wysylki.js). Ta sama
     // walidacja, co pole na karcie zamówienia: od dziś do roku naprzód.
     termin_wysylki_reczny: parsujDateWysylki(body?.data_wysylki, dzis),
     nadpisaniaFaktury,

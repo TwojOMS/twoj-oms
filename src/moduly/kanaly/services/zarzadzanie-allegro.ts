@@ -17,8 +17,8 @@ export function createZarzadzanieAllegro(o:{db:DatabaseSync;repozytorium:Repozyt
   if(!kandydat||kandydat.klucz!==klucz||kandydat.aktor.id!==aktor.id||kandydat.wersja!==wersja)return bladAllegro('konflikt','Zgoda lub formularz są nieaktualne. Odśwież ekran.');
   const k=o.repozytorium.pobierz(klucz);
   if(!k||k.wersja!==wersja||k.generacja!==kandydat.generacja||typeof pobieraj!=='boolean')return bladAllegro('konflikt','Połączenie zostało zmienione.');
-  // PRZ-160 E3d.01: ponowna zgoda połączonego konta z panelu (to samo konto Allegro, sprawdzone przy
-  // odbiorze pary) wymienia tylko tokeny: bez przeglądu operacji, bez zmiany generacji, importu i ustawień.
+  // Ponowna zgoda połączonego konta z panelu (to samo konto Allegro) wymienia tylko tokeny: bez sprawdzania
+  // zakresu zamówień, bez akcji po aktywacji i bez zmiany ustawienia pobierania.
   const ponowna=kandydat.ponowna===true&&k.zrodlo==='panel'&&k.autoryzacja==='polaczone'&&k.kontoId===kandydat.kontoId;
   if(kandydat.ponowna===true&&!ponowna)return bladAllegro('konflikt','Połączenie zostało zmienione.');
   if(k.zrodlo!=='env'&&!ponowna&&!poprawnaDataStartu(k.odUtc,teraz()))return bladAllegro('walidacja','Wybierz dzień z ostatnich 12 miesięcy, nie późniejszy niż dzisiaj.');
@@ -115,7 +115,7 @@ export function createZarzadzanieAllegro(o:{db:DatabaseSync;repozytorium:Repozyt
    zapisz(false);return {ok:true,dane:{sprawdzonoAt:at,...(uwaga?{uwaga}:{})}};
   }catch(e){
    if(aktualna())zapisz(true);
-   // B5: odmowa (401/403) wymaga ponownego połączenia; sieć i 5xx miną same. Tokeny zostają bez zmian.
+   // Odmowa (401/403) wymaga ponownego połączenia; sieć i 5xx miną same. Tokeny zostają bez zmian.
    const b=e as {status?:unknown;code?:unknown;cause?:{code?:unknown};name?:unknown};
    if(b?.status===401||b?.status===403)return bladAllegro('tymczasowy','Allegro odmówiło dostępu — odnów połączenie.');
    if((typeof b?.status==='number'&&b.status>=500)||typeof b?.code==='string'||typeof b?.cause?.code==='string'||b?.name==='AbortError'||b?.name==='TimeoutError')return bladAllegro('tymczasowy','Allegro nie odpowiada, spróbujemy ponownie.');

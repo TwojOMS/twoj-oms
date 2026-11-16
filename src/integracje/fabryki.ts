@@ -33,7 +33,7 @@ export function createErliPrzesylkiClient(o: Parameters<typeof erliPrzesylki>[0]
   return erliPrzesylki(o) satisfies Kurier;
 }
 
-// PRZ-135 (D2): fabryka dla każdego kuriera z metodami w rejestrze — brak wpisu nowego kuriera = błąd tsc.
+// Fabryka dla każdego kuriera z metodami w rejestrze — brak wpisu nowego kuriera = błąd tsc.
 export const FABRYKI_KURIEROW = {
   dpd: createDpdClient,
   inpost: createInpostClient,

@@ -2,14 +2,14 @@
 // Modul czysto domenowy: bez sieci, bez bazy, bez zaleznosci od innych modulow.
 
 // PODLOGA JEST STALA W KODZIE, NIE ZMIENNA SRODOWISKOWA - i to jest decyzja, nie wygoda.
-// Lekcja z SHOP_<SKLEP>_OD: podloga zyjaca w .env bywa przestawiana "na chwile", a jedno
+// Podloga zyjaca w .env bywa przestawiana "na chwile", a jedno
 // takie przestawienie wciaga archiwum i po cichu przelicza raporty.
 export const PODLOGA_KOSZTOW = '2026-01-01T00:00:00Z';
 
 // Limit MF: zakres dateRange nie moze przekroczyc 3 miesiecy.
 const MIESIECY_W_OKNIE = 3;
 
-// ⚠️⚠️ ZAPAS PRZED KURSOREM — I TO JEST WARUNEK POPRAWNOSCI, A NIE OSTROZNOSC (recenzja, K1).
+// ⚠️⚠️ ZAPAS PRZED KURSOREM — I TO JEST WARUNEK POPRAWNOSCI, A NIE OSTROZNOSC.
 //
 // Kursor to MAKSIMUM `permanentStorageDate` dokumentow, KTORE WROCILY Z ZAPYTANIA. Okno
 // zaczynajace sie dokladnie na nim zaklada, ze KSeF pokazal juz wszystko, co ma date wczesniejsza
@@ -25,10 +25,10 @@ const MIESIECY_W_OKNIE = 3;
 // jednego bledu — czyli dokladnie ta awaria, przed ktora broni caly ten modul.
 //
 // DLACZEGO TYDZIEN, A NIE „na styk". Ponowne przeczytanie tych samych dokumentow jest DARMOWE:
-// deduplikacja siedzi w bazie (`INSERT OR IGNORE` po `ksef_number`, db/koszty.js), a XML raz
+// deduplikacja siedzi w bazie (`INSERT OR IGNORE` po `ksef_number`, oms/db/koszty.js), a XML raz
 // zarchiwizowany nie pobiera sie drugi raz (bramka po `sciezka_xml`). Cena to WYLACZNIE ruch:
 // przy kilkudziesieciu fakturach kosztowych na miesiac tydzien zapasu miesci sie w JEDNEJ
-// stronie odpowiedzi (250 rekordow, ksef/client.js). Skoro zapas nic nie kosztuje, dobieramy go
+// stronie odpowiedzi (250 rekordow, oms/ksef/client.js). Skoro zapas nic nie kosztuje, dobieramy go
 // tak, zeby przykryl takze awarie kilkudniowa (weekend + noc, w ktorej pobranie sie nie udalo),
 // a nie tylko opoznienie liczone w godzinach. Zapas krotszy niz doba nie mialby sensu — okno
 // pobrania jest raz na dobe.
@@ -37,7 +37,7 @@ export const ZAPAS_KURSORA_MS = 7 * 24 * 60 * 60 * 1000;
 /**
  * Poczatek okna przyrostowego: kursor cofniety o zapas, nigdy ponizej podlogi.
  *
- * `teraz` jest OPCJONALNE i sluzy jednej rzeczy — kursorowi Z PRZYSZLOSCI (recenzja, D1).
+ * `teraz` jest OPCJONALNE i sluzy jednej rzeczy — kursorowi Z PRZYSZLOSCI.
  * Kursor pozniejszy niz biezaca chwila (skew zegara kontenera, data z KSeF w innej strefie)
  * dawal `podzielNaOkna` zakres pusty, czyli czuwacza, ktory NIE ROBI NIC — na zawsze, bez
  * bledu i bez sladu. Zamiast tego czytamy ostatni odcinek zapasu: dokumenty w nim znalezione

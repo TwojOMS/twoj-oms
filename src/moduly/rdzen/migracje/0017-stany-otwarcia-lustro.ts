@@ -1,8 +1,8 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { Migracja } from '../../../core/kontrakty.ts';
 
-// PRZ-160 E4.01 — stany otwarcia (D52): jedna wartość na kartę i granicę włączenia; zero to stan zapisany,
-// brak wiersza = „bez stanu”. Lustro sklepów (D60) dostaje ilość kanału, poziom prowadzenia stanu i chwilę
+// Stany otwarcia: jedna wartość na kartę i granicę włączenia; zero to stan zapisany,
+// brak wiersza = „bez stanu”. Lustro sklepów dostaje ilość kanału, poziom prowadzenia stanu i chwilę
 // odczytu — kolumny bez CHECK (ilość kanału może być ujemna). Wyłącznie dokładanie.
 
 const STANY_OTWARCIA = `CREATE TABLE IF NOT EXISTS stany_otwarcia (

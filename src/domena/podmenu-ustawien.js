@@ -1,5 +1,4 @@
-// PRZ-101.01 (właściciel 18.10): menu Ustawień z lewej strony, w grupach. Plan grup i pozycji:
-// Documents/Claude/twojoms-petla/plan-ustawien-18b.md. Jedna lista — „Firma” i „Role i uprawnienia” nie są już
+// Menu Ustawień z lewej strony, w grupach. Jedna lista — „Firma” i „Role i uprawnienia” nie są już
 // doklejane w moduly/ustawienia/nawigacja.js.
 export { modelNawigacjiUstawien } from './dzialy-ustawien.js';
 export const GRUPY_USTAWIEN = Object.freeze([
@@ -32,13 +31,13 @@ export const POZYCJE_USTAWIEN = [
   { klucz: 'api', etykieta: 'API i webhooki', href: '/ustawienia/api', grupa: 'system', wkrotce: true },
   { klucz: 'szablony-wiadomosci', etykieta: 'Szablony wiadomości', href: '/ustawienia/szablony-wiadomosci', grupa: 'komunikacja' },
   { klucz: 'statusy', etykieta: 'Statusy zamówień', href: '/ustawienia/statusy', grupa: 'sprzedaz' },
-  // PRZ-108.06 (właściciel 21.10): reguły „gdy … to …” i automaty systemowe (automat KSeF) — tylko admin.
+  // Reguły „gdy … to …” i automaty systemowe (automat KSeF) — tylko admin.
   { klucz: 'automatyzacje', etykieta: 'Automatyzacje', href: '/ustawienia/automatyzacje', grupa: 'sprzedaz', tylkoAdmin: true, beta: true },
 ];
 
 export const POZYCJA_DANE_DEMO = { klucz: 'dane-demo', etykieta: 'Dane demo', href: '/ustawienia/dane-demo', grupa: 'system', tylkoAdmin: true };
 
-// Kolejność z planu, także dla pozycji dopisywanych przez innych (statusy, szablony wiadomości).
+// Kolejność pozycji w menu, także dla pozycji dopisywanych przez innych (statusy, szablony wiadomości).
 const KOLEJNOSC = [
   'firma', 'konta', 'role',
   'statusy', 'automatyzacje', 'zamowienia-i-wysylka', 'magazyn', 'druk',
@@ -53,9 +52,9 @@ const ALIASY = [
   ['/ustawienia/dostawa', 'zamowienia-i-wysylka'],
   ['/ustawienia/formulka', 'wiadomosci-i-automatyzacje'],
   ['/ustawienia/kanaly', 'integracje'],
-  // PRZ-108.06: dawny adres zapisu automatu KSeF (ekran inFaktu) — błąd formularza renderuje ekran Automatyzacji.
+  // Dawny adres zapisu automatu KSeF (ekran inFaktu) — błąd formularza renderuje ekran Automatyzacji.
   ['/ustawienia/integracje/infakt/ksef-automat', 'automatyzacje'],
-  // PRZ-119.07: adres automatu KSeF pod programem fakturowym — ten sam ekran Automatyzacji.
+  // Adres automatu KSeF pod programem fakturowym — ten sam ekran Automatyzacji.
   ['/ustawienia/integracje/program-fakturowy/ksef-automat', 'automatyzacje'],
 ];
 
@@ -71,7 +70,7 @@ function aktywnyKlucz(sciezka, pozycje) {
 
 const miejsce = (klucz) => { const i = KOLEJNOSC.indexOf(klucz); return i === -1 ? KOLEJNOSC.length : i; };
 
-/** Płaska lista widocznych pozycji w kolejności grup i planu, z `aktywna` i `wkrotce`. */
+/** Płaska lista widocznych pozycji w kolejności grup i KOLEJNOSC, z `aktywna` i `wkrotce`. */
 export function podmenuUstawien(sciezka = '/ustawienia', { admin = false, pozycje = POZYCJE_USTAWIEN } = {}) {
   const czysta = String(sciezka).split('?')[0];
   const grupy = GRUPY_USTAWIEN.map((g) => g.klucz);

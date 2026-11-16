@@ -1,11 +1,11 @@
-// PRZ-152.G3a — stan płatności KARTY zamówienia: jedna plakietka dla panelu „Szczegóły”
-// (i od G9 dla nagłówka sekcji „Płatności”). Plan: docs/plany/PRZ-152-G3-G9-platnosci.md, D1–D3.
+// Stan płatności KARTY zamówienia: jedna plakietka dla panelu „Szczegóły”
+// i dla nagłówka sekcji „Płatności”.
 //
 // ⚠️ To NIE jest `stanPlatnosci` z blok-platnosci.js. Tamta funkcja służy mailom („pobranie wygrywa
 // zawsze” — mail idzie przed doręczeniem) i zostaje bez zmian. Karta różni się w dwóch miejscach:
 //   - po rozliczeniu pobrania przez kuriera (wpłata ręczna z metodą „Za pobraniem”) mówi „Opłacone”;
 //   - zna zwroty z oddanymi pieniędzmi.
-// `saldoWplat` (faktury, pasek spraw, nadanie) też zostaje — tu jest tylko UŻYWANA.
+// `saldoWplat` (sekcja płatności, pasek spraw, maile i wiadomości) też zostaje — tu jest tylko UŻYWANA.
 //
 // Arytmetyka wyłącznie w groszach przez `grosze()` / `kwotaZwrotuGrosze` — żadnego Number(a)+Number(b).
 // Funkcja NIGDY nie rzuca (ta sama zasada, co `saldoWplat`): zepsuta kwota daje „Błąd wyceny”.
@@ -27,7 +27,7 @@ export const STAN_KARTY = Object.freeze({
   NADPLATA: 'nadplata',
 });
 
-/** Jedna etykieta dla G3 i G9 (D3), z wielkiej litery, bez kwot i dat. */
+/** Jedna etykieta dla panelu „Szczegóły” i nagłówka sekcji „Płatności”, z wielkiej litery, bez kwot i dat. */
 export const ETYKIETA_STANU = Object.freeze({
   blad: 'Błąd wyceny',
   zwrocone_calosc: 'Zwrócone w całości',
@@ -39,7 +39,7 @@ export const ETYKIETA_STANU = Object.freeze({
   nadplata: 'Nadpłata',
 });
 
-/** Ton → istniejąca klasa layoutu (layout-oms.ejs; kontrast ≥ 4,5:1 w obu motywach, plan 2.7). */
+/** Ton → istniejąca klasa layoutu (public/oms-uklad.css; kontrast ≥ 4,5:1 w obu motywach). */
 export const KLASA_TONU = Object.freeze({
   ok: 'znacznik--ok',
   zle: 'znacznik--czerwony',
@@ -55,13 +55,13 @@ const TON_STANU = Object.freeze({
   zwrocone_czesciowo: 'szary',
   nieoplacone: 'zle',
   oplacone: 'ok',
-  nadplata: 'ok', // właściciel: „nadpłata = zielony”
+  nadplata: 'ok', // nadpłata celowo na zielono
 });
 
 const kluczMetody = (p) => normalizujMetode(p?.metoda).klucz;
 
 /**
- * Wpłata, która NIE jest pieniędzmi: `date_paid` sklepu przy pobraniu (decyzja A(2) z 04.11).
+ * Wpłata, która NIE jest pieniędzmi: `date_paid` sklepu przy pobraniu.
  * Ta sama granica, co w `przedplatyPrzedPobraniem` (platnosci.js): wpłata `sklep` przy pobraniu
  * sprzedanym przez sklep albo wpłata `sklep` z metodą „Za pobraniem”.
  */
@@ -82,7 +82,7 @@ function wynik(stan, { opis = null, kwotaGr = null, wplaconoGr = null, zwroconoG
 }
 
 /**
- * Stan płatności karty (D2 — pierwsza pasująca reguła wygrywa):
+ * Stan płatności karty (pierwsza pasująca reguła wygrywa):
  *   1 błąd wyceny · 2 zwrócone w całości · 3 pobranie bez rozliczenia kuriera · 4 rozliczenie
  *   zbiorcze · 5 zwrócone częściowo · 6 nieopłacone · 7 opłacone · 8 nadpłata.
  * `z` to zamówienie (przy scaleniu — grupa z `platnosciKarty`), `zwroty` — zwroty zamówienia,
@@ -118,12 +118,12 @@ export function stanPlatnosciKarty(z, { zwroty = [], wOkresie = false } = {}) {
   }
 }
 
-// ── PRZ-152.G9a1 — lista ruchów (D4, D5): wpłaty i zwroty w jednej tablicy dla widoku ──────────
+// ── Lista ruchów: wpłaty i zwroty w jednej tablicy dla widoku ──────────
 
 const SAMA_DATA = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
- * Data ruchu dla listy (decyzja właściciela 05.11: „4.11”): zawsze `D.M GG:MM` w Europe/Warsaw, bez zer
+ * Data ruchu dla listy: zawsze `D.M GG:MM` w Europe/Warsaw, bez zer
  * z przodu i bez „dziś”/„wczoraj”; inny rok niż `teraz` → `D.M.RRRR GG:MM`. Wartość z SAMĄ datą
  * dostaje sam dzień — bez fałszywego „00:00” (data zapłaty ze sklepu często nie ma godziny).
  * Pusta / nieparsowalna → ''.

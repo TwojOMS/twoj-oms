@@ -1,7 +1,7 @@
-// PRZ-160 E1.01 — źródła pól karty i reguła ochrony przed importem treści z kanału.
+// Źródła pól karty i reguła ochrony przed importem treści z kanału.
 //
 // Tabela `karty_zrodla_pol` (migracja rdzen/0012) mówi, skąd przyszła wartość pola karty.
-// Import treści (E1.04 Allegro, E1.05 sklep) pyta tę funkcję przed KAŻDYM polem.
+// Import treści (z Allegro i ze sklepu) pyta tę funkcję przed KAŻDYM polem.
 //
 // ⚠️ REGUŁA: wiersz źródła z `reczne = 1` chroni pole zawsze, także puste (ktoś je celowo
 // wyczyścił). Poza tym import zapisuje pole tylko wtedy, gdy kolumna jest PUSTA albo pole ma wiersz
@@ -41,7 +41,7 @@ export function polePuste(pole, wartosc) {
  * @param {string} zrodloImportu klucz importującego połączenia (`allegro:<konto>`, `woo:<sklep>`)
  *
  * @param {string[]} kolejnosc pełna kolejność połączeń; źródło spoza listy nie przejmuje pola
- * Niepuste pole aktualizuje własne źródło albo połączenie wyżej na liście (D4).
+ * Niepuste pole aktualizuje własne źródło albo połączenie wyżej na liście.
  */
 export function importMozeZapisac(pole, wartoscKolumny, wierszZrodla, zrodloImportu, kolejnosc = []) {
   // reczne = 1 chroni zawsze — także pole puste, bo celowe wyczyszczenie to też ręczna decyzja.

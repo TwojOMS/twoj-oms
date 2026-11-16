@@ -1,6 +1,6 @@
 import type { Migracja } from '../../../core/kontrakty.ts';
 
-// PRZ-118.03 — program fakturowy jako kontrakt: dokument faktury (zamówienia i okresu) przestaje być
+// Program fakturowy jako kontrakt: dokument faktury (zamówienia i okresu) przestaje być
 // z definicji dokumentem inFaktu. `program` mówi, który program go wystawił, `dokument_id` — jak go
 // tam nazywa. Wiersze z `infakt_uuid` dostają `program = 'infakt'` i ten sam identyfikator; wiersz bez
 // dokumentu (rezerwacja w toku, „do wyjaśnienia”, okres bez faktury) zostaje pusty w obu kolumnach.

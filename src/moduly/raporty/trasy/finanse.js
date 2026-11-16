@@ -14,16 +14,16 @@ import { prognozaProgu } from '../../../domena/podatek-skala.js';
 import { wylaczoneModuly } from '../../../oms/db/moduly-opcjonalne.js';
 
 // Zakladka FINANSE — rachunek zarzadczy („ile z tego zostaje") i dane reczne miesiaca
-// (ZUS, PIT-5, VAT-7). Do 17.08.2026 oba ekrany mieszkaly pod /raporty/zarzadczy
-// i /raporty/dane; wyprowadzone na wlasna pozycje menu decyzja właściciela przy przebudowie
-// raportow — Raporty zostaja czysta analiza sprzedazy, a „ile zostaje" jest osobna rzecza.
+// (ZUS, PIT-5, VAT-7). Oba ekrany mieszkaly kiedys pod /raporty/zarzadczy
+// i /raporty/dane; maja wlasna pozycje menu — Raporty zostaja czysta analiza sprzedazy,
+// a „ile zostaje" jest osobna rzecza.
 //
 // ⚠️ STARE ADRESY DALEJ DZIALAJA (302 nizej): sa w zakladkach przegladarki, w wiki
 // i w pamieci miesni. Przekierowanie zachowuje query string, wiec zapisany skrot
 // „/raporty/zarzadczy?skrot=ten-kwartal" laduje na tym samym kwartale.
 //
 // ⚠️ TE TRASY NICZEGO NIE LICZA — caly rachunek sklada `rachunekOkresu`
-// (domain/rachunek-zarzadczy.js), dane miesiaca db/dane-miesieczne.js. Tutaj zostaje
+// (`src/domena/rachunek-zarzadczy.js`), dane miesiaca `src/oms/db/dane-miesieczne.js`. Tutaj zostaje
 // parsowanie zakresu i zamiana odmowy domeny na zdanie dla czlowieka (wzorzec /raporty).
 
 const WZORZEC_DNIA = /^\d{4}-\d{2}-\d{2}$/;
@@ -37,7 +37,7 @@ const WZORZEC_MIESIACA = /^\d{4}-(0[1-9]|1[0-2])$/;
 // ⚠️⚠️ RACHUNEK ZARZADCZY MA WLASNA, KROTSZA LISTE SKROTOW — i to nie jest ozdoba.
 //
 // Brakuje w niej dwoch, ktore na ekranie sprzedazy sa poprawne, a tutaj byly by pulapka:
-//   • `poprzedni-rok` — do konca 2026 wskazuje rok SPRZED PODLOGI (2026-01), wiec przycisk
+//   • `poprzedni-rok` — w pierwszym roku po podlodze kosztow wskazuje rok SPRZED PODLOGI, wiec przycisk
 //     prowadzilby wylacznie w odmowe. Przycisk, ktory zawsze konczy sie bledem, uczy
 //     operatora ignorowac komunikaty;
 //   • `ostatnie-30` — to z definicji zakres URWANY w polowie miesiaca, a koszty, ZUS i PIT-5
@@ -46,8 +46,8 @@ const WZORZEC_MIESIACA = /^\d{4}-(0[1-9]|1[0-2])$/;
 //     — i wlasnie dlatego ekran stawia wtedy pasek ostrzegawczy (`pelneMiesiace`) — ale
 //     GOTOWY PRZYCISK do tego nie jest zaproszeniem, ktore chcemy wysylac.
 //
-// ⚠️⚠️ LISTA ZMIENIONA 21.08.2026 (zgloszenie właściciela): kwartaly stoja WPROST po numerze
-// (Q1–Q4), a nie wzglednie („ten"/„poprzedni"), i znika „Ten miesiac". Powody:
+// ⚠️⚠️ KWARTALY STOJA WPROST PO NUMERZE (Q1–Q4), a nie wzglednie („ten"/„poprzedni"),
+// i nie ma „Ten miesiac". Powody:
 //   • kwartal wskazany numerem odpowiada na pytanie, ktore wlasciciel naprawde zadaje
 //     („jak wyszedl Q1"); relatywnymi przyciskami Q1 w sierpniu w ogole nie dalo sie
 //     wskazac — trzeba bylo wpisywac obie daty recznie;
@@ -100,7 +100,7 @@ export function zarejestrujTrasyFinansow(app, { db, config }) {
     // ⚠️ `<input type="month">` to zwykly GET bez ani jednej linii skryptu — przegladarka
     // umie z niego zlozyc wylacznie `?miesiac=RRRR-MM`. Przekladamy to na PRAWDZIWY zakres
     // `od`/`do` przekierowaniem, zeby w pasku adresu stal okres, ktory da sie zapisac
-    // w zakladkach i wykleic na czacie (ta sama decyzja, co przy /finanse/dane).
+    // w zakladkach i wykleic na czacie (ta sama zasada, co przy /finanse/dane).
     // ⚠️ Sprawdzenie stoi PRZED galezia `od`/`do`: gdyby przegladarka wyslala oba naraz,
     // wybor miesiaca ma wygrac — to on byl ostatnim ruchem operatora.
     if (req.query.miesiac !== undefined) {
@@ -147,7 +147,7 @@ export function zarejestrujTrasyFinansow(app, { db, config }) {
       const rachunek = await rachunekOkresu(db, zakres);
 
       // ——— DELTY WZGLEDEM OKRESU POPRZEDNIEGO ————————————————————————————————————
-      // ⚠️⚠️ PODLOGA `2026-01` OBOWIAZUJE TAKZE OKRES PORONAWCZY, i dlatego sprawdzamy ja
+      // ⚠️⚠️ PODLOGA KOSZTOW OBOWIAZUJE TAKZE OKRES POROWNAWCZY, i dlatego sprawdzamy ja
       // ZAWCZASU, zamiast lapac wyjatek z `rachunekOkresu`. Zlapany wyjatek zamienilby sie
       // w ciche zero, a delta „−100%" wobec okresu, ktorego panel nie zna, wyglada dokladnie
       // tak samo wiarygodnie jak policzona naprawde.
@@ -156,20 +156,19 @@ export function zarejestrujTrasyFinansow(app, { db, config }) {
         ? await rachunekOkresu(db, zakresWczesniej)
         : null;
       // ⚠️ BRAK PODSTAWY DAJE `null`, NIE ZERO — ta sama regula, co w `delty`
-      // (domain/agregacja-sprzedazy.js). „Zostaje" bywa `null` po obu stronach i wtedy
+      // (`src/domena/agregacja-sprzedazy.js`). „Zostaje" bywa `null` po obu stronach i wtedy
       // porownania nie ma z czego zrobic.
       const zmiana = (a, b) => (a === null || b === null || !b ? null : ((a - b) / b) * 100);
 
       // ⚠️ PROGNOZA NIE PATRZY NA POCZATEK ZAKRESU — i to jest celowe, nie przeoczenie.
       // Podstawa podatku liczy sie ZAWSZE narastajaco od stycznia do `zakres.do`
-      // (rachunek-zarzadczy.js), wiec dzien, od ktorego operator oglada rachunek, nie ma tu
+      // (`src/domena/rachunek-zarzadczy.js`), wiec dzien, od ktorego operator oglada rachunek, nie ma tu
       // nic do rzeczy: prognoza dotyczy ROKU, nie okresu na ekranie.
       //
-      // ⚠️ Stal tu kiedys dodatkowy warunek `rachunek.pelneMiesiace`. Zdjety 17.08.2026 po
-      // tescie mutacyjnym: mutacja kasujaca go PRZEZYLA cala suite, bo jedyny warunek, ktory
-      // naprawde broni prognozy przed zawyzonym tempem — koniec zakresu w polowie miesiaca —
-      // rozstrzyga sama `prognozaProgu`. Podwojny warunek nie chronil przed niczym, a gasil
-      // POPRAWNA prognoze dla zakresu zaczynajacego sie w srodku miesiaca.
+      // ⚠️ Bez dodatkowego warunku `rachunek.pelneMiesiace`: jedyny warunek, ktory naprawde
+      // broni prognozy przed zawyzonym tempem — koniec zakresu w polowie miesiaca —
+      // rozstrzyga sama `prognozaProgu`. Podwojny warunek gasilby POPRAWNA prognoze
+      // dla zakresu zaczynajacego sie w srodku miesiaca.
       const prognoza = prognozaProgu({
         podstawaGrosze: rachunek.podatek.podstawaGrosze,
         doDnia: zakres.do,
@@ -213,22 +212,22 @@ export function zarejestrujTrasyFinansow(app, { db, config }) {
         // Podpis delty: czlowiek ma widziec, Z CZYM porownuje. Bez okresu porownawczego
         // nie ma czego podpisywac — `null`, nie nazwa okresu, ktorego nie policzylismy.
         nazwaWczesniej: wczesniej ? nazwaOkresu(zakresWczesniej) : null,
-        // ⚠️ ZAMIANA GROSZY NA ZLOTOWKI IDZIE Z DOMENY (domain/kwoty.js), a nie z wlasnego
-        // dzielenia w szablonie — ta sama decyzja, co przy /raporty.
+        // ⚠️ ZAMIANA GROSZY NA ZLOTOWKI IDZIE Z DOMENY (`src/domena/kwoty.js`), a nie z wlasnego
+        // dzielenia w szablonie — ta sama zasada, co przy /raporty.
         zl,
-        // PRZ-102.22: wyłączony moduł Koszty (Ustawienia → Moduły) to sam pasek. Arytmetyka bez zmian: koszty już
+        // Wyłączony moduł Koszty (Ustawienia → Moduły) to sam pasek. Arytmetyka bez zmian: koszty już
         // w bazie to fakty i dalej się liczą; nowych panel nie pobierze, więc rachunek przestaje być kompletny.
         kosztyWylaczone: wylaczoneModuly(db).includes('koszty'),
       });
     } catch (e) {
-      // ⚠️ Podloga historii kosztow (2026-01) i brak granicy kanalu maja dac ZDANIE DLA
+      // ⚠️ Podloga historii kosztow i brak granicy kanalu maja dac ZDANIE DLA
       // CZLOWIEKA, nie piecsetke. Blad techniczny leci dalej, do logu.
       if (!e?.dlaOperatora) throw e;
-      // PRZ-102.09: brak podłogi to stan nowej instalacji, nie błąd — ekran z pytaniem zamiast zdania w tekście.
+      // Brak podłogi to stan nowej instalacji, nie błąd — ekran z pytaniem zamiast zdania w tekście.
       if (!PODLOGA) return reply.code(400).view('finanse-brak-pokrycia.ejs', {
         title: 'Finanse', admin: req.konto?.admin === true, powrot: req.url,
       });
-      // PRZ-108.04: odmowa to ekran panelu z menu, nie goły tekst (nieznany sklep zamówienia, brak granicy kanału).
+      // Odmowa to ekran panelu z menu, nie goły tekst (nieznany sklep zamówienia, brak granicy kanału).
       return ekranOdmowyRaportu(reply, e, { ekran: 'Finanse', czynnosc: 'policzyć rachunku' });
     }
   });
@@ -239,7 +238,7 @@ export function zarejestrujTrasyFinansow(app, { db, config }) {
   const ekranDanych = (reply, miesiac, { blad = null, wpisane = null } = {}) => {
     const dane = wpisane ? null : daneMiesiaca(db, miesiac);
     // ⚠️ ROZJAZD, SKLADNIKI I PRZELEW LICZONE W JEDNYM MIEJSCU (rozjazdZus), NIE PRZEZ
-    // WLASNE SUMOWANIE TRZECH POL TUTAJ (przewodnik OMS, 4.5). `rozjazd = razem - skladniki`,
+    // WLASNE SUMOWANIE TRZECH POL TUTAJ. `rozjazd = razem - skladniki`,
     // wiec `skladniki = razem - rozjazd`: odtwarzamy je z JUZ POLICZONEJ roznicy.
     //
     // ⚠️ `rozjazdZus`/`grosze()` RZUCAJA przy napisie nie do przeliczenia (np. reczny wpis

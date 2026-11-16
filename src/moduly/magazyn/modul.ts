@@ -41,8 +41,8 @@ const ROZSZERZENIE_ZDJECIA: Record<string, string> = { 'image/jpeg': 'jpg', 'ima
 type ZdjecieDoWgrania = { sha256?: string | null; typ?: string | null; adres_zrodlowy?: string | null };
 
 /**
- * PRZ-160.E3.09b (D32): bajty zdjęcia do wgrania na Allegro. Najpierw plik z magazynu OMS (`<sha256>.<ext>`,
- * bez podążania za dowiązaniem — jak trasa zdjęć), a gdy pliku nie ma — pobieracz E1.03 z adresu źródłowego
+ * Bajty zdjęcia do wgrania na Allegro. Najpierw plik z magazynu OMS (`<sha256>.<ext>`,
+ * bez podążania za dowiązaniem — jak trasa zdjęć), a gdy pliku nie ma — pobieracz zdjęć z adresu źródłowego
  * (tylko https, limity, bez adresów prywatnych).
  */
 function czytnikZdjecAllegro(katalog: string) {
@@ -93,10 +93,10 @@ export const modulMagazyn: ModulOms<KonfiguracjaMagazynu> = {
     // Brak kanałów jest jawnym trybem bez konfiguracji, bez historycznych nazw.
     const magazyn = createMagazynPrzebieg({ db: ctx.db, sklepy, allegro, kanalySklepow, kanalyAllegro,
         log: (...czesci: unknown[]) => ctx.log(...czesci as string[]) });
-    // PRZ-160.04b: osobny przebieg „Pobierz treść i zdjęcia ofert" — ci sami klienci Allegro, tylko odczyt.
+    // Osobny przebieg „Pobierz treść i zdjęcia ofert" — ci sami klienci Allegro, tylko odczyt.
     const trescAllegro = createTrescAllegroPrzebieg({ db: ctx.db, allegro, kanalyAllegro, katalog: ctx.konfiguracja.katalog,
         log: (...czesci: unknown[]) => ctx.log(...czesci as string[]) });
-    // PRZ-160.E2.05: pętla ofert ERLI — tylko bieżące konta ERLI z klientem w module kanałów (decyzja 3);
+    // Pętla ofert ERLI — tylko bieżące konta ERLI z klientem w module kanałów (decyzja 3);
     // blokada zapisów konta (tryb „tylko odczyt”) z repozytorium kanałów trafia do jednej bramki zapisu.
     const repozytorium = (): RepozytoriumKanalowErli | null => {
       try { return ctx.usluga<RepozytoriumKanalowErli>('kanaly', 'repozytoriumKanalow') ?? null; }
@@ -109,9 +109,9 @@ export const modulMagazyn: ModulOms<KonfiguracjaMagazynu> = {
         katalog: katalogErli(wszyscyKlienci[k.klucz] as unknown as KlientKataloguErli),
         tylkoOdczyt: () => repo.zapisyZablokowane(k.klucz) }));
     };
-    // PRZ-160.E3.09a: jedna lista kont Allegro dla ekranów (E3.11–E3.14) i pętli. Klient to ta sama instancja
+    // Jedna lista kont Allegro dla ekranów i pętli. Klient to ta sama instancja
     // co w module kanałów; konto rozłączone albo z konfliktem klucza nie wchodzi, nawet gdy klient by się znalazł
-    // (te same warunki co dostęp w kompozycji kanałów). Pola katalog/allegro (D44) dokłada E3.09b.
+    // (te same warunki co dostęp w kompozycji kanałów). Pola katalog i allegro dokładane są niżej.
     const kontaAllegro = () => {
       const repo = repozytorium();
       if (!repo) return [];
@@ -121,26 +121,26 @@ export const modulMagazyn: ModulOms<KonfiguracjaMagazynu> = {
         .map(k => ({ klucz: k.klucz, klient: wszyscyKlienci[k.klucz], srodowisko: k.srodowisko ?? 'produkcja',
           zgoda: maZgodeNaOferty(wczytajTokeny(ctx.db, k.klucz)?.access_token),
           tylkoOdczyt: () => repo.zapisyZablokowane(k.klucz),
-          // E3.09b (D20, D44): katalog i węzły na tym samym kliencie konta (bariera i odświeżanie tokenu są w kliencie).
+          // Katalog i węzły na tym samym kliencie konta (bariera i odświeżanie tokenu są w kliencie).
           katalog: katalogAllegro(wszyscyKlienci[k.klucz] as unknown as KlientKataloguAllegro),
           allegro: wezlyAllegro(wszyscyKlienci[k.klucz] as unknown as KlientKataloguAllegro) }));
     };
     const petlaOfert = createPetlaOfert({ db: ctx.db, konta: kontaErli, adresPublicznyZdjec: ctx.konfiguracja.adresPublicznyZdjec,
       // N1: D64 zakłada przebieg pollera krótszy niż pollerMs — krótszy odstęp z env nie skraca karencji poniżej 120 s.
       pollerMs: Math.max(config?.odstepMs ?? 0, 120_000), log: (...czesci: unknown[]) => ctx.log(...czesci as string[]) });
-    // PRZ-160.E3.09b (D29): osobna pętla ofert Allegro — te same konta co ekrany; konto bez zgody na oferty
+    // Osobna pętla ofert Allegro — te same konta co ekrany; konto bez zgody na oferty
     // (brak tokenu z zakresem ofert, np. demo) pętla pomija bez żadnego wywołania.
     const petlaOfertAllegro = createPetlaOfertAllegro({ db: ctx.db, konta: kontaAllegro,
       zwolnijOperacje: (klucz: string, metoda: string, zasob: string) => repozytorium()?.zwolnijOperacje?.(klucz, metoda, zasob) ?? 0,
       czytajZdjecie: czytnikZdjecAllegro(ctx.konfiguracja.katalog),
       log: (...czesci: unknown[]) => ctx.log(...czesci as string[]) });
-    // PRZ-160.E4.15: pętla stanów Woo — sklepy z konfiguracji kanałów z klientem z modułu kanałów (ta sama
+    // Pętla stanów Woo — sklepy z konfiguracji kanałów z klientem z modułu kanałów (ta sama
     // instancja; tryb „Odczyt” niesie klient jako `tylkoOdczyt`). Sklep bez klienta nie wchodzi.
     const kontaWoo = () => kanalySklepow.filter(k => (sklepy as Record<string, unknown>)[k])
       .map(k => ({ klucz: k, klient: (sklepy as Record<string, unknown>)[k] }));
     const petlaStanowWoo = createPetlaStanowWoo({ db: ctx.db, konta: kontaWoo,
       pollerMs: Math.max(config?.odstepMs ?? 0, 120_000), log: (...czesci: unknown[]) => ctx.log(...czesci as string[]) });
-    // PRZ-160.E4.15 (D57): strażnik co 30 s — zmiana odcisku stanów przyspiesza trzy pętle (odstęp 60 s pilnuje każda pętla).
+    // Strażnik co 30 s — zmiana odcisku stanów przyspiesza trzy pętle (odstęp 60 s pilnuje każda pętla).
     const straznik = createStraznikStanow({ db: ctx.db, petle: { erli: petlaOfert, allegro: petlaOfertAllegro, woo: petlaStanowWoo },
       log: (...czesci: unknown[]) => ctx.log(...czesci as string[]) });
     return {
@@ -172,10 +172,10 @@ export const modulMagazyn: ModulOms<KonfiguracjaMagazynu> = {
         registerStanyMagazynu(app, opcje);
         app.register(async app => (await import('./stany-otwarcie.js')).registerStanyOtwarcie(app, opcje));
         registerOpisMagazynu(app, opcje);
-        // PRZ-160.P3b.01: Magazyn → Kategorie i Marki; połączenia WooCommerce czytane z konfiguracji na żądanie.
+        // Magazyn → Kategorie i Marki; połączenia WooCommerce czytane z konfiguracji na żądanie.
         registerSlownikiMagazynu(app, { db: ctx.db, sklepy, kontaAllegro,
           definicje: () => ctx.usluga<ConfigKanalow>('kanaly', 'config').definicje as readonly { klucz: string; typ?: string; etykieta?: string }[] });
-        // PRZ-160.E3.11: mapowanie kategorii i marek na Allegro (na środowisko, D33).
+        // Mapowanie kategorii i marek na Allegro (na środowisko).
         registerKategorieAllegro(app, { db: ctx.db, kontaAllegro });
         registerKartaMagazynu(app, { db: ctx.db, magazyn: opcje.magazyn, kanalyAllegro, definicje: config.definicje, kontaErli, kontaAllegro });
       },

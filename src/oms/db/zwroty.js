@@ -26,7 +26,7 @@ export function zwrotyZamowienia(db, zamowienieId) {
 }
 
 // Szukamy po PARZE (id zwrotu, id zamowienia): w swiezej bazie liczniki AUTOINCREMENT roznych
-// tabel zbiegaja sie (przewodnik OMS, 6.3), wiec sam `id` przepuscilby pomylke argumentu
+// tabel zbiegaja sie, wiec sam `id` przepuscilby pomylke argumentu
 // w trasie. Ta sama zasada, co w `usunWplateReczna`.
 export function zwrot(db, zamowienieId, zwrotId) {
   return zPozycjami(db, db.prepare('SELECT * FROM zwroty WHERE id = ? AND zamowienie_id = ?')
@@ -37,10 +37,10 @@ export function zwrot(db, zamowienieId, zwrotId) {
  * Zapis zwrotu. Naglowek i pozycje ida JEDNA transakcja: awaria miedzy dwoma zapisami
  * zostawilaby zwrot bez pozycji, czyli dokladnie taki, z ktorego nie da sie zlozyc korekty.
  *
- * ⚠️ Bariery (kwota, sztuki, data) NIE MIESZKAJA TUTAJ — liczy je `domain/zwrot.js` PRZED
+ * ⚠️ Bariery (kwota, sztuki, data) NIE MIESZKAJA TUTAJ — liczy je `domena/zwrot.js` PRZED
  * wywolaniem. Ten modul zapisuje to, co dostal, i jest jedynym miejscem z SQL-em zwrotow.
  *
- * ⚠️⚠️ JEDEN WYJATEK OD ZDANIA WYZEJ I JEST NIM POWTORNE WYSLANIE (recenzja 2026-08-15).
+ * ⚠️⚠️ JEDEN WYJATEK OD ZDANIA WYZEJ I JEST NIM POWTORNE WYSLANIE.
  * Bariery `parsujZwrot` licza sie POZA transakcja, wiec sprawdzenie „czy taki zwrot juz jest"
  * musi stac TUTAJ, miedzy `BEGIN IMMEDIATE` a `INSERT`-em — sprawdzone u wolajacego przepuscilo
  * by dwa rownolegle zadania, ktore OBA zobaczylyby pusta liste. `BEGIN IMMEDIATE` bierze blokade
@@ -69,8 +69,8 @@ export function dodajZwrot(db, zamowienieId, { data, kwota, kwotaDostawy = null,
   try {
     const blizniak = zwrotyZamowienia(db, zamowienieId).find((w) => czyTenSamZwrot(kandydat, w));
     if (blizniak) {
-      // ⚠️ RADA MUSI BYC PRAWDZIWA (recenzja kontrolna 2026-08-15). Stalo tu „zmień datę albo
-      // kwotę" — czyli namowa na ZAPISANIE NIEPRAWDY: data zwrotu RZADZI MIESIACEM PODATKOWYM
+      // ⚠️ RADA MUSI BYĆ PRAWDZIWA. Rada „zmień datę albo
+      // kwotę" byłaby namową na ZAPISANIE NIEPRAWDY: data zwrotu RZADZI MIESIACEM PODATKOWYM
       // (art. 14 ust. 1m PIT, art. 29a ust. 13 VAT), a kwota idzie wprost do korekty i do
       // raportu. Dwa prawdziwe zwroty tego samego dnia, za te sama kwote i te same pozycje sa
       // nieodroznialne od powtorki, wiec jedyna uczciwa rada to POLACZYC je w jeden wpis.
@@ -97,15 +97,15 @@ export function dodajZwrot(db, zamowienieId, { data, kwota, kwotaDostawy = null,
 }
 
 /**
- * WYJSCIE ze stanu, w ktory panel sam pozwala wejsc (przewodnik OMS, 4.9) — omylkowo wpisany
+ * WYJSCIE ze stanu, w ktory panel sam pozwala wejsc (reguła: każdy stan ma wyjście) — omylkowo wpisany
  * zwrot przewraca sprzedaz w raporcie i przykleja zamowieniu status, ktory zostaje na zawsze.
  *
- * ⚠️ TRESC odmowy (ktory fakt i dlaczego) stoi w `domain/zwrot.js`
+ * ⚠️ TRESC odmowy (ktory fakt i dlaczego) stoi w `domena/zwrot.js`
  * (`powodOdmowyUsunieciaZwrotu`) i to ona rozmawia z czlowiekiem.
  *
- * ⚠️⚠️ ALE WARUNEK JEST TAKZE W SQL-u (recenzja kontrolna 2026-08-15). Regula liczy sie w trasie,
+ * ⚠️⚠️ ALE WARUNEK JEST TAKZE W SQL-u. Regula liczy sie w trasie,
  * POZA transakcja: przy dwoch otwartych kartach „pieniądze oddane" kliknięte MIEDZY sprawdzeniem
- * a `DELETE`-em kasowalo zwrot z JUZ WYPLACONA kwota — a razem z nim (kaskada na
+ * a `DELETE`-em skasowałoby zwrot z JUZ WYPLACONA kwota — a razem z nim (kaskada na
  * `zwroty_pozycje`) jedyny zapis o tym, ile i kiedy wyszlo do kupujacego. Ta sama zasada, co przy
  * rezerwacji korekty nizej: granica FAKTU nalezy do bazy, bo tylko tam nie da sie jej wyprzedzic.
  */
@@ -139,17 +139,17 @@ export function oznaczPieniadzeOddane(db, zamowienieId, zwrotId, kiedy = teraz()
  * dokumentu, a duplikat korekty rozwiazuje sie wylacznie TRZECIM dokumentem — widocznym
  * u organu podatkowego i u nabywcy.
  *
- * ⚠️⚠️ DWA WARUNKI W SQL-u, NIE JEDEN (K1, recenzja kontrolna 2026-08-15). `korekta_numer IS NULL`
+ * ⚠️⚠️ DWA WARUNKI W SQL-u, NIE JEDEN. `korekta_numer IS NULL`
  * dolozony obok `korekta_zlecona_at IS NULL`, bo „Korektę wystawiłem ręcznie" zapisuje NUMER BEZ
- * REZERWACJI: zwrot z numerem `9/KOR/08/2026` i pusta rezerwacja przechodzil dotad rezerwacje
- * bez oporu, a `zapiszKorekte` (COALESCE) nadpisywalo numer reczny numerem nowego dokumentu —
- * pierwszy znikal z bazy bez sladu. Warunek jest W SQL-u, a nie nad nim, bo tylko tam nie da sie
+ * REZERWACJI: zwrot z numerem `9/KOR/08/2026` i pustą rezerwacją przeszedłby bez tego warunku
+ * rezerwację bez oporu, a `zapiszKorekte` (COALESCE) nadpisałoby numer ręczny numerem nowego dokumentu —
+ * pierwszy zniknąłby z bazy bez śladu. Warunek jest W SQL-u, a nie nad nim, bo tylko tam nie da sie
  * go wyprzedzic wyscigiem.
  *
- * ⚠️⚠️ REGULA „JEDNA KOREKTA NA FAKTURE" LICZY SIE TUTAJ, WEWNATRZ `BEGIN IMMEDIATE` (W4). Do
- * 2026-08-15 sprawdzala ja wylacznie usluga, POZA transakcja — dwa rownolegle zgloszenia na DWA
- * zwroty tego samego zamowienia oba czytaly „nikt inny nie ma korekty" i oba rezerwowaly wlasny
- * wiersz. Rezerwacja bronila POJEDYNCZEGO ZWROTU, a chroniona rzecza jest FAKTURA. Wzorem
+ * ⚠️⚠️ REGULA „JEDNA KOREKTA NA FAKTURE" LICZY SIE TUTAJ, WEWNATRZ `BEGIN IMMEDIATE`. Sprawdzana
+ * wyłącznie w usłudze, POZA transakcją, przepuściłaby dwa równoległe zgłoszenia na DWA zwroty
+ * tego samego zamówienia: oba przeczytałyby „nikt inny nie ma korekty" i oba zarezerwowałyby
+ * własny wiersz. Rezerwacja broni POJEDYNCZEGO ZWROTU, a chronioną rzeczą jest FAKTURA. Wzorem
  * `dodajZwrot` wyzej: `BEGIN IMMEDIATE` bierze blokade zapisu OD RAZU, wiec drugie zadanie czeka
  * i widzi juz zapisana rezerwacje pierwszego.
  *
@@ -164,7 +164,7 @@ export function zarezerwujKorekte(db, zamowienieId, zwrotId, kiedy = teraz()) {
     const powod = powodOdmowyKorektyDlaFaktury({ id: zwrotId }, wszystkie);
     if (powod) throw bladOperatora(powod);
     const wynik = db.prepare(
-      // PRZ-147.02b: `korekta_referencja = NULL` — referencja starego, odrzuconego zlecenia nie może przeżyć
+      // `korekta_referencja = NULL` — referencja starego, odrzuconego zlecenia nie może przeżyć
       // nowej rezerwacji. Inaczej zerwane połączenie przy nowym zleceniu zostawia starą referencję, a odczyt
       // jej statusu (422) zwolniłby NOWĄ rezerwację, choć dokument mógł powstać.
       'UPDATE zwroty SET korekta_zlecona_at = ?, korekta_blad = NULL, korekta_referencja = NULL'
@@ -193,7 +193,7 @@ export function zapiszKorekte(db, zamowienieId, zwrotId, { referencja = null, uu
  * ⚠️ ZWALNIA REZERWACJE. Wolno ja zwolnic WYLACZNIE po ODMOWIE inFaktu (4xx) — wtedy wiadomo,
  * ze dokument nie powstal. Zerwane polaczenie znaczy „NIE WIADOMO" i rezerwacja ZOSTAJE
  * (ta sama regula, co przy `wysylki_ksef`). Bez tej sciezki jedno 422 zamykaloby droge do
- * korekty NA ZAWSZE, a jedynym wyjsciem bylby reczny UPDATE na produkcji.
+ * korekty NA ZAWSZE, a jedynym wyjsciem bylby ręczny UPDATE na bazie.
  */
 export function zapiszBladKorekty(db, zamowienieId, zwrotId, opis) {
   db.prepare(
@@ -202,7 +202,7 @@ export function zapiszBladKorekty(db, zamowienieId, zwrotId, opis) {
 }
 
 /**
- * PRZ-147.02b: zwolnienie rezerwacji po ODRZUCENIU zlecenia, które inFakt zgłosił w STATUSIE zadania (422 przy
+ * Zwolnienie rezerwacji po ODRZUCENIU zlecenia, które inFakt zgłosił w STATUSIE zadania (422 przy
  * odczycie, nie przy wysłaniu). Zwalnia WYŁĄCZNIE to zlecenie, o które pytaliśmy: warunek na referencji pilnuje,
  * żeby odpowiedź o starym zleceniu nie zwolniła nowszego, a `korekta_numer IS NULL` i
  * `korekta_zlecona_at IS NOT NULL` — żeby nie ruszyć zwrotu już rozliczonego ani niezarezerwowanego.
@@ -223,13 +223,13 @@ export function odrzucZlecenieKorekty(db, zamowienieId, zwrotId, referencja, opi
  * Panel nie dotyka inFaktu: rozstrzyga czlowiek, ktory tam sprawdzil. Odpowiednik
  * `odblokujFakture` (db/faktury.js) i `odblokujPrzesylke` (db/przesylki.js), tą samą konwencją.
  *
- * Powstalo, bo `201` z inFaktu NIE DOWODZI, ze tresc korekty byla poprawna (zmierzone pustym
- * cialem 2026-08-14): zlecenie odrzucone w przetwarzaniu w tle zostawialo `korekta_zlecona_at`
- * ustawione NA ZAWSZE, a razem z nim zwrot NIEROZLICZONY i zamowienie na liscie roboczej.
- * Jedynym wyjsciem byl `UPDATE` na produkcyjnej bazie — czyli to, przed czym panel ma chronic
- * (przewodnik OMS, 4.9).
+ * Potrzebne, bo `201` z inFaktu NIE DOWODZI, że treść korekty była poprawna (zmierzone pustym
+ * ciałem żądania): zlecenie odrzucone w przetwarzaniu w tle zostawia `korekta_zlecona_at`
+ * ustawione NA ZAWSZE, a razem z nim zwrot NIEROZLICZONY i zamówienie na liście roboczej.
+ * Bez tej funkcji jedynym wyjściem byłby `UPDATE` na bazie — czyli to, przed czym panel ma
+ * chronić (reguła: każdy stan ma wyjście).
  *
- * ⚠️ PROG (15 minut) SPRAWDZA REGULA W `domain/zwrot.js` (`powodOdmowyOdblokowaniaKorekty`),
+ * ⚠️ PROG (15 minut) SPRAWDZA REGULA W `domena/zwrot.js` (`powodOdmowyOdblokowaniaKorekty`),
  * nie ten modul — baza nie liczy regul. TUTAJ stoi wylacznie granica FAKTU, ktorej zadna
  * decyzja czlowieka nie przekroczy: rezerwacji Z NUMEREM nie wolno ruszyc, bo dokument
  * w inFakcie NA PEWNO istnieje. Warunek jest W SQL-u, a nie nad nim, zeby dwa rownolegle
@@ -262,10 +262,10 @@ export function odblokujKorekte(db, zamowienieId, zwrotId) {
  * ⚠️ `korekta_numer IS NULL` W SQL-u, a nie nad nim: dwuklik przy dwoch otwartych kartach
  * inaczej nadpisalby numer pierwszego dokumentu numerem drugiego, a panel rozliczylby zwrot
  * jednym z nich, milczac o istnieniu obu. Regule „co wpisac" trzyma
- * `parsujNumerKorekty` (domain/zwrot.js); tutaj jest sam zapis i jego bariera wyscigu.
+ * `parsujNumerKorekty` (domena/zwrot.js); tutaj jest sam zapis i jego bariera wyscigu.
  *
- * ⚠️⚠️ TEN SAM NUMER NA DWOCH ZWROTACH JEDNEGO ZAMOWIENIA TO DUPLIKAT ROZLICZENIA (W3, recenzja
- * kontrolna 2026-08-15): oba zwroty melduja sie wtedy jako rozliczone (`zwrotRozliczony` pyta
+ * ⚠️⚠️ TEN SAM NUMER NA DWOCH ZWROTACH JEDNEGO ZAMOWIENIA TO DUPLIKAT ROZLICZENIA:
+ * oba zwroty melduja sie wtedy jako rozliczone (`zwrotRozliczony` pyta
  * o `korekta_numer`) i zamowienie schodzi z listy roboczej, choc drugiej korekty NIE MA.
  * Sprawdzenie idzie razem z zapisem w `BEGIN IMMEDIATE`, a ostatnia instancja stoi w schemacie
  * (`UNIQUE zwroty_korekta_numer_zamowienia`) — droga reczna omija KAZDE sito w kodzie, wiec
@@ -305,8 +305,8 @@ export function zapiszRecznyNumerKorekty(db, zamowienieId, zwrotId, numer) {
 /**
  * Identyfikatory zamowien, ktore maja CHOC JEDEN zwrot — JEDNYM zapytaniem.
  *
- * ⚠️ Lista zamowien liczy status dla kilkuset wierszy naraz (routes/zamowienia.js:
- * `wczytajListe`). Pytanie per wiersz dalo by N+1 na ekranie, na ktory operator patrzy
+ * ⚠️ Lista zamowien liczy status dla kilkuset wierszy naraz (`wczytajListe`
+ * w moduly/zamowienia/kontekst.js). Pytanie per wiersz dalo by N+1 na ekranie, na ktory operator patrzy
  * najczesciej.
  */
 export function zamowieniaZeZwrotem(db) {
@@ -317,10 +317,10 @@ export function zamowieniaZeZwrotem(db) {
  * Naglowki zwrotow (BEZ pozycji) dla calej LISTY zamowien — JEDNYM zapytaniem, batched
  * po IN (...). Ten sam wzorzec, co `pozycjeDlaZamowien` w db/zamowienia.js.
  *
- * ⚠️ ISTNIEJE DLA `doZrobienia` (domain/status.js), NIE TYLKO DLA `ma_zwrot`. Sam fakt
+ * ⚠️ ISTNIEJE DLA `doZrobienia` (domena/status.js), NIE TYLKO DLA `ma_zwrot`. Sam fakt
  * istnienia zwrotu (`ma_zwrot`, `zamowieniaZeZwrotem` wyzej) NIE WYSTARCZA liscie roboczej:
  * `doZrobienia` musi sprawdzic, czy KAZDY zwrot jest ROZLICZONY (zwrotRozliczony z
- * domain/zwrot.js), a do tego potrzebuje `pieniadze_oddane_at` i `korekta_numer` z
+ * domena/zwrot.js), a do tego potrzebuje `pieniadze_oddane_at` i `korekta_numer` z
  * kazdego naglowka — nie samego faktu „ma zwrot". Bez tej funkcji lista pokazywalaby
  * status „Zwrot" poprawnie, ale ZDEJMOWALABY zamowienie z listy roboczej natychmiast,
  * zanim ktokolwiek oddal pieniadze (zmierzone: `doZrobienia` na wierszu z samym `ma_zwrot`,
@@ -345,10 +345,10 @@ export function zwrotyDlaZamowien(db, zamowienieIds) {
 }
 
 /**
- * PRZ-151.C01 — korekty wystawione z panelu, dla CAŁEJ listy dokumentów naraz (jedno zapytanie, nie jedno na
+ * Korekty wystawione z panelu, dla CAŁEJ listy dokumentów naraz (jedno zapytanie, nie jedno na
  * wiersz): uuid korekty → zamówienie zwrotu i numer KSeF faktury tego zamówienia (`null`, gdy faktura go nie ma
  * albo jej nie ma). Zakładka FAKTURY wiąże po tym korektę z zamówieniem (ślad wysyłki na karcie) i — gdy program
- * nie podaje numeru KSeF faktury pierwotnej — bierze go stąd jako pierwsze źródło (plan PRZ-151, D3 i D7).
+ * nie podaje numeru KSeF faktury pierwotnej — bierze go stąd jako pierwsze źródło.
  * Tylko odczyt. `faktury` ma UNIQUE (zamowienie_id), więc najwyżej jeden wiersz na korektę ze zwrotu.
  */
 export function korektyZwrotowZFakturaZamowienia(db) {

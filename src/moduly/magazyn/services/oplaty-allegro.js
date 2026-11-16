@@ -1,4 +1,4 @@
-// PRZ-160 E3.14 (D40) — prowizja Allegro w podglądzie „Wystaw na…”. Informacja, nie bramka: odmowa albo brak
+// Prowizja Allegro w podglądzie „Wystaw na…”. Informacja, nie bramka: odmowa albo brak
 // odpowiedzi nie blokuje podglądu ani zatwierdzenia. Najwyżej 20 pierwszych kart bez błędów, po 2 zapytania naraz,
 // razem do 20 s; pamięć (konto, kategoria, cena) na 10 min. Reszta kart: „prowizji nie policzono — zawęź wybór”.
 
@@ -31,7 +31,7 @@ export function createOplatyAllegro({ teraz = () => Date.now(), limitMs = LIMIT_
    * @param {Array<{bledy: string[], zadanie?: any, allegro?: {prowizja?: string|null}}>} wiersze
    */
   async function prowizje(konto, wiersze) {
-    // E3.29: wpisy po terminie wypadają przy każdym podglądzie — pamięć nie rośnie z każdą nową ceną.
+    // Wpisy po terminie wypadają przy każdym podglądzie — pamięć nie rośnie z każdą nową ceną.
     for (const [klucz, zapis] of pamiec) if (zapis.do <= teraz()) pamiec.delete(klucz);
     const doLiczenia = wiersze.filter(w => !w.bledy.length && w.zadanie && w.allegro);
     const wybrane = doLiczenia.slice(0, LIMIT_KART_PROWIZJI);

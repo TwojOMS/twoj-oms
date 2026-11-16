@@ -1,4 +1,4 @@
-// PRZ-103 (21.10.2026) — ekran „Nowe zamówienie”: wiersze pozycji i klawiatura przy „Dodaj z magazynu”.
+// Ekran „Nowe zamówienie”: wiersze pozycji i klawiatura przy „Dodaj z magazynu”.
 //
 // ⚠️ TO JEST UŁATWIENIE, NIE WARUNEK. „+ Dodaj wiersz” i „×” są przyciskami formularza
 // z `formaction` — bez tego skryptu odsyłają formularz do /zamowienia/nowe/wiersz/* i wracają
@@ -6,19 +6,19 @@
 //
 // ⚠️ ENTER. Domyślnym przyciskiem formularza jest ukryte „Załóż zamówienie” na górze ekranu
 // (celowo — Enter w polu danych klienta ma zakładać zamówienie). Ale Enter w polu szukania
-// magazynu zakładał przez to PUSTE zamówienie z nadanym numerem (sprawdzone 21.10 na demo:
-// wpisane „lampa” + Enter = nowe R/…). W polu szukania Enter szuka, w polu ilości przy wyniku
+// magazynu zakładał przez to PUSTE zamówienie z nadanym numerem
+// (wpisane „lampa” + Enter = nowe R/…). W polu szukania Enter szuka, w polu ilości przy wyniku
 // dodaje ten wynik.
 
 export const SELEKTOR_WIERSZA = 'tr[data-wiersz-pozycji]';
 
 /**
  * Pusty wiersz: wszystkie pola (także ukryta tożsamość produktu i cena sprzed rabatu) i suma linii.
- * Ilość wraca do 1 (PRZ-106) — tak wygląda nowy wiersz; wiersz z samą ilością liczy się jako pusty.
+ * Ilość wraca do 1 — tak wygląda nowy wiersz; wiersz z samą ilością liczy się jako pusty.
  */
 export function wyczyscWiersz(tr) {
   tr.querySelectorAll('input').forEach((pole) => { pole.value = /(^|_)ilosc$/.test(pole.name) ? '1' : ''; });
-  // PRZ-105: lista stawek nowego wiersza wraca do domyślnej z Ustawień (data-vat formularza), a nie
+  // Lista stawek nowego wiersza wraca do domyślnej z Ustawień (data-vat formularza), a nie
   // zostaje przy stawce sklonowanego wiersza.
   const domyslna = typeof tr.closest === 'function' ? tr.closest('form')?.dataset?.vat : undefined;
   if (domyslna !== undefined) tr.querySelectorAll('select[name$="vat"]').forEach((l) => { l.value = domyslna; });
@@ -107,7 +107,7 @@ export function podepnij(dokument, srodowisko = {}) {
 
   // Po „Dodaj” z magazynu pole szukania ma `autofocus` — zaznaczona fraza znika pod pierwszą literą.
   // ⚠️ DOPIERO PO `load`: strona wraca z kotwicą `#magazyn`, a Chrome przewija do niej na końcu
-  // wczytywania i przy tym ZDEJMUJE fokus (sprawdzone 21.10: fokus ustawiony od razu kończył na
+  // wczytywania i przy tym ZDEJMUJE fokus (sprawdzone: fokus ustawiony od razu kończył na
   // <body>; po przeładowaniu, które nie przewija do kotwicy, zostawał). `autofocus` sam z siebie
   // też nie działa przy kotwicy w adresie — tak mówi specyfikacja HTML.
   const szukaj = dokument.querySelector('input[name="magazyn"][autofocus]');

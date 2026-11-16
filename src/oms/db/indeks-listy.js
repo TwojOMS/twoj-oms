@@ -1,9 +1,9 @@
 import { statusyWKolejnosci } from './statusy.js';
-// Indeks listy zamówień (PRZ-051).
+// Indeks listy zamówień.
 //
-// ⚠️ PO CO. Do PRZ-051 każde otwarcie listy czytało CAŁĄ tabelę zamówień z dziećmi i liczyło
-// status, listę roboczą i termin w JS — pomiar na 15 000 zamówień: 17 s zamrożenia procesu,
-// przy 32 767 błąd SQL (limit zmiennych). Status nie jest kolumną, tylko wynikiem reguł
+// ⚠️ PO CO. Bez indeksu każde otwarcie listy czytało CAŁĄ tabelę zamówień z dziećmi i liczyło
+// status, listę roboczą i termin w JS — przy kilkunastu tysiącach zamówień kilkanaście
+// sekund zamrożenia procesu, przy 32 767 błąd SQL (limit zmiennych). Status nie jest kolumną, tylko wynikiem reguł
 // domeny, a te potrzebują faktur, paczek, wpłat i zwrotów — więc COUNT „po kolumnie" nie
 // istniał.
 //
@@ -12,8 +12,8 @@ import { statusyWKolejnosci } from './statusy.js';
 // strona to LIMIT/OFFSET po indeksie, filtry i fraza to funkcje SQL wołające TĘ SAMĄ regułę
 // JS (`pasujaKlucze`, `pasujePola`). Reguła istnieje raz; SQL przechowuje jej odpowiedzi.
 //
-// ⚠️ DLACZEGO TABELA TRWAŁA, A NIE `temp`. Pełne przeliczenie kosztuje ok. 260 µs na
-// zamówienie (pomiar PRZ-051: odczyt z dziećmi + reguły) — przy 50 000 to ok. 13 s. W `temp`
+// ⚠️ DLACZEGO TABELA TRWAŁA, A NIE `temp`. Pełne przeliczenie kosztuje kilkaset µs na
+// zamówienie (odczyt z dziećmi + reguły) — przy dziesiątkach tysięcy to kilkanaście sekund. W `temp`
 // płaciłby to KAŻDY start procesu, a pierwszy widok listy po wydaniu czekałby na całość.
 //
 // ⚠️ ŚWIEŻOŚĆ — każda droga ma test w tests/prz051/indeks-listy.test.js:
@@ -56,7 +56,7 @@ function zarejestrujFunkcje(db) {
       if (filtryJson !== ostatnie) { ostatnie = filtryJson; sparsowane = JSON.parse(filtryJson); }
       return pasujaKlucze({ dzien, wysylka, indywidualne: Boolean(indywidualne), sklep, platnosc }, sparsowane) ? 1 : 0;
     });
-  // Fraza rozkładana raz na zapytanie, nie raz na wiersz (recenzja PRZ-051).
+  // Fraza rozkładana raz na zapytanie, nie raz na wiersz.
   let ostatniaFraza = null; let dopasuj = null;
   db.function('lista_szukaj', { deterministic: true }, (tekst, cyfry, fraza) => {
     if (fraza !== ostatniaFraza) { ostatniaFraza = fraza; dopasuj = dopasowanieFrazy(fraza); }
@@ -64,9 +64,9 @@ function zarejestrujFunkcje(db) {
   });
 }
 
-// ⚠️ ROZRZUT `wazne_do` (recenzja PRZ-051). Cała pierwsza budowa liczy się z jedną chwilą, więc
+// ⚠️ ROZRZUT `wazne_do`. Cała pierwsza budowa liczy się z jedną chwilą, więc
 // bez rozrzutu po 90 dniach bez restartu wygasałaby CAŁA tabela naraz i pierwsze żądanie
-// liczyłoby wszystko od nowa (50 000 zamówień ≈ 12 s). Wcześniejsze wygaśnięcie jest zawsze
+// liczyłoby wszystko od nowa (dziesiątki tysięcy zamówień — kilkanaście sekund). Wcześniejsze wygaśnięcie jest zawsze
 // bezpieczne — chwile przejścia były szukane do końca pełnego horyzontu.
 const DOBA_MS = 24 * 3600 * 1000;
 const rozrzut = (id) => (id % 30) * DOBA_MS;
@@ -78,7 +78,7 @@ const STATUS_USZKODZONE = 'blad';
 /**
  * Przyczyna do pokazania na liście i zapisu w `lista_stan.blad` — BEZ danych zamówienia. V8 przy
  * części błędów `JSON.parse` wkleja w komunikat wycinek wejścia (czyli np. imię i adres klienta),
- * a ta tabela trafia do kopii bazy i na ekran (recenzja PRZ-051).
+ * a ta tabela trafia do kopii bazy i na ekran.
  */
 export function przyczynaUszkodzenia(e) {
   if (e instanceof SyntaxError) return 'uszkodzony JSON w danych zamówienia';
@@ -98,7 +98,7 @@ export function indeksListy(db) {
 
 function utworz(db) {
   if (!sledzZmianyListy(db)) throw new Error('Brak tabel indeksu listy — migracja modułu zamówień nie została wykonana');
-  // Baza ze schematem indeksu sprzed poprawek recenzji (kopia robocza z 9f614fa) — czytelna odmowa
+  // Baza ze schematem indeksu z wczesnej, niezatwierdzonej wersji (bez kolumny `blad`) — czytelna odmowa
   // zamiast surowego błędu SQL przy pierwszym zapisie.
   if (!db.prepare('PRAGMA table_info(lista_stan)').all().some((k) => k.name === 'blad')) {
     throw new Error('Tabela lista_stan bez kolumny blad — baza z niezatwierdzonej wersji PRZ-051; odtwórz ją z kopii sprzed migracji');
@@ -108,7 +108,7 @@ function utworz(db) {
   const wstaw = db.prepare(`INSERT OR REPLACE INTO lista_stan (zamowienie_id, utworzone_at, status, robocze_od,
     po_terminie_od, wazne_do, dzien, wysylka, indywidualne, sklep, platnosc, szukaj_tekst, szukaj_cyfry, blad)
     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
-  // ⚠️ ZAMÓWIENIE NIE DO ODCZYTANIA (recenzja PRZ-051, P1). Jeden wiersz z uszkodzonym JSON-em
+  // ⚠️ ZAMÓWIENIE NIE DO ODCZYTANIA. Jeden wiersz z uszkodzonym JSON-em
   // (ręczny SQL, awaria zapisu) wywracał całą porcję, a znacznik zostawał w `lista_brudne`
   // i trafiał w każdą następną porcję — indeks stawał dla WSZYSTKICH zamówień, a przy pierwszej
   // budowie każde żądanie liczyło całą tabelę od nowa. Teraz takie zamówienie trafia do indeksu
@@ -129,7 +129,7 @@ function utworz(db) {
   // który przyjdzie po tej porcji, oznaczy zamówienie od nowa, zamiast przepaść razem
   // z obsłużonym znacznikiem.
   function klasyfikuj(idsWejscie, teraz) {
-    // PRZ-101.04 (recenzja, W3): zmiana DOŁĄCZONEGO (anulowanie w sklepie, przesyłka, faktura) brudzi
+    // Zmiana DOŁĄCZONEGO (anulowanie w sklepie, przesyłka, faktura) brudzi
     // tylko jego wiersz — a ten nie ma wiersza w indeksie. Wynik GŁÓWNEGO zależy od dołączonych
     // (`uwagaDolaczonychAnulowanych`), więc główne liczy się w tej samej porcji, co dołączone.
     // Baza bez migracji scaleń (testy indeksu na samej migracji 0001) kolumny nie ma — wtedy nie ma też grup.
@@ -143,8 +143,8 @@ function utworz(db) {
       db.prepare(`DELETE FROM lista_stan WHERE zamowienie_id IN (${znaki})`).run(...ids);
       const zamowienia = zamowieniaPoId(db, ids, { bezSurowych: true, naBlad: (w, e) => wstawUszkodzone(w, e, teraz) });
       for (const z of zamowienia) {
-        // PRZ-101.04: zamówienie DOŁĄCZONE (scalone do głównego) nie ma wiersza w indeksie — znika
-        // z każdej zakładki i każdego licznika (decyzja właściciela 18.10: „jest jedno zamówienie”).
+        // Zamówienie DOŁĄCZONE (scalone do głównego) nie ma wiersza w indeksie — znika
+        // z każdej zakładki i każdego licznika (razem z głównym to jedno zamówienie).
         // Wiersz skasowany wyżej, więc rozdzielenie (UPDATE → wyzwalacz) przywraca je samo.
         if (z.scalone_do) continue;
         let k;
@@ -220,7 +220,7 @@ function utworz(db) {
     // w połączeniu), a `IF NOT EXISTS` kosztuje tyle, co odczyt schematu.
     sledzZmianyListy(db);
     // Najpierw odczyt, zapis tylko gdy jest co oznaczyć: lista bez pracy do zrobienia nie
-    // otwiera transakcji zapisu (recenzja PRZ-051) — gdy inny proces trzyma blokadę zapisu,
+    // otwiera transakcji zapisu — gdy inny proces trzyma blokadę zapisu,
     // pusty INSERT czekałby na nią synchronicznie i zatrzymał cały proces.
     if (db.prepare('SELECT 1 FROM lista_stan WHERE wazne_do <= ? LIMIT 1').get(teraz)) {
       db.prepare('INSERT OR IGNORE INTO lista_brudne SELECT zamowienie_id FROM lista_stan WHERE wazne_do <= ?').run(teraz);
@@ -255,7 +255,7 @@ function utworz(db) {
     /** Liczniki panelu bocznego w chwili `teraz` — po `odswiez`. */
     liczniki(teraz) {
       // Każda zakładka statusu ma licznik, także pusta — zero to odpowiedź, nie brak danych.
-      // Pełny katalog: ukrycie statusu dodatkowego („Indywidualne”, PRZ-102.15) dotyczy widoku
+      // Pełny katalog: ukrycie statusu dodatkowego („Indywidualne”) dotyczy widoku
       // (menu, filtr, wybór), nie modelu liczników — te zgadzają się z wyrocznią co do klucza.
       const statusy = Object.fromEntries(statusyWKolejnosci(db).map((s) => [s.klucz, 0]));
       let wszystkie = 0;
@@ -284,8 +284,8 @@ function utworz(db) {
       const gdzie = warunki.length ? `WHERE ${warunki.join(' AND ')}` : '';
       const ileWszystkich = () => db.prepare(`SELECT COUNT(*) AS n FROM lista_stan ${gdzie}`).get(...arg).n;
       // Filtr albo fraza i tak przechodzą przez KAŻDY wiersz (funkcja JS na wiersz), więc liczbę
-      // wszystkich bierzemy z tego samego przejścia (`COUNT(*) OVER ()`) zamiast drugiego skanu
-      // (recenzja PRZ-051). Sama zakładka idzie indeksem: strona kończy się po LIMIT, a COUNT
+      // wszystkich bierzemy z tego samego przejścia (`COUNT(*) OVER ()`) zamiast drugiego skanu.
+      // Sama zakładka idzie indeksem: strona kończy się po LIMIT, a COUNT
       // po indeksie kolumny jest tani — okno wymusiłoby tam pełne przejście i sortowanie.
       if (filtry && Object.values(filtry).some(Boolean) || szukaj) {
         const wiersze = db.prepare(`SELECT zamowienie_id, COUNT(*) OVER () AS lacznie FROM lista_stan ${gdzie}

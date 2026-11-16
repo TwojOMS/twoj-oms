@@ -4,19 +4,19 @@ import {brakiUstawienOfert} from '../../../domena/erli-oferty-ustawienia.js';
 import {stanyKiedysWlaczone} from '../stany-kont.ts';
 import {regulyZFormularza} from '../../../domena/cennik-dostaw.js';
 
-// PRZ-160 E3.13 (D15, D24, D35, D42): krok 6 „Oferty” konfiguratora Allegro — dane konta, których karta nie zna.
+// Krok 6 „Oferty” konfiguratora Allegro — dane konta, których karta nie zna.
 // Listy konta (cenniki, warunki, producenci, osoby) przychodzą wyłącznie z „Pobierz z Allegro”; formularz
-// przyjmuje tylko identyfikatory z zapisanej listy. Producent marki (D35) w `allegro_marki_gpsr`.
+// przyjmuje tylko identyfikatory z zapisanej listy. Producent marki w `allegro_marki_gpsr`.
 
 const root='/ustawienia/integracje/allegro';
-/** D21: konto bez zgody na zapis ofert. */
+/** Konto bez zgody na zapis ofert. */
 export const BRAK_ZGODY_OFERT='To konto nie ma zgody na zapis ofert — połącz je ponownie';
 
 type Pozycja={id:string;nazwa:string};
 export type SlownikiAllegro={pobranoAt:string;cenniki:Pozycja[];zwroty:Pozycja[];reklamacje:Pozycja[];gwarancje:Pozycja[];producenci:Pozycja[];osoby:Pozycja[]};
 type Lista=Exclude<keyof SlownikiAllegro,'pobranoAt'>;
 
-/** Pole ustawień → lista konta, metoda klienta Allegro i etykieta na ekranie. E3d.02-02: cennik dostaw nie jest
+/** Pole ustawień → lista konta, metoda klienta Allegro i etykieta na ekranie. Cennik dostaw nie jest
  * już jednym polem — wybiera się go w tabeli reguł (`_cenniki-reguly.ejs`, `regulyZKroku`); listę cenników
  * pobiera nadal „Pobierz z Allegro” (`LISTY_KONTA`). */
 export const POLA_LIST:readonly {pole:string;lista:Lista;metoda:string;etykieta:string;wymagane:boolean}[]=[
@@ -29,14 +29,14 @@ export const POLA_LIST:readonly {pole:string;lista:Lista;metoda:string;etykieta:
 /** Wszystkie listy „Pobierz z Allegro”: cenniki (tabela reguł) i listy pól wyboru. */
 const LISTY_KONTA:readonly {lista:Lista;metoda:string}[]=[{lista:'cenniki',metoda:'pobierzCenniki'},...POLA_LIST];
 
-/** E3d.02-02: pola tabeli reguł w formularzu kroku „Oferty” (Allegro i ERLI) — po jednej wartości na wiersz. */
+/** Pola tabeli reguł w formularzu kroku „Oferty” (Allegro i ERLI) — po jednej wartości na wiersz. */
 export const POLA_TABELI_CENNIKOW=['regulaA','regulaB','regulaC','regulaWaga','regulaCennik'] as const;
 export type RegulyZKroku={reguly:RegulaCennika[];wiersze:{a:string;b:string;c:string;waga:string;cennik:string}[];wieksze:string;bledyPol:Record<string,string>};
 
 /**
  * Tabela reguł z formularza kroku „Oferty”: wiersze (cm, kg, cennik) od góry plus cennik „dla większych”.
  * `null` — w ciele nie ma tabeli (stary formularz, inny zapis): reguły konta zostają bez zmian.
- * Pola `cennikDostaw` z formularza nie czytamy: alias D4 zamieniłby całą listę reguł na jeden cennik.
+ * Pola `cennikDostaw` z formularza nie czytamy: ten alias jednej reguły „wszystko” zamieniłby całą listę reguł na jeden cennik.
  * Błędy przy polach: `regula-<indeks wiersza>` i `cennikWiekszych`.
  */
 export function regulyZKroku(b:Record<string,unknown>):RegulyZKroku|null{
@@ -48,12 +48,12 @@ export function regulyZKroku(b:Record<string,unknown>):RegulyZKroku|null{
  const {reguly,bledy}=regulyZFormularza(wiersze,wieksze) as unknown as {reguly:RegulaCennika[];bledy:{wiersz:number|null;tekst:string}[]};
  const bledyPol:Record<string,string>={};
  for(const x of bledy){const klucz=x.wiersz===null?'cennikWiekszych':'regula-'+x.wiersz;if(!bledyPol[klucz])bledyPol[klucz]=x.tekst;}
- // Decyzja Szefa 14.11: puste „dla większych” zawsze odmowa — pusta tabela nie kasuje po cichu reguł konta.
+ // Puste „dla większych” zawsze odmowa — pusta tabela nie kasuje po cichu reguł konta.
  if(!wieksze.trim()&&!bledyPol.cennikWiekszych)bledyPol.cennikWiekszych='Ustaw cennik dla większych';
  return {reguly:Object.keys(bledyPol).length?[]:reguly,wiersze,wieksze,bledyPol};
 }
 
-/** Decyzja Szefa 14.11: formularz bez tabeli reguł przy koncie z regułami to strona otwarta przed zmianą — 409, nic nie zapisane. */
+/** Formularz bez tabeli reguł przy koncie z regułami to strona otwarta przed zmianą — 409, nic nie zapisane. */
 export const FORMULARZ_NIEAKTUALNY='Strona była otwarta przed zmianą — odśwież';
 export const formularzNieaktualny=(b:Record<string,unknown>,cenniki:readonly unknown[])=>!('cennikWiekszych' in b)&&cenniki.length>0;
 
@@ -73,7 +73,7 @@ const tekst=(v:unknown)=>typeof v==='string'?v:'';
 const lista=(v:unknown):string[]=>Array.isArray(v)?v.map(tekst):v===undefined?[]:[tekst(v)];
 const liczba=(v:string)=>/^-?\d+([.,]\d+)?$/.test(v)?Number(v.replace(',','.')):NaN;
 
-/** Gotowość konta do wystawiania (E3.14 „Wystaw na…”): braki odsyłają do kroku „Oferty” tego konta. */
+/** Gotowość konta do wystawiania: braki odsyłają do kroku „Oferty” tego konta. */
 export function gotowoscOfertAllegro(db:DatabaseSync,klucz:string){
  const braki:string[]=brakiUstawienOfert(ustawieniaOfertKonta(db,klucz),'allegro');
  return {gotowe:braki.length===0,braki,krok:root+'/'+encodeURIComponent(klucz)+'/oferty'};
@@ -140,21 +140,21 @@ export function createOfertyAllegroUstawienia(o:{
    aktywujPoSprawdzeniu:b.aktywujPoSprawdzeniu==='tak',
    bezpieczenstwoDomyslne:bezp.trim()?bezp:null,
   };
-  // PRZ-160 E4.10 (D48): bufor i próg skoku tylko, gdy stany kiedykolwiek włączono; inaczej pola nie istnieją.
+  // Bufor i próg skoku tylko, gdy stany kiedykolwiek włączono; inaczej pola nie istnieją.
   if(stanyKiedysWlaczone(db))for(const p of ['buforSzt','progSkokuSzt'])if(b[p]!==undefined)zmiany[p]=liczba(tekst(b[p]).trim());
   for(const p of POLA_LIST){
    const id=tekst(b[p.pole]).trim();
    if(id&&!(slowniki?.[p.lista]??[]).some(x=>x.id===id))bledy[p.pole]=`Wybierz z listy pobranej z Allegro (${p.etykieta.replace(/ \(opcjonalna\)$/,'').toLowerCase()})`;
    zmiany[p.pole]=id||null;
   }
-  // E3d.02-02: reguły cenników z tabeli; cennik w każdym wierszu i „dla większych” tylko z listy konta.
+  // Reguły cenników z tabeli; cennik w każdym wierszu i „dla większych” tylko z listy konta.
   const tabela=regulyZKroku(b);
   if(tabela){
    const obce=cennikiSpozaListy(tabela,new Set((slowniki?.cenniki??[]).map(x=>x.id)));
    for(const [pole,komunikat] of Object.entries({...obce,...tabela.bledyPol}))bledy[pole]=komunikat;
    zmiany.cenniki=tabela.reguly;
   }
-  // D35: producent marki — '' zostawia markę nieprzypisaną (nie dostaje producenta konta).
+  // Producent marki — '' zostawia markę nieprzypisaną (nie dostaje producenta konta).
   const marki=lista(b.marka),wybory=lista(b.producentMarki);
   const znane=new Set(markiKonta(db,klucz).map(m=>m.marka));
   const producenci=new Set((slowniki?.producenci??[]).map(x=>x.id));

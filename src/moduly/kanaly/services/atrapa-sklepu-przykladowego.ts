@@ -1,4 +1,4 @@
-// PRZ-150.01: klient kreatora Woo dla sklepu przykładowego piaskownicy (tryb proba, adres atrapy z konfiguracji
+// Klient kreatora Woo dla sklepu przykładowego piaskownicy (tryb proba, adres atrapy z konfiguracji
 // kanałów). Adres atrapy (domena .invalid) nie istnieje w sieci, więc prawdziwy klient kończył kreator komunikatem
 // „Nie udało się odnaleźć sklepu”. Ta atrapa odpowiada bez sieci: klucze w formacie ck_…/cs_… przechodzą, metody
 // wysyłki i bramki płatności są zmyślone, w tym samym kształcie co z createWooClient (src/oms/woo/client.js).

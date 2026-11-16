@@ -1,10 +1,10 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { Migracja } from '../../../core/kontrakty.ts';
 
-// PRZ-160 E4.01 — rejestr ofert dostaje stan ilości (D50, D53, D54), konto bufor i próg skoku, a moduł tabele
-// zatwierdzeń stanów (D51) i przepięć powiązań (D59). Wyłącznie dokładanie; nowe kolumny istniejących tabel bez
-// CHECK — pilnuje ich repozytorium (`src/oms/db/oferty-kanalow.ts`). Domyślne wartości = zachowanie sprzed E4:
-// `ilosc_z_oms = 0`, czyli żadna istniejąca oferta nie dostaje ilości z OMS (zasada 1).
+// Rejestr ofert dostaje stan ilości, konto bufor i próg skoku, a moduł tabele zatwierdzeń stanów i przepięć
+// powiązań. Wyłącznie dokładanie; nowe kolumny istniejących tabel bez CHECK — pilnuje ich repozytorium
+// (`src/oms/db/oferty-kanalow.ts`). Domyślne wartości = zachowanie sprzed tej migracji: `ilosc_z_oms = 0`,
+// czyli żadna istniejąca oferta nie dostaje ilości z OMS.
 
 const TABELE = [
   `CREATE TABLE IF NOT EXISTS stany_zatwierdzenia (

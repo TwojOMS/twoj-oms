@@ -20,7 +20,7 @@ const SEKCJE_UPRAWNIEN:Readonly<Record<string,string>>={
  'allegro:api:messaging':'Zarządzanie wiadomościami',
  'allegro:api:disputes':'Zamówienia i obsługa posprzedażowa',
  'allegro:api:profile:read':'Dane osobowe',
- // PRZ-160 E3.02: opcjonalne, tylko do wystawiania ofert.
+ // Opcjonalne, tylko do wystawiania ofert.
  'allegro:api:sale:offers:write':'Zarządzanie ofertami',
  'allegro:api:sale:settings:read':'Ustawienia sprzedaży',
 };
@@ -50,7 +50,7 @@ export function createAplikacjaAllegro(o:{db:DatabaseSync;softwareStatementId:st
  async function sprawdzIZapiszAplikacjeDevice(s:SrodowiskoAllegro,para:ParaDevice,aktor:Aktor):Promise<WynikDevice>{
   if(!['produkcja','sandbox'].includes(s)||![para?.clientId,para?.clientSecret].every(v=>typeof v==='string'&&v.length>0&&v.length<=200&&!/\s/.test(v)))return deviceBlad('walidacja','Wklej Client ID i Client Secret z karty aplikacji w Allegro.');
   const blokada=blokadaDevice(s);if(blokada)return blokada;
-  // PRZ-148.06: jeden łączny limit na całe sprawdzenie (zapytanie główne + do 8 zapytań o pojedyncze uprawnienia),
+  // Jeden łączny limit na całe sprawdzenie (zapytanie główne + do 8 zapytań o pojedyncze uprawnienia),
   // żeby wolne Allegro nie trzymało ekranu 9 × 30 s; każde zapytanie ma nadal własne 30 s.
   const lacznie=AbortSignal.timeout(o.limitSprawdzaniaMs??45000);
   const zapytaj=(scope:string)=>o.http(HOSTY_ALLEGRO[s].auth+'/device',{method:'POST',redirect:'error',signal:AbortSignal.any([AbortSignal.timeout(30000),lacznie]),headers:{Accept:'application/json','Content-Type':'application/x-www-form-urlencoded',Authorization:'Basic '+Buffer.from(para.clientId+':'+para.clientSecret).toString('base64'),...(o.userAgent?{'User-Agent':typeof o.userAgent==='function'?o.userAgent():o.userAgent}:{})},body:new URLSearchParams({client_id:para.clientId,scope}).toString()});
@@ -119,7 +119,7 @@ export function createAplikacjaAllegro(o:{db:DatabaseSync;softwareStatementId:st
   });
   const p=praca.finally(()=>{if(m.get(s)===p)m.delete(s);});m.set(s,p);return p;
  }
- // PRZ-160 E3.02 (D42): czy aplikacja Allegro ma zakresy ofert. ⚠️ Znacznik per Client ID (odcisk
+ // Czy aplikacja Allegro ma zakresy ofert. ⚠️ Znacznik per Client ID (odcisk
  // sha256, nie sam identyfikator): nowa aplikacja albo zmieniony Client ID nie dziedziczy wyniku.
  // Zapisuje go WYŁĄCZNIE przycisk „Sprawdź uprawnienia aplikacji” — konto, wersja i tokeny bez zmian.
  const ofertyKey=(s:SrodowiskoAllegro)=>'allegro_oferty_aplikacja:'+s;

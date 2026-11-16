@@ -10,12 +10,12 @@ import { zarezerwujNumerWdt, cofnijRezerwacjeWdt } from '../db/wdt-numery.js';
 // `dopisz(akcja, wynik)` przychodzi od wolajacego, bo tylko on wie, do KTORYCH zamowien
 // pisze log: faktura pojedyncza do jednego, okres do wszystkich zamowien miesiaca.
 //
-// PRZ-118.06: program fakturowy (kontrakt ProgramFakturowy) zamiast klienta inFaktu. Komunikaty mowia
-// nazwa programu (`program.opis.nazwa`) — dla inFaktu znak w znak to samo co przed zmiana.
+// Program fakturowy (kontrakt ProgramFakturowy) zamiast klienta inFaktu. Komunikaty mówią
+// nazwą programu (`program.opis.nazwa`).
 
 /**
- * Odmiana nazwy programu do komunikatow obu drog wystawiania. Usluga bez programu (`zProgramu` oddalo null —
- * tak bylo i przed PRZ-118 z `infakt: null`) nie ma nazwy: wtedy mowimy ogolnie, zamiast wywracac komunikat.
+ * Odmiana nazwy programu do komunikatow obu drog wystawiania. Usługa bez programu (`zProgramu` oddało null)
+ * nie ma nazwy: wtedy mówimy ogólnie, zamiast wywracać komunikat.
  */
 export function nazwaProgramu(program) {
   return program?.opis?.nazwa ?? BEZ_NAZWY;
@@ -40,7 +40,7 @@ export function sprawdzNumeracjeWlasna(program) {
 }
 
 /**
- * VIES przy WDT: 'niewazny' ODMAWIA (jedyna droga do odmowy — services/vies.js oddaje
+ * VIES przy WDT: 'niewazny' ODMAWIA (jedyna droga do odmowy — oms/services/vies.js oddaje
  * usterki uslugi jako 'niedostepny', nie 'niewazny'); 'wazny' zapisuje do logu DOWOD
  * weryfikacji na moment transakcji (nazwa, numer konsultacji, data); 'niedostepny'
  * zapisuje polecenie recznej weryfikacji i pozwala wystawic — VIES pada per panstwo
@@ -68,7 +68,7 @@ export async function sprawdzWdtWVies({ vies, nip, dopisz, nazwa = BEZ_NAZWY }) 
 /**
  * Rezerwuje numer wlasnej serii WDT na dzien wystawienia (`RRRR-MM-DD`) i sprawdza
  * straznikiem duplikatu, czy program juz takiego nie ma (iluMaNumer; w inFakcie q[number_eq]
- * zweryfikowane na zywo 26.08.2026). KAZDA awaria tego kroku zwalnia licznik, zanim
+ * sprawdzone na żywym koncie). KAZDA awaria tego kroku zwalnia licznik, zanim
  * poleci wyzej — dokumentu na pewno jeszcze nie ma, wiec nie ma czego chronic.
  * Program bez numeracji wlasnej odmawia PRZED rezerwacja numeru (licznik nietkniety).
  */
@@ -111,8 +111,8 @@ export function seriaWdtPoAwarii({ db, seria, jednoznaczna, dopisz, nazwa = BEZ_
 
 /**
  * Po SUKCESIE wystawienia: prawda o numerze jest ODPOWIEDZ programu, nie nasz zamiar.
- * Rozjazd znaczy, ze pole `number` zostalo odrzucone albo zignorowane (na zywo
- * NIEZWERYFIKOWANE — spec 2026-08-26): dokument JEST wazny (numeracja glowna tez jest
+ * Rozjazd znaczy, ze pole `number` zostalo odrzucone albo zignorowane (na żywo
+ * NIEZWERYFIKOWANE): dokument JEST wazny (numeracja glowna tez jest
  * legalna), ale osobna numeracja WDT nie dziala i czlowiek ma sie o tym dowiedziec
  * z logu panelu, a nie od ksiegowej klienta. Licznik wraca, zeby seria nie odjezdzala.
  */

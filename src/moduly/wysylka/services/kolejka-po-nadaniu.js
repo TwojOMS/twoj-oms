@@ -7,9 +7,8 @@ import { dodajDoKolejki } from '../db/kolejka-druku.js';
  * wstawienia do kolejki (baza, brak ZPL-a od kuriera) NIE MOŻE cofnąć ani zawiesić nadania —
  * zgaszony komputer produkcyjny nie ma prawa zatrzymać wysyłki. Dlatego funkcja nigdy nie rzuca.
  *
- * PRZ-070 (14.10.2026): przeniesione z trasy karty bez zmiany treści wpisów, bo od dziś woła to
- * też nadanie hurtem. Dwie kopie rozjechałyby się przy pierwszej poprawce — a to jest miejsce,
- * które rozstrzyga, czy pakowacz dostanie etykietę z drukarki.
+ * Wspólne dla trasy karty (trasy/nadanie.js) i nadania hurtem: dwie kopie rozjechałyby się przy
+ * pierwszej poprawce — a to jest miejsce, które rozstrzyga, czy pakowacz dostanie etykietę z drukarki.
  *
  * ⚠️ Paczka pod numerem `kolejnosc`, NIE „ostatnia w tabeli": przy dwóch paczkach nadanych
  * w odstępie chwili wybór po kolejności wierszy wstawiłby do kolejki cudzą etykietę.

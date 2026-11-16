@@ -1,5 +1,5 @@
 <%#
-  WYNIKI SZUKANIA W MAGAZYNIE — KARTA zamówienia (21.08.2026, żywe szukanie).
+  WYNIKI SZUKANIA W MAGAZYNIE — KARTA zamówienia (żywe szukanie).
 
   ⚠️⚠️ TEN SAM PLIK RENDERUJE całą kartę (przez `include` w zamowienie.ejs) ORAZ fragment
   odświeżany w trakcie pisania (trasa /zamowienia/:id/magazyn/wyniki, htmx). Dwie kopie
@@ -24,7 +24,7 @@
             <td>
               <%= p.nazwa %>
               <%# Rozmiar POKAZUJE SIE tylko wtedy, gdy nazwa go nie niesie — patrz %>
-              <%# rozmiarDoPokazania w domain/magazyn-do-zamowienia.js. %>
+              <%# rozmiarDoPokazania w domena/magazyn-do-zamowienia.js. %>
               <% if (p.rozmiar) { %><span class="magazyn-rozmiar"><%= p.rozmiar %></span><% } %>
               <% if (p.sku_sklepu) { %><div class="sku"><%= p.sku_sklepu %></div><% } %>
             </td>

@@ -5,7 +5,7 @@ import { numerDniaZNapisu, zNumeruDnia, sklejDate } from './kalendarz.js';
 import { dzienWarszawa } from './format-daty.js';
 import { zlotowki } from './kwoty.js';
 
-// BLOK „DO ZAPŁATY / PRZELEW" — wspólny kawałek trzech maili (22.08.2026): proformy, faktury
+// BLOK „DO ZAPŁATY / PRZELEW" — wspólny kawałek trzech maili: proformy, faktury
 // i przypomnienia o płatności.
 //
 // ⚠️ MODUŁ CZYSTY: składa MODEL i nic nie renderuje. Ten sam obiekt układa potem tabela HTML
@@ -26,7 +26,7 @@ const dzisiajWarszawa = () => dzienWarszawa(new Date().toISOString());
  *
  * ⚠️ DATA LICZONA OD ZŁOŻENIA ZAMÓWIENIA, nie od dziś: „14 dni" uzgodnione przy zamówieniu
  * z 21 sierpnia mija 4 września niezależnie od tego, kiedy operator kliknie przypomnienie.
- * Liczona na NUMERZE DNIA (`domain/kalendarz.js`) — ta sama arytmetyka, co na fakturze;
+ * Liczona na NUMERZE DNIA (`domena/kalendarz.js`) — ta sama arytmetyka, co na fakturze;
  * dodawanie milisekund gubi dzień przy zmianie czasu, a termin przesunięty o dobę to termin,
  * którego klient nie uzgodnił.
  *
@@ -38,10 +38,10 @@ export function terminZamowienia(z, dzis = dzisiajWarszawa()) {
   if (wybor === '') return null;
 
   const etykieta = ETYKIETY_TERMINU[wybor] ?? wybor;
-  // ⚠️ WARUNEK UPROSZCZONY (recenzja 22.08.2026): `PRZY_ODBIORZE` i `BEZ_TERMINU` to napisy
-  // słowne, więc żaden z nich i tak nie przejdzie `^\d+$` — pierwsze dwa człony warunku były
-  // zawsze zawarte w trzecim i nigdy nie decydowały same. Sam regex wystarcza: „nie jest
-  // liczbą dni" obejmuje oba warianty słowne I każdy inny napis, którego panel nie rozpozna.
+  // ⚠️ WARUNEK UPROSZCZONY: `PRZY_ODBIORZE` i `BEZ_TERMINU` to napisy słowne, więc żaden
+  // z nich i tak nie przejdzie `^\d+$` — osobne sprawdzanie ich obok regexu nigdy by o niczym
+  // nie zdecydowało. Sam regex wystarcza: „nie jest liczbą dni" obejmuje oba warianty słowne
+  // I każdy inny napis, którego panel nie rozpozna.
   if (!/^\d+$/.test(wybor)) {
     return { etykieta, data: null, minal: false };
   }
@@ -51,11 +51,11 @@ export function terminZamowienia(z, dzis = dzisiajWarszawa()) {
 
   const numerTerminu = start + Number(wybor);
   const data = sklejDate(zNumeruDnia(numerTerminu));
-  // ⚠️⚠️ PORÓWNANIE PRZEZ NUMER DNIA, NIE PRZEZ STRING (recenzja 22.08.2026). `String(dzis) >
-  // data` porównywało NAPISY: `String(null)` to „null", `String(undefined)` to „undefined",
+  // ⚠️⚠️ PORÓWNANIE PRZEZ NUMER DNIA, NIE PRZEZ STRING. `String(dzis) > data` porównuje
+  // NAPISY: `String(null)` to „null", `String(undefined)` to „undefined",
   // `String(new Date(...))` zaczyna się od dnia tygodnia („Sat Aug…") — a każdy z tych napisów
   // jest LEKSYKALNIE WIĘKSZY od jakiejkolwiek daty ISO „RRRR-MM-DD", bo zaczyna się literą,
-  // nie cyfrą. Efekt: KAŻDY mail fałszywie oskarżał klienta o zwłokę, gdy `dzis` nie było
+  // nie cyfrą. Efekt: KAŻDY mail fałszywie oskarżałby klienta o zwłokę, gdy `dzis` nie jest
   // gotowym napisem w tym formacie. Numer dnia nieparsowalnego `dzis` daje `null` →
   // `minal: false` — nigdy nie oskarżamy klienta o zaległość, której nie umiemy stwierdzić.
   const numerDzis = numerDniaZNapisu(String(dzis ?? ''));
@@ -75,10 +75,10 @@ export const STAN_PLATNOSCI = Object.freeze({
  * i przez `blokPlatnosci` (czy pokazać tabelę przelewu), i przez `zamkniecie`
  * w `wiadomosc-platnicza.js` (co napisać zamiast niej).
  *
- * ⚠️⚠️ POWSTAŁO Z BŁĘDU (recenzja 22.08.2026): `blokPlatnosci` oddawał `null` z CZTERECH
- * różnych powodów, a `wiadomosc-platnicza.js` czytał tylko `Boolean(platnosc)` i przy KAŻDYM
- * z nich pisał „Zamówienie jest opłacone — dziękujemy." Realny scenariusz, który to psuło:
- * FAKTURA DO ZAMÓWIENIA ZA POBRANIEM — klient dostawał zapewnienie, że nic nie jest winien,
+ * ⚠️⚠️ PUŁAPKA: `blokPlatnosci` oddaje `null` z CZTERECH różnych powodów. Gdyby
+ * `wiadomosc-platnicza.js` czytał tylko `Boolean(platnosc)`, przy KAŻDYM z nich pisałby
+ * „Zamówienie jest opłacone — dziękujemy." Realny scenariusz, który to psuje:
+ * FAKTURA DO ZAMÓWIENIA ZA POBRANIEM — klient dostałby zapewnienie, że nic nie jest winien,
  * zanim kurier cokolwiek zainkasował. Ta funkcja nazywa wszystkie cztery powody z osobna,
  * żeby oba miejsca czytały JEDNĄ decyzję, a nie dwa niezależne przybliżenia tej samej sprawy.
  *
@@ -87,8 +87,8 @@ export const STAN_PLATNOSCI = Object.freeze({
  *      da się policzyć i czy mamy gdzieś skonfigurowany rachunek. Wygrywa z każdym innym
  *      powodem: klientowi za pobraniem należy się zdanie o kurierze, nie o naszym configu
  *      ani o błędzie wyceny.
- *   2. BŁĄD WYCENY (`saldoWplat` → `stan: 'blad'`) — DOTĄD POŁKNIĘTY, bo `blokPlatnosci`
- *      traktował go tak samo jak „pokryte" (`stan !== 'niedoplata'`). Nie wiemy, ile klient
+ *   2. BŁĄD WYCENY (`saldoWplat` → `stan: 'blad'`) — łatwo go połknąć, bo sam warunek
+ *      `stan !== 'niedoplata'` traktuje go tak samo jak „pokryte". Nie wiemy, ile klient
  *      jest winien, więc NIE WOLNO twierdzić ani że zapłacił, ani ile ma jeszcze przelać.
  *   3. POKRYTE (i NADPŁATA — obie znaczą „nie ma czego płacić") — sprawdzane PRZED brakiem
  *      rachunku: gdy klient już zapłacił, to, czy mamy gdzieś skonfigurowany numer konta,

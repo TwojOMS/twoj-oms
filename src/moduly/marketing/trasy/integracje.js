@@ -6,16 +6,16 @@ import {promptReklam} from '../../../domena/prompt-reklam.js';
 import {testPolaczenie,KROKI} from '../uslugi/test-polaczenia-reklam.js';
 import {nawigacjaUstawien} from '../../ustawienia/nawigacja.js';
 import {stronaOdmowy} from '../../../core/web/odmowa.js';
-// PRZ-152.G13: odmowy zapisu i testu połączeń reklam w układzie OMS (status i tekst bez zmian; tekst nigdy
+// Odmowy zapisu i testu połączeń reklam w układzie OMS (status i tekst bez zmian; tekst nigdy
 // nie niesie wpisanego poświadczenia). Powrót na ekran połączeń reklam.
 const odmowaReklam = (reply, status, tekst, tytul) => stronaOdmowy(reply, status, tekst, { tytul, napisWroc: 'Wróć do połączeń reklam', wroc: '/ustawienia/integracje/reklamy' });
-// PRZ-138.02: nazwy źródeł reklam z katalogu integracji (jedno brzmienie na kafelku i na ekranie).
+// Nazwy źródeł reklam z katalogu integracji (jedno brzmienie na kafelku i na ekranie).
 const nazwaZKatalogu = (id) => KATALOG_INTEGRACJI.find((w) => w.id === id)?.nazwa ?? id;
 const ZRODLA = Object.freeze({ ga4: nazwaZKatalogu('ga4'), google_ads: nazwaZKatalogu('google_ads'), meta: nazwaZKatalogu('meta') });
 const KROK_NIESKONFIGUROWANY = 'TEST_NIESKONFIGUROWANY';
 const KOMUNIKAT_NIESKONFIGUROWANY = 'Test połączeń reklam nie jest skonfigurowany na tym serwerze.';
 
-// PRZ-094.14: wynik „Test odczytu” wraca na ekran reklam przez przekierowanie (PRG). Adres niesie tylko
+// Wynik „Test odczytu” wraca na ekran reklam przez przekierowanie (PRG). Adres niesie tylko
 // identyfikator połączenia i krótki kod z whitelisty — treść komunikatu składamy po stronie serwera
 // ze znanych tekstów, więc nic z adresu nie trafia na ekran, a surowa odpowiedź API nie wychodzi nigdy.
 function adresWynikuTestu(polaczenieId, wynik) {

@@ -9,9 +9,8 @@ import { dzienWarszawa } from './format-daty.js';
 import { zlotowki } from './kwoty.js';
 import { zdaniaDoMaila, naglowekTekstu, tekstyModelu } from './zdania-platnosci.js';
 
-// POTWIERDZENIE PRZYJĘCIA ZAMÓWIENIA — treść maila do klienta (21.08.2026, prośba
-// właściciela: „po ręcznym dodaniu zamówienia mogę ręcznie kliknąć przycisk — wyślij
-// potwierdzenie zamówienia").
+// POTWIERDZENIE PRZYJĘCIA ZAMÓWIENIA — treść maila do klienta. Po ręcznym
+// dodaniu zamówienia operator może ręcznie kliknąć przycisk „wyślij potwierdzenie zamówienia".
 //
 // ⚠️ MODUŁ JEST CZYSTY: składa TREŚĆ i nic nie wysyła. Wysyłką zajmuje się usługa
 // (services/potwierdzenie.js), a decyzją — człowiek przy karcie. Dzięki temu treść da się
@@ -23,15 +22,14 @@ import { zdaniaDoMaila, naglowekTekstu, tekstyModelu } from './zdania-platnosci.
 // pokazywać innych kwot. Druga, „mailowa" ścieżka liczenia sumy rozjechałaby się z kartą przy
 // pierwszej poprawce ceny — a rozjazd zauważyłby dopiero klient, po fakcie.
 //
-// ⚠️⚠️ MODEL JEDEN, RENDERERY DWA (przebudowa 21.08.2026 wieczorem, zgłoszenie właściciela:
-// „popraw maila, wygląda słabo — pozycje jako tabela, dodaj nagłówki"). Do tej pory ten moduł
+// ⚠️⚠️ MODEL JEDEN, RENDERERY DWA. Dawniej ten moduł
 // oddawał sam PLAIN TEXT, a `renderMailHtml` próbował go rozpoznać wzorcami napisanymi pod
 // maile z wyceną (`3x Nazwa - 74,90zł brutto/szt`). Potwierdzenie tych wzorców nie spełniało,
 // więc HTML wychodził jako ciąg akapitów — tabeli nie było w nim ani śladu.
 //
 // Poprawka NIE polega na dopasowaniu tekstu do cudzych wzorców (byłby to układ trzymany
 // spacjami, psujący się przy pierwszej dłuższej nazwie), tylko na wyliczeniu MODELU raz
-// i wyrenderowaniu go dwa razy: tabelą w HTML-u (src/mail/potwierdzenie-html.js) i tekstem
+// i wyrenderowaniu go dwa razy: tabelą w HTML-u (src/core/poczta/potwierdzenie-html.js) i tekstem
 // tutaj. Mail idzie jako multipart, więc plain text ZOSTAJE — dawna decyzja („klienci pocztowi
 // psują układy, potwierdzenie musi być czytelne także w kliencie tekstowym") jest spełniona
 // jako część alternatywna, a nie jako jedyna treść.
@@ -39,10 +37,10 @@ import { zdaniaDoMaila, naglowekTekstu, tekstyModelu } from './zdania-platnosci.
 /**
  * Adres e-mail, na który idzie potwierdzenie.
  *
- * ⚠️ RE-EKSPORT, NIE KOPIA (22.08.2026). Reguła „na jaki adres piszemy do klienta" przeniosła
- * się do `domain/adresat-klienta.js`, bo od tej daty potrzebują jej także proforma, faktura
+ * ⚠️ RE-EKSPORT, NIE KOPIA. Reguła „na jaki adres piszemy do klienta" przeniosła
+ * się do `domena/adresat-klienta.js`, bo potrzebują jej także proforma, faktura
  * i przypomnienie o płatności. Nazwa zostaje, żeby nie ruszać istniejących importów; funkcja
- * jest DOKŁADNIE tą samą (pilnuje tego test w tests/oms/wiadomosci-domena.test.js).
+ * jest DOKŁADNIE tą samą (pilnuje tego test w tests/domena/wiadomosci-domena.test.js).
  */
 export { adresatKlienta as adresatPotwierdzenia } from './adresat-klienta.js';
 
@@ -75,7 +73,7 @@ export function czyWolnoWyslacPotwierdzenie(z) {
  */
 export const PODPIS = 'Obsługa sklepu';
 
-// PRZ-102.19: „(adres do uzgodnienia)", nagłówki sekcji, „Tak — wystawimy na:", „Nie", „dane do uzgodnienia",
+// „(adres do uzgodnienia)", nagłówki sekcji, „Tak — wystawimy na:", „Nie", „dane do uzgodnienia",
 // „do uzgodnienia" przy braku metody płatności, „RAZEM: … brutto", „/szt" i „Pozdrawiamy," — z Ustawień → Szablony
 // wiadomości (`m.teksty`, domena/zdania-platnosci.js). Bez zapisu brzmienie domyślne, co do znaku dawne literały stąd.
 
@@ -95,7 +93,7 @@ function liniaAdresu(z) {
   const miejscowosc = [a.kod, a.miasto].map((l) => String(l ?? '').trim()).filter(Boolean).join(' ');
   if (!ulica && !miejscowosc) return null;
 
-  // ⚠️ Ten sam adres, który zobaczy kurier na etykiecie (domain/adres-odbiorcy.js). Gdyby mail
+  // ⚠️ Ten sam adres, który zobaczy kurier na etykiecie (domena/adres-odbiorcy.js). Gdyby mail
   // składał go u siebie, klient potwierdzałby inny adres, niż ten, pod który paczka pojedzie.
   return [a.company, a.nazwa, ulica, miejscowosc]
     .map((l) => String(l ?? '').trim())
@@ -120,7 +118,7 @@ function liniaFaktury(z) {
 /**
  * MODEL potwierdzenia — wszystko policzone RAZ, w postaci gotowej do wypisania.
  *
- * Renderery (tekst niżej, HTML w src/mail/potwierdzenie-html.js) mają wyłącznie UŁOŻYĆ te
+ * Renderery (tekst niżej, HTML w src/core/poczta/potwierdzenie-html.js) mają wyłącznie UŁOŻYĆ te
  * wartości. Żaden z nich nie liczy ani nie formatuje kwot — inaczej tabela w mailu i tekst
  * zapasowy mogłyby kiedyś pokazać co innego, a klient dostaje OBIE naraz, w jednej wiadomości.
  */
@@ -131,11 +129,11 @@ export function modelPotwierdzenia(z, { podpis = PODPIS, zdania = null } = {}) {
 }
 
 /**
- * Ten sam model BEZ bramki zgody — dla szablonów własnych (PRZ-101.03), które bloki `{pozycje}`, `{wysylka}`,
+ * Ten sam model BEZ bramki zgody — dla szablonów własnych, które bloki `{pozycje}`, `{wysylka}`,
  * `{dane_do_faktury}` składają z tych samych wartości co potwierdzenie, ale nie są potwierdzeniem
  * (np. „Opóźnienie wysyłki" może pójść do zamówienia, którego pozycje operator jeszcze uzupełnia).
  */
-// PRZ-102.19: `zdania` — teksty z Ustawień → Szablony wiadomości (zdaniaPlatnosciTeraz w usłudze, czytane przy każdym
+// `zdania` — teksty z Ustawień → Szablony wiadomości (zdaniaPlatnosciTeraz w usłudze, czytane przy każdym
 // mailu). Brak = domyślne. W modelu ląduje komplet (`teksty`), renderery czytają go przez `tekstyModelu`.
 export function modelZamowienia(z, { podpis = PODPIS, zdania = null } = {}) {
   const t = zdaniaDoMaila(zdania ?? {});
@@ -144,8 +142,7 @@ export function modelZamowienia(z, { podpis = PODPIS, zdania = null } = {}) {
 
   const pobranie = czyPobranie(z);
   const platnosc = String(z?.metoda_platnosci ?? '').trim();
-  // ⚠️ TERMIN DOPISUJEMY WYŁĄCZNIE POZA POBRANIEM (21.08.2026, scenariusz właściciela:
-  // „FV przelew 14 dni"). Przy pobraniu klient płaci kurierowi w chwili odbioru, więc
+  // ⚠️ TERMIN DOPISUJEMY WYŁĄCZNIE POZA POBRANIEM. Przy pobraniu klient płaci kurierowi w chwili odbioru, więc
   // „termin 14 dni" obok kwoty do zainkasowania byłby zdaniem sprzecznym samym w sobie —
   // i to sprzecznym o pieniądze, bo klient mógłby uznać, że kurierowi nie płaci.
   const terminSlowami = ETYKIETY_TERMINU[String(z?.termin_platnosci ?? '').trim()] ?? null;
@@ -169,10 +166,9 @@ export function modelZamowienia(z, { podpis = PODPIS, zdania = null } = {}) {
       metoda: nazwaDostawy(z),
       adres: liniaAdresu(z),
     },
-    // ⚠️ SEKCJA FAKTURY POKAZUJE SIĘ ZAWSZE — także z odpowiedzią „Nie" (zgłoszenie
-    // właściciela 21.08.2026: „FAKTURA: tak, dane do faktury: …"). Wcześniej znikała, gdy
-    // klient faktury nie chciał, więc jedyny moment, w którym da się to bezkosztowo
-    // sprostować, przechodził bez śladu. Mail i tak kończy się zdaniem „jeśli coś się nie
+    // ⚠️ SEKCJA FAKTURY POKAZUJE SIĘ ZAWSZE — także z odpowiedzią „Nie". Gdyby znikała, gdy
+    // klient faktury nie chciał, jedyny moment, w którym da się to bezkosztowo
+    // sprostować, przechodziłby bez śladu. Mail i tak kończy się zdaniem „jeśli coś się nie
     // zgadza, wystarczy odpowiedzieć" — a to jest dokładnie rzecz, która się nie zgadza
     // najczęściej.
     faktura: {
@@ -209,7 +205,7 @@ function sekcja(naglowek, linie) {
 
 /**
  * Cztery sekcje potwierdzenia w wersji tekstowej, każda z pustą linią na początku. JEDNO miejsce dla bloków
- * szablonu i dla `jakoTekst` (do PRZ-102.19 dwie kopie znak w znak). Teksty z `tekstyModelu`; nagłówki wielkimi
+ * szablonu i dla `jakoTekst` (dawniej dwie kopie znak w znak). Teksty z `tekstyModelu`; nagłówki wielkimi
  * literami (`naglowekTekstu`), jak w HTML-u, gdzie robi to styl.
  */
 function sekcjeTekstu(m) {
@@ -228,7 +224,7 @@ function sekcjeTekstu(m) {
 }
 
 /**
- * Sekcje potwierdzenia jako BLOKI szablonu (PRZ-101.03): te same linie, które składa `jakoTekst` niżej,
+ * Sekcje potwierdzenia jako BLOKI szablonu: te same linie, które składa `jakoTekst` niżej,
  * bez pustej linii na początku (odstępy między blokami stawia szablon). Zgodność z mailem bez szablonu pilnuje
  * tests/moduly/wiadomosci/szablony-rownosc.test.js, a bajt w bajt — zdania-platnosci-rownosc-prz102-17.test.js.
  */

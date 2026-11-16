@@ -7,7 +7,7 @@ import PDFDocument from 'pdfkit';
 // kalkuje specyfikacja-pdf.js (te same stale, fonty i pomocnicze zwykly()/gruby()), bo
 // klient dostaje oba dokumenty w jednej paczce.
 //
-// ⚠️ TEN MODUL TYLKO RYSUJE — dane sklada domain/oswiadczenie-wywozu.js. Zadnych kwot:
+// ⚠️ TEN MODUL TYLKO RYSUJE — dane sklada domena/oswiadczenie-wywozu.js. Zadnych kwot:
 // dokument jest ILOSCIOWY (uzasadnienie przy modelu).
 //
 // ⚠️ Fonty: wylacznie DejaVu przez zwykly()/gruby() — wbudowane fonty PDF nie maja
@@ -159,7 +159,7 @@ function poleDoWypelnienia(doc, y, etykieta, { odX = L, doX = R } = {}) {
 
 /**
  * Bajty gotowego PDF-a „Potwierdzenia wywozu towarów" — wejscie WYLACZNIE z
- * `modelOswiadczenia` (domain/oswiadczenie-wywozu.js).
+ * `modelOswiadczenia` (domena/oswiadczenie-wywozu.js).
  */
 export function zbudujOswiadczenieWywozuPdf(model) {
   const doc = new PDFDocument({

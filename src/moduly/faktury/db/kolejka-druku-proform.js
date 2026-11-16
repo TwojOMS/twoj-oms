@@ -1,4 +1,4 @@
-// PRZ-152.G10a — warstwa bazy dla kolejki wydruku PROFORM (tabela `kolejka_druku_proform`, migracja
+// Warstwa bazy dla kolejki wydruku PROFORM (tabela `kolejka_druku_proform`, migracja
 // rdzen/0009). Lustro `kolejka-druku-faktur.js`: ten sam czuwacz (deploy/drukarka/czuwacz-faktur.ps1),
 // ta sama lista `GET /kolejka-druku-faktur`, to samo zajmowanie pozycji przez stanowisko i ta sama reguła
 // odroczenia po błędzie. Różnice:
@@ -41,7 +41,7 @@ export function dodajProformeDoKolejki(db, proformaId) {
  * kolejność i powód jak w `fakturyDoWziecia`.
  *
  * ⚠️ `p.uniewazniona_at IS NULL` w SELECT-cie jest tym warunkiem, który trzyma unieważnioną proformę
- * z dala od drukarki (D4 planu G10). Porzucenie takich pozycji niżej to porządek dla karty (stan
+ * z dala od drukarki. Porzucenie takich pozycji niżej to porządek dla karty (stan
  * „porzucone” z powodem), a nie zabezpieczenie.
  */
 function zajmijProformy(db, { stanowisko = 'nieznane', terazIso = teraz(), prog = PROG_ZAJECIA_MS } = {}) {

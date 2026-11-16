@@ -1,8 +1,7 @@
-// PRZ-121.01 — wybór modułu faktur (Ustawienia → Integracje → Moduł faktur albo OMS_PROGRAM_FAKTUROWY w pliku).
+// Wybór modułu faktur (Ustawienia → Integracje → Moduł faktur albo OMS_PROGRAM_FAKTUROWY w pliku).
 //
-// Jedno źródło dla reguły (moduly/faktury/modul.ts), ekranu i zdań o wyłączonych fakturach. Decyzja właściciela P1
-// (27.10.2026): „Jeżeli żaden moduł nie zostanie włączony, to nie ma opcji wystawiania fv”; inFakt jest modułem
-// włączanym opcjonalnie.
+// Jedno źródło dla reguły (moduly/faktury/modul.ts), ekranu i zdań o wyłączonych fakturach. Jeżeli
+// żaden moduł nie zostanie włączony, nie ma opcji wystawiania faktur; inFakt jest modułem włączanym opcjonalnie.
 //
 // Reguła: plik → zapis z Ustawień → inFakt, gdy gotowy (klucz w pliku, zapis z ekranu przy starcie, atrapa, szew
 // próby) → „brak”. Instalacja, która niczego nie wybrała, działa jak przed zmianą (źródło „domyslny”).
@@ -11,7 +10,7 @@
 //   • Zła wartość w ZAPISIE (formularz jej nie przyjmie; zostaje po wycofaniu wydania, które znało więcej modułów)
 //     = „brak” + uwaga. Odmowa startu położyłaby panel po wycofaniu, a inFakt wystawiałby faktury w programie,
 //     którego nikt nie wybrał.
-//   • Fakturownia i TwojeFaktury tylko z jawnego wyboru, nigdy domyślnie. Fakturownia dostępna od PRZ-119.05
+//   • Fakturownia i TwojeFaktury tylko z jawnego wyboru, nigdy domyślnie. Fakturownia jest dostępna
 //     (skonfigurowana, ale niewybrana — nie jest składana); TwojeFaktury wymaga jawnej zgody instalacji.
 import { NAZWA_INFAKTU, EKRAN_INFAKTU } from './konfiguracja-infakt.js';
 import { EKRAN_FAKTUROWNI } from './konfiguracja-fakturownia.js';
@@ -88,7 +87,7 @@ export function wybierzProgram({ zPliku = null, zUstawien = null, infaktGotowy =
 export function sprawdzFormularzWyboru(body = {}, { zgoda = false } = {}) {
   const v = normalizuj(body?.program);
   if (modulDostepny(modul(v), { zgoda })) return { ustawienia: { program: v }, bledy: [] };
-  if (modul(v)) return { ustawienia: { program: v }, bledy: [`Moduł „${etykietaModulu(v)}” będzie dostępny wkrótce — wybierz inny.`] };
+  if (modul(v)) return { ustawienia: { program: v }, bledy: [`Program do faktur „${etykietaModulu(v)}” będzie dostępny wkrótce — wybierz inny.`] };
   return { ustawienia: { program: v }, bledy: ['Wybierz program do faktur z listy.'] };
 }
 
@@ -114,7 +113,7 @@ export function zdanieBrakuProgramu(wybor, dopisek = '') {
  * Uwaga, gdy zapisany wybór różni się od działającego (zmiana działa po ponownym uruchomieniu OMS-u).
  * `null`, gdy nic nie czeka. Przy „brak” dopisek o automacie KSeF — ten staje od razu po zapisie.
  * Zapisany inFakt bez klucza (`gotowy` fałsz — ta sama gotowość co w regule) po restarcie też nie ruszy — wtedy zdanie o brakującym kluczu.
- * Tak samo zapisana Fakturownia bez domeny i tokenu (`gotowy` = gotowość ZAPISANEGO programu — PRZ-119.05).
+ * Tak samo zapisana Fakturownia bez domeny i tokenu (`gotowy` = gotowość ZAPISANEGO programu).
  */
 export function zdanieCzekaniaNaRestart(dziala, zapisany, { gotowy = true } = {}) {
   if (!dziala || !zapisany || dziala.program === zapisany.program) return null;

@@ -7,14 +7,14 @@ import { nazwaDostawy, metodaWysylki, czyPobranie } from './wysylka.js';
 import { ikonaPlatnosci } from './lista-ikony.js';
 import { czyPozycjaPlaceholdera } from './indywidualne.js';
 import { nettoZamowieniaGrosze } from './netto-zamowienia.js';
-// ⚠️ Import z domeny PANELU — ta sama droga, ktora `domain/nowe-zamowienie.js` bierze
-// `rozbijNazwe`. Znacznik powstaje tam i tam ma zostac jego jedyna definicja.
+// ⚠️ Import z domeny PANELU — ten sam katalog `domena/z-panelu/`, z ktorego
+// `domena/nowe-zamowienie.js` bierze `rozbijNazwe` (nazwa-osoby.js). Znacznik powstaje tam i tam ma zostac jego jedyna definicja.
 import { UWAGA_Z_KARTY } from './z-panelu/oms-order.js';
 
 // Dane "Specyfikacji zamowienia" - kartki wkladanej do kazdej paczki. Przy zamowieniach
 // firmowych zastepuje wydruk faktury (ta i tak dociera przez KSeF), przy indywidualnych
-// idzie obok paragonu z kasy fiskalnej. TEN MODUL NIE RYSUJE (rysuje pdf/specyfikacja-pdf.js,
-// Zadanie 7) I NIE LICZY WLASNYCH KWOT.
+// idzie obok paragonu z kasy fiskalnej. TEN MODUL NIE RYSUJE (rysuje
+// moduly/zamowienia/pdf/specyfikacja-pdf.js) I NIE LICZY WLASNYCH KWOT.
 //
 // ⚠️ WSZYSTKIE KWOTY IDA PRZEZ `wartoscPozycjiGrosze` / `kwotaOczekiwanaGrosze` /
 // `wysylkaBruttoGrosze` - te same funkcje, ktore licza karte zamowienia, pozycje faktury
@@ -24,7 +24,7 @@ import { UWAGA_Z_KARTY } from './z-panelu/oms-order.js';
 
 // Stan platnosci SLOWAMI DOKUMENTU.
 //
-// ⚠️ REGULE — ktory z trzech stanow — rozstrzyga `ikonaPlatnosci` (domain/lista-ikony.js),
+// ⚠️ REGULE — ktory z trzech stanow — rozstrzyga `ikonaPlatnosci` (domena/lista-ikony.js),
 // czyli TA SAMA funkcja, ktora rzadzi ikona w wierszu listy i ktorej trzyma sie karta:
 // POBRANIE WYGRYWA nad oplacone/nieoplacone, bo przy pobraniu brak wplaty jest stanem
 // NORMALNYM (kurier zainkasuje przy doreczeniu), a nie niedoplata. Tutaj zmienia sie
@@ -38,9 +38,9 @@ const STAN_PLATNOSCI = {
 
 /**
  * Metoda platnosci RAZEM ZE STANEM — „Przelew — opłacone", „Za pobraniem — do zapłaty
- * kurierowi przy odbiorze". Spec wymienial „metode platnosci ze stanem", a dokument drukowal
- * do 12.08.2026 sama metode: klient dostawal w paczce napis „Płatność: Za pobraniem" bez ani
- * jednego slowa o tym, czy pieniadze juz wplynely, czy odbierze je kurier.
+ * kurierowi przy odbiorze". Sama metoda nie wystarcza: klient dostałby w paczce napis
+ * „Płatność: Za pobraniem” bez ani jednego słowa o tym, czy pieniądze już wpłynęły,
+ * czy odbierze je kurier.
  *
  * Brak metody (zamowienie reczne, kanal bez tej kolumny) daje SAM stan, a nie „ — opłacone"
  * z wiszacym mysnikiem.
@@ -56,9 +56,10 @@ function platnoscZeStanem(z) {
  * Uwagi, ktore NAPRAWDE napisal klient — albo `null`.
  *
  * ⚠️ Rozpoznanie idzie po stalej `UWAGA_Z_KARTY` (z-panelu/oms-order.js), ktora jest KOPIA
- * formatu z panelu indywidualnego (osobne repo panelu, src/domain/oms-order.js).
+ * formatu z panelu indywidualnego (osobne repo panelu).
  * Zmiana brzmienia w panelu bez zmiany stalej = po cichu wydrukowany klientowi wewnetrzny
- * identyfikator karty; pilnuje tego test z dosłownym tekstem panelu w specyfikacja.test.js.
+ * identyfikator karty; pilnuje tego test z dosłownym tekstem panelu w
+ * tests/moduly/zamowienia/specyfikacja.test.js.
  */
 function uwagiOdKlienta(surowe) {
   const tekst = String(surowe ?? '').trim();
@@ -77,12 +78,12 @@ export function daneSpecyfikacji(z, { sprzedawca, dzis = dzienWarszawa(new Date(
   const pozycje = (z?.pozycje ?? []).map((p) => ({
     nazwa: p?.nazwa ?? '',
     // ⚠️ PUSTY NAPIS, NIGDY symbol zgadywany z nazwy. Allegro potrafi oddac `sku: null`
-    // (domain/allegro-mapowanie.js), a dokument ma sie wtedy wygenerowac - wymog GPSR
+    // (domena/allegro-mapowanie.js), a dokument ma sie wtedy wygenerowac - wymog GPSR
     // spelnia to, co naprawde wiemy, a nie to, co brzmi wiarygodnie.
     //
-    // ⚠️ SKU ZASLEPKI LICZY SIE JAK BRAK SKU (21.08.2026). `psm-zam-placeholder` to ukryty
-    // produkt techniczny wtyczki panelu indywidualnego, nie symbol wzoru - a te kartke czyta
-    // KLIENT. Ta sama zasada, co na karcie zamowienia (domain/tabela-pozycji.js).
+    // ⚠️ SKU ZASLEPKI LICZY SIE JAK BRAK SKU. Pozycja zastepcza (`SKU_PLACEHOLDERA`,
+    // domena/indywidualne.js) to ukryty produkt techniczny wtyczki panelu zamowien indywidualnych, nie symbol wzoru - a te kartke czyta
+    // KLIENT. Ta sama zasada, co na karcie zamowienia (domena/tabela-pozycji.js).
     symbol: czyPozycjaPlaceholdera(p?.sku) ? '' : (p?.sku ?? ''),
     ilosc: Number(p?.ilosc ?? 0),
     // ⚠️ CENA JEDNOSTKOWA IDZIE WPROST, BEZ PRZELICZANIA. `cena_brutto` jest juz napisem
@@ -104,56 +105,53 @@ export function daneSpecyfikacji(z, { sprzedawca, dzis = dzienWarszawa(new Date(
     dostawaZl: zl(wysylkaBruttoGrosze(z)),
     razemZl: zl(kwotaOczekiwanaGrosze(z)),
     // ⚠️ NETTO TA SAMA REGULA, CO RAPORT SPRZEDAZY (`nettoZamowieniaGrosze`), a nie wlasne
-    // dzielenie przez 1,23 (prosba wlasciciela 25.08.2026). Powod jest imienny: Alfatrend
-    // (`alfatrend.sk`) to WDT ze stawka 0%, wiec dzielenie „bo zawsze 23%" daloby temu
-    // klientowi w paczce kartke z netto zanizonym o 23% — wzgledem faktury i wzgledem
-    // raportu, z ktorego wlasciciel czyta sprzedaz.
+    // dzielenie przez 1,23. Klient zagraniczny z WDT ma stawkę 0%, więc dzielenie „bo zawsze
+    // 23%” dałoby mu w paczce kartkę z netto zaniżonym o 23% — względem faktury i względem
+    // raportu, z którego firma czyta sprzedaż.
     //
     // ⚠️ Mail bierzemy z KLIENTA zamowienia, nie z danych faktury: raport klasyfikuje WDT
     // wlasnie tym polem, a `daneFaktury().email` jest NIEOBOWIAZKOWY i bywa inny (faktury
     // czesto ida na osobny adres do ksiegowosci).
     nettoZl: zl(nettoZamowieniaGrosze(kwotaOczekiwanaGrosze(z), z?.klient?.email, klienciWdt)),
     platnosc: platnoscZeStanem(z),
-    // ⚠️ DATA PLATNOSCI TYLKO WTEDY, GDY PLATNOSC BYLA (24.08.2026, prosba wlasciciela).
-    // `oplacone_at` jest FAKTEM WYLICZANYM z listy wplat (domain/platnosci.js), nie kolumna
+    // ⚠️ DATA PLATNOSCI TYLKO WTEDY, GDY PLATNOSC BYLA.
+    // `oplacone_at` jest FAKTEM WYLICZANYM z listy wplat (domena/platnosci.js), nie kolumna
     // do przepisania — czytamy go wprost, tak samo jak ikona na liscie i karta.
     //
     // ⚠️ Przy pobraniu tej daty NIE MA i mieć nie może: pieniadze odbiera kurier przy
     // doreczeniu, wiec kazda data wydrukowana tutaj bylaby zmyslona. Brak daty to `null`,
     // a nie „—”: o tym, czy linie w ogole rysowac, rozstrzyga warstwa PDF.
     dataPlatnosci: z?.oplacone_at ? dzienWarszawa(z.oplacone_at) : null,
-    // ⚠️ PARAGON — informacja dla klienta, ktory NIE prosil o fakture (24.08.2026).
-    // Do tej pory kartka milczala o tym, czym udokumentowana jest sprzedaz: przy fakturze
-    // byla linia „Faktura VAT nr … — doręczona przez KSeF", a przy sprzedazy paragonowej
-    // NIC. Klient dostawal specyfikacje bez ani jednego slowa o dokumencie sprzedazy.
+    // ⚠️ PARAGON — informacja dla klienta, który NIE prosił o fakturę. Przy fakturze kartka
+    // ma linię „Faktura VAT nr … — doręczona przez KSeF”; bez tego pola przy sprzedaży
+    // paragonowej nie mówiłaby ani słowa o dokumencie sprzedaży.
     //
     // ⚠️ `chceFakture` (a nie kolumna `chce_fakture`) — reczna poprawka na karcie wygrywa.
     // Operator zmienia to pole wlasnie wtedy, gdy klient rozmyslil sie po zlozeniu zamowienia,
     // a kartka ma mowic o stanie PO poprawce.
     //
-    // PRZ-126.F02: faktura wystawiona BEZ prośby klienta (opcja firmy „faktura dla każdego”)
+    // Faktura wystawiona BEZ prośby klienta (opcja firmy „faktura dla każdego”)
     // też jest dokumentem sprzedaży — wtedy nie „paragon”. Bez faktury z numerem: jak dotąd.
     paragon: !chceFakture(z) && !z?.faktura?.numer,
     // Wybor faktury to fakt niezalezny od jej numeru: specyfikacja czesto powstaje
     // przed wystawieniem, a klient musi widziec wybrany rodzaj dokumentu.
     fakturaWybrana: chceFakture(z) || Boolean(z?.faktura?.numer),
-    // ⚠️ UWAGI KLIENTA WRACAJA DO KLIENTA (24.08.2026, prosba wlasciciela). Zrodlo to
+    // ⚠️ UWAGI KLIENTA WRACAJA DO KLIENTA. Zrodlo to
     // `customer_note` ze sklepu albo `messageToSeller` z Allegro (kolumna `zamowienia.uwagi`)
     // — czyli zdanie, ktore klient sam napisal. Wydrukowane na kartce jest potwierdzeniem,
-    // ze ktos je przeczytal; brak tego pola znaczyl, ze prosba o „proszę zapakować na prezent”
-    // istniala wylacznie na ekranie panelu.
+    // ze ktos je przeczytal; bez tego pola prośba o „proszę zapakować na prezent”
+    // istniałaby wyłącznie na ekranie panelu.
     //
     // ⚠️⚠️ ALE TA KOLUMNA NIESIE TEZ ZNACZNIK TECHNICZNY, i to na KAZDYM zamowieniu z panelu
-    // indywidualnego: „Zamówienie indywidualne — karta <uuid> <odnośnik>" (domain/oms-order.js).
-    // Zmierzone na produkcji 25.08.2026: z pieciu ostatnich zamowien z niepustymi uwagami
-    // CZTERY mialy wlasnie ten znacznik, a nie slowa klienta. Wydrukowany trafilby do paczki
+    // indywidualnego: „Zamówienie indywidualne — karta <uuid> <odnośnik>" (`UWAGA_Z_KARTY`).
+    // Często to jedyna treść uwag, a nie słowa klienta. Wydrukowany trafiłby do paczki
     // jako „Uwagi klienta" — bez sensu dla czytajacego i z wewnetrznym adresem karty w srodku.
     uwagiKlienta: uwagiOdKlienta(z?.uwagi),
-    // ⚠️ NAZWA DLA CZLOWIEKA, nie wewnetrzny kod metody. Do 12.08.2026 szlo tu wprost
-    // `z.metoda_wysylki`, czyli na kartke DO KLIENTA trafialy napisy `dpd`,
-    // `inpost_paczkomat`, `odbior_osobisty`, a w najgorszym razie „Sposób dostawy: nieznana"
-    // — usterka, ktora klient zglasza. `etykietaWysylki` (domain/wysylka.js) jest TA SAMA
-    // funkcja, ktorej uzywa lista, karta i ekran nadania, i dokleja informacje o pobraniu:
+    // ⚠️ NAZWA DLA CZLOWIEKA, nie wewnetrzny kod metody. Surowe `z.metoda_wysylki` dałoby
+    // na kartce DO KLIENTA napisy `dpd`, `inpost_paczkomat`, `odbior_osobisty`, a w najgorszym
+    // razie „Sposób dostawy: nieznana” — usterka, którą klient zgłasza. `nazwaDostawy` woła
+    // `etykietaWysylki` (domena/wysylka.js), TĘ SAMĄ funkcję, której używa lista, karta
+    // i ekran nadania, i dokleja informacje o pobraniu:
     // kartka i panel maja mowic o tej samej przesylce tak samo.
     //
     // Wartosci EFEKTYWNE (`metodaWysylki`/`czyPobranie` czytaja nadpisanie reczne, a dopiero

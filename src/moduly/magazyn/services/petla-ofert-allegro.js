@@ -1,14 +1,14 @@
-// PRZ-160 E3.08a — pętla wysyłki ofert Allegro: do_wyslania → wyslana → sprawdzana → aktywna | nieaktywna.
-// Zasady wspólne z ERLI (bramka, znak instalacji, skrót treści, przerwy) w `oferty-wspolne.js` (D29).
+// Pętla wysyłki ofert Allegro: do_wyslania → wyslana → sprawdzana → aktywna | nieaktywna.
+// Zasady wspólne z ERLI (bramka, znak instalacji, skrót treści, przerwy) w `oferty-wspolne.js`.
 //
-// Kolejność przy wystawieniu jest NIEZMIENNIKIEM (D31): najpierw zapis wiersza (`wyslana` + `ext:<externalId>`),
+// Kolejność przy wystawieniu jest NIEZMIENNIKIEM: najpierw zapis wiersza (`wyslana` + `ext:<externalId>`),
 // dopiero potem POST. Proces przerwany po POST zostawia wiersz `wyslana` — następny przebieg szuka oferty po
 // sygnaturze zamiast wystawiać drugi raz. Bariera rejestru kanałów (operacje niejednoznaczne) i tak odmówi
 // drugiego POST z tym samym `external.id`, dopóki pętla jej nie zwolni — a zwalnia ją wyłącznie po odczycie.
 //
-// E3.08b — oferty już wystawione: jeden odczyt listy ofert konta na przebieg, potem ilość i cena komendami
+// Oferty już wystawione: jeden odczyt listy ofert konta na przebieg, potem ilość i cena komendami
 // (różnica względem ODCZYTU, nie wysłanej wartości), treść PATCH-em z kompletem tablic, aktywacja szkicu na
-// żądanie (`aktywuj`), zdjęcie (`zdejmij` albo karta wycofana) PATCH-em ENDED bez przywracania ilości (D25).
+// żądanie (`aktywuj`), zdjęcie (`zdejmij` albo karta wycofana) PATCH-em ENDED bez przywracania ilości.
 import { createHash, randomUUID } from 'node:crypto';
 import { znakInstalacji, przerwaPonowienia, skrotTresci, bramkaZapisu, cenaWymagaPotwierdzenia } from './oferty-wspolne.js';
 import { ofertaAllegroKarty } from './tresc-oferty-allegro.js';
@@ -28,12 +28,12 @@ import {
   wgraneZdjeciaAllegro,
 } from '../../../oms/db/oferty-kanalow.ts';
 
-/** Najwyżej tyle nowych ofert na konto w jednym przebiegu (D31). */
+/** Najwyżej tyle nowych ofert na konto w jednym przebiegu. */
 export const LIMIT_WYSYLEK = 25;
 /** Dwa odczyty po sygnaturze bez wyniku, co najmniej tyle ms od pierwszego, zanim wolno ponowić POST. */
 export const ODZYSK_MS = 15 * 60_000;
 /**
- * E3.28 (piaskownica r4): `GET /sale/offers` pokazuje świeżo wystawioną (albo zmienioną) ofertę z opóźnieniem. Przez
+ * `GET /sale/offers` pokazuje świeżo wystawioną (albo zmienioną) ofertę z opóźnieniem. Przez
  * tyle ms od wysłania, póki lista jej jeszcze nie pokazała, brak na liście nie jest problemem `brak-w-allegro`.
  */
 export const SWIEZA_OFERTA_MS = 15 * 60_000;
@@ -42,15 +42,15 @@ export const BEZ_POTWIERDZENIA_MS = 3 * 3_600_000;
 const ODCZYT_PO_SYGNATURZE_CO_MS = 5 * 60_000;
 const MIN_CZEKANIE_S = 5;
 const MAKS_CZEKANIE_S = 300;
-/** Stany, w których oferta z naszą sygnaturą może być naszą zgubioną (D31 b). Zakończona — nie. */
+/** Stany, w których oferta z naszą sygnaturą może być naszą zgubioną. Zakończona — nie. */
 const STATUSY_NASZE = new Set(['INACTIVE', 'ACTIVATING', 'ACTIVE']);
 const ETAPY = ['do_wyslania', 'wyslana', 'sprawdzana'];
 /**
- * D41 (decyzja właściciela, E3.17; zmiana 14.11 „bez sprawdzania opłat dla wszystkich”): oferta zakończona przy 0 sztukach
+ * Oferta zakończona przy 0 sztukach
  * (wyprzedana) na niewycofanej karcie wraca sama jednym PATCH-em ilości + ACTIVE — bez `offer-fee-preview`.
  * Zakończona ręcznie (> 0 sztuk) albo odmowa pętli (problem z powodem) → `problem` do decyzji człowieka; przycisk
- * „Wznów” (E3.28) stawia znacznik `wyslanePola.wznow` i pętla wznawia ją raz, z tymi samymi limitami.
- * ⚠️ Cykl ACTIVE → ENDED → ACTIVE NIE był zmierzony (P17: konto sandbox bez warunków) — PATCH wznowienia i jego
+ * „Wznów” stawia znacznik `wyslanePola.wznow` i pętla wznawia ją raz, z tymi samymi limitami.
+ * ⚠️ Cykl ACTIVE → ENDED → ACTIVE NIE był zmierzony (konto sandbox bez warunków) — PATCH wznowienia i jego
  * operacja czytane tak samo jak aktywacja szkicu (202/303/4xx), bez zgadywania innych pól odpowiedzi.
  */
 export const WZNAWIAJ_WYPRZEDANE = true;
@@ -58,22 +58,22 @@ export const ZERO_ALLEGRO = 'zakoncz';
 /** Najwyżej tyle ofert w jednej komendzie ilości albo ceny (limit Allegro). */
 const MAKS_OFERT_KOMENDY = 1000;
 /**
- * B3: okno wyjaśnień (D53) sięga najwyżej 7 dni wstecz — znacznik sprzed wyłączenia stanów nie każe czytać całej
- * historii zamówień. Horyzont ogranicza TYLKO okno zapytania (decyzja Szefa 14.11): oferta ze starszym T zostaje
+ * Okno wyjaśnień sięga najwyżej 7 dni wstecz — znacznik sprzed wyłączenia stanów nie każe czytać całej
+ * historii zamówień. Horyzont ogranicza TYLKO okno zapytania: oferta ze starszym T zostaje
  * z prawdziwą bazą (W, stan karty), a jej wyjaśnienia są zerowe — daje to alarm wstrzymujący (skok, rozjazd), nigdy
  * cichy zapis.
  */
 const HORYZONT_WYJASNIEN_MS = 7 * 24 * 60 * 60 * 1000;
 /** Tyle odrzuconych prób komendy ilości albo ceny, potem problem `komenda` i koniec ponowień. */
 const MAKS_PROB_KOMENDY = 5;
-/** E3.26a: tyle nieudanych prób zakończenia oferty (ENDED), potem problem `zdejmowanie` i cisza do decyzji człowieka. */
+/** Tyle nieudanych prób zakończenia oferty (ENDED), potem problem `zdejmowanie` i cisza do decyzji człowieka. */
 const MAKS_PROB_ZDJECIA = 5;
 /**
- * E3.26c: najwyżej tyle zapisów na konto w jednym przebiegu — PATCH (status, treść) i komendy ilości/ceny (paczka do
+ * Najwyżej tyle zapisów na konto w jednym przebiegu — PATCH (status, treść) i komendy ilości/ceny (paczka do
  * 1000 ofert = 1 zapis). Reszta czeka na następny przebieg bez zmiany stanu. Nowe oferty (POST) liczy LIMIT_WYSYLEK.
  */
 export const LIMIT_ZAPISOW_PRZEBIEGU = 50;
-/** E3.26c: część limitu, której PATCH-e nie zajmą — zmiana ilości i ceny wychodzi w tym samym przebiegu. */
+/** Część limitu, której PATCH-e nie zajmą — zmiana ilości i ceny wychodzi w tym samym przebiegu. */
 export const REZERWA_KOMEND_PRZEBIEGU = 10;
 const AKTYWNE = new Set(['ACTIVATING', 'ACTIVE']);
 const SYNCHRONIZOWANE = ['aktywna', 'nieaktywna', 'problem'];
@@ -82,7 +82,7 @@ const PROBLEMY_SYNCHRONIZACJI = new Set(['zakonczona', 'brak-w-allegro', 'karta'
 const PROBLEM_CENY = () => ({ kod: 'cena', tekst: 'Zmiana ceny przekracza próg — czeka na potwierdzenie, do Allegro nic nie poszło.' });
 
 /**
- * Treść oferty do PATCH (E3.08b): komplet tablic, „Stan” zawsze w `parameters` (D33), GPSR z karty albo — gdy karta
+ * Treść oferty do PATCH: komplet tablic, „Stan” zawsze w `parameters`, GPSR z karty albo — gdy karta
  * go nie daje (produkt z katalogu bez przypisania marki) — zapamiętany z produktu Allegro (`gpsrZProduktu`).
  * Bez ceny, ilości, statusu i kategorii: ilość i cena idą komendami, status osobnym PATCH-em.
  */
@@ -114,13 +114,13 @@ const zasobPatch = (ofertaId) => `/sale/product-offers/${ofertaId}`;
 const kodHttp = (e) => (Number.isInteger(e?.status) ? e.status : 0);
 /** 4xx poza 429 = Allegro odrzuciło treść; reszta (5xx, sieć, limit czasu, bariera) = spróbuj później. */
 const odrzucone = (e) => kodHttp(e) >= 400 && kodHttp(e) < 500 && kodHttp(e) !== 429;
-/** E4.26 (N3): 401/403 = brak dostępu (np. wygasły token), nie błąd treści — nie liczy się do limitu treści. */
+/** 401/403 = brak dostępu (np. wygasły token), nie błąd treści — nie liczy się do limitu treści. */
 const bezDostepu = (e) => kodHttp(e) === 401 || kodHttp(e) === 403;
 const niezgodnyParametr = (e) => (kodHttp(e) === 422 && Array.isArray(e?.bledy)
   ? e.bledy.find((b) => b?.kod === 'PARAMETER_MISMATCH') ?? null : null);
 const komunikat = (e) => String(e?.message ?? e).slice(0, 500);
 
-/** E3.28: `wyslanePola` bez znacznika ręcznego „Wznów” (zdejmowany po decyzji pętli). */
+/** `wyslanePola` bez znacznika ręcznego „Wznów” (zdejmowany po decyzji pętli). */
 function bezWznow(p) {
   const { wznow: _w, ...bez } = p;
   return bez;
@@ -139,7 +139,7 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
   if (typeof czytajZdjecie !== 'function') throw new Error('Pętla ofert Allegro wymaga czytajZdjecie.');
   let wToku = false;
   let migawka = null;
-  // B1 r2: chwila tuż przed migawką stanów — T (`iloscWyslanaAt`) każdego zapisu stanKartyWyslany z tej migawki.
+  // Chwila tuż przed migawką stanów — T (`iloscWyslanaAt`) każdego zapisu stanKartyWyslany z tej migawki.
   let chwilaMigawki = null;
   let przyspieszony = false;
   let ostatniStart = -Infinity;
@@ -171,22 +171,22 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
   let zapisy = 0;
   const potwierdzoneIlosci = new Set();
   /**
-   * N5 (decyzja Szefa 14.11, D55): wznowienie po END z `zakonczonaPrzezOms` najwyżej 3 razy na dobę na ofertę,
+   * Wznowienie po END z `zakonczonaPrzezOms` najwyżej 3 razy na dobę na ofertę,
    * jedna reguła dla obu trybów (przy włączonych stanach). Czwarte → problem „częste wznawianie”, decyzja człowieka.
    */
   const wznowieniaDoby = (p) => (Array.isArray(p.wznowienia) ? p.wznowienia : [])
     .filter((t) => czas() - Date.parse(t) < 24 * 3_600_000);
   const czesteWznawianie = (p) => wznowieniaDoby(p).length >= 3;
   const CZESTE_WZNAWIANIE = 'Częste wznawianie: OMS wznowił tę ofertę 3 razy w ciągu doby — dalej decyduje człowiek.';
-  /** B6: przy włączonych stanach komendy ilości i publikacji mają własną przerwę — backoff ceny i treści ich nie wstrzymuje. */
+  /** Przy włączonych stanach komendy ilości i publikacji mają własną przerwę — backoff ceny i treści ich nie wstrzymuje. */
   const bezPrzerwyIlosci = (p) => { const { przerwaIlosci: _p, ...bez } = p; return bez; };
-  /** E3.26c: PATCH (status, treść) kończą się REZERWA_KOMEND_PRZEBIEGU przed limitem — reszta tylko dla komend ilości/ceny. */
+  /** PATCH (status, treść) kończą się REZERWA_KOMEND_PRZEBIEGU przed limitem — reszta tylko dla komend ilości/ceny. */
   const wolnyZapis = (komenda = false) => zapisy < LIMIT_ZAPISOW_PRZEBIEGU - (komenda ? 0 : REZERWA_KOMEND_PRZEBIEGU);
-  /** E3.26c: liczy zapis do limitu przebiegu konta; false = limit wyczerpany, zapis czeka na następny przebieg. */
+  /** Liczy zapis do limitu przebiegu konta; false = limit wyczerpany, zapis czeka na następny przebieg. */
   const zapis = (komenda = false) => (wolnyZapis(komenda) ? (zapisy++, true) : false);
 
   /**
-   * E3.26a: odrzucona próba zakończenia oferty (4xx, operacja FAIL, „nadal ACTIVE”) — kolejna po `przerwa(n)`, po
+   * Odrzucona próba zakończenia oferty (4xx, operacja FAIL, „nadal ACTIVE”) — kolejna po `przerwa(n)`, po
    * MAKS_PROB_ZDJECIA problem bez prób. Licznik `wyslanePola.probyZdjecia` jest osobny od `liczbaProb` komend.
    */
   function nieudaneZdjecie(o, tekst, przerwa, zmiany = {}) {
@@ -232,7 +232,7 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
     zwolnijOperacje(konto.klucz, 'POST', zasobPost(externalId));
   }
 
-  /** E3.06b + D34: EAN szukany w katalogu Allegro; jeden produkt → katalog-id, zero → nowy, kilka → problem. */
+  /** EAN szukany w katalogu Allegro; jeden produkt → katalog-id, zero → nowy, kilka → problem. */
   async function trescKarty(konto, o, { tworzenie = false } = {}) {
     const opisKonta = { klucz: konto.klucz, nazwa: konto.nazwa, srodowisko: konto.srodowisko };
     let w = ofertaAllegroKarty(db, o.kartaId, opisKonta, { teraz: iso(), tworzenie, migawka });
@@ -240,7 +240,7 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
     const ean = String(w.karta?.ean ?? '').trim();
     const produkty = await konto.allegro.szukajProduktow(ean);
     if (produkty.length > 1) {
-      // Szukanie trybem GTIN: każdy znaleziony produkt ma EAN karty (§4.0 — ean przy wyborze produktu).
+      // Szukanie trybem GTIN: każdy znaleziony produkt ma EAN karty.
       return { problem: PROBLEMY_ALLEGRO['wiele-produktow'](produkty.map((p) => ({ id: String(p.id), nazwa: p.name ?? null, ean }))) };
     }
     const katalog = produkty.length === 1 ? { produktId: String(produkty[0].id) } : { brak: true };
@@ -248,7 +248,7 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
     return { w };
   }
 
-  /** E3.34: istniejący numer wraca do synchronizacji jak po Ponów, nigdy do POST. */
+  /** Istniejący numer wraca do synchronizacji jak po Ponów, nigdy do POST. */
   function przywrocSynchronizacje(o) {
     const zmiany = zmianyPonowienia(o, true);
     if (zmiany.stan === 'do_wyslania') return false;
@@ -266,7 +266,7 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
     let zadanie;
     let droga;
     try {
-      // E3d.02-03 N1: POST nowej oferty odmawia wyjątku cennika spoza listy konta jak podgląd (błąd z tekstem, bez POST).
+      // POST nowej oferty odmawia wyjątku cennika spoza listy konta jak podgląd (błąd z tekstem, bez POST).
       const t = await trescKarty(konto, o, { tworzenie: true });
       if (t.problem) { problem(o, t.problem); return true; }
       if (t.w.bledy.length) { blad(o, t.w.bledy.map((b) => b.tekst ?? b.kod).join('; ')); return true; }
@@ -283,7 +283,7 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
     if (!bramka(konto, o).wolno) return true;
     const zapiszWyslanie = () => {
       if (o.idZewnetrzne !== `ext:${externalId}`) {
-        // Pierwsze wystawienie bez numeru: POST dostaje tymczasowe `ext:…` (D31).
+        // Pierwsze wystawienie bez numeru: POST dostaje tymczasowe `ext:…`.
         db.prepare('UPDATE oferty_kanalow SET id_zewnetrzne = ? WHERE id = ?').run(`ext:${externalId}`, o.id);
       }
       zmien(o, {
@@ -306,13 +306,13 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
         // 429 = nie przyjęte (rejestr usuwa wpis niejednoznaczny); wraca do kolejki z Retry-After.
         pozniej(teraz2, czekanieS(e.retryAfterS) * 1000, { stan: 'do_wyslania', blad: komunikat(e) });
       } else if (niezgodnyParametr(e)) {
-        // D34 krok 4: produkt z katalogu istnieje, ale wartość parametru karty się różni — wybór na karcie.
+        // Produkt z katalogu istnieje, ale wartość parametru karty się różni — wybór na karcie.
         const m = niezgodnyParametr(e).metadata ?? {};
         problem(teraz2, PROBLEMY_ALLEGRO['parameter-mismatch'](m.productId ?? null, m.parameterId ?? null));
       } else if (odrzucone(e)) {
         blad(teraz2, komunikat(e));
       } else {
-        // 5xx, sieć, limit czasu albo odmowa bariery: wynik nieznany — zostaje `wyslana`, decyduje odzysk D31.
+        // 5xx, sieć, limit czasu albo odmowa bariery: wynik nieznany — zostaje `wyslana`, decyduje odzysk po sygnaturze.
         log(`Allegro ${konto.klucz}: oferta karty ${o.kartaId} bez potwierdzenia (${komunikat(e)})`);
         zmien(teraz2, { blad: komunikat(e) });
       }
@@ -331,7 +331,7 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
     return true;
   }
 
-  /** Krok 2 (D31): wiersz `wyslana` bez numeru — szukamy własnej oferty po sygnaturze. */
+  /** Krok 2: wiersz `wyslana` bez numeru — szukamy własnej oferty po sygnaturze. */
   async function odzyskaj(konto, o) {
     const p = pola(o);
     if (!p.externalId) { blad(o, 'Brak sygnatury wysłanej oferty — nie da się sprawdzić, czy Allegro ją przyjęło.'); return; }
@@ -346,7 +346,7 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
     const nasze = lista.filter((x) => x?.external?.id === p.externalId
       && STATUSY_NASZE.has(x?.publication?.status)
       && !zajeta(x.id)
-      // Lista ofert Allegro oddaje nazwę z encjami HTML („&amp;”) — porównujemy po ich zdjęciu (N8).
+      // Lista ofert Allegro oddaje nazwę z encjami HTML („&amp;”) — porównujemy po ich zdjęciu.
       && dekodujEncje(x?.name) === dekodujEncje(p.nazwa));
     if (nasze.length > 1) {
       problem(o, PROBLEMY_ALLEGRO.duplikat(nasze.map((x) => ({ id: String(x.id), nazwa: x.name }))));
@@ -378,7 +378,7 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
           // Licznik odczytu jest osobny od `liczbaProb` komend i wznowienia; po MAKS_PROB_KOMENDY odrzuconej treści
           // skrót zostaje, więc ta sama treść nie idzie ponownie, dopóki karta się nie zmieni.
           const n = (p.probyOdczytu ?? 0) + 1;
-          // E4.26 (N3): 401/403 = brak dostępu (np. wygasły token), nie odrzucona treść — nie kończy limitu treści.
+          // 401/403 = brak dostępu (np. wygasły token), nie odrzucona treść — nie kończy limitu treści.
           const dosc = p.etap === 'tresc' && n >= MAKS_PROB_KOMENDY && !bezDostepu(e);
           zmien(o, { stan: !dosc && o.odczytStatus ? (AKTYWNE.has(o.odczytStatus) ? 'aktywna' : 'nieaktywna') : 'problem',
             problemy: [{ kod: 'odczyt', tekst: dosc
@@ -394,8 +394,8 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
     if (p.operacja) {
       let r;
       try { r = await konto.allegro.stanOperacji(p.operacja); } catch (e) {
-        // P17: operacja może skończyć się 422 zamiast 303 (np. ENDED na ofercie już nieaktywnej) — przy zdejmowaniu
-        // rozstrzyga odczyt oferty niżej; odrzucone wznowienie (D41) czeka na człowieka.
+        // Operacja może skończyć się 422 zamiast 303 (np. ENDED na ofercie już nieaktywnej) — przy zdejmowaniu
+        // rozstrzyga odczyt oferty niżej; odrzucone wznowienie czeka na człowieka.
         if (odrzucone(e) && p.etap === 'zdejmowanie') { r = { wToku: false }; odrzucenie = komunikat(e); }
         else if (odrzucone(e) && p.etap === 'wznowienie') {
           zmien(o, { stan: 'problem', problemy: [PROBLEMY_ALLEGRO.zakonczona(Number(p.sztukPrzedWznowieniem) || 0, `Allegro odrzuciło wznowienie: ${komunikat(e)}`)],
@@ -428,8 +428,8 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
     const gpsr = p.droga === 'katalog-id' && (produkt?.responsibleProducer || produkt?.responsiblePerson)
       ? { gpsrZProduktu: { responsibleProducer: produkt.responsibleProducer ?? null, responsiblePerson: produkt.responsiblePerson ?? null } } : {};
     if (p.etap === 'zdejmowanie') {
-      // E3.08b: PATCH ENDED potwierdzony odczytem. Nadal aktywna → synchronizacja spróbuje ponownie (bez wycofanoAt),
-      // E3.26a: z przerwą rosnącą od 5 min i najwyżej MAKS_PROB_ZDJECIA razy.
+      // PATCH ENDED potwierdzony odczytem. Nadal aktywna → synchronizacja spróbuje ponownie (bez wycofanoAt),
+      // z przerwą rosnącą od 5 min i najwyżej MAKS_PROB_ZDJECIA razy.
       if (AKTYWNE.has(status)) {
         nieudaneZdjecie(o, odrzucenie ?? `oferta nadal ${status}`, (n) => Math.min(3_600_000, ODCZYT_PO_SYGNATURZE_CO_MS * 2 ** (n - 1)),
           { stan: 'aktywna', odczytStatus: status, wyslanePola: { ...p, etap: null } });
@@ -447,7 +447,7 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
       return;
     }
     if (p.etap === 'wznowienie') {
-      // D41: operacja wznowienia skończona, a oferta nadal nieaktywna — bez kolejnej próby, decyzja człowieka.
+      // Operacja wznowienia skończona, a oferta nadal nieaktywna — bez kolejnej próby, decyzja człowieka.
       const powody = (Array.isArray(oferta.validation?.errors) ? oferta.validation.errors : [])
         .map((b) => b?.userMessage || b?.message || '').filter(Boolean);
       const tekst = `Allegro nie wznowiło oferty (status ${status ?? 'nieznany'})${powody.length ? `: ${powody.join('; ')}` : ''}.`;
@@ -456,7 +456,7 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
       return;
     }
     if (status === 'ENDED') {
-      // E3.34: zakończona oferta nigdy nie wraca gołym PATCH ACTIVE — tylko przez Wznów (ilość z karty, hamulce Wznów).
+      // Zakończona oferta nigdy nie wraca gołym PATCH ACTIVE — tylko przez Wznów (ilość z karty, hamulce Wznów).
       const { aktywuj: _a, ...reszta } = p;
       zmien(o, { stan: 'problem', problemy: [PROBLEMY_ALLEGRO.zakonczona(Number(oferta.stock?.available) || 0)], blad: null,
         nastepnaProbaAt: null, odczytStatus: status, wyslanePola: { ...reszta, ...gpsr, etap: null, operacja: null } });
@@ -519,7 +519,7 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
     return adresy;
   }
 
-  /** E3.08b: aktywacja szkicu na żądanie (`aktywuj`). Oferta zdjęta, nie-szkic albo karta wycofana → tylko zdjęcie flagi (D30, D25). */
+  /** Aktywacja szkicu na żądanie (`aktywuj`). Oferta zdjęta, nie-szkic albo karta wycofana → tylko zdjęcie flagi. */
   async function aktywuj(konto, o) {
     const p = pola(o);
     const { aktywuj: _a, ...bezFlagi } = p;
@@ -545,7 +545,7 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
   }
 
   /**
-   * E3.08b: oferty już wystawione. Jeden odczyt listy ofert konta, potem dla każdego wiersza: wynik zaległej komendy,
+   * Oferty już wystawione. Jeden odczyt listy ofert konta, potem dla każdego wiersza: wynik zaległej komendy,
    * zdjęcie, zakończona, treść (PATCH), ilość i cena (komendy grupowane po wartości, po pętli).
    */
   async function synchronizuj(konto) {
@@ -553,10 +553,10 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
       AND stan IN (${SYNCHRONIZOWANE.map(() => '?').join(', ')}) AND id_zewnetrzne NOT LIKE 'ext:%' ORDER BY id`)
       .all(konto.klucz, ...SYNCHRONIZOWANE).map((w) => ofertaPoId(db, Number(w.id)));
       // Wycofana karta albo „Zdejmij” idą dalej przy każdym problemie — ENDED musi wyjść, inaczej oferta dalej sprzedaje.
-      // E3.28: tak samo znacznik „Wznów” — inaczej po problemie karty zostałby na zawsze, bez PATCH i bez przycisku.
+      // Tak samo znacznik „Wznów” — inaczej po problemie karty zostałby na zawsze, bez PATCH i bez przycisku.
     const pelna = (o) => o.stan !== 'problem' || pola(o).zdejmij || pola(o).wznow || kartaWycofana(o)
         || o.problemy.every((x) => PROBLEMY_SYNCHRONIZACJI.has(x?.kod));
-    // B6: przy włączonych stanach każdy objęty wiersz dostaje odczyt i ilość niezależnie od problemu treści/ceny —
+    // Przy włączonych stanach każdy objęty wiersz dostaje odczyt i ilość niezależnie od problemu treści/ceny —
     // inaczej problem ceny przy celu 0 zostawiłby sprzedającą ofertę (nadsprzedaż).
     const samaIlosc = (o) => Boolean(migawka?.wlaczone && (o.tryb === 'zarzadzana' || o.iloscZOms));
     const kandydaci = wiersze.filter((o) => o && (pelna(o) || samaIlosc(o)));
@@ -571,7 +571,7 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
       return;
     }
     const poId = new Map(lista.map((x) => [String(x?.id), x]));
-    // B3/D14: cele, wyjaśnienia i bezpiecznik masowy tylko przy włączonych stanach — wyłączone nie robią nowych zapytań.
+    // Cele, wyjaśnienia i bezpiecznik masowy tylko przy włączonych stanach — wyłączone nie robią nowych zapytań.
     // Awaria któregokolwiek z nich pomija ilość tego konta (`ilosci` = null); cena, treść i zdejmowanie idą dalej.
     let ilosci = null;
     if (migawka?.wlaczone) {
@@ -586,8 +586,8 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
           return { id: o.id, kanal: o.kanal, ofertaId: o.idZewnetrzne, kartaId: o.kartaId,
             od: Number.isFinite(t) && t < granica ? null : o.iloscWyslanaAt, regula: 'zlozone' };
         }));
-        // B4: bezpiecznik masowy liczy tylko oferty, które sprzedają (zakończone przez OMS nie są „zerowane”).
-        // E4.30: oferta z potwierdzonym „Wyślij zera” nie wchodzi do bezpiecznika masowego.
+        // Bezpiecznik masowy liczy tylko oferty, które sprzedają (zakończone przez OMS nie są „zerowane”).
+        // Oferta z potwierdzonym „Wyślij zera” nie wchodzi do bezpiecznika masowego.
         const masowe = zeroMasowe(objete.filter(o => AKTYWNE.has(poId.get(String(o.idZewnetrzne))?.publication?.status)
           && liczySieDoZeraMasowego(o, migawka)).map(o => ({
           cel: cele.get(o.id)?.ilosc, odczyt: poId.get(String(o.idZewnetrzne))?.stock?.available,
@@ -614,7 +614,7 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
       }
     }
     const grupy = [...komendy];
-    // N4: wznowienie (ACTIVATE) to podwyżka — po obniżkach i END.
+    // Wznowienie (ACTIVATE) to podwyżka — po obniżkach i END.
     const priorytet = klucz => klucz.startsWith('cena:') ? 2 : klucz.endsWith(':podwyzka') || klucz === 'publikacja:ACTIVATE' ? 1 : 0;
     if (migawka?.wlaczone) grupy.sort(([a], [b]) => priorytet(a) - priorytet(b));
     let stock = 0;
@@ -634,7 +634,7 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
   /** Komenda odrzucona (FAIL albo 4xx na PUT): kolejna próba po przerwie, po MAKS_PROB_KOMENDY problem bez ponowień. */
   function nieudanaKomenda(rodzaj, w, tekst, p) {
     if (migawka?.wlaczone && rodzaj !== 'cena') {
-      // B6: własny licznik i przerwa ilości/publikacji; problem dopisany obok problemów treści i ceny.
+      // Własny licznik i przerwa ilości/publikacji; problem dopisany obok problemów treści i ceny.
       const n = (p.przerwaIlosci?.proby ?? 0) + 1;
       if (n >= MAKS_PROB_KOMENDY) {
         zmien(w, { stan: 'problem', wyslanePola: bezPrzerwyIlosci(p), problemy: [
@@ -654,10 +654,10 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
     const { [POLE_KOMENDY[rodzaj]]: _k, ...p } = pola(w);
     if (zadanie?.status === 'SUCCESS') {
       if (rodzaj === 'ilosc') potwierdzoneIlosci.add(o.id);
-      // B1 r2: T = chwila migawki, z której pochodzi zapisany stan karty (komenda zaległa — chwila z jej przebiegu).
+      // T = chwila migawki, z której pochodzi zapisany stan karty (komenda zaległa — chwila z jej przebiegu).
       const chwila = _k?.stanKartyAt ?? chwilaMigawki ?? iso();
       if (rodzaj === 'publikacja') {
-        // B6: sukces publikacji nie zeruje licznika ani błędu treści/ceny; N5: wznowienie pętli liczone do limitu doby.
+        // Sukces publikacji nie zeruje licznika ani błędu treści/ceny; wznowienie pętli liczone do limitu doby.
         zmien(w, {
           ...(wartosc === 'END' ? { iloscWyslanaAt: chwila, stanKartyWyslany: _k?.stanKarty ?? null } : {}),
           wyslanePola: { ...bezPrzerwyIlosci(p),
@@ -676,7 +676,7 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
       return true;
     }
     if (zadanie?.status === 'FAIL') {
-      // B7: tylko przy włączonych stanach (D14) — wyłączone liczą ten FAIL jak każdy inny (5 prób, potem problem).
+      // Tylko przy włączonych stanach — wyłączone liczą ten FAIL jak każdy inny (5 prób, potem problem).
       if (migawka?.wlaczone && rodzaj === 'ilosc' && JSON.stringify(zadanie).includes('AvailableStockCannotBeChanged')) {
         zmien(w, { iloscProblem: { ...PROBLEMY_ILOSCI['ilosc-niezmienialna'], od: iso(), cel: wartosc, odczyt: w.odczytIlosc },
           wyslanePola: bezPrzerwyIlosci(p) });
@@ -706,7 +706,7 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
     try {
       if (rodzaj === 'ilosc') await konto.allegro.komendaIlosci(id, pozycje.map(({ o, wartosc }) => ({ ofertaId: String(o.idZewnetrzne), ilosc: wartosc })));
       else if (rodzaj === 'publikacja') {
-        // E4.19 udostępnia metodę klienta; starszy adapter wezlyAllegro jeszcze jej nie przepuszcza.
+        // Metodę klienta udostępnia nowszy adapter; starszy adapter wezlyAllegro jeszcze jej nie przepuszcza.
         const klient = typeof konto.allegro.komendaPublikacji === 'function' ? konto.allegro : konto.klient;
         await klient.komendaPublikacji(id, pozycje.map(({ o }) => String(o.idZewnetrzne)), pozycje[0].wartosc);
       }
@@ -719,7 +719,7 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
           nieudanaKomenda(rodzaj, w, komunikat(e), p);
         }
       } else {
-        // E3.26b: 5xx/429 albo brak odpowiedzi — UUID zostaje w wierszach (wynik czyta zalegleKomendy), nowa komenda
+        // 5xx/429 albo brak odpowiedzi — UUID zostaje w wierszach (wynik czyta zalegleKomendy), nowa komenda
         // dopiero po Retry-After albo po przerwie rosnącej z liczbą prób.
         for (const { o } of pozycje) {
           const w = ofertaPoId(db, o.id);
@@ -787,18 +787,18 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
       odczytStatus: status, odczytanoAt: iso(),
     };
     zmien(o0, odczyt);
-    // N6: odczyt ACTIVE kasuje znacznik zakończenia przez OMS (oba tryby) — chyba że END dopiero czeka na potwierdzenie.
-    // r3 B1 (D55): kasuje też wznowienieIlosc — oferta aktywowana bez naszej komendy, a jej późniejszy ręczny koniec
+    // Odczyt ACTIVE kasuje znacznik zakończenia przez OMS (oba tryby) — chyba że END dopiero czeka na potwierdzenie.
+    // Kasuje też wznowienieIlosc — oferta aktywowana bez naszej komendy, a jej późniejszy ręczny koniec
     // u sprzedawcy nigdy nie budzi ACTIVATE.
     const p0 = pola(ofertaPoId(db, o0.id));
     if (AKTYWNE.has(status) && (p0.zakonczonaPrzezOms || p0.wznowienieIlosc) && !p0.komendaPublikacji && !p0.publikacjaWToku) {
       const { zakonczonaPrzezOms: _z, wznowienieIlosc: _w, ...bez } = p0;
       zmien(o0, { wyslanePola: bez });
     }
-    // B2/B3: bez migawki albo bez wyjaśnień ilość nie jest oceniana ani wysyłana (żadnej sztucznej migawki).
+    // Bez migawki albo bez wyjaśnień ilość nie jest oceniana ani wysyłana (żadnej sztucznej migawki).
     const bezIlosci = !migawka || (migawka.wlaczone && !stany);
     if (o0.tryb !== 'zarzadzana' && !(migawka?.wlaczone && o0.iloscZOms)) return;
-    // B6: wiersz z problemem treści/ceny — tylko odczyt, zaległe komendy ilości/publikacji i ilość; problemy zostają.
+    // Wiersz z problemem treści/ceny — tylko odczyt, zaległe komendy ilości/publikacji i ilość; problemy zostają.
     if (tylkoIlosc) {
       if (bezIlosci || o0.problemy.some((x) => x?.kod === 'komenda' && x.rodzaj !== 'cena')) return;
       if (!(await zalegleKomendy(konto, o0, false))) return;
@@ -813,7 +813,7 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
     let o = ofertaPoId(db, o0.id);
     let p = pola(o);
     const karta = db.prepare('SELECT wycofana FROM karty_produktow WHERE id = ?').get(o.kartaId);
-    // E3.28: „Wznów” dotyczy tylko oferty zakończonej na karcie w sprzedaży — w innym razie znacznik znika bez zapisu.
+    // „Wznów” dotyczy tylko oferty zakończonej na karcie w sprzedaży — w innym razie znacznik znika bez zapisu.
     if (p.wznow && (status !== 'ENDED' || p.zdejmij || karta?.wycofana)) {
       zmien(o, { wyslanePola: bezWznow(p) }, ['wznow']);
       o = ofertaPoId(db, o.id);
@@ -824,7 +824,7 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
         if (o.stan !== 'nieaktywna') zmien(o, { stan: 'nieaktywna', problemy: null });
         return;
       }
-      // E3.26a: po MAKS_PROB_ZDJECIA próbach czekamy na człowieka (Ponów i Zdejmij zerują licznik).
+      // Po MAKS_PROB_ZDJECIA próbach czekamy na człowieka (Ponów i Zdejmij zerują licznik).
       if (o.stan === 'problem' && (p.probyZdjecia ?? 0) >= MAKS_PROB_ZDJECIA && o.problemy.some((x) => x?.kod === 'zdejmowanie')) return;
       if (o.nastepnaProbaAt && Date.parse(o.nastepnaProbaAt) > czas()) return;
       if (!bramka(konto, o).wolno || !zapis()) return;
@@ -840,7 +840,7 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
         zmien(o, { stan: 'sprawdzana', blad: null, nastepnaProbaAt: iso(czas() + czekanieS(d.retryAfterS) * 1000),
           wyslanePola: { ...bez, etap: 'zdejmowanie', operacja: d.operacja ?? null, operacjaOd: iso() } });
       } catch (e) {
-        // E3.26a: do limitu prób tylko odrzucenie (4xx). 5xx, 429 i sieć to awaria Allegro — przerwa wg Retry-After
+        // Do limitu prób tylko odrzucenie (4xx). 5xx, 429 i sieć to awaria Allegro — przerwa wg Retry-After
         // albo rosnąca (osobny licznik), bez zbliżania do problemu.
         if (odrzucone(e)) { nieudaneZdjecie(o, komunikat(e), przerwaPonowienia); return; }
         const b = (p.bledyZdjecia ?? 0) + 1;
@@ -865,7 +865,7 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
     }
     if (status === 'ENDED') {
       if (bezIlosci) return;
-      // Bez „Wznów” (E3.28) pętla decyduje sama tylko o wyprzedanej; ręczne „Wznów” omija oba warunki niżej.
+      // Bez „Wznów” pętla decyduje sama tylko o wyprzedanej; ręczne „Wznów” omija oba warunki niżej.
       if (!p.wznow) {
         // Pętla już raz zdecydowała „nie wznawiam” (powód w `tekst`) — czeka na człowieka
         // (także gdy nieudane wznowienie zostawiło w Allegro nową ilość przy statusie ENDED).
@@ -910,9 +910,9 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
       }
       zmien(o, { cenaDoPotwierdzeniaGr: doPotwierdzenia });
       o = ofertaPoId(db, o.id);
-      // D7: przejście dawnego skrótu bez zapisu do kanału tylko przy niezmienionej treści.
+      // Przejście dawnego skrótu bez zapisu do kanału tylko przy niezmienionej treści.
       // Stara kolumna konta opisuje wysłany cennik, nowe reguły mogą już wybierać inny.
-      // E4.08s: bez `delivery` w zadaniu nie ma czego przenosić — inaczej co przebieg PATCH `{}` (zeruje liczbaProb komend).
+      // Bez `delivery` w zadaniu nie ma czego przenosić — inaczej co przebieg PATCH `{}` (zeruje liczbaProb komend).
       if (zadanie.delivery && !pola(o).dostawa && !czekaTresc && skrotAllegro(o.kartaId, konto.klucz, zadanie, true) === o.wyslanySkrot) {
         const dostawa = { ...zadanie.delivery, shippingRates: { id: ustawieniaOfertKonta(db, konto.klucz).cennikDostaw } };
         zmien(o, { wyslanePola: { ...pola(o), dostawa },
@@ -926,7 +926,7 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
         if (!(await zmienTresc(konto, o, w, tylkoDostawa))) return;
         o = ofertaPoId(db, o.id);
         if (o.stan === 'sprawdzana') { if (problemy.length) zmien(o, { problemy }); return; }
-        // E4.25: nowa treść przyjęta od razu zdejmuje problem odrzuconej treści.
+        // Nowa treść przyjęta od razu zdejmuje problem odrzuconej treści.
         if (problemOdczytu && !pola(o).probyOdczytu && problemy.includes(problemOdczytu)) problemy.splice(problemy.indexOf(problemOdczytu), 1);
       }
     }
@@ -940,19 +940,19 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
     const odczyt = Number.isSafeInteger(x.stock?.available) ? x.stock.available : null;
     const status = x.publication?.status;
     let p = pola(o);
-    // E4.30: potwierdzenie zer zużyte — zapis 0 widać w odczycie (0 albo END), albo cel wzrósł ponad 0.
-    // E4.30p: potwierdzenie z innego przełączenia stanów jest nieważne — też zdjęte.
+    // Potwierdzenie zer zużyte — zapis 0 widać w odczycie (0 albo END), albo cel wzrósł ponad 0.
+    // Potwierdzenie z innego przełączenia stanów jest nieważne — też zdjęte.
     if (p.zeraPotwierdzone && (status === 'ENDED' || !potwierdzenieZerWazne(o, migawka) || potwierdzenieZerZuzyte({ cel, odczyt }))) {
       p = bezPotwierdzeniaZer(p);
       zmien(o, { wyslanePola: p }, ['zeraPotwierdzone']);
     }
-    // B6: w wierszu z problemem treści/ceny nowy problem dochodzi obok tamtych, nie zamiast nich.
+    // W wierszu z problemem treści/ceny nowy problem dochodzi obok tamtych, nie zamiast nich.
     const zglos = (pr) => (tylkoIlosc
       ? zmien(o, { stan: 'problem', problemy: [...(ofertaPoId(db, o.id).problemy ?? []).filter((y) => y?.kod !== pr.kod), pr] })
       : problem(o, pr));
     if (p.publikacjaWToku) {
       if (status === p.publikacjaWToku.status || (p.publikacjaWToku.status === 'ACTIVE' && status === 'ACTIVATING')) {
-        // r3 B1 (D55): potwierdzone ACTIVATE zdejmuje od razu znacznik END przez OMS i wznowienie — ręczny koniec
+        // Potwierdzone ACTIVATE zdejmuje od razu znacznik END przez OMS i wznowienie — ręczny koniec
         // sprzedawcy przed następnym odczytem nie może obudzić drugiego wznowienia.
         const { publikacjaWToku: _p, ...reszta } = p;
         const { zakonczonaPrzezOms: _z, wznowienieIlosc: _w, ...poAktywacji } = reszta;
@@ -965,19 +965,19 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
         return false;
       }
     }
-    // N8: ręczne „Wznów” przy celu 0 — decyzja z powodem i zdjęcie znacznika (inaczej „Wznów” wisiałby bez końca).
+    // Ręczne „Wznów” przy celu 0 — decyzja z powodem i zdjęcie znacznika (inaczej „Wznów” wisiałby bez końca).
     if (status === 'ENDED' && p.wznow && !(cel > 0)) {
       zmien(o, { stan: 'problem', nastepnaProbaAt: null, wyslanePola: bezWznow(p),
         problemy: [PROBLEMY_ALLEGRO.zakonczona(odczyt ?? 0, 'Nie wznowiono: karta nie ma sztuk do wystawienia.')] }, ['wznow']);
       return false;
     }
     if (o.iloscProblem?.wstrzymuje && o.iloscProblem.kod !== 'rozjazd-gora') return false;
-    // B2: alarm wstrzymujący (tu: rozjazd w górę) zdejmuje człowiek — problem niewstrzymujący go nie nadpisuje.
+    // Alarm wstrzymujący (tu: rozjazd w górę) zdejmuje człowiek — problem niewstrzymujący go nie nadpisuje.
     const trwaly = nowy => (o.iloscProblem?.wstrzymuje && !nowy?.wstrzymuje ? o.iloscProblem : nowy);
     const ustaw = kod => zmien(o, { iloscProblem: trwaly({ ...PROBLEMY_ILOSCI[kod], od: iso(), cel, odczyt }) });
     if (cel == null) { if (wynik?.powod) ustaw(wynik.powod); return false; }
     if (!bramka(konto, o, 'ilosc').wolno) return false;
-    // B6: własna przerwa komend ilości/publikacji — przerwa ceny i treści (nastepnaProbaAt) jej nie wstrzymuje.
+    // Własna przerwa komend ilości/publikacji — przerwa ceny i treści (nastepnaProbaAt) jej nie wstrzymuje.
     if (p.przerwaIlosci?.do && Date.parse(p.przerwaIlosci.do) > czas()) return false;
     if (!Number.isFinite(odczyt)) { ustaw('karencja'); return false; }
     if (o.iloscProblem?.kod === 'rozjazd-gora' && cel > odczyt) return false;
@@ -991,25 +991,25 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
       wyjasnioneKarty: wyjasnienie.wyjasnioneKarty, prog: ustawienia.progSkokuSzt, od: iso(), cel, odczyt });
     if (skok) { zmien(o, { iloscProblem: skok }); return false; }
     if (masowe && liczySieDoZeraMasowego(o, migawka) && status !== 'ENDED' && cel === 0 && odczyt > 0) { ustaw('zero-masowe'); return false; }
-    // N5: najwyżej 3 wznowienia po END na dobę — czwarte czeka na człowieka.
+    // Najwyżej 3 wznowienia po END na dobę — czwarte czeka na człowieka.
     if (status === 'ENDED' && cel > 0 && !p.wznow
       && (czesteWznawianie(p) || o.problemy?.some((y) => y?.kod === 'zakonczona' && y.czeste))) {
       if (!o.problemy?.some((y) => y?.czeste)) zglos({ ...PROBLEMY_ALLEGRO.zakonczona(odczyt ?? 0, CZESTE_WZNAWIANIE), czeste: true });
       return false;
     }
-    // N3: ACTIVATE tylko przy odczycie równym celowi wznowienia — inaczej najpierw FIXED.
+    // ACTIVATE tylko przy odczycie równym celowi wznowienia — inaczej najpierw FIXED.
     if (status === 'ENDED' && o.tryb === 'obserwowana' && p.wznowienieIlosc?.gotowe && p.wznowienieIlosc.cel === cel && cel > 0
       && odczyt === cel) {
       dodajKomende('publikacja', 'ACTIVATE', o);
       return false;
     }
     if (status !== 'ENDED' && potwierdzoneIlosci.has(o.id) && cel !== odczyt) return false;
-    // N2: zakończona oferta nie sprzedaje — jej odczyt to resztka, nie rozjazd.
+    // Zakończona oferta nie sprzedaje — jej odczyt to resztka, nie rozjazd.
     const rozjazd = status === 'ENDED' ? { problem: null, baza: null, wolnoWyslac: true } : ocenRozjazdu({
       wyslanaIlosc: o.wyslanaIlosc, odczyt, cel, wyjasnienie,
       wToku: pola(poprzednia).komendaIlosci, odczytanoAt: iso(), alarmOd: o.iloscProblem?.od,
       poller: wyjasnienie.poller, policzonoAt: migawka.policzonoAt, pollerMs });
-    // B1: zgodny odczyt przesuwa bazę (T) — razem z nią stan karty, inaczej skok liczyłby sprzedaż sprzed T bez wyjaśnień.
+    // Zgodny odczyt przesuwa bazę (T) — razem z nią stan karty, inaczej skok liczyłby sprzedaż sprzed T bez wyjaśnień.
     zmien(o, { iloscProblem: trwaly(rozjazd.problem),
       ...(rozjazd.baza ? { ...rozjazd.baza, iloscWyslanaAt: chwilaMigawki } : {}),
       ...(rozjazd.baza && o.stanKartyWyslany != null ? { stanKartyWyslany: stan } : {}) });
@@ -1018,7 +1018,7 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
       odczytanoAt: poprzednia.odczytanoAt }, poller: wyjasnienie.poller, policzonoAt: migawka.policzonoAt, pollerMs });
     if (!podwyzka.wolno) { ustaw(podwyzka.powod); return false; }
     if (cel === 0 && ZERO_ALLEGRO === 'zakoncz') {
-      // B5: END tylko ofercie, która sprzedaje (INACTIVE i ENDED zostają bez komendy).
+      // END tylko ofercie, która sprzedaje (INACTIVE i ENDED zostają bez komendy).
       if (AKTYWNE.has(status)) dodajKomende('publikacja', 'END', o);
       return false;
     }
@@ -1038,16 +1038,16 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
   }
 
   /**
-   * D41: oferta zakończona przy 0 sztukach → jeden PATCH ilości + ACTIVE (dalej jak aktywacja: operacja, odczyt), bez
-   * prognozy opłat (decyzja właściciela 14.11). E3.28: to samo po ręcznym „Wznów” (znacznik `wyslanePola.wznow`, także przy
+   * Oferta zakończona przy 0 sztukach → jeden PATCH ilości + ACTIVE (dalej jak aktywacja: operacja, odczyt), bez
+   * prognozy opłat. To samo po ręcznym „Wznów” (znacznik `wyslanePola.wznow`, także przy
    * `sztuk` > 0) — z tymi samymi hamulcami (bramka, limit zapisów, MAKS_PROB_KOMENDY); znacznik znika po decyzji
    * pętli, a przy przerwie, zamkniętej bramce i błędzie 5xx czeka na następny przebieg.
-   * ⚠️ Odpowiedzi PATCH/operacji wznowienia NIE zmierzone (P17) — czytamy je jak aktywację.
+   * ⚠️ Odpowiedzi PATCH/operacji wznowienia NIE zmierzone — czytamy je jak aktywację.
    */
   async function wznowWyprzedana(konto, o, sztuk = 0) {
     const p = pola(o);
     const reczne = Boolean(p.wznow);
-    // N5: przy włączonych stanach limit 3 wznowienia na dobę (synchronizujIlosc); 24 h zostaje dla wyłączonych.
+    // Przy włączonych stanach limit 3 wznowienia na dobę (synchronizujIlosc); 24 h zostaje dla wyłączonych.
     if (!reczne && migawka?.wlaczone && czesteWznawianie(p)) {
       zmien(o, { stan: 'problem', nastepnaProbaAt: null,
         problemy: [{ ...PROBLEMY_ALLEGRO.zakonczona(sztuk, CZESTE_WZNAWIANIE), czeste: true }] });
@@ -1063,12 +1063,12 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
     /** Karta nie daje treści oferty: problem karty obok „zakończona”; po „Wznów” z powodem, żeby nie zniknął. */
     const bezTresci = (problemKarty) => zmien(o, { stan: 'problem', nastepnaProbaAt: null, wyslanePola: bezWznow(p),
       problemy: [PROBLEMY_ALLEGRO.zakonczona(sztuk, reczne ? 'Nie wznowiono: popraw kartę, potem wciśnij Wznów.' : undefined), problemKarty] }, ['wznow']);
-    // E4.26 (N1): czekanie (przerwa, bramka, limit zapisów) nie nadpisuje bieżącego „zakończona” — sztuki zapisane
+    // Czekanie (przerwa, bramka, limit zapisów) nie nadpisuje bieżącego „zakończona” — sztuki zapisane
     // po 5xx zostają, więc Wznów nie znika do końca przerwy.
     const czeka = () => zmien(o, { stan: 'problem',
       problemy: [o.problemy.find((x) => x?.kod === 'zakonczona') ?? PROBLEMY_ALLEGRO.zakonczona(0)] });
     // Przerwa po błędzie sieci albo zamknięta bariera: zostaje problem „zakończona”, bez zapytań do Allegro.
-    // E3.26c: wyczerpany limit zapisów przebiegu — wznowienie w następnym przebiegu. Ręczne „Wznów” czeka bez zmian.
+    // Wyczerpany limit zapisów przebiegu — wznowienie w następnym przebiegu. Ręczne „Wznów” czeka bez zmian.
     if ((o.nastepnaProbaAt && Date.parse(o.nastepnaProbaAt) > czas()) || !bramka(konto, o).wolno || !wolnyZapis()) {
       if (!reczne) czeka();
       return;
@@ -1117,7 +1117,7 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
       stan: 'sprawdzana', problemy: null, blad: null, liczbaProb: 0, wyslanaIlosc: n,
       ...(migawka?.wlaczone ? { iloscWyslanaAt: chwilaMigawki, stanKartyWyslany: migawka.stany.get(o.kartaId)?.stan ?? null } : {}),
       nastepnaProbaAt: iso(czas() + czekanieS(d.retryAfterS) * 1000),
-      // E4.23: sztuki sprzed wznowienia — gdy Allegro je odrzuci, problem „zakonczona” pokazuje je dalej (nie 0).
+      // Sztuki sprzed wznowienia — gdy Allegro je odrzuci, problem „zakonczona” pokazuje je dalej (nie 0).
       wyslanePola: { ...bezWznow(p), wznowionaAt: iso(), etap: 'wznowienie', sztukPrzedWznowieniem: sztuk, operacja: d.operacja ?? null, operacjaOd: iso(),
         ...(migawka?.wlaczone ? { wznowienia: reczne ? wznowieniaDoby(p) : [...wznowieniaDoby(p), iso()] } : {}) },
     }, ['wznow']);
@@ -1126,7 +1126,7 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
   /** PATCH treści z kompletem tablic (zdjęcia wgrane najpierw). false = błąd zapisany w wierszu. */
   async function zmienTresc(konto, o, w, tylkoDostawa = false) {
     let zadanie;
-    // E3.26c: limit zapisów sprawdzony przed wgrywaniem zdjęć — treść czeka na następny przebieg bez zmiany stanu.
+    // Limit zapisów sprawdzony przed wgrywaniem zdjęć — treść czeka na następny przebieg bez zmiany stanu.
     if (!wolnyZapis()) return false;
     try {
       const adresy = tylkoDostawa ? new Map() : await wgrajZdjecia(konto, o, w.doWgrania);
@@ -1137,7 +1137,7 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
       const r = await konto.katalog.zmienOferte(o.idZewnetrzne, tylkoDostawa ? { delivery: zadanie.delivery } : trescAllegro(zadanie, pola(o).gpsrZProduktu ?? null));
       if (!r.ok) { zmien(o, { blad: r.powod }); return false; }
       const d = r.dane ?? {};
-      // E4.25: treść przyjęta od razu (bez operacji) kończy licznik odrzuceń treści.
+      // Treść przyjęta od razu (bez operacji) kończy licznik odrzuceń treści.
       const { probyOdczytu: _n, odczytPo: _t, skrotOdrzuconej: _s, ...bezOdczytu } = pola(o);
       zmien(o, { wyslanySkrot: skrotAllegro(o.kartaId, konto.klucz, zadanie), wyslanoAt: iso(), blad: null, liczbaProb: d.operacja ? o.liczbaProb : 0,
         wyslanePola: { ...bezOdczytu, dostawa: zadanie.delivery },
@@ -1147,12 +1147,12 @@ export function createPetlaOfertAllegro({ db, konta, zwolnijOperacje, czytajZdje
             ...((pola(o).probyOdczytu ?? 0) >= MAKS_PROB_KOMENDY ? { probyOdczytu: 0 } : {}) } } : {}) });
       return true;
     } catch (e) {
-      // E4.26 (N3): 401/403 idą zwykłą ścieżką błędu połączenia (przerwa, `liczbaProb`), nie do limitu treści.
+      // 401/403 idą zwykłą ścieżką błędu połączenia (przerwa, `liczbaProb`), nie do limitu treści.
       if (odrzucone(e) && !bezDostepu(e)) {
         // E4.25 (N2): odrzucona treść ma własny licznik i przerwę tylko dla treści (`odczytPo`), jak odrzucenie
         // w operacji — ilość i cena idą dalej. Po MAKS_PROB_KOMENDY problem; skrót zostaje, więc ta sama treść
         // nie idzie ponownie, dopóki karta się nie zmieni albo ktoś nie kliknie Ponów (wtedy licznik od nowa).
-        // E4.26 (N2): inna treść niż ostatnio odrzucona → licznik od nowa, stary problem „odczyt” znika.
+        // Inna treść niż ostatnio odrzucona → licznik od nowa, stary problem „odczyt” znika.
         const p0 = pola(o);
         const skrotOdrzuconej = skrotAllegro(o.kartaId, konto.klucz, w.zadanie);
         const innaTresc = p0.skrotOdrzuconej != null && p0.skrotOdrzuconej !== skrotOdrzuconej;

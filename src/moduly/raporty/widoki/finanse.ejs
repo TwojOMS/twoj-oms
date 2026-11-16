@@ -1,31 +1,31 @@
 <%# Zakladka FINANSE — RACHUNEK ZARZADCZY. Odpowiada na JEDNO pytanie: „ile z tego zostaje",
-    a nie „ile sprzedalismy". Przebudowana 17.08.2026 wg zatwierdzonej makiety
-    (docs/superpowers/specs/2026-08-17-oms-finanse-przebudowa-makieta.html): zakres
-    (kompaktowy) · zdanie stale · bariery · KPI z delta · KASKADA · kategorie jako slupki ·
-    wskazniki · podatek z prognoza progu · Panel a KPiR + VAT · miesiac po miesiacu.
+    a nie „ile sprzedalismy". Pasy ekranu od góry: zakres (kompaktowy) · zdanie stale ·
+    bariery · KPI z delta · KASKADA · kategorie jako slupki · wskazniki ·
+    podatek z prognoza progu · Panel a KPiR + VAT ·
+    miesiac po miesiacu.
 
     ⚠️⚠️ TO NIE JEST WYNIK KSIEGOWY i pierwszy pas ekranu mowi to WPROST — ZAWSZE, nie
-    warunkowo. Pelna ksiegowosc prowadzi biuro rachunkowe i jego liczby sa wiazace. Pomiar
-    na I polroczu 2026: sprzedaz liczona po dacie ZAMOWIENIA jest wyzsza od przychodu w KPiR
-    (ksiegowanego po dacie WYSTAWIENIA faktury) o ok. 2,5% po odjeciu zwrotow i duplikatow.
+    warunkowo. Pelna ksiegowosc prowadzi biuro rachunkowe i jego liczby sa wiazace.
+    Sprzedaz liczona po dacie ZAMOWIENIA rozni sie od przychodu w KPiR (ksiegowanego po
+    dacie WYSTAWIENIA faktury) o kilka procent po odjeciu zwrotow i duplikatow.
 
     ⚠️ WIDOK NICZEGO NIE LICZY. Wynik, „zostaje", delty, pokrycie kosztow, rozbicie na
     kategorie, prog rentownosci, podatek narastajaco, prognoza progu i rachunek miesiac po
-    miesiacu przychodza policzone z domeny (domain/rachunek-zarzadczy.js, domain/podatek-skala.js)
+    miesiacu przychodza policzone z domeny (domena/rachunek-zarzadczy.js, domena/podatek-skala.js)
     — na groszach, calkowitych. Tutaj zostaje ZAPIS liczby po polsku i GEOMETRIA RYSUNKU
     (szerokosc i przesuniecie slupka). Druga kopia arytmetyki rozjechalaby sie z pierwsza przy
     pierwszej zmianie, a chodzi o pieniadze (ta sama zasada, co w raporty.ejs i koszty.ejs).
 
-    ⚠️ ANI JEDNEGO KOLORU WPISANEGO WPROST — wszystko z palety w layout-oms.ejs (paleta ma
-    wariant jasny i ciemny, wiec wartosc wpisana tutaj zadzialalaby w jasnym i po cichu
-    zniknela w ciemnym). Klasy sa te same, co na zakladkach RAPORTY, KOSZTY i FAKTURY.
+    ⚠️ ANI JEDNEGO KOLORU WPISANEGO WPROST — wszystko z palety w public/oms-uklad.css (paleta
+    ma wariant jasny i ciemny, wiec wartosc wpisana tutaj zadzialalaby w jasnym i po cichu
+    zniknela w ciemnym). Klasy sa te same, co na zakladkach RAPORTY i KOSZTY.
 
-    ⚠️ ODNOSNIKI IDA NA `--link`, NIGDY `--marka` — w jasnym motywie kontrast `--marka` na tle
-    wynosi 2,07 (zmierzone), czyli napis jest praktycznie niewidoczny; `--link` daje 7,00. %>
+    ⚠️ ODNOŚNIKI IDĄ NA `--link`, NIGDY `--marka` — `--link` jest kolorem tekstu, a `--marka`
+    kolorem tła elementów marki; w jasnym motywie oba mają dziś tę samą barwę (public/oms-uklad.css). %>
 
 <%
   // '1234.50' → '1 234,50'. To NIE JEST arytmetyka, tylko polski zapis liczby (ta sama
-  // funkcja, co w raporty.ejs, koszty.ejs i faktury.ejs): nic sie tu nie dodaje, nie dzieli
+  // funkcja, co w raporty.ejs i koszty.ejs): nic sie tu nie dodaje, nie dzieli
   // i nie zaokragla.
   const kwota = (napis) => {
     const s = String(napis ?? '').trim();
@@ -35,7 +35,7 @@
     const grosze = ulamek.length >= 2 ? ulamek : ulamek.padEnd(2, '0');
     return `${minus ? '−' : ''}${calosc.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')},${grosze}`;
   };
-  // ⚠️ GROSZE NA ZLOTOWKI PRZELICZA `zl` Z DOMENY (domain/kwoty.js), podane przez trase —
+  // ⚠️ GROSZE NA ZLOTOWKI PRZELICZA `zl` Z DOMENY (domena/kwoty.js), podane przez trase —
   // widok NIE DZIELI pieniedzy przez sto u siebie. Tutaj zostaje sam zapis po polsku.
   const zlote = (gr) => kwota(zl(gr ?? 0));
   // Liczebnik po polsku ma TRZY formy, nie dwie (ta sama funkcja, co w koszty.ejs).
@@ -50,13 +50,13 @@
   const procent = (n) => Number(n).toFixed(1).replace('.', ',').replace('-', '−');
   // ⚠️⚠️ SZEROKOSC SLUPKA MA KROPKE, NIE POLSKI PRZECINEK. `width: 100,0%` jest deklaracja
   // NIEPOPRAWNA — przegladarka wyrzuca ja w calosci i slupek po prostu ZNIKA, mimo ze liczba
-  // obok niego jest poprawna. Zdarzylo sie naprawde, 13.08, na ekranie sprzedazy. Przecinek
+  // obok niego jest poprawna. Zdarzylo sie to naprawde na ekranie sprzedazy. Przecinek
   // zostaje WYLACZNIE przy liczbach czytanych przez czlowieka (`procent` wyzej).
   const szerokoscCss = (n) => Number(n).toFixed(1);
 
   // ⚠️⚠️ DELTA `null` TO MYSLNIK, NIE „0%" (ta sama funkcja i ta sama zasada, co w raporty.ejs).
   // Zero znaczy „bez zmian" i jest zdaniem o faktach; przy okresie porownawczym sprzed podlogi
-  // 2026-01 zadnego faktu nie ma, a zdanie zmyslone wyglada tak samo wiarygodnie jak prawdziwe.
+  // kosztow zadnego faktu nie ma, a zdanie zmyslone wyglada tak samo wiarygodnie jak prawdziwe.
   const delta = (n) => {
     if (n === null || n === undefined) {
       return '<span class="kafel-delta">— brak porównania</span>';
@@ -100,13 +100,13 @@
 <% } %>
 
 <%# ——— WYBOR ZAKRESU ————————————————————————————————————————————————————————
-    Zwykly formularz GET i piec odnosnikow, bez ani jednej linii skryptu. Skroty sa
+    Zwykly formularz GET i odnosniki skrotow, bez ani jednej linii skryptu. Skroty sa
     ODNOSNIKAMI, a nie przyciskami formularza: kazdy z nich jest adresem, ktory da sie
     zapisac w zakladkach.
 
-    Kompaktowo (17.08.2026, jak na Raportach): skroty i pola dat w JEDNYM wierszu, cala
-    metodologia zostala, ale w <details> — na FHD stary panel zjadal jedna trzecia ekranu,
-    zanim pokazala sie pierwsza liczba. %>
+    Kompaktowo, jak na Raportach: skroty i pola dat w JEDNYM wierszu, cala metodologia
+    jest w <details> — rozwinieta na stale zjadalaby jedna trzecia ekranu na FHD,
+    zanim pokaze sie pierwsza liczba. %>
 <section class="panel bez-druku panel--zakres">
   <div class="zakres-rzad">
     <div class="pola-w-rzedzie">
@@ -131,14 +131,14 @@
       <% }); %>
     </div>
     <%# ⚠️ POLA STOJA W `.zakres-data`, NIGDY W `.rzad` ani `.pola` — `.rzad` nie styluje listy
-        rozwijanej w ogole i zweza pola do 6 rem (uzasadnienie w raporty.ejs), a `.pola` to
+        rozwijanej w ogole i zweza pola do 6 rem, a `.pola` to
         `flex-direction: column`, wiec rozciagalo pasek zakresu na trzy wiersze i zjadalo
-        gore ekranu — dokladnie to, co ta przebudowa mialo naprawic. `.zakres-data` niesie
+        gore ekranu. `.zakres-data` niesie
         box-sizing: border-box, bez ktorego pole daty wystaje poza komorke o wysciolke. %>
     <div class="zakres-formularze">
       <%# ⚠️ OSOBNY FORMULARZ, nie jedno pole doklejone do zakresu dat — formularzy nie da sie
           zagniezdzac, a pola `od`/`do` sa `required`: wpiete razem blokowalyby wyslanie
-          samego miesiaca. Trasa (routes/finanse.js) przeklada `?miesiac=RRRR-MM` na prawdziwy
+          samego miesiaca. Trasa (moduly/raporty/trasy/finanse.js) przeklada `?miesiac=RRRR-MM` na prawdziwy
           zakres `od`/`do` przekierowaniem. %>
       <form method="get" action="/finanse" class="zakres-formularz">
         <label class="zakres-data"><span>Miesiąc</span>
@@ -151,9 +151,9 @@
         <label class="zakres-data"><span>Do dnia</span>
           <input type="date" name="do" value="<%= zakres.do %>" required></label>
         <button class="btn btn--glowny" type="submit">Pokaż</button>
-        <%# Wydruk robi przegladarka — panel nie rysuje wlasnego PDF-u i nie udaje, ze umie
-            wiecej, niz umie. `@media print` (layout-oms.ejs) chowa pasek nawigacji i ten
-            formularz, bo na kartce sa to kolorowe prostokaty, ktorych nie da sie kliknac. %>
+        <%# Wydruk robi przegladarka — panel nie rysuje wlasnego PDF-u i nie udaje, ze umie wiecej, niz umie.
+            Przy druku znika menu i gorny pasek (`@media print` w public/oms-design.css) oraz ten formularz
+            (`.bez-druku`, public/oms-uklad.css), bo na kartce sa to kolorowe prostokaty, ktorych nie da sie kliknac. %>
         <button class="btn" type="button" onclick="window.print()">Drukuj</button>
       </form>
     </div>
@@ -183,8 +183,8 @@
 </section>
 
 <%# ——— ZDANIE STALE ——————————————————————————————————————————————————————————
-    ⚠️⚠️ STOI ZAWSZE, BEZ ANI JEDNEGO WARUNKU. To jest jedyny pas na tym ekranie, ktory nie
-    zalezy od danych — bo pomylka „to sa liczby ksiegowe" nie zalezy od danych. Zwarty
+    ⚠️⚠️ STOI ZAWSZE, BEZ ANI JEDNEGO WARUNKU. To jest pas niezalezny od danych —
+    bo pomylka „to sa liczby ksiegowe" nie zalezy od danych. Zwarty
     (jedna linijka), zeby nie odpychal liczb w dol, ale NIE zwijany: schowany pod <details>
     przestalby dzialac na czlowieka, ktory go nie rozwinie. %>
 <p class="pasek-uwaga pasek-uwaga--zwarty">
@@ -283,7 +283,7 @@
 </div>
 
 <%# ——— KASKADA: OD PRZYCHODU DO „ZOSTAJE" ————————————————————————————————————
-    Wybrany wariant makiety: poziomy, KWOTY PO LEWEJ stronie paskow (oko idzie nazwa →
+    Uklad poziomy, KWOTY PO LEWEJ stronie paskow (oko idzie nazwa →
     kwota → dlugosc paska, bez przeskoku na drugi koniec ekranu). Wszystkie tory stoja na
     JEDNEJ skali: caly tor = przychod, wiec od razu widac, ile zjadaja koszty, a ile ZUS
     i podatek.
@@ -391,12 +391,12 @@
 <%# ——— KATEGORIE ——————————————————————————————————————————————————————————————
     ⚠️⚠️ RYSUJA SIE WYLACZNIE PRZY `kosztyZnane` (pokrycie ≥ 95% kwoty z KPiR). Rozbicie
     policzone z jednej trzeciej wydatkow dalby prog rentownosci, w ktory dalo by sie
-    uwierzyc — i bylby zmysleniem. To naprawilo cichy blad w repo `raporty`: Q2 i polrocze
-    rysowaly rozbicie z samego czerwca, opisujac je jako rozbicie CALEGO okresu.
+    uwierzyc — i bylby zmysleniem. Bez tego progu Q2 czy polrocze rysowalyby rozbicie
+    z jednego miesiąca, opisujac je jako rozbicie CALEGO okresu.
 
-    Kolumna TYPU (staly/zmienny) zniknela z listy 17.08.2026 na zyczenie wlasciciela —
+    Kolumny TYPU (staly/zmienny) nie ma na liscie —
     ⚠️ ale PODZIAL zostaje w domenie i z niego dalej licza sie prog rentownosci i marza po
-    kosztach zmiennych (kafle nizej). Usuniecie go z `wskazniki-zarzadcze.js` wygasiloby oba. %>
+    kosztach zmiennych (kafle nizej). Usuniecie go z `domena/wskazniki-zarzadcze.js` wygasiloby oba. %>
 <% if (rachunek.kosztyZnane) { %>
   <%
     // ⚠️ GEOMETRIA RYSUNKU, nie arytmetyka o pieniadzach: najszerszy slupek zajmuje caly tor,
@@ -556,7 +556,7 @@
   <div class="panel-cialo">
     <%
       // GEOMETRIA: ile procent progu zajmuje dzisiejsza podstawa, a ile dolozy prognoza.
-      // ⚠️ Obie liczby przychodza z domeny (podatek-skala.js) — tutaj zamieniaja sie na
+      // ⚠️ Obie liczby przychodza z domeny (domena/podatek-skala.js) — tutaj zamieniaja sie na
       // szerokosc paska i nic wiecej. Suma nie przekracza 100%, wiec odcinek prognozy nigdy
       // nie wychodzi poza tor.
       const doProgu = rachunek.podatek.podstawaGrosze / (rachunek.podatek.podstawaGrosze
@@ -589,8 +589,8 @@
 
     <%# ——— PROGNOZA ————————————————————————————————————————————————————————————
         ⚠️⚠️ TEMPO LINIOWE, NIE SEZONOWOSC — i ekran ma to pisac wprost. Sezonowego rozkladu
-        DOCHODU panel nie zna: sprzedaz siega 2025, ale koszty zaczynaja sie od podlogi KSeF
-        (2026-01), wiec za 2025 nie ma z czego policzyc dochodu miesiac po miesiacu.
+        DOCHODU panel nie zna: sprzedaz siega wstecz dalej niz koszty, a koszty zaczynaja sie od podlogi KSeF,
+        wiec za wczesniejsze okresy nie ma z czego policzyc dochodu.
         ⚠️ „Nie przekroczysz" to ZDANIE O FAKTACH i ma paść — milczenie czyta sie jak brak
         prognozy w ogole i nikt nie wie, czy panel liczyl, czy nie. %>
     <% if (prognoza && prognoza.przekroczy) { %>
@@ -668,8 +668,8 @@
           </div>
         </div>
 
-        <%# ⚠️ OSTRZEZENIE DOPIERO POWYZEJ 5%. Rozjazd rzedu 2,5% jest ZMIERZONY i normalny
-            (przelom miesiaca: zamowienie z 30.06 z faktura z 1.07), wiec pas wyjacy przy nim
+        <%# ⚠️ OSTRZEZENIE DOPIERO POWYZEJ 5%. Rozjazd rzedu kilku procent jest normalny
+            (przelom miesiaca: zamowienie z konca miesiaca z faktura z poczatku), wiec pas wyjacy przy nim
             przestalby cokolwiek znaczyc — i przykrylby ten prawdziwy. %>
         <% if (Math.abs(rachunek.roznicaPrzychodu.procent) > 5) { %>
           <p class="pasek-uwaga">
@@ -759,8 +759,8 @@
 
 <%# ——— MIESIAC PO MIESIACU ————————————————————————————————————————————————————
     ⚠️ OD DWOCH MIESIECY WZWYZ (domena oddaje wtedy `miesiacami`) — przy jednym nie ma czego
-    porownywac. Suma kwartalu mowi „ile", ale nie „kiedy": w Q1 2026 sam marzec dal wiecej
-    niz styczen i luty razem. %>
+    porownywac. Suma kwartalu mowi „ile", ale nie „kiedy": jeden miesiac moze dac wiecej
+    niz dwa pozostale razem. %>
 <% if (rachunek.miesiacami) { %>
   <%
     // ⚠️ GEOMETRIA RYSUNKU, nie arytmetyka o pieniadzach (jak wyzej): najwyzszy slupek

@@ -17,10 +17,10 @@ import { modelWyslane, blokiTekstuWyslane } from '../../domena/wiadomosc-wyslane
 import { blokiHtmlWyslane } from '../../core/poczta/wyslane-html.js';
 import { zdaniaDoMaila, tekstyModelu } from '../../domena/zdania-platnosci.js';
 
-/** Link w podglądzie maila do pracownika — zmyślony, nie prowadzi nigdzie (PRZ-101.06). */
+/** Link w podglądzie maila do pracownika — zmyślony, nie prowadzi nigdzie. */
 export const PRZYKLADOWY_LINK = 'https://panel.example/haslo/przykladowy-link';
 
-// SKŁADANIE MAILA ZE SZABLONU (PRZ-101.03) — jedno miejsce dla podglądu na karcie, wysyłki, podglądu
+// SKŁADANIE MAILA ZE SZABLONU — jedno miejsce dla podglądu na karcie, wysyłki, podglądu
 // w Ustawieniach i wstawiania szablonu w odpowiedzi Allegro.
 //
 // ⚠️ `szablon = null` (nikt nie zapisał zmiany) = DZISIEJSZA DROGA: te same funkcje, które składały mail przed
@@ -33,7 +33,7 @@ function zeSzablonu(szablon, { pola, blokiTekst, blokiHtml, oprawa }) {
 }
 
 /** Potwierdzenie przyjęcia zamówienia. Rzuca odmowę domeny (anulowane, bez adresu, bez pozycji). */
-// PRZ-102.19: `zdania` — teksty z Ustawień → Szablony wiadomości (zdaniaPlatnosciTeraz w usłudze); brak = domyślne.
+// `zdania` — teksty z Ustawień → Szablony wiadomości (zdaniaPlatnosciTeraz w usłudze); brak = domyślne.
 export function mailPotwierdzenia(z, { oprawa, szablon = null, zdania = null }) {
   if (!szablon) {
     const mail = trescPotwierdzenia(z, { podpis: oprawa.podpis, zdania });
@@ -87,7 +87,7 @@ export function mailWlasny(z, szablon, { oprawa, zdania = null }) {
 }
 
 /**
- * PRZ-102.21: „Zamówienie wysłane" — zawsze ze szablonu (zapisanego albo domyślnego): starej drogi nie ma.
+ * „Zamówienie wysłane" — zawsze ze szablonu (zapisanego albo domyślnego): starej drogi nie ma.
  * Bez załączników i bez danych do przelewu. Brak paczki z numerem odrzuca wcześniej `czyWolnoWyslac`.
  */
 export function mailWyslane(z, szablon, { oprawa, zdania = null }) {
@@ -138,17 +138,17 @@ export function przykladoweZamowienie(teraz = new Date()) {
       { nazwa: 'Lampa stołowa Grzybek 30 cm', sku: 'LMP-GRZ-30', ilosc: 2, cena_brutto: '189.00', brutto_linii: '378.00' },
       { nazwa: 'Klosz lniany 40 cm', sku: 'KLS-LEN-40', ilosc: 1, cena_brutto: '79.00', brutto_linii: '79.00' },
     ],
-    // PRZ-102.21: jedna nadana paczka DPD — podgląd „Zamówienie wysłane" pokazuje numer i link śledzenia.
+    // Jedna nadana paczka DPD — podgląd „Zamówienie wysłane" pokazuje numer i link śledzenia.
     przesylki: [{ kurier: 'dpd', status: 'nadana', numer_listu: '0000123456789U' }],
   };
 }
 
 /** Mail z (jeszcze niezapisanego) szablonu na przykładowym zamówieniu — to, co pokazuje „Podgląd". */
-// PRZ-102.17: `zdania` — zdania o płatności z panelu (zdaniaPlatnosciTeraz); brak = domyślne.
-// PRZ-102.18: `config` — odbiorca przelewu tą samą funkcją co prawdziwy mail.
+// `zdania` — zdania o płatności z panelu (zdaniaPlatnosciTeraz); brak = domyślne.
+// `config` — odbiorca przelewu tą samą funkcją co prawdziwy mail.
 export function podgladSzablonu(id, szablon, { oprawa, config = {}, teraz = new Date(), zdania = null }) {
   const rodzaj = rodzajSzablonu(id);
-  // PRZ-101.06: mail do pracownika — ta sama funkcja, która go wysyła, ale z ZMYŚLONYM linkiem: prawdziwego tokenu
+  // Mail do pracownika — ta sama funkcja, która go wysyła, ale z ZMYŚLONYM linkiem: prawdziwego tokenu
   // podgląd nie wydaje i nie pokazuje. Bez oprawy (marki i stopki) — tak jak dzisiejszy mail do pracownika.
   if (rodzaj === 'konto') {
     const m = trescMaila({ cel: id, imie: 'Anna', link: PRZYKLADOWY_LINK, szablon });

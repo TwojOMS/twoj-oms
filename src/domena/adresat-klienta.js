@@ -1,14 +1,12 @@
 import { adresOdbiorcy } from './adres-odbiorcy.js';
 import { daneFaktury } from './dane-faktury.js';
 
-// NA JAKI ADRES PISZEMY DO KLIENTA — jedna reguła na wszystkie maile z karty (22.08.2026).
+// NA JAKI ADRES PISZEMY DO KLIENTA — jedna reguła na wszystkie maile z karty.
 //
-// Wyjęte z `domain/potwierdzenie-zamowienia.js`, gdzie mieszkało prywatnie, bo od 22.08
-// tego samego adresu potrzebują jeszcze trzy maile (proforma, faktura, przypomnienie).
+// Wyjęte z `domena/potwierdzenie-zamowienia.js`, gdzie mieszkało prywatnie, bo tego samego adresu
+// potrzebują jeszcze trzy maile (proforma, faktura, przypomnienie).
 // Druga kopia tej reguły znaczyłaby, że potwierdzenie idzie do zamawiającego, a faktura
 // do księgowości — dla tego samego zamówienia, bez ostrzeżenia.
-//
-// Treść przeniesiona bez zmian: to przeprowadzka, nie ulepszanie.
 
 /**
  * Adres e-mail klienta albo `null`.

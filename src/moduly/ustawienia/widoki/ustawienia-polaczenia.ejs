@@ -1,4 +1,4 @@
-<%# PRZ-136.14 (#11): własny tytułu h1 z tytułem zakładki jak w innych działach Ustawień — powłoka daje tylko nagłówek ARIA działu. %>
+<%# Nagłówek rysuje wspólny include: w powłoce Ustawień h1 nadaje dział (_zakladki-ustawien.ejs), a tytuł równy nazwie zakładki („Moje połączenia”, „Dodaj integrację”) jest pomijany. %>
 <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: (title)}) %>
 <% const kategorie = { sklepy: 'Sklepy i marketplace’y', wysylka: 'Wysyłka', faktury: 'Fakturowanie i dane firm', poczta: 'Poczta', reklamy: 'Reklamy i analityka' }; %>
 <% if (blad) { %><div class="pas-uprzedzenie"><%= blad %></div><% } %>
@@ -15,7 +15,7 @@
 <section class="ust-kategoria"><h2><%= nazwa %></h2><div class="ust-katalog">
 <% wpisy.forEach(u => { const ile=liczPolaczenia(polaczenia.filter(p=>p.usluga===u.id)); %>
 <% const planowana = u.dostepnosc === 'planowana'; const pol = polaczenia.filter(p=>p.usluga===u.id);
-   // Jedno konto Allegro otwieramy bezpośrednio; kilka kont wybiera się w grupie.
+   // Jedno połączenie Allegro (z akcją) albo WooCommerce otwieramy wprost; w pozostałych przypadkach prowadzimy do grupy Sprzedaż.
    const celZarzadzaj = u.id === 'allegro' && pol.length === 1 && pol[0].akcja ? pol[0].akcja.href : u.id === 'woocommerce' && pol.length === 1 && pol[0].id ? '/ustawienia/integracje#pol-' + String(pol[0].id).toLowerCase().replace(/[^a-z0-9_-]+/g, '-') : '/ustawienia/integracje#grupa-sprzedaz'; %>
 <article class="ust-karta-integracji<%= planowana ? ' ust-karta-integracji--planowana' : '' %>" data-usluga="<%= u.id %>"><div class="ust-logo-marki"><img src="/public<%= u.logo %>" alt="<%= u.nazwa %>" width="100" height="38"></div>
 <h3><%= u.nazwa %></h3><p><%= u.opis %></p>
@@ -30,7 +30,7 @@
 <% } else if (!polaczenia.length) { %>
 <%- include('ustawienia-polaczenia-pusto', { wszystkieUslugi }) %>
 <% } else {
-  // PRZ-136.07: lista w grupach (U1–U4, U10–U11). Nagłówek formularza jest na początku widoku.
+  // Lista w grupach. Nagłówek ekranu jest na początku widoku.
   const odmiana = (n, [jeden, kilka, wiele]) => n === 1 ? jeden : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)) ? kilka : wiele;
   const idWiersza = (p) => 'pol-' + String(p.id).toLowerCase().replace(/[^a-z0-9_-]+/g, '-');
   const pierwszy = (f) => { const p = polaczenia.find(f); return p ? '#' + idWiersza(p) : null; };

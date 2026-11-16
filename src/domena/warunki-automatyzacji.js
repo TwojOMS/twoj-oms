@@ -1,4 +1,4 @@
-// PRZ-108.08 (zmiana C1 planu automatyzacji, właściciel 21.10): warunki reguły sprawdzane W CHWILI WYKONANIA (po opóźnieniu,
+// Warunki reguły sprawdzane W CHWILI WYKONANIA (po opóźnieniu,
 // tuż przed rezerwacją), nie przy wykryciu zdarzenia. Kanał sprawdza detektor (kanał zamówienia się nie zmienia);
 // tu są warunki, które mogą się zmienić w oknie opóźnienia: status, paczka z numerem listu, sposób dostawy, pobranie.
 //
@@ -14,7 +14,7 @@ import { numerZAllegro } from './przesylka-stan.js';
 
 export const POBRANIE = Object.freeze(['dowolne', 'tak', 'nie']);
 export const ZAMOWIENIE_STARSZE_NIZ_DNI = 14;
-// PRZ-110.02: potwierdzenie przyjęcia po wielodniowej przerwie w synchronizacji myli kupującego.
+// Potwierdzenie przyjęcia po wielodniowej przerwie w synchronizacji myli kupującego.
 // Próg względem chwili zdarzenia, nie włączenia reguły ani terminu wysyłki — celowe opóźnienie reguły go nie wydłuża.
 export const IMPORT_SPOZNIONY_H = 48;
 
@@ -80,7 +80,7 @@ export function importSpozniony(z, wykonanie) {
 }
 
 /**
- * PRZ-108.08 (poprawki po recenzji 08, usterki 1 i 3): „mail do historii” — zamówienie, które wysłano albo złożono
+ * „Mail do historii” — zamówienie, które wysłano albo złożono
  * przed włączeniem reguły, nie dostaje maila, choćby zdarzenie przyszło po włączeniu. Dwie drogi, którymi to się działo:
  *  • cofnięcie i ponowne „Wysłane” na starym zamówieniu (nowa data `wyslane_at`) — rozpoznajemy po paczce z numerem
  *    listu sprzed granicy (`p.id ≤ granica.przesylki`). Samo „Wysłane” bez paczki nie zostawia śladu po cofnięciu
@@ -96,7 +96,7 @@ export function importSpozniony(z, wykonanie) {
 export function historiaPrzedGranica(z, granica, { dni = ZAMOWIENIE_STARSZE_NIZ_DNI, wykonanie = null } = {}) {
   if (!z) return ok;
   const granicaMs = Date.parse(granica?.at ?? '');
-  // Bez granicy (podgląd „30 dni”) zostaje sama świeżość numeru z Allegro (R2-1); z granicą — najpierw ona.
+  // Bez granicy (podgląd „30 dni”) zostaje sama świeżość numeru z Allegro (`numerAllegroPozno`); z granicą — najpierw ona.
   if (Number.isNaN(granicaMs)) return numerAllegroPozno(z, wykonanie, dni) ?? ok;
   const migawka = Number(granica.przesylki ?? 0);
   const stara = (z.przesylki ?? []).find((p) => p.status !== 'blad' && String(p.numer_listu ?? '').trim() && Number(p.id) <= migawka);
@@ -113,9 +113,9 @@ export function historiaPrzedGranica(z, granica, { dni = ZAMOWIENIE_STARSZE_NIZ_
 }
 
 /**
- * PRZ-108.08b (recenzja 08, runda 2, R2-1): numer listu dociągnięty z Allegro (`zrodlo_numeru = 'allegro'`) przy otwarciu
+ * Numer listu dociągnięty z Allegro (`zrodlo_numeru = 'allegro'`) przy otwarciu
  * karty to nowa paczka z dzisiejszą datą — także dla zamówienia sprzed tygodni, które Allegro dawno wysłało i doręczyło
- * (scenariusze E i E2: złożone po włączeniu albo < 14 dni przed nim, karta otwarta po 60–90 dniach → „zostało wysłane”).
+ * (np. złożone po włączeniu reguły albo mniej niż 14 dni przed nim, karta otwarta po kilkudziesięciu dniach → „zostało wysłane”).
  * Granica tego nie łapie, bo mierzy wiek zamówienia względem WŁĄCZENIA reguły. Tu świeżość względem ZDARZENIA: paczka
  * wykonania z numerem z Allegro wyzwala tylko, gdy zamówienie złożono nie dawniej niż `dni` (ta sama liczba co próg
  * granicy, ZAMOWIENIE_STARSZE_NIZ_DNI) przed `zdarzenie_at`. Paczki z panelu i z ręcznej rejestracji (`reka`) — bez zmian.

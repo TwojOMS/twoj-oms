@@ -11,27 +11,29 @@ import { zarchiwizuj } from './archiwum-kosztow.js';
 // dotknac sieci, a druga instancja klienta oznaczalaby drugie pelne logowanie.
 import { LIMIT_ZADANIA_MS, NAJDLUZSZE_ODPYTYWANIE_MS } from '../../../oms/ksef/client.js';
 
-// ⚠️⚠️ TO NIE JEST `services/czuwacz-ksef.js`. TAMTEN pyta inFakt, czy NASZA faktura sprzedazowa
-// dostala numer KSeF (zeby wyslac ja do Allegro). TEN pobiera z KSeF faktury, na ktorych to MY
-// jestesmy nabywca. Dwa czuwacze, dwa zrodla, dwa kierunki — nazwy musza je rozdzielac.
+// ⚠️⚠️ TO NIE JEST `faktury/services/czuwacz-ksef.js`. TAMTEN pyta program fakturowy, czy NASZA
+// faktura sprzedażowa dostała numer KSeF (żeby wysłać ją do Allegro). TEN pobiera z KSeF
+// faktury, na których to MY jesteśmy nabywcą. Dwa czuwacze, dwa źródła, dwa kierunki — nazwy
+// muszą je rozdzielać.
 //
 // ⚠️ TEN MODUL WYLACZNIE CZYTA. Nie ma tu zadnej sciezki, ktora cokolwiek wysyla do KSeF.
 //
-// ⚠️ PORA: RAZ NA DOBE, o 3 w nocy czasu Warszawy — na prosbe wlasciciela. Zegar tyka co
-// godzine (bootstrap.js), a o porze decyduje `czyPoraPobrania`, czyli JEDYNE miejsce w tym
-// module znajace strefe. Przycisk „Odswiez teraz" jedzie tym samym przebiegiem z `wymuszony`.
+// ⚠️ PORA: RAZ NA DOBĘ, o 3 w nocy czasu Warszawy (`GODZINA_POBRANIA`, domena/pora-pobrania.js).
+// Zegar tyka co godzinę (`ODSTEP_KOSZTOW_MS`, modul.ts), a o porze decyduje `czyPoraPobrania`,
+// czyli JEDYNE miejsce w tym module znające strefę. Przycisk „Odśwież teraz" jedzie tym samym
+// przebiegiem z `wymuszony`.
 //
 // ⚠️ CZAS PRZEBIEGU. Samo pelne logowanie do KSeF potrafi w najgorszym razie trwac ~31 minut
 // (30 pytan o stan po 60 s limitu kazde, ksef/client.js), a przebieg dziedziczy ten czas
 // i doklada do niego strony. Przebieg dluzszy niz godzina zabiera wiec kolejne tykniecie —
 // i dlatego pominiecie „poprzedni przebieg jeszcze trwa" MUSI zostawic slad w logu
-// (bootstrap.js), inaczej doba bez kosztow wyglada dokladnie tak, jak doba bez zakupow.
+// (zegary.ts), inaczej doba bez kosztów wygląda dokładnie tak, jak doba bez zakupów.
 export const SUFIT_STRON = 200;
 
-// ⚠️ POWODY POMINIECIA SA STALYMI, A NIE NAPISAMI U WOLAJACEGO — bo bootstrap loguje TYLKO
+// ⚠️ POWODY POMINIĘCIA SĄ STAŁYMI, A NIE NAPISAMI U WOŁAJĄCEGO — bo zegar (zegary.ts) loguje TYLKO
 // JEDEN z nich. „Nie ta pora" zdarza sie 23 razy na dobe i jest stanem poprawnym; wpis o nim
 // przy kazdym tyknieciu utopilby prawdziwa awarie (log rosnie od ZDARZEN, nie od PRZEBIEGOW).
-// Porownanie po tresci zdania rozjechaloby sie przy pierwszej poprawce stylistycznej.
+// Porównanie po treści zdania rozjechałoby się przy każdej zmianie stylistycznej.
 export const POWOD_TRWA = 'poprzedni przebieg jeszcze trwa';
 export const POWOD_NIE_TA_PORA = 'nie ta pora';
 
@@ -46,7 +48,7 @@ const NIEPEWNY_KONIEC = 'niepewny koniec okna';
 // Archiwizacja doklada JEDNO ZADANIE HTTP NA DOKUMENT. Przy backfillu od stycznia to setki
 // zadan w jednym przebiegu, a przebieg dziedziczy juz najgorszy przypadek logowania do KSeF
 // (~31 min, ksef/client.js) i chodzi na zegarze godzinowym: przekroczenie godziny GUBI kolejne
-// tykniecie (bootstrap.js), a okno pobrania kosztow jest raz na dobe.
+// tyknięcie (zegary.ts), a okno pobrania kosztów jest raz na dobę.
 //
 // Sufit sztuk nie ogranicza CZASU: sto dokumentow po jednym zadaniu kazde brzmi tanio, ale
 // przy KSeF-ie odpowiadajacym wolno kazde z nich idzie do limitu klienta — czyli granica na
@@ -59,10 +61,10 @@ const NIEPEWNY_KONIEC = 'niepewny koniec okna';
 export const BUDZET_ARCHIWUM_MS = 10 * 60 * 1000;
 
 // ⚠️⚠️ NAJGORSZY MOZLIWY CZAS JEDNEGO PRZEBIEGU — LICZONY, A NIE OPISANY W KOMENTARZU
-// (recenzja calej galezi, W4). `bootstrap.js` odmawia startu panelu, gdy ta liczba nie miesci
-// sie w oknie pobrania, wiec podniesienie ktorejkolwiek ze skladowych bez policzenia skutku ma
-// POLOZYC PANEL PRZY STARCIE, a nie po cichu rozjechac zegar na produkcji. Ta sama regula, co
-// przy `NAJDLUZSZY_PRZEBIEG_MS` w services/czuwacz-ksef.js.
+// `wczytajKoszty` (modul.ts) odmawia startu panelu, gdy ta liczba nie mieści się przed
+// następnym dobowym oknem pobrania, więc podniesienie którejkolwiek ze składowych bez
+// policzenia skutku ma POŁOŻYĆ PANEL PRZY STARCIE, a nie po cichu rozjechać zegar. Ta sama
+// reguła, co przy `najdluzszyPrzebiegMs` w faktury/services/czuwacz-ksef.js.
 //
 // Trzy skladniki, kazdy z modulu, ktory go naprawde narzuca:
 //   • PELNE LOGOWANIE do KSeF — do 30 pytan o stan operacji, kazde z wlasnym limitem 60 s
@@ -112,11 +114,12 @@ function pozniejsza(a, b) {
 
 export function createCzuwaczKosztow({
   db, klient, sesja, teraz = () => new Date(),
-  // ⚠️ SCIEZKA BAZOWA ARCHIWUM XML (`KSEF_ARCHIWUM`, config.js) — OPCJONALNA I TAKA MA ZOSTAC.
-  // Brak sciezki znaczy „nie archiwizujemy" i NIC WIECEJ: koszty pobieraja sie dokladnie jak
-  // dotad, bo plik na NAS-ie jest dodatkiem do lustra w bazie, a nie odwrotnie.
+  // ⚠️ SCIEZKA BAZOWA ARCHIWUM XML (`KSEF_ARCHIWUM`, modul.ts) — OPCJONALNA I TAKA MA ZOSTAC.
+  // Brak ścieżki znaczy „nie archiwizujemy" i NIC WIĘCEJ: koszty pobierają się tak samo,
+  // bo plik w archiwum jest dodatkiem do lustra w bazie, a nie odwrotnie.
   katalogArchiwum = null,
-  // Wstrzykiwalne wylacznie dla testow — ta sama zasada, co przy `log` w wysylka-ksef.js.
+  // Wstrzykiwalne wyłącznie dla testów — ta sama zasada, co przy `log` w
+  // faktury/services/wysylka-ksef.js.
   archiwizuj = zarchiwizuj,
   // ⚠️ CZEKANIE PO ODMOWIE Z LIMITU KSeF (ksef/limit.js) — wstrzykiwalne WYLACZNIE po to, zeby
   // testy nie spaly po 55 s na prawdziwym zegarze. W produkcji jedzie zwykly `setTimeout`.
@@ -188,7 +191,7 @@ export function createCzuwaczKosztow({
     try {
       const wiersz = naWiersz(metadane);
       const nowy = zapiszKoszt(db, wiersz);
-      // ⚠️ UDANY ZAPIS WYPUSZCZA DOKUMENT Z KWARANTANNY (recenzja, W4). Takze przy `nowy ===
+      // ⚠️ UDANY ZAPIS WYPUSZCZA DOKUMENT Z KWARANTANNY. Także przy `nowy ===
       // false`: „juz byl" znaczy, ze dokument LEZY w `koszty`, a wtedy wiersz kwarantanny
       // klamalby, ze brakuje go w sumie miesiaca — i klamalby TRWALE, bo okna pobrania
       // zachodza na siebie i to jest normalny przebieg, a nie przypadek skrajny.
@@ -219,7 +222,7 @@ export function createCzuwaczKosztow({
    * tego test „XML pobiera sie DOPIERO po zapisaniu kursora".
    *
    * ⚠️⚠️ NIC STAD NIE MA PRAWA WYLECIEC W GORE. Wyjatek przepuszczony dalej trafilby do
-   * `catch` przebiegu, czyli dopisalby awarie NAS-a do `ostatni_blad` (kasujac slad
+   * `catch` przebiegu, czyli dopisałby awarię dysku archiwum do `ostatni_blad` (kasując ślad
    * o kwarantannie zapisany chwile wczesniej) i odrzucil obietnice przebiegu. Baza ma juz
    * KOMPLET danych o tych dokumentach; plik jest dodatkiem. Kursor zostaje tam, gdzie stanal.
    *
@@ -241,13 +244,14 @@ export function createCzuwaczKosztow({
       try {
         // ⚠️⚠️ ODMOWA Z LIMITU (HTTP 429) TO PRZERWA, A NIE AWARIA — i to jest jedyny powod,
         // dla ktorego pobranie XML-a jedzie przez `zCzekaniemNa429` (ksef/limit.js), a nie
-        // wprost. Zmierzone na produkcji 2026-09-02: po 16 XML-ach w ~20 s KSeF odbijal kazde
-        // kolejne zadanie, a licznik `bledyZRzedu` — pisany na MARTWE zrodlo — liczyl te odmowy
-        // jak awarie i po trzech przerywal archiwizacje. Archiwum dociagalo wtedy 16 dokumentow
-        // na dobe, czyli przy backfillu od stycznia: miesiace zamiast kilku nocy.
+        // wprost. KSeF potrafi odbijać każde kolejne żądanie już po kilkunastu XML-ach pobranych
+        // w niecałą minutę, a licznik `bledyZRzedu` — pisany na MARTWE źródło — liczyłby te
+        // odmowy jak awarie i po trzech przerywał archiwizację. Archiwum dociągałoby wtedy
+        // kilkanaście dokumentów na dobę, czyli przy backfillu od stycznia: miesiące zamiast
+        // kilku nocy.
         //
         // ⚠️⚠️ PONOWIENIE SIEDZI W `zarchiwizuj`, A NIE TUTAJ, I TO JEST WARUNEK POPRAWNOSCI
-        // (recenzja Task 16). Owiniecie CALEGO `archiwizuj` obejmowaloby takze `sesja
+        // Owinięcie CAŁEGO `archiwizuj` obejmowałoby także `sesja
         // .accessToken()`, czyli PELNE logowanie do KSeF — a to wolno zrobic najwyzej RAZ
         // (`/auth/token/redeem` jest jednorazowy, ksef/sesja.js). 429 z sekwencji logowania
         // — a klient taguje `status: 429` KAZDA odmowe z limitu — kazalby wiec powtorzyc caly
@@ -271,7 +275,7 @@ export function createCzuwaczKosztow({
         });
         if (wynik?.xml) { zrobionych += 1; bledyZRzedu = 0; continue; }
         // Nieudany ZAPIS na dysk (`zarchiwizuj` zjada go sam i tylko loguje) liczy sie do tego
-        // samego licznika, co blad pobrania: padniety NAS odbije tak samo kazdy nastepny
+        // samego licznika, co błąd pobrania: padnięty dysk archiwum odbije tak samo każdy następny
         // dokument, a kazda taka proba kosztuje jedno POBRANIE z KSeF.
         bledyZRzedu += 1;
       } catch (e) {
@@ -315,28 +319,28 @@ export function createCzuwaczKosztow({
     trwa = true;
     try {
       let nowych = 0; let przeczytanych = 0; let odrzuconych = 0;
-      // ⚠️⚠️ KURSOR NIE JEST „OSTATNIA WIDZIANA DATA" — jest NAJDALSZA (recenzja, W2). Zmienna
+      // ⚠️⚠️ KURSOR NIE JEST „OSTATNIA WIDZIANA DATA" — jest NAJDALSZA. Zmienna
       // niosaca date ostatniego rekordu MUSI byc per-okno (`ostatniaData` nizej, w ciele petli),
       // bo sluzy do PRZESUWANIA OKNA i jest jedyna przeslanka straznika `!ostatniaData`
-      // w `nastepnyKrok`. Wspolna dla wszystkich okien przeciekala: pusta strona z `isTruncated`
-      // w oknie N dostawala date z okna N-1, straznik nie zachodzil, a kolejne zapytanie szlo
-      // z zakresem 149 dni przy TWARDYM limicie MF trzech miesiecy — czyli 400 z KSeF i przebieg
-      // padajacy co noc w tym samym miejscu. Kursor dostaje wiec wlasna zmienna, na poziomie
-      // calego przebiegu, i tylko ona jedzie do `zapiszKursor`.
+      // w `nastepnyKrok`. Wspólna dla wszystkich okien przeciekałaby: pusta strona z
+      // `isTruncated` w oknie N dostałaby datę z okna N-1, strażnik by nie zaszedł, a kolejne
+      // zapytanie poszłoby z zakresem dłuższym niż TWARDY limit MF trzech miesięcy — czyli 400
+      // z KSeF i przebieg padający co noc w tym samym miejscu. Kursor dostaje więc własną
+      // zmienną, na poziomie całego przebiegu, i tylko ona jedzie do `zapiszKursor`.
       let najdalszaData = null;
-      // ⚠️⚠️ PRZEDWCZESNY KONIEC OKNA KONCZY CALY PRZEBIEG, A NIE SAMO OKNO — i to jest poprawka
-      // do pierwszej wersji tej petli, w ktorej wyczerpanie sufitu po cichu przechodzilo do
-      // NASTEPNEGO okna. Skutek byl dokladnie taki, przed jakim broni cala reszta tego modulu:
-      // dokumenty z ogona przerwanego okna nie zostawaly przeczytane NIGDY (kursor przeskakiwal
-      // za nie razem z ostatnim oknem), a przebieg konczyl sie bez bledu. Dziura w kosztach,
-      // czyli zanizona suma podana z pelnym przekonaniem.
+      // ⚠️⚠️ PRZEDWCZESNY KONIEC OKNA KOŃCZY CAŁY PRZEBIEG, A NIE SAMO OKNO. Gdyby wyczerpanie
+      // sufitu po cichu przechodziło do NASTĘPNEGO okna, skutek byłby dokładnie taki, przed
+      // jakim broni cała reszta tego modułu: dokumenty z ogona przerwanego okna nie zostałyby
+      // przeczytane NIGDY (kursor przeskoczyłby za nie razem z ostatnim oknem), a przebieg
+      // skończyłby się bez błędu. Dziura w kosztach, czyli zaniżona suma podana z pełnym
+      // przekonaniem.
       //
       // Zatrzymanie calego przebiegu jest za to bezpieczne: strony ida rosnaco po dacie
       // trwalego zapisu, wiec kursor na ostatnim przeczytanym dokumencie jest prawdziwy,
       // a nastepny przebieg podejmuje DOKLADNIE stad. Zaden dokument nie wypada, przebieg
       // po prostu trwa dwie noce zamiast jednej — i mowi o tym.
       //
-      // ⚠️ WYJSCIA PRZEDWCZESNE SA DWA (recenzja, W3), i obydwa dostaja te sama obrone:
+      // ⚠️ WYJŚCIA PRZEDWCZESNE SĄ DWA i obydwa dostają tę samą obronę:
       //   • SUFIT STRON — okno nie zmiescilo sie w limicie;
       //   • NIEPEWNY KONIEC — KSeF oddal PELNA strone i NIE podal `hasMore`, a klient zszedl
       //     do bezpiecznego `false` (ksef/client.js, ksztalt niezmierzony na zywym API). Wtedy
@@ -351,10 +355,10 @@ export function createCzuwaczKosztow({
       // nikt nigdy nie przeczyta.
       const chwila = teraz().toISOString();
       const kursor = wczytajKursor(db);
-      // ⚠️ KURSOR Z PRZYSZLOSCI (recenzja, D1). Data pozniejsza niz biezaca chwila — skew zegara
-      // kontenera albo `permanentStorageDate` z KSeF w innej strefie — dawala PUSTA liste okien:
-      // czuwacz nie robil NIC, na zawsze, bez ani jednego bledu. `odKursora` czyta wtedy ostatni
-      // odcinek zapasu (domain/okna-pobrania.js), wiec pobieranie idzie dalej i samo sie naprawia
+      // ⚠️ KURSOR Z PRZYSZŁOŚCI. Data późniejsza niż bieżąca chwila — skew zegara kontenera
+      // albo `permanentStorageDate` z KSeF w innej strefie — dawałaby PUSTĄ listę okien:
+      // czuwacz nie robiłby NIC, na zawsze, bez ani jednego błędu. `odKursora` czyta wtedy ostatni
+      // odcinek zapasu (domena/okna-pobrania.js), wiec pobieranie idzie dalej i samo sie naprawia
       // — a operator dostaje o tym zdanie, bo cichy dziwny stan jest tu gorszy niz halas.
       const kursorZPrzyszlosci = Boolean(kursor) && new Date(kursor).getTime() > new Date(chwila).getTime();
       // ⚠️ OKNO ZACHODZI NA POPRZEDNIE (`odKursora` cofa sie o zapas) — i na tym stoi cala reszta
@@ -413,9 +417,9 @@ export function createCzuwaczKosztow({
       // ⚠️ KURSOR PRZESUWA SIE DOPIERO PO CALYM UDANYM PRZEBIEGU. Przesuwanie go po kazdej
       // stronie znaczyloby, ze awaria w polowie zostawia dziure w lustrze — a dziura w kosztach
       // to zanizona suma w raporcie, czyli bledna liczba podana z pelnym przekonaniem.
-      // ⚠️ UDANY PRZEBIEG ODNOTOWUJE SIE ZAWSZE, TAKZE PUSTY (recenzja, W1). `zapiszKursor` byl
-      // jedynym zapisem `ostatnie_udane_at`, wiec spokojna doba bez faktur kosztowych zostawiala
-      // ekran ze zdaniem „nigdy sie nie udalo" i z awaria sprzed trzech tygodni wciaz zapalona.
+      // ⚠️ UDANY PRZEBIEG ODNOTOWUJE SIĘ ZAWSZE, TAKŻE PUSTY. Gdyby `zapiszKursor` był jedynym
+      // zapisem `ostatnie_udane_at`, spokojna doba bez faktur kosztowych zostawiałaby ekran ze
+      // zdaniem „nigdy się nie udało" i z dawną awarią wciąż zapaloną.
       // Kursor zostaje tam, gdzie stal — nie ma czym go przesunac (uzasadnienie w db/koszty.js).
       if (najdalszaData) zapiszKursor(db, najdalszaData); else odnotujUdanyPrzebieg(db);
       // ⚠️ SLADY IDA PO `zapiszKursor`, A NIE PRZED — ta funkcja CZYSCI `ostatni_blad` (bo udany
@@ -423,10 +427,10 @@ export function createCzuwaczKosztow({
       // milisekundzie, w ktorej powstal. Wynik: pasek zakladki mowi jednoczesnie „pobrano teraz"
       // i „N dokumentow nie weszlo do sumy", i to jest prawda o obu tych rzeczach naraz.
       const uwagi = [];
-      // ⚠️⚠️ STAN CALEJ TABELY, A NIE LICZNIK TEGO PRZEBIEGU (recenzja, W1). Licznik gasl po
-      // PIERWSZEJ czystej nocy: `zapiszKursor` czysci `ostatni_blad`, a przebieg bez nowych
-      // odrzucen nie mial czego dopisac — wiec po jednej dobie jedynym sladem po dokumencie
-      // pominietym w sumie miesiaca zostawala tabela, ktorej nic nie czyta. To wywracalo cale
+      // ⚠️⚠️ STAN CAŁEJ TABELY, A NIE LICZNIK TEGO PRZEBIEGU. Licznik gasłby po PIERWSZEJ
+      // czystej nocy: `zapiszKursor` czyści `ostatni_blad`, a przebieg bez nowych odrzuceń nie
+      // miałby czego dopisać — więc po jednej dobie jedynym śladem po dokumencie pominiętym
+      // w sumie miesiąca zostałaby tabela, której nic nie czyta. To wywracałoby całe
       // uzasadnienie wyboru kwarantanny („nic nie znika po cichu"). Kwarantanna jest stanem
       // TRWALYM i ma byc widoczna dopoki trwa — czyli az do `usunOdrzucony` po udanym zapisie.
       const wKwarantannie = liczbaOdrzuconych(db);
@@ -450,7 +454,7 @@ export function createCzuwaczKosztow({
       if (uwagi.length) zapiszBladPobrania(db, uwagi.join(' '));
       // ⚠️ NA SAMYM KONCU I POZA CALA PETLA POBIERANIA — uzasadnienie w naglowku
       // `zarchiwizujZalegle` wyzej (zakaz wolania klienta KSeF w petli kwarantanny) oraz
-      // w `zarchiwizuj` (awaria NAS-a nie przerywa niczego). Kursor jest juz zapisany, wiec
+      // w `zarchiwizuj` (awaria dysku archiwum nie przerywa niczego). Kursor jest już zapisany, więc
       // cokolwiek stanie sie tutaj, przebieg pozostaje udany i dane w bazie sa kompletne.
       const zarchiwizowanych = await zarchiwizujZalegle();
       return {
@@ -459,7 +463,7 @@ export function createCzuwaczKosztow({
         odrzuconych,
         zarchiwizowanych,
         niedokonczone,
-        // ⚠️ OKNA PRZETWORZONE, NIE ZAPLANOWANE (recenzja, D5). Przy `niedokonczone: true`
+        // ⚠️ OKNA PRZETWORZONE, NIE ZAPLANOWANE. Przy `niedokonczone: true`
         // liczba zaplanowanych klamie — mowi, ile okien panel MIAL przeczytac, a czytelnik
         // bierze ja za „ile przeczytal". Obie liczby sa przydatne, wiec obie sa nazwane.
         okien: oknaPrzetworzone,
@@ -478,7 +482,7 @@ export function createCzuwaczKosztow({
   // konkretne dokumenty w KSeF. Numery ida z bazy (`ostatnia_proba_at` malejaco), wiec na gorze
   // sa te z wlasnie zakonczonego przebiegu.
   //
-  // ⚠️ ZDANIE MOWI O STANIE KWARANTANNY, NIE O TYM PRZEBIEGU (recenzja, W1) — i tak ma byc
+  // ⚠️ ZDANIE MÓWI O STANIE KWARANTANNY, NIE O TYM PRZEBIEGU — i tak ma być
   // napisane. Dokument odrzucony trzy noce temu wciaz nie wchodzi do sumy miesiaca, a przebieg,
   // ktory sam nic nie odrzucil, nie jest zadnym powodem, zeby o nim przestac mowic. Zdanie
   // gasnie dopiero razem z ostatnim wierszem kwarantanny (`usunOdrzucony` po udanym zapisie).

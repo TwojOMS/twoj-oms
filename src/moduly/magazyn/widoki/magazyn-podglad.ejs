@@ -1,18 +1,18 @@
 <%# ZAPIS DO SKLEPOW — PODGLAD PRZED WYSLANIEM I WYNIK PO NIM.
 
-    ⚠️⚠️ TO JEDYNY EKRAN W PANELU, ZA KTORYM STOI ZAPIS DO SKLEPU, KTORY SPRZEDAJE — i jedyny,
-    ktorego skutku NIE DA SIE COFNAC KLIKNIECIEM. „Cofnij" znaczyloby drugi zapis do sklepu,
+    ⚠️⚠️ TO JEDYNY EKRAN W PANELU, ZA KTORYM STOI ZAPIS SKU I WYMIAROW DO SKLEPU, KTORY SPRZEDAJE — i jego
+    skutku NIE DA SIE COFNAC KLIKNIECIEM. „Cofnij" znaczyloby drugi zapis do sklepu,
     a panel nie trzyma tego, co bylo. Dlatego kazda pozycja pokazuje STARE → NOWE, a nie samą
     liczbe pozycji, i dlatego przy kazdej stoi SCIEZKA, pod ktora pojdzie zapis: to po niej
     widac roznice miedzy rodzicem a wariantem.
 
-    ⚠️ PANEL WYSYLA WYLACZNIE SKU I WYMIARY. Nigdy ceny, nazwy, kategorii, zdjec, opisu ani
-    stanu magazynowego — te zostaja pod kontrola sklepu. Do Allegro panel nie pisze nic.
+    ⚠️ ZAPIS WYSYLA WYLACZNIE SKU I WYMIARY. Nigdy ceny, nazwy, kategorii, zdjec, opisu ani
+    stanu magazynowego — te zostaja pod kontrola sklepu. Z tego ekranu do Allegro nie idzie nic.
 
     ⚠️ WIDOK NICZEGO NIE LICZY. Sciezki, opisy „stare → nowe", powody wstrzymania i liczby
-    przychodza policzone z web/routes/magazyn.js i domain/zapis-do-sklepu.js.
+    przychodzą policzone z moduly/magazyn/zapis.js i domena/zapis-do-sklepu.js.
 
-    ⚠️ ANI JEDNEGO KOLORU WPISANEGO WPROST — wszystko z palety w layout-oms.ejs. %>
+    ⚠️ ANI JEDNEGO KOLORU WPISANEGO WPROST — wszystko z palety w public/oms-uklad.css. %>
 <%
   // Liczebnik po polsku ma TRZY formy (ten sam wzorzec, co w magazyn-sku.ejs).
   const ilePozycji = (n) => {
@@ -100,7 +100,7 @@
     <div class="stopka-edycji">
       <%# ⚠️⚠️ FORMULARZ NIESIE NUMERY KART, NIGDY GOTOWEGO ZESTAWU ZMIAN. Zestaw liczy sie
           PONOWNIE przy zatwierdzeniu, ze stanu biezacego i z jednostka odczytana ze sklepu —
-          miedzy podgladem a klknieciem mogl wejsc odczyt katalogow albo drugi operator. %>
+          miedzy podgladem a kliknieciem mogl wejsc odczyt katalogow albo drugi operator. %>
       <% if (mozna) { %>
         <form method="post" action="/magazyn/zapisz-do-sklepow">
           <% doZatwierdzenia.forEach(function (id) { %>
@@ -115,7 +115,7 @@
 </section>
 
 <%# ——— CZEGO PANEL NIE WYSLE I DLACZEGO ——————————————————————————————————————
-    ⚠️ POZYCJA POMINIETA WRACA Z POWODEM (niezmiennik 4.13a). Cicho pominiety produkt wyglada
+    ⚠️ POZYCJA POMINIETA WRACA Z POWODEM. Cicho pominiety produkt wyglada
     na ekranie DOKLADNIE tak samo, jak produkt, w ktorym nie ma nic do zmiany — a tutaj
     roznica miedzy jednym a drugim to numer bedacy cudza tozsamoscia. %>
 <section class="panel" id="zapis-wstrzymane">

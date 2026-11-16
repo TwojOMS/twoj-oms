@@ -85,12 +85,12 @@
 <% } %>
 <% } %>
 
-<%# PRZ-102.12: sekcje KSeF poza warunkiem „klucz z pliku / z ekranu” — automat i przycisk używają inFaktu niezależnie
+<%# Sekcje KSeF poza warunkiem „klucz z pliku / z ekranu” — automat i przycisk używają inFaktu niezależnie
     od tego, skąd jest klucz. %>
 <section class="ust-sekcja" id="ksef-konsumenckie">
   <h2>Faktury konsumenckie w KSeF</h2>
   <% if (typeof bladKonsumenckich !== 'undefined' && bladKonsumenckich) { %><div class="pas-uprzedzenie" id="ksef-konsumenckie-blad"><p><%= bladKonsumenckich %></p></div><% } %>
-  <%_ /* PRZ-126.J01: zapis tylko admin (jak na ekranie Wysyłka do KSeF); reszta widzi stan. */ -%>
+  <%_ /* Zapis tylko admin (jak na ekranie Wysyłka do KSeF); reszta widzi stan. */ -%>
   <%_ if (admin) { -%>
   <form class="ust-formularz" method="post" action="/ustawienia/integracje/infakt/ksef-konsumenckie">
     <label for="ksef-konsumenckie-wlaczone">Wysyłaj do KSeF także faktury konsumenckie (nabywca bez NIP-u)</label>
@@ -104,7 +104,7 @@
   <%_ } -%>
 </section>
 
-<%# PRZ-108.06: formularz automatu wysyłki do KSeF przeniesiony na Ustawienia → Automatyzacje (faktury/widoki/_automat-ksef.ejs).
+<%# Formularz automatu wysyłki do KSeF przeniesiony na Ustawienia → Automatyzacje (faktury/widoki/_automat-ksef.ejs).
     Tu tylko stan i droga do niego; odnośnik widzi admin, bo tylko admin automat ustawia. %>
 <section class="ust-sekcja" id="ksef-automat">
   <h2>Automatyczna wysyłka do KSeF</h2>

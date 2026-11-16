@@ -18,7 +18,7 @@ function tekst(surowa) {
 /**
  * Zwraca { adres } gotowy do przekazania do nadanie.nadaj()/klient.nadaj(), albo { blad }
  * z czytelnym komunikatem, gdy którekolwiek pole WYMAGANE PRZEZ DPD (patrz
- * domain/adres-odbiorcy.js — POLA_WYMAGANE_PRZEZ_DPD, JEDNO źródło prawdy dla obu miejsc)
+ * domena/adres-odbiorcy.js — POLA_WYMAGANE_PRZEZ_DPD, JEDNO źródło prawdy dla obu miejsc)
  * jest puste. Puste pole wymagane to ZAWSZE odmowa, NIGDY ciche przepuszczenie do DPD —
  * dawniej (przed edytowalnym adresem) to samo ostrzeżenie tylko podświetlało pole w widoku
  * i NIE blokowało zatwierdzenia; teraz musi, bo operator mógł je wyczyścić przez przypadek.

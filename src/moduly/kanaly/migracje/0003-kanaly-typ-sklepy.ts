@@ -1,11 +1,11 @@
 import type {Migracja} from '../../../core/kontrakty.ts';
 
-// PRZ-132.02 (E4, baza konfiguratorów): kanał zna swój typ, aplikację Allegro, przez którą go połączono, a sklep
+// Baza konfiguratorów: kanał zna swój typ, aplikację Allegro, przez którą go połączono, a sklep
 // WooCommerce z panelu ma adres i mapowanie w osobnej tabeli 1:1 po kluczu.
-// - `typ` bez CHECK, celowo (PRZ-133: następne typy bez przebudowy tabeli). Dopuszczalne wartości pilnuje kod
+// - `typ` bez CHECK, celowo (kolejne typy bez przebudowy tabeli). Dopuszczalne wartości pilnuje kod
 //   (`TYPY_KANALOW`, `czyTypKanalu` z src/domena/moduly-kanalow.ts). Istniejące wiersze dostają DEFAULT 'allegro'.
-// - `aplikacja`: 'device' albo 'dcr' dla nowych połączeń z panelu; NULL = wiersz sprzed migracji, czytany jak dziś
-//   (DCR dla panelu, env dla env) — plan PRZ-132, rozdział 3.1.
+// - `aplikacja`: 'device' albo 'dcr' dla nowych połączeń z panelu; NULL = wiersz sprzed migracji, czytany jak przed dodaniem kolumny
+//   (DCR dla panelu, env dla env).
 // Addytywna: dwie kolumny z DEFAULT/NULL i nowa tabela; żaden istniejący wiersz się nie zmienia. Każde ADD COLUMN
 // chronione PRAGMA table_info, jak automatyzacje/0003 i 0004 — odporna na ponowne uruchomienie.
 export const migracjaTypuKanaluISklepow:Migracja={

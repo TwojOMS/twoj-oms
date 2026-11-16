@@ -3,7 +3,7 @@ import { zl } from './kwoty.js';
 // Pas ostrzezen ekranu raportow.
 //
 // ⚠️ LISTA JEST ZAMKNIETA I MA TAKA ZOSTAC. Ostrzezenie wyjace przy dobrych danych przestaje
-// znaczyc cokolwiek — w repo `raporty` regula `podejrzanyBrakTagu` wypisywala szesc alarmow
+// znaczyc cokolwiek — regula „podejrzany brak tagu" wypisywala alarmy
 // o POPRAWNIE otagowanym hurcie i przez to nikt nie czytal calego pasa.
 
 const odmiana = (n, jeden, kilka, wiele) => {
@@ -29,11 +29,11 @@ export function ostrzezenia(wiersze, { od, do: doDnia, granice, kanalGddWHistori
   // 2. Zamowienia bez ZADNEGO tagu — wylacznie w erze historycznej, bo wiersz z OMS-u
   //    tagow nie ma z definicji i alarm o nim bylby wyciem przy dobrych danych.
   //
-  // ⚠️⚠️ TYLKO WIERSZE Z APILO (27.08.2026). Historia ma od tej daty DWA zrodla, a import
-  //    ze sklepu wnosi ~8 500 zamowien, ktore tagu nie mialy NIGDY i miec nie mogly — Woo
-  //    nie zna tagow Apilo. Bez tego warunku pas krzyczalby „8 500 zamowien bez tagu" przy
-  //    kazdym raporcie siegajacym przed pazdziernik 2024 — czyli dokladnie to wycie przy
-  //    dobrych danych, przed ktorym ostrzega naglowek tego pliku.
+  // ⚠️⚠️ TYLKO WIERSZE Z APILO. Historia ma DWA zrodla, a import
+  //    ze sklepu wnosi tysiace zamowien, ktore tagu nie mialy NIGDY i miec nie mogly — Woo
+  //    nie zna tagow Apilo. Bez tego warunku pas krzyczalby „tysiace zamowien bez tagu" przy
+  //    kazdym raporcie siegajacym okresu sprzed Apilo, ktory pokrywa import ze sklepu — czyli
+  //    dokladnie to wycie przy dobrych danych, przed ktorym ostrzega naglowek tego pliku.
   const bezTagu = wiersze.filter(
     (w) => w.zrodlo === 'historia' && w.zrodloDanych === 'apilo' && !(w.tagi ?? []).length,
   );
@@ -60,7 +60,7 @@ export function ostrzezenia(wiersze, { od, do: doDnia, granice, kanalGddWHistori
   }
 
   // 4. Kanal z tagu historii (`tagGdd`) znika po granicy — OMS nie ma dzis dla niego znacznika.
-  //    PRZ-073: granice ma kazdy kanal algorytmiczny (demo zaklada ja wszystkim), wiec o samym
+  //    Granice ma kazdy kanal algorytmiczny (demo zaklada ja wszystkim), wiec o samym
   //    kanale mowi wylacznie instancja, ktorej klasyfikacja ten tag ma.
   const granicaGdd = kanalGddWHistorii === true ? granice.find((g) => g.kanal === 'GDD') : undefined;
   if (granicaGdd && doDnia > granicaGdd.do_dnia) {

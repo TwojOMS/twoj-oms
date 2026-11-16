@@ -2,7 +2,7 @@ import type { Migracja } from '../../../core/kontrakty.ts';
 
 // Znacznik pojedynczego zdjęcia; NULL = brak wiedzy. Bez CHECK — `src/core/baza.ts` przyjmuje tylko migracje
 // addytywne bez nowych ograniczeń; wartości 0/1 pilnuje `ustawZnacznikAi`. Starej flagi karty nie przenosimy.
-// Etap 3 Allegro: POST /sale/images z isAiCoCreated z tej samej kolumny ai.
+// Wysyłka zdjęcia do Allegro (POST /sale/images) bierze isAiCoCreated z tej samej kolumny ai.
 const KOLUMNY: readonly [string, string][] = [
   ['ai', 'ALTER TABLE zdjecia_kart ADD COLUMN ai INTEGER'],
   ['ai_reczne', 'ALTER TABLE zdjecia_kart ADD COLUMN ai_reczne INTEGER NOT NULL DEFAULT 0'],

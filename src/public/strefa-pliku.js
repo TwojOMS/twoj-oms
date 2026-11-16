@@ -1,5 +1,5 @@
-// STREFA PRZECIĄGANIA PLIKÓW — wspólna dla logo (Ustawienia → Firma, PRZ-108.03b) i zdjęć karty produktu
-// (Magazyn → karta → Zdjęcia, PRZ-160 P3a.04b).
+// STREFA PRZECIĄGANIA PLIKÓW — wspólna dla logo (Ustawienia → Firma) i zdjęć karty produktu
+// (Magazyn → karta → Zdjęcia).
 //
 // Strefa obejmuje zwykłe pole `<input type="file">`. Upuszczone pliki trafiają do TEGO SAMEGO pola (przez
 // DataTransfer), więc formularz wysyła je dokładnie tak jak pliki wybrane z dysku. Bez skryptu formularz działa jak

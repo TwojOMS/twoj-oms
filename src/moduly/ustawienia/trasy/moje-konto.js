@@ -1,4 +1,4 @@
-// PRZ-069: Moje konto — imię, zmiana hasła z obecnym hasłem. E-mail i rolę zmienia tylko administrator.
+// Moje konto — imię, zmiana hasła z obecnym hasłem. E-mail i rolę zmienia tylko administrator.
 // Trasy /konto, /konto/imie, /konto/haslo stoją w DLA_KAZDEGO (src/domena/ekrany.js) — bez ptaszka.
 import { kontoPoLoginie, zmienHaslo } from '../../../core/bezpieczenstwo/konta.js';
 import { zgodneHaslo } from '../../../domena/hasla.js';
@@ -23,8 +23,8 @@ export function modelKonta(db, id) {
   };
 }
 
-// PRZ-075: `loginDemo` — wspólne konto gościa demo publicznego (core/demo.ts). Jego hasło stoi na ekranie
-// logowania; gdyby gość mógł je zmienić, demo byłoby zamknięte dla wszystkich aż do nocnego resetu.
+// `loginDemo` — wspólne konto gościa demo publicznego (core/demo.ts). Jego hasło stoi na ekranie
+// logowania; gdyby gość mógł je zmienić, demo byłoby zamknięte dla wszystkich aż do najbliższego resetu demo.
 /** @param {any} app @param {{ db: any, teraz?: () => Date, loginDemo?: string | null, nazwaCiasteczka?: string }} opcje */
 export function registerMojeKontoRoutes(app, { db, teraz = () => new Date(), loginDemo = null, nazwaCiasteczka = NAZWA_CIASTECZKA_OMS }) {
   const hamulec = utworzHamulec();
@@ -71,9 +71,9 @@ export function registerMojeKontoRoutes(app, { db, teraz = () => new Date(), log
     if (nowe !== nowe2) return widok(req, reply.code(400), { blad: 'Nowe hasło wpisane dwa razy różni się.' });
     if (nowe === obecne) return widok(req, reply.code(400), { blad: 'Nowe hasło musi różnić się od obecnego.' });
     zmienHaslo(db, req.konto.id, nowe);
-    // Recenzja D8 r1, P3-1: nieużyty link do hasła (np. reset zlecony adminowi) nie może potem nadpisać nowego hasła.
+    // Nieużyty link do hasła (np. reset zlecony adminowi) nie może potem nadpisać nowego hasła.
     uniewaznijLinkiKonta(db, req.konto.id, teraz);
-    // Nowa wersja hasła wylogowuje wszystkie sesje — bieżąca dostaje od razu nowe ciasteczko (spec §4.4).
+    // Nowa wersja hasła wylogowuje wszystkie sesje — bieżąca dostaje od razu nowe ciasteczko.
     const konto = kontoPoLoginie(db, req.konto.login);
     return reply
       .header('Set-Cookie', ciasteczkoSesji(nazwaCiasteczka, podpisz(konto.login, wczytajSekret(db), Date.now(), konto.wersja_hasla),

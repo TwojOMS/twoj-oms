@@ -1,30 +1,29 @@
 // Miniatura POZYCJI ZAMÓWIENIA — jedna reguła dla wszystkich ekranów, które ją pokazują.
 //
-// ⚠️⚠️ PO CO TEN PLIK ISTNIEJE. Do 2026-08-12 wszystkie te ekrany liczyły adres miniatury
-// funkcją `adresMiniatury` (domain/miniatury.js), czyli DOKLEJALY `-150x150` do nazwy pliku
-// oryginału. Zmierzone na produkcji na wszystkich adresach obu sklepów:
+// ⚠️⚠️ PO CO TEN PLIK ISTNIEJE. Samo `adresMiniatury` (domena/miniatury.js) liczy adres
+// miniatury ZGADYWANIEM, czyli DOKLEJA `-150x150` do nazwy pliku oryginału. Zmierzone na
+// prawdziwych sklepach: w jednym zgadywanie trafiało w każdy adres, w drugim dawało 404
+// na zdecydowanej większości (blisko 9 na 10).
 //
-//   sklep B — 103 zdjęcia, 103 miniatury,   0 błędów (0%)
-//   sklep A — 684 zdjęcia,  76 miniatur,  608 błędów 404 (89%)
-//
-// Powód: sklep A skaluje miniatury do `247x296`, a nie do WordPressowego `150x150`.
-// W sklepie B zgadywanie trafiało PRZYPADKIEM. Prawdziwy adres leży od tej samej daty w kolumnie
-// `produkty_sklepowe.miniatura` — bierze się wprost ze Store API sklepu (magazyn-sync.js),
+// Powód: sklep może skalować miniatury do własnego rozmiaru, a nie do WordPressowego `150x150`.
+// Tam, gdzie zgadywanie trafia, trafia PRZYPADKIEM. Prawdziwy adres leży w kolumnie
+// `produkty_sklepowe.miniatura` — bierze się wprost ze Store API sklepu
+// (moduly/magazyn/services/magazyn-sync.js),
 // więc panel nie musi o niego pytać sklepu ANI RAZU: pozycja zna kanał (`zamowienia.sklep`)
 // i numer produktu (`pozycje.produkt_id`), a lustro zna parę `(kanal, produkt_id) → miniatura`.
 //
-// ⚠️ `pozycje.produkt_id` TRZYMA RODZICA, NIGDY WARIANTU (schema.sql) — i właśnie dlatego ta
+// ⚠️ `pozycje.produkt_id` TRZYMA RODZICA, NIGDY WARIANTU — i właśnie dlatego ta
 // droga w ogóle działa: `miniatura` w lustrze jest miniaturą PRODUKTU (Store API oddaje zdjęcia
 // na produkcie, warianty jako samo `{ id, attributes }`), więc klucz i wartość mówią o tym
 // samym bycie.
 //
-// ⚠️⚠️ POPRAWA JEST ŚCIŚLE JEDNOSTRONNA I TO JEST WARUNEK, NIE OSTROŻNOŚĆ. Przy naprawie
-// magazynu (dzień wcześniej) ekran przestawiono na czytanie WYŁĄCZNIE nowej kolumny; kolumna
-// startowała pusta, więc zgasły także miniatury sklepu B, które wcześniej działały — usterka
-// częściowa zamieniła się w całkowitą aż do ręcznego odczytu katalogów. Tutaj gałąź zapasowa
-// ZOSTAJE: czego lustro nie zna, to renderuje się dokładnie tak jak dziś. Nigdzie nie może
-// być gorzej niż przed tą zmianą — ani w sklepie B, ani na Allegro (które Store API nie ma
-// w ogóle), ani w archiwum sprzed pierwszego odczytu katalogu.
+// ⚠️⚠️ POPRAWA JEST ŚCIŚLE JEDNOSTRONNA I TO JEST WARUNEK, NIE OSTROŻNOŚĆ. Ekran przestawiony
+// na czytanie WYŁĄCZNIE nowej kolumny gasi także miniatury, które wcześniej działały: kolumna
+// startuje pusta, więc usterka częściowa zamienia się w całkowitą aż do ręcznego odczytu
+// katalogów (tak już raz było przy magazynie). Tutaj gałąź zapasowa ZOSTAJE: czego lustro nie
+// zna, to renderuje się zgadywanym adresem. Nigdzie nie może być gorzej niż bez lustra — ani
+// w sklepie, w którym zgadywanie trafia, ani na Allegro (które Store API nie ma w ogóle), ani
+// w archiwum sprzed pierwszego odczytu katalogu.
 import { adresMiniatury } from './miniatury.js';
 
 // ⚠️ ZNAK ZEROWY JAKO ROZDZIELACZ, a nie myślnik ani dwukropek. Kanały to `sklep_b`, `sklep_a`,
@@ -51,7 +50,7 @@ export function kluczLustra(kanal, produktId) {
 }
 
 // Adres z lustra ląduje wprost w atrybucie `src` naszego HTML-a, a lustro bierze się z cudzego
-// API — ten sam warunek, co przy każdym innym adresie w domain/miniatury.js i z tego samego
+// API — ten sam warunek, co przy każdym innym adresie w domena/miniatury.js i z tego samego
 // powodu. Adres, któremu odmawiamy, NIE gasi zdjęcia: schodzimy wtedy do gałęzi zapasowej.
 const ADRES_HTTP = /^https?:\/\//i;
 
@@ -75,8 +74,8 @@ export function miniaturaZLustra(zLustra, oryginal) {
     const s = zLustra.trim();
     if (s && ADRES_HTTP.test(s)) return s;
   }
-  // ⚠️ TU KOŃCZY SIĘ JEDNOSTRONNOŚĆ I TEJ LINII NIE WOLNO USUNĄĆ. Bez niej sklep B, Allegro
-  // i całe archiwum sprzed pierwszego odczytu katalogu straciłyby miniatury, które DZIŚ
+  // ⚠️ TU KOŃCZY SIĘ JEDNOSTRONNOŚĆ I TEJ LINII NIE WOLNO USUNĄĆ. Bez niej sklep, w którym
+  // zgadywanie trafia, Allegro i całe archiwum sprzed pierwszego odczytu katalogu straciłyby miniatury, które DZIŚ
   // działają — czyli powtórzyłby się błąd z naprawy magazynu.
   return adresMiniatury(oryginal);
 }
@@ -91,9 +90,9 @@ export function miniaturaZLustra(zLustra, oryginal) {
 export function miniaturaPozycji(lustro, kanal, produktId, oryginal, sku = null, lustroSku = null) {
   const klucz = kluczLustra(kanal, produktId);
   // ⚠️ `lustro` MUSI być `Map`, nie literałem obiektu — patrz komentarz przy `miniaturyLustra`
-  // w db/miniatury-lustra.js. `?.get?.` przepuszcza też brak mapy w ogóle.
+  // w oms/db/miniatury-lustra.js. `?.get?.` przepuszcza też brak mapy w ogóle.
   let zLustra = klucz === null ? null : lustro?.get?.(klucz);
-  // PRZ-159: pozycja BEZ żadnego zdjęcia (ERLI nie przysyła go w zamówieniu) — miniatura produktu o tym samym SKU
+  // Pozycja BEZ żadnego zdjęcia (ERLI nie przysyła go w zamówieniu) — miniatura produktu o tym samym SKU
   // z lustra magazynu (`miniaturySku`). Tylko wtedy: zdjęcie, które pozycja ma (sklep, Allegro), wygrywa jak dotąd.
   const bezZdjecia = typeof oryginal !== 'string' || !oryginal.trim();
   if ((zLustra === null || zLustra === undefined) && bezZdjecia && typeof sku === 'string' && sku.trim()) {

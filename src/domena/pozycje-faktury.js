@@ -3,8 +3,8 @@ import {
   zl, sumaPozycjiZWysylkaGrosze, kwotaOczekiwanaGrosze, wartoscPozycjiGrosze, wysylkaBruttoGrosze,
 } from './suma-pozycji.js';
 import { wysylkaEfektywna } from './wysylka-kwota.js';
-// Stawka DOKUMENTU liczy sie z NIP-u nabywcy (domain/wdt.js): nabywca z panstwa UE dostaje
-// 0% (WDT), kazdy inny STAWKA_VAT z domain/vat.js — to jest ta "swiadoma zmiana z testem",
+// Stawka DOKUMENTU liczy sie z NIP-u nabywcy (domena/wdt.js): nabywca z panstwa UE dostaje
+// 0% (WDT), kazdy inny STAWKA_VAT z domena/vat.js — to jest ta "swiadoma zmiana z testem",
 // ktora zapowiadal komentarz w vat.js. Nabywce dokumentu rozstrzyga daneFaktury(z), czyli
 // TA SAMA regula, ktora wskazuje NIP kartotece inFaktu (services/faktura.js) — reczna
 // poprawka numeru na karcie zmienia wiec stawke razem z nabywca, nigdy osobno.
@@ -12,7 +12,7 @@ import { czyWdt } from './wdt.js';
 import { daneFaktury } from './dane-faktury.js';
 import { czyStawkaVat, stawkaPozycji } from './vat.js';
 
-// Nazwa pozycji dostawy na fakturze — jedna, eksportowana stala. Korekta (domain/korekta-pozycje.js)
+// Nazwa pozycji dostawy na fakturze — jedna, eksportowana stala. Korekta (domena/korekta-pozycje.js)
 // musi rozpoznac wlasna pozycje dostawy po TEJ SAMEJ nazwie; druga kopia literalu rozjechalaby
 // sie przy pierwszej zmianie i korekta przestalaby ja widziec, po cichu.
 export const NAZWA_DOSTAWY = 'Dostawa';
@@ -35,19 +35,19 @@ export const NAZWA_DOSTAWY = 'Dostawa';
 // i kwoty, ktore panel pokazuje na karcie — bez ani jednej linii kodu o tym tutaj.
 //
 // Netto pozycji recznej NIE JEDZIE do inFaktu i nie ma prawa pojechac: wysylamy brutto
-// (`gross_price`), tak samo jak przy pozycjach ze sklepu, a podatek liczy inFakt.
+// (`gross_price`), tak samo jak przy pozycjach ze sklepu, a podatek liczy program faktur.
 //
-// PRZ-105 (21.10.2026): stawka PER POZYCJA — decyzja właściciela: stawka wybrana w wierszu idzie na fakture inFakt
-// (i dalej do KSeF) oraz na proforme. Pozycja reczna niesie wlasna (`vat`), sklepowa/Allegro i dostawa dostaja
-// domyslna z Ustawien (`stawkaDomyslna`, moduly/faktury/db/stawka-vat.js). Nabywca z UE (WDT) wymusza 0 na
-// KAZDEJ linii — RAZ na dokument, bo dokument ma jednego nabywce.
+// Stawka PER POZYCJA: stawka wybrana w wierszu idzie na fakturę (i dalej do KSeF) oraz na proformę. Pozycja
+// ręczna niesie własną (`vat`), sklepowa/Allegro i dostawa dostają domyślną z Ustawień (`stawkaDomyslna` —
+// czytajStawkeDomyslna, moduly/faktury/db/stawka-vat.js). Nabywca z UE (WDT) wymusza 0 na KAŻDEJ linii — RAZ
+// na dokument, bo dokument ma jednego nabywcę.
 //
 // ⚠️ `stawkaDomyslna` jest WYMAGANA. Brak = wyjatek, nie ciche „23”: instalacja z domyslna 8 dostalaby inaczej
 // fakture z 23 z kazdego miejsca, ktore zapomnialo ja podac — bez bledu i bez sladu.
 //
-// PRZ-122.B07a: `zw: true` (wyłącznie program wbudowany) przepuszcza stawkę „zw” — domyślną i pozycji ręcznej.
+// `zw: true` (wyłącznie program wbudowany) przepuszcza stawkę „zw” — domyślną i pozycji ręcznej.
 // Bez flagi (inFakt) „zw” jak dotąd: domyślna „zw” = wyjątek, ręczna „zw” = stawka domyślna. WDT bez zmian (0).
-// PRZ-122.B07d: `zwolniona: true` (sprzedawca zwolniony z VAT, `sprzedawcaZwolniony`) — numer UE nabywcy to NIE WDT,
+// `zwolniona: true` (sprzedawca zwolniony z VAT, `sprzedawcaZwolniony`) — numer UE nabywcy to NIE WDT,
 // stawki jak dla polskiego nabywcy. Bez flagi jak dotąd.
 /**
  * @param {any} z
@@ -66,19 +66,19 @@ export function pozycjeDokumentu(z, { stawkaDomyslna, zw = false, zwolniona = fa
     name: p.nazwa,
     quantity: p.ilosc,
     // TA SAMA funkcja, ktora liczy sume pod tabela, saldo wplat i bariere nizej
-    // (domain/suma-pozycji.js) — razem z fallbackiem dla wierszy, ktorych migracja nie
+    // (domena/suma-pozycji.js) — razem z fallbackiem dla wierszy, ktorych migracja nie
     // umiala uzupelnic. Wczesniej ta regula stala tu w osobnej kopii.
     gross_price: wartoscPozycjiGrosze(p),
     tax_symbol: stawkaLinii(p),
   }));
   // Dostawa (i dostawy grupy scalonej) — stawka domyslna. Prawnie dostawa dzieli los towaru glownego; przy
-  // pozycjach z roznymi stawkami bierzemy domyslna firmy (decyzja w docs/plany/PRZ-105.md), u nas to rzadkosc.
+  // pozycjach z roznymi stawkami bierzemy domyślną firmy.
 
   // Koszt dostawy jest czescia `kwota_brutto`, ale NIE ma go w `line_items` — bez tej
   // pozycji faktura jest zanizona o wysylke przy kazdym platnym transporcie.
   //
-  // ⚠️ KWOTA I ILOSC SA EFEKTYWNE (od 07.08.2026) — TA SAMA funkcja, co suma pod tabela
-  // i bariera nizej (domain/suma-pozycji.js), wiec poprawiona cena dostawy albo druga paczka
+  // ⚠️ KWOTA I ILOSC SA EFEKTYWNE — TA SAMA funkcja, co suma pod tabela
+  // i bariera nizej (domena/suma-pozycji.js), wiec poprawiona cena dostawy albo druga paczka
   // trafiaja na fakture dokladnie tak, jak pokazuje je karta. Czytanie tu samej kolumny
   // `koszt_dostawy_brutto` znaczyloby fakture na kwote sklepowa przy karcie pokazujacej inna
   // — i barierę, ktora by to zlapala dopiero jako rozjazd, bez wskazania przyczyny.
@@ -86,7 +86,7 @@ export function pozycjeDokumentu(z, { stawkaDomyslna, zw = false, zwolniona = fa
   // `gross_price` to SUMA LINII (patrz naglowek), wiec ilosc idzie obok niej, a nie zamiast:
   // dokladnie tak samo jak przy pozycjach wyzej.
   const dostawa = wysylkaBruttoGrosze(z);
-  // PRZ-101.11: zamówienie GRUPY scalonej (domena/scalanie.js, `zamowienieGrupy`) niesie wysyłki
+  // Zamówienie GRUPY scalonej (domena/scalanie.js, `zamowienieGrupy`) niesie wysyłki
   // członków osobno — każda idzie osobną pozycją (główne „Dostawa”, dołączone „Dostawa — zamówienie
   // N”). Główne zostaje pod NAZWA_DOSTAWY, bo po niej korekta poznaje dostawę. Linie MUSZĄ dać
   // kwotę wysyłki, którą liczy bariera niżej — bariera nie sumuje `services`, więc rozjazd
@@ -121,25 +121,25 @@ export function pozycjeDokumentu(z, { stawkaDomyslna, zw = false, zwolniona = fa
 // przyszly przypadek, ktorego dzis nie przewidzielismy. Porownanie w groszach, na liczbach
 // calkowitych.
 //
-// Panel niczego do KSeF nie wysyla — wlasciciel robi to sam, wieczorem, zbiorczo — ale to
-// NIE oslabia powodu tej bariery. Zle wystawiony dokument trzeba by recznie znalezc
-// i skasowac w inFakcie PRZED ta wieczorna wysylka; kto tego nie zlapie na czas, dostaje
-// dokument w KSeF, ktorego juz sie nie kasuje, tylko koryguje. Bariera zlapala juz realny
-// blad zanizajacy faktury o koszt dostawy — dlatego zostaje nietknieta.
+// Wystawiony dokument idzie dalej do KSeF (automat albo wysyłka ręczna) — i to jest powód tej
+// bariery. Źle wystawiony dokument trzeba by ręcznie znaleźć i skasować w programie faktur PRZED
+// wysyłką; kto tego nie złapie na czas, dostaje dokument w KSeF, którego już się nie kasuje,
+// tylko koryguje. Bariera złapała już realny błąd zaniżający faktury o koszt dostawy — dlatego
+// zostaje nietknięta.
 export function sprawdzSumeDokumentu(services, z) {
   // Jedyna dziura w barierze: zamowienie na 0,00 zl bez ani jednej pozycji przechodzilo
   // ja bezblednie (suma pustej listy = 0 = kwota zamowienia) i do inFaktu leciala faktura
-  // z pustym `services`. Dokument bez pozycji to tez realny blad w inFakcie — trzeba go
-  // recznie znalezc i skasowac, a jesli nikt sie nie zorientuje przed wieczorna wysylka,
-  // trafi do KSeF i tez bedzie wymagal korekty.
+  // z pustym `services`. Dokument bez pozycji to też realny błąd w programie faktur — trzeba go
+  // ręcznie znaleźć i skasować, a jeśli nikt się nie zorientuje przed wysyłką do KSeF,
+  // trafi tam i też będzie wymagał korekty.
   if (services.length === 0) {
     throw bladOperatora(
       'Zamówienie nie ma żadnej pozycji do zafakturowania — faktury bez pozycji panel nie wystawi. '
       + 'Sprawdź zamówienie w sklepie.',
     );
   }
-  // Suma liczona WSPÓLNĄ funkcją z domain/suma-pozycji.js, DOKŁADNIE tą samą, którą karta
-  // zamówienia (domain/tabela-pozycji.js) używa do wiersza „Razem" i ostrzeżenia pod tabelą
+  // Suma liczona WSPÓLNĄ funkcją z domena/suma-pozycji.js, DOKŁADNIE tą samą, którą karta
+  // zamówienia (domena/tabela-pozycji.js) używa do wiersza „Razem" i ostrzeżenia pod tabelą
   // „Pozycje" — jedno miejsce arytmetyki, żeby bariera i karta nigdy nie mogły pokazać
   // innej liczby.
   //

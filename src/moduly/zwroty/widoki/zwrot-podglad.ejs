@@ -1,16 +1,16 @@
-<%# ⚠️⚠️ KROK 2 Z DWOCH — „sprawdz sume, zanim zapiszesz" (przebudowa 2026-08-15). %>
+<%# ⚠️⚠️ KROK 2 Z DWÓCH — „sprawdź sumę, zanim zapiszesz". %>
 <%# %>
-<%# Ten ekran istnieje TYLKO DLATEGO, ze panel nie ma javascriptu w przegladarce i miec nie %>
-<%# ma: sumy nie da sie pokazac w trakcie wpisywania, wiec pokazuje sie ja po wyslaniu %>
-<%# formularza. RAZEM liczy SERWER (domain/zwrot-formularz.js: razemZwrotuZl, z wyniku %>
+<%# Ten ekran istnieje TYLKO DLATEGO, że panel nie ma javascriptu w przeglądarce i mieć nie %>
+<%# ma: sumy nie da się pokazać w trakcie wpisywania, więc pokazuje się ją po wysłaniu %>
+<%# formularza. RAZEM liczy SERWER (domena/zwrot-formularz.js: razemZwrotuZl, z wyniku %>
 <%# `parsujZwrot`) — widok nie sumuje niczego u siebie. %>
 <%# %>
-<%# ⚠️ Wszystkie wartosci jada dalej W POLACH UKRYTYCH, TAKZE wiersze z iloscia 0: to one sa %>
-<%# jedynym nosnikiem tego, co operator wpisal, i bez nich „Wstecz — popraw" cofaloby recznie %>
-<%# wyzerowana pozycje do podpowiedzi. %>
+<%# ⚠️ Wszystkie wartości jadą dalej W POLACH UKRYTYCH, TAKŻE wiersze z ilością 0: to one są %>
+<%# jedynym nośnikiem tego, co operator wpisał, i bez nich „Wstecz — popraw" cofałoby ręcznie %>
+<%# wyzerowaną pozycję do podpowiedzi. %>
 <%# %>
-<%# ⚠️ ANI JEDNEJ nowej reguly CSS — `.panel`, `.tab-stala`, `.liczba`, `.stopka-akcji`, %>
-<%# `.wyjasnienie`, `.btn` sa juz w layout-oms.ejs. %>
+<%# ⚠️ ANI JEDNEJ nowej reguły CSS — `.panel`, `.tab-stala`, `.liczba`, `.stopka-akcji`, %>
+<%# `.wyjasnienie`, `.btn` są już w arkuszu panelu. %>
 
 <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: `Zwrot — zamówienie ${z.numer}`, podtytul: 'krok 2 z 2 — sprawdź sumę', akcje: include('_naglowek-akcje-zwrot.ejs')}) %>
 
@@ -20,16 +20,16 @@
   </div>
   <div class="panel-cialo">
     <%# `.tab-pozycje tab-stala` — ta sama para klas, co tabela pozycji na karcie i na kroku 1. %>
-    <%# Sam `tab-stala` daje tylko staly uklad kolumn: bez `tab-pozycje` tabela nie ma ani %>
-    <%# obramowania, ani odstepow. %>
+    <%# Sam `tab-stala` daje tylko stały układ kolumn: bez `tab-pozycje` tabela nie ma ani %>
+    <%# obramowania, ani odstępów. %>
     <table class="tab-pozycje tab-stala">
       <colgroup><col style="width:60%"><col style="width:15%"><col style="width:25%"></colgroup>
       <thead>
         <tr><th>Pozycja</th><th class="liczba">Wraca (szt.)</th><th class="liczba">Kwota</th></tr>
       </thead>
       <tbody>
-        <%# Wylacznie to, co FAKTYCZNIE wraca — pozycje z iloscia 0 jada w polach ukrytych %>
-        <%# nizej, ale na tej liscie nie maja czego szukac. %>
+        <%# Wyłącznie to, co FAKTYCZNIE wraca — pozycje z ilością 0 jadą w polach ukrytych %>
+        <%# niżej, ale na tej liście nie mają czego szukać. %>
         <% kandydat.pozycje.forEach(function (p) { %>
           <tr>
             <td><%= p.nazwa %></td>
@@ -40,8 +40,8 @@
         <% if (!kandydat.pozycje.length) { %>
           <tr><td colspan="3">Żadna pozycja nie wraca — zwrot obejmuje wyłącznie koszt dostawy.</td></tr>
         <% } %>
-        <%# DOSTAWA OSOBNO — tak samo, jak rozlicza ja korekta (osobna pozycja dokumentu), %>
-        <%# wiec wrzucona do jednej sumy z pozycjami mylilaby przy sprawdzaniu korekty. %>
+        <%# DOSTAWA OSOBNO — tak samo, jak rozlicza ją korekta (osobna pozycja dokumentu), %>
+        <%# więc wrzucona do jednej sumy z pozycjami myliłaby przy sprawdzaniu korekty. %>
         <tr>
           <td>Koszt dostawy</td>
           <td class="liczba">—</td>
@@ -55,12 +55,12 @@
       </tbody>
     </table>
 
-    <%# ⚠️⚠️ KWOTA WPISANA RECZNIE WYGRYWA — ALE EKRAN MA TO POWIEDZIEC (naprawa wady %>
-    <%# krytycznej, recenzja 2026-08-15). Kwota, ktorej operator nie tknal, przeliczyla sie %>
-    <%# wyzej dla wpisanej liczby sztuk; kwota zmieniona zostaje jego („kwotę przepisujesz %>
-    <%# z Allegro i to ONA jest prawdą"), a tu stoi zdanie z OBIEMA liczbami. %>
-    <%# OSTRZEZENIE, NIE ODMOWA: `.pasek-uwaga` (istniejaca klasa), a przycisk zapisu zostaje. %>
-    <%# Zdania liczy DOMENA (domain/zwrot-formularz.js: przygotujKrok2) — widok je wypisuje. %>
+    <%# ⚠️⚠️ KWOTA WPISANA RĘCZNIE WYGRYWA — ALE EKRAN MA TO POWIEDZIEĆ. Kwota, której operator %>
+    <%# nie tknął, przeliczyła się wyżej dla wpisanej liczby sztuk; kwota zmieniona zostaje jego %>
+    <%# (np. przepisana z panelu kanału sprzedaży — to ONA jest prawdą), a tu stoi zdanie %>
+    <%# z OBIEMA liczbami. %>
+    <%# OSTRZEŻENIE, NIE ODMOWA: `.pasek-uwaga` (istniejąca klasa), a przycisk zapisu zostaje. %>
+    <%# Zdania liczy DOMENA (domena/zwrot-formularz.js: przygotujKrok2) — widok je wypisuje. %>
     <% ostrzezenia.forEach(function (tekst) { %>
       <p class="pasek-uwaga"><%= tekst %></p>
     <% }); %>
@@ -70,13 +70,13 @@
       Data rządzi miesiącem podatkowym — zwrot obciąża miesiąc, w którym nastąpił.
     </p>
 
-    <%# JEDEN formularz i DWA przyciski rozniace sie `formaction` — inaczej te same pola %>
-    <%# ukryte trzeba by wypisac dwa razy, a dwie kopie rozjechalyby sie przy pierwszej %>
-    <%# zmianie formularza. `formaction` to czyste HTML, zadnego skryptu. %>
+    <%# JEDEN formularz i DWA przyciski różniące się `formaction` — inaczej te same pola %>
+    <%# ukryte trzeba by wypisać dwa razy, a dwie kopie rozjechałyby się przy pierwszej %>
+    <%# zmianie formularza. `formaction` to czysty HTML, żadnego skryptu. %>
     <%# %>
-    <%# ⚠️ „Wstecz" stoi PIERWSZY w kodzie SWIADOMIE: Enter na formularzu uruchamia pierwszy %>
-    <%# przycisk zatwierdzajacy, a odruchowe „Enter" ma cofnac do poprawiania, nie zapisac %>
-    <%# zwrot, ktorego nikt jeszcze nie przeczytal. %>
+    <%# ⚠️ „Wstecz" stoi PIERWSZY w kodzie ŚWIADOMIE: Enter na formularzu uruchamia pierwszy %>
+    <%# przycisk zatwierdzający, a odruchowe „Enter" ma cofnąć do poprawiania, nie zapisać %>
+    <%# zwrot, którego nikt jeszcze nie przeczytał. %>
     <% if (mozeAdres(`/zamowienia/${z.id}/zwrot`) || mozeAdres(`/zamowienia/${z.id}/zwrot/popraw`)) { %>
     <form method="post" action="/zamowienia/<%= z.id %>/zwrot">
       <input type="hidden" name="powrot" value="<%= powrot %>">
@@ -86,10 +86,10 @@
         <input type="hidden" name="ilosc" value="<%= w.ilosc %>">
         <input type="hidden" name="pozycja_kwota" value="<%= w.kwota %>">
       <% }); %>
-      <%# ⚠️ KWOTA LACZNA POLICZONA PRZEZ SERWER (przygotujKrok2). Bariera spojnosci %>
-      <%# w `parsujZwrot` sprawdzi ja jeszcze raz przy zapisie — i o to chodzi: przestala %>
-      <%# odrzucac operatora, a zostala STRAZNIKIEM tego, ze miedzy tym ekranem a zapisem %>
-      <%# nikt tych dwoch liczb nie rozjechal. %>
+      <%# ⚠️ KWOTA ŁĄCZNA POLICZONA PRZEZ SERWER (przygotujKrok2). Bariera spójności %>
+      <%# w `parsujZwrot` sprawdzi ją jeszcze raz przy zapisie — i o to chodzi: przestała %>
+      <%# odrzucać operatora, a została STRAŻNIKIEM tego, że między tym ekranem a zapisem %>
+      <%# nikt tych dwóch liczb nie rozjechał. %>
       <input type="hidden" name="kwota" value="<%= kwotaZl %>">
       <input type="hidden" name="kwota_dostawy" value="<%= kwotaDostawyZl %>">
       <% if (zwrocDostawe) { %><input type="hidden" name="zwroc_dostawe" value="1"><% } %>

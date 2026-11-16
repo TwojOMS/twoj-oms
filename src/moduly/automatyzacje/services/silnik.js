@@ -1,4 +1,4 @@
-// PRZ-108.07 (zmiana B planu automatyzacji, sekcja 5): silnik reguł „zdarzenie → warunki → akcja”.
+// Silnik reguł „zdarzenie → warunki → akcja”.
 //
 // Jeden przebieg (zegar co 60 s, strażnik „jeden przebieg naraz”):
 //  1. Brak włączonych reguł → wyjście po JEDNYM SELECT, przed jakimkolwiek zapisem. Instalacja z zerem reguł nie
@@ -11,7 +11,7 @@
 //     brak poczty → pominięte; zgoda akcji → pominięte; rezerwacja `w_toku` (BEGIN IMMEDIATE) i dopiero potem akcja.
 //  4. Błąd akcji: chwilowy błąd poczty przed przyjęciem listu → ponowienie za 15 min (najwyżej 3 próby, potem błąd);
 //     każdy inny → `niepewne`, bez ponowienia.
-// Rejestry zdarzeń i akcji są parametrem — w zmianie B oba puste (moduł), w testach sztuczne.
+// Rejestry zdarzeń i akcji są parametrem — moduł podaje prawdziwe, testy sztuczne.
 import {
   czyPasujeKanalom, odczytKursora, nowyKursor, terminWykonania, czyPrzeterminowane, klasyfikujBladPoczty, godzineWczesniej,
   ponowienieOd, maWarunkiWykonania, BEZPIECZNIK_NARAZ, LIMIT_OMS_NA_GODZINE, LIMIT_KANDYDATOW, MAKS_PROB,
@@ -28,13 +28,13 @@ const ZMIANY = 'SELECT total_changes() AS n';
 // Odłożenie wyznacza próbę za 15 minut; godzina tolerancji pozwala rozpoznać działający OMS mimo opóźnień.
 const MAKS_CISZA_ODLOZENIA_MS = 60 * 60_000;
 const komunikat = (e) => (e instanceof Error ? e.message : String(e));
-// PRZ-109.12: błąd transportu poczty (znacznik z usługi wiadomości) niesie w `message` odpowiedź serwera, a w niej
+// Błąd transportu poczty (znacznik z usługi wiadomości) niesie w `message` odpowiedź serwera, a w niej
 // login skrzynki — do logu zamówienia i dziennika wykonań idzie tylko kod i zdanie, jak w `wiadomosc.blad`.
 const opisBleduWysylki = (e) => (e?.zTransportuPoczty ? opisBleduPocztyDoLogu(e) : komunikat(e));
 
 /**
- * Warunki w chwili wykonania, gdy nikt nie podał sprawdzacza (zmiana B; prawdziwy — status, numer listu, dostawa,
- * pobranie — wchodzi w C1). Reguła bez warunków poza kanałem przechodzi; każdy inny warunek jest NIESPEŁNIONY:
+ * Warunki w chwili wykonania, gdy nikt nie podał sprawdzacza (prawdziwy — status, numer listu, dostawa, pobranie —
+ * podaje moduł). Reguła bez warunków poza kanałem przechodzi; każdy inny warunek jest NIESPEŁNIONY:
  * lepiej pominąć z powodem niż wysłać maila, którego warunku nikt nie sprawdził.
  */
 export async function warunkiBezSprawdzacza({ regula }) {
@@ -60,7 +60,7 @@ export function createSilnikAutomatyzacji({
     const zdarzenie = rejestrZdarzen.get(regula.zdarzenie);
     if (!zdarzenie) return { nowe: 0, otwarte: 0 }; // zdarzenie niedostępne w tej wersji — reguła nic nie robi
     const { od, po } = odczytKursora(regula);
-    // PRZ-108.08: detektor dostaje białą listę kanałów (obce kanały nie zajmują limitu kandydatów) i id reguły
+    // Detektor dostaje białą listę kanałów (obce kanały nie zajmują limitu kandydatów) i id reguły
     // (paczki nie mają znacznika chwili przejścia w „nadana” — detektor pomija te, które reguła już ma).
     const kandydaci = zdarzenie.kandydaci(db, { granica: regula.granica, od, po, parametr: regula.zdarzenie_param,
       limit: LIMIT_KANDYDATOW, kanaly: Array.isArray(regula.warunki?.kanaly) ? regula.warunki.kanaly : [], regula_id: regula.id });
@@ -104,7 +104,7 @@ export function createSilnikAutomatyzacji({
       return { koniec: pominiete(w, regula ?? { nazwa: '?' }, 'regula_wylaczona', 'Reguła została wyłączona, zanim nadszedł termin.') };
     }
     if (regula.wstrzymana_powod) return { koniec: 'czeka' };
-    // Kanał drugi raz, tuż przed rezerwacją: admin mógł odznaczyć kanał w regule po wykryciu (recenzja 07, usterka 5).
+    // Kanał drugi raz, tuż przed rezerwacją: admin mógł odznaczyć kanał w regule po wykryciu.
     const sklep = db.prepare('SELECT sklep FROM zamowienia WHERE id = ?').get(w.zamowienie_id)?.sklep;
     if (!czyPasujeKanalom(sklep, regula.warunki)) {
       return { koniec: pominiete(w, regula, 'kanal_odznaczony', POWOD_KANAL_ODZNACZONY) };
@@ -140,7 +140,7 @@ export function createSilnikAutomatyzacji({
     }
     if (akcja.zgoda) {
       const zgoda = await akcja.zgoda({ db, regula, wykonanie: w, teraz });
-      // PRZ-122.MAIL-OKNO: „jeszcze nie teraz” (faktura w oknie poprawek) — wiersz czeka, próby nie maleją.
+      // „Jeszcze nie teraz” (faktura w oknie poprawek) — wiersz czeka, próby nie maleją.
       if (zgoda?.odloz) {
         odloz(db, w, { nastepna: ponowienieOd(teraz()), powod: zgoda.powod ?? 'Akcja poprosiła o odłożenie.', kod: zgoda.kod });
         return 'odlozone';
@@ -155,7 +155,7 @@ export function createSilnikAutomatyzacji({
       zakoncz(db, w, { stan: 'wyslane', adresat: wynik?.adresat ?? null, teraz: teraz().toISOString(), nazwa: regula.nazwa });
       return 'wyslane';
     } catch (e) {
-      // PRZ-108.08: akcja odmówiła, ZANIM cokolwiek wyszło (np. treść nie dała się złożyć — szablon zmieniony
+      // Akcja odmówiła, ZANIM cokolwiek wyszło (np. treść nie dała się złożyć — szablon zmieniony
       // w międzyczasie). To pewny brak maila, nie „niepewne”: błąd z powodem, bez ponowienia.
       if (e?.przedWysylka) {
         zakoncz(db, w, { stan: 'blad', powod: `Nie udało się przygotować wiadomości: ${komunikat(e)} — nic nie poszło do klienta.`,
@@ -179,7 +179,7 @@ export function createSilnikAutomatyzacji({
   }
 
   /**
-   * Wyjątek przy jednym wykonaniu nie może zatrzymać kolejki (recenzja 07, usterka 4). Przed rezerwacją (wiersz dalej
+   * Wyjątek przy jednym wykonaniu nie może zatrzymać kolejki. Przed rezerwacją (wiersz dalej
    * `zaplanowane`) → `pominiete` z kodem `blad_wewnetrzny`, wpisem w historii zamówienia i linią w logu. Po rezerwacji
    * wiersz zostaje `w_toku` — przy następnym starcie przejdzie w `niepewne` (akcja mogła wyjść).
    */
@@ -199,7 +199,7 @@ export function createSilnikAutomatyzacji({
     trwa = true;
     try {
       // Restart w trakcie wysyłki: `w_toku` → `niepewne` przy PIERWSZYM przebiegu zegara, nie przy budowie aplikacji —
-      // skrypt budujący aplikację na tej samej bazie nie przestawi trwającej wysyłki serwera (recenzja 07, usterka 8).
+      // skrypt budujący aplikację na tej samej bazie nie przestawi trwającej wysyłki serwera.
       if (!poStarcieZrobione) poStarcie();
       const przed = db.prepare(ZMIANY).get().n;
       if (!czySaWlaczone(db)) return { wlaczonych: 0, zapisow: db.prepare(ZMIANY).get().n - przed };
@@ -226,7 +226,7 @@ export function createSilnikAutomatyzacji({
   /** Start procesu: wiszące `w_toku` → `niepewne` (bez wiszących — zero zapisów). Woła go pierwszy przebieg. */
   function poStarcie() {
     // Flaga dopiero po udanym zapisie: wyjątek (np. zablokowana baza) → następny przebieg próbuje jeszcze raz
-    // (recenzja 07, runda 2, R2-1 — inaczej `w_toku` wisiałoby do restartu i zajmowało limit godzinowy reguły).
+    // (inaczej `w_toku` wisiałoby do restartu i zajmowało limit godzinowy reguły).
     const n = oznaczPrzerwane(db, teraz().toISOString());
     poStarcieZrobione = true;
     return n;
@@ -256,7 +256,7 @@ export async function symulujRegule({ db, regula, zdarzenie, akcja = null, spraw
     let odmowa = glowne ? { ok: false, kod: 'dolaczone', powod: `dołączone do zamówienia ${glowne} — mail idzie z głównego` }
       : await warunki({ db, regula, wykonanie });
     if (odmowa?.ok && akcja?.zgoda) odmowa = await akcja.zgoda({ db, regula, wykonanie, teraz });
-    // PRZ-122.MAIL-OKNO: odłożenie = mail pójdzie, tylko później → „wykonałoby”, nie „pominięte”.
+    // Odłożenie = mail pójdzie, tylko później → „wykonałoby”, nie „pominięte”.
     if (odmowa?.odloz) odmowa = { ok: true, adresat: odmowa.adresat ?? null };
     if (odmowa?.ok) wynik.wykonaloby += 1;
     else {

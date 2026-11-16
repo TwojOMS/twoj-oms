@@ -8,13 +8,13 @@ import {
 } from '../../../domena/dokument-programu.js';
 import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
-// DOMKNIĘCIE PĘTLI PIENIĘDZY PRZY POBRANIU (spec 2026-08-28). Kurier inkasuje gotówkę, ale
-// z księgowością nie rozmawia — faktura za pobraniem zostawała więc w inFakcie NIEOPŁACONA
+// DOMKNIĘCIE PĘTLI PIENIĘDZY PRZY POBRANIU. Kurier inkasuje gotówkę, ale z księgowością
+// nie rozmawia — bez tego skanu faktura za pobraniem zostałaby w inFakcie NIEOPŁACONA
 // na zawsze: wystawia się bez `paid_price` (czyli `left_to_pay` > 0), a oznaczenie zapłaty
-// wołało się wyłącznie dla wariantu „zapłacone" (services/faktura.js).
+// po wystawieniu dostaje wyłącznie wariant „zapłacone" (moduly/faktury/services/faktura.js).
 //
 // ⚠️ TO NIE JEST DRUGA PRAWDA O PIENIĄDZACH. Panel dalej NIE rozstrzyga, czy faktura jest
-// zapłacona — rozstrzyga inFakt i jego `status` (spec §4.1). Panel dostarcza mu FAKT,
+// zapłacona — rozstrzyga inFakt i jego `status`. Panel dostarcza mu FAKT,
 // którego tamten nie ma: że paczka została doręczona.
 //
 // ⚠️⚠️ SKAN BAZY, A NIE HAK NA PRZEJŚCIU STATUSU. Dwa powody, oba realne: paczka doręczona
@@ -27,15 +27,15 @@ import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 // inne (zerwane połączenie, 5xx, timeout) jest NIEJEDNOZNACZNE i wraca w następnym przebiegu.
 // `status` niesie na wyjątku `bladOperatora` z infakt/client.js.
 //
-// ⚠️ CZWARTA KOPIA TEJ SAMEJ LINIJKI W REPO (services/faktura.js, services/faktura-okresu.js,
-// services/wysylka-ksef.js) i tak ma na razie zostać: tamte trzy siedzą w domknięciach fabryk,
+// ⚠️ KOLEJNA KOPIA TEGO SAMEGO PROGU 4xx W REPO (m.in. moduly/faktury/services/faktura.js,
+// faktura-okresu.js, wysylka-ksef.js) i tak ma na razie zostać: tamte siedzą w domknięciach fabryk,
 // a wyprowadzenie wspólnej funkcji dotyka trzech ścieżek wystawiania dokumentów naraz — to
 // osobna zmiana, nie doczepka do poprawki czuwacza. Próg jest tu WSZĘDZIE ten sam i taki ma
 // zostać; gdyby kiedykolwiek się rozjechał, rozjedzie się rozumienie słowa „jednoznaczna".
 const jednoznacznaOdmowa = (e) => Number.isInteger(e?.status) && e.status >= 400 && e.status < 500;
 
 // Kandydaci: pobranie + jest faktura + nie zlecaliśmy jeszcze oznaczenia. Etapu przesyłki
-// NIE filtrujemy w SQL — rozstrzyga czysta reguła (domain/pobranie-zaplacone.js), którą
+// NIE filtrujemy w SQL — rozstrzyga czysta reguła (domena/pobranie-zaplacone.js), którą
 // widać i którą trzymają testy. Wierszy jest tu kilkadziesiąt, więc odsianie u siebie nic
 // nie kosztuje; ta sama zasada, co przy pasie długów w services/faktury-widok.js.
 // ⚠️ DATY WYSTAWIENIA TU NIE MA I NIE DA SIĘ JEJ STĄD WZIĄĆ. Tabela `faktury` trzyma
@@ -43,16 +43,16 @@ const jednoznacznaOdmowa = (e) => Number.isInteger(e?.status) && e.status >= 400
 // niż wystawienie kończy się odmową inFaktu. Prawdziwa data przychodzi z `pobierzFakture`.
 //
 // ⚠️⚠️ DOKŁADNIE JEDNA PACZKA NA FAKTURĘ, I TO TA Z NAJNOWSZYM ZDARZENIEM U KURIERA
-// (recenzja 28.08.2026, K1). Zwykły `LEFT JOIN przesylki ON p.zamowienie_id = z.id` dawał
-// TYLE wierszy, ile paczek — a reguła niżej chodzi po WIERSZU, więc wystarczyła JEDNA
-// doręczona paczka, żeby faktura poszła do inFaktu jako opłacona. Prawdziwy scenariusz
+// Zwykły `LEFT JOIN przesylki ON p.zamowienie_id = z.id` dałby
+// TYLE wierszy, ile paczek — a reguła niżej chodzi po WIERSZU, więc wystarczyłaby JEDNA
+// doręczona paczka, żeby faktura poszła do inFaktu jako opłacona. Scenariusz
 // pieniędzy: paczka z pobraniem WRÓCIŁA ZWROTEM (klient nie odebrał, gotówki nie ma),
 // a dosyłka wysłana BEZ pobrania (wymiana z reklamacji — kwota pobrania na ekranie nadania
-// jest jednorazowa i nie zapisuje się do zamówienia) została doręczona. Skan oznaczał
+// jest jednorazowa i nie zapisuje się do zamówienia) została doręczona. Skan oznaczyłby
 // wtedy fakturę jako opłaconą przy ZEROWEJ gotówce.
 //
 // Dlaczego „najnowsze zdarzenie", a nie „którakolwiek doręczona": to jedyna reguła, która
-// trafia OBA kierunki. Doręczona 25.08 + zwrot 26.08 → ostatnie zdarzenie to zwrot → NIE
+// trafia OBA kierunki. Doręczona, a dzień później zwrot → ostatnie zdarzenie to zwrot → NIE
 // wysyłamy, patrzy człowiek. Zwrot + dosyłka doręczona → wysyłamy z datą dosyłki.
 //
 // `status <> 'blad'` to ustalony w tym repo idiom „żywej paczki" (db/przesylki.js,
@@ -60,17 +60,15 @@ const jednoznacznaOdmowa = (e) => Number.isInteger(e?.status) && e.status >= 400
 // rozstrzyga remis, gdy kurier nie oddał ani jednego stempla czasu (`status_kuriera_at`
 // bywa puste): wygrywa paczka nadana później.
 //
-// Przy okazji znika drugi `GET` na ten sam dokument, zawyżone `kandydatow`/`pominiete`/
-// `bezDaty` i PODWÓJNA identyczna linia w logu zamówienia w jednym przebiegu.
-//
 // ⚠️ PREFILTR CZYTA OBIE KOLUMNY, A DECYDUJE REGUŁA. `z.pobranie` to wartość ZE SKLEPU,
-// a `czyPobranie` (domain/wysylka.js) rozstrzyga po wartości EFEKTYWNEJ — nadpisanie
+// a `czyPobranie` (domena/wysylka.js) rozstrzyga po wartości EFEKTYWNEJ — nadpisanie
 // z karty (`wysylka_reczna_json`) wygrywa z kolumną. Zamówienie przełączone RĘCZNIE na
-// pobranie ma `z.pobranie = 0` i przy węższym warunku NIGDY nie zostawało kandydatem:
-// nie trafiało do żadnego kubełka, więc cisza w liczbach niczego o nim nie mówiła.
-// ⚠️ Klauzula „jedna paczka na zamowienie" PRZENIESIONA 31.08.2026 do `db/ostatnia-paczka.js` —
-// czwartym czytelnikiem jest teraz warstwa `db/` (kandydaci ostrzezenia o zwroconym pobraniu),
-// a ta nie ma prawa importowac z serwisu. Uzasadnienie samej reguly zostalo przy definicji.
+// pobranie ma `z.pobranie = 0` i przy węższym warunku NIGDY nie zostałoby kandydatem:
+// nie trafiłoby do żadnego kubełka, więc cisza w liczbach niczego o nim nie mówiłaby.
+// ⚠️ Klauzula „jedna paczka na zamówienie" mieszka w `db/ostatnia-paczka.js` — jednym
+// z jej czytelników jest warstwa `db/` (kandydaci ostrzeżenia o zwróconym pobraniu),
+// a ta nie ma prawa importować z serwisu. Uzasadnienie reguły stoi wyżej w tym komentarzu;
+// ograniczenie porównania stempli — w docblocku przy definicji.
 
 const KANDYDACI = `
   SELECT
@@ -86,7 +84,7 @@ const KANDYDACI = `
 `;
 
 // ⚠️⚠️ SUFIT NA JEDEN PRZEBIEG — ten sam wzorzec i ten sam powód, co `LIMIT_PRZEBIEGU`
-// w services/czuwacz-ksef.js (recenzja poprawkowa 28.08.2026, W6). Pętla niżej jest
+// w czuwaczu KSeF (czuwacz-ksef.js). Pętla niżej jest
 // SEKWENCYJNA, a jeden kandydat to `GET` PLUS ewentualny `POST`, każdy z cierpliwością
 // `LIMIT_ZADANIA_MS` = 60 s (infakt/client.js). Bez sufitu jeden przebieg przy dłuższej awarii
 // inFaktu rósłby bez żadnej granicy, a czuwacz przesyłek, w którym ten skan chodzi, tyka co
@@ -98,7 +96,7 @@ const KANDYDACI = `
 // (services/czuwacz-przesylek.js) — to osobna sprawa i celowo jej tu nie rozstrzygamy;
 // dokładamy granicę tam, gdzie jej dotąd nie było wcale, zamiast udawać, że liczymy całość.
 //
-// Realna lista jest jednocyfrowa (kilka pobrań na tydzień), więc sufit widać wyłącznie po
+// Lista jest zwykle krótka, więc sufit widać wyłącznie po
 // awarii albo na pierwszym przebiegu po wdrożeniu, gdy zaległość historyczna jest większa.
 // Nic wtedy nie przepada: skan jest idempotentny, a resztę bierze następne tyknięcie.
 export const LIMIT_PRZEBIEGU_POBRAN = 20;
@@ -110,14 +108,14 @@ export const LIMIT_PRZEBIEGU_POBRAN = 20;
  * w czuwaczu przesyłek, który pilnuje WSZYSTKICH paczek. Rzucenie stąd zatrzymałoby
  * śledzenie z powodu jednej faktury. Dlatego łapiemy WSZYSTKO (nie tylko `bladOperatora` —
  * także `TypeError` z naszego kodu), zapisujemy do logu zamówienia i jedziemy dalej.
- * Jedynym skutkiem nieudanego zlecenia jest STATUS W inFAKCIE, czyli stan sprzed projektu.
+ * Jedynym skutkiem nieudanego zlecenia jest STATUS W inFAKCIE, czyli stan jak bez tego skanu.
  *
- * ⚠️⚠️ CAŁE CIAŁO PĘTLI SIEDZI W `try`, I TO JEST TREŚĆ TEJ OBIETNICY (recenzja 28.08.2026,
- * W1). Wcześniej `try` obejmowały WYŁĄCZNIE dwa wywołania sieciowe i trzy `dopiszLog`, więc
- * reszta była naga: `pobierzFakture` oddające `null` (2xx z pustym ciałem) dawało `TypeError`
+ * ⚠️⚠️ CAŁE CIAŁO PĘTLI SIEDZI W `try`, I TO JEST TREŚĆ TEJ OBIETNICY. Gdyby `try`
+ * obejmowały WYŁĄCZNIE wywołania sieciowe i `dopiszLog`, reszta byłaby naga:
+ * `pobierzFakture` oddające `null` (2xx z pustym ciałem) dałoby `TypeError`
  * na `dok.invoice_date`, a rzucający `zajmijOznaczenieZaplaty` (SQLITE_BUSY, naruszenie
- * `CHECK`) — wyjątek z bazy. Oba WYCHODZIŁY Z FUNKCJI, a następny kandydat w przebiegu nie
- * był nawet odpytany. Węższe `try` w środku ZOSTAJĄ: niosą własne komunikaty i to one
+ * `CHECK`) — wyjątek z bazy. Oba WYSZŁYBY Z FUNKCJI, a następny kandydat w przebiegu nie
+ * byłby nawet odpytany. Węższe `try` w środku ZOSTAJĄ: niosą własne komunikaty i to one
  * odróżniają „awarię odczytu" (bez rezerwacji, wolno ponowić) od „awarii zlecenia"
  * (rezerwacja zostaje, ponawiać NIE WOLNO). Zewnętrzny łapie całą resztę.
  *
@@ -134,7 +132,7 @@ export const LIMIT_PRZEBIEGU_POBRAN = 20;
  * na ten przebieg. Obcięcie ma być SŁYCHAĆ: cicha różnica między „nie było nic do zrobienia"
  * a „nie zdążyliśmy" jest dokładnie tą, której nikt później nie odtworzy z logu.
  */
-// PRZ-118.08: dokument i oznaczenie zapłaty daje PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez
+// Dokument i oznaczenie zapłaty daje PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez
 // `zProgramu`); teksty w logu zamówienia jego nazwą (dla inFaktu znak w znak jak przed zmianą).
 export async function oznaczDoreczonePobrania({
   db, program: programPodany = null, infakt = null, limit = LIMIT_PRZEBIEGU_POBRAN,
@@ -152,7 +150,7 @@ export async function oznaczDoreczonePobrania({
   const rozliczone = db.prepare(KANDYDACI).all().filter((w) => czyPobranieRozliczone({
     zamowienie: w, przesylka: w, uuidFaktury: idDokumentu(w),
   }));
-  // PRZ-121.A04b: dokument INNEGO programu (np. inFaktu przy innym module faktur) automat POMIJA — bez odczytu,
+  // Dokument INNEGO programu (np. inFaktu przy innym module faktur) automat POMIJA — bez odczytu,
   // bez rezerwacji, bez wpisu w logu zamówienia — a przebieg idzie dalej. Odsiew PRZED sufitem: cudze dokumenty nie
   // wracają do nas nigdy, więc stojąc w `doObslugi` zjadałyby miejsca w każdym przebiegu.
   // ⚠️ Nie `idDokumentuDla` przy odczycie: jego 409 niesie `bezProgramu`, a ta gałąź niżej PRZERYWA przebieg —
@@ -174,7 +172,7 @@ export async function oznaczDoreczonePobrania({
     try {
       // ⚠️ ODCZYT PRZED REZERWACJĄ, I W TEJ KOLEJNOŚCI. Potrzebujemy stąd DWÓCH rzeczy:
       // prawdziwej `invoice_date` (w bazie panelu jej nie ma) oraz AKTUALNEGO stanu zapłaty —
-      // właściciel oznacza część pobrań ręcznie i taki dokument ma wypaść z kandydatów.
+      // część pobrań bywa oznaczana ręcznie i taki dokument ma wypaść z kandydatów.
       // Rezerwacja przed odczytem zamykałaby dokument na zawsze po zwykłym 503.
       let dok;
       try {
@@ -182,14 +180,14 @@ export async function oznaczDoreczonePobrania({
         dok = await program.pobierzFakture(idDokumentu(w));
       } catch (e) {
         bledy += 1;
-        // ⚠️ PRZ-093.10 (P2 z recenzji): odmowa POŚREDNIKA „inFakt z Ustawień” (klucz odłączony do restartu,
+        // ⚠️ Odmowa POŚREDNIKA „inFakt z Ustawień” (klucz odłączony do restartu,
         // piaskownica bez atrapy) niesie 4xx, ale to nie jest odpowiedź inFaktu o tym dokumencie — do inFaktu nic
         // nie poszło. Bez rezerwacji i bez wpisu w logu zamówienia; przerywamy przebieg, bo każdy następny dokument
         // dostałby tę samą odmowę. Po ponownym podłączeniu następny przebieg oznaczy pobrania jak zwykle.
-        // PRZ-118.08: znacznik ogólny `bezProgramu` (adapter inFaktu dokłada go do `bezInfaktu`).
+        // Znacznik ogólny `bezProgramu` (adapter inFaktu dokłada go do `bezInfaktu`).
         if (e?.bezProgramu) break;
-        // ⚠️⚠️ ODMOWA JEDNOZNACZNA (4xx) NIE MA PRAWA WRACAĆ CO GODZINĘ (recenzja poprawkowa
-        // 28.08.2026, W5). Faktura SKASOWANA w inFakcie — przepływ wprost wspierany — oddaje
+        // ⚠️⚠️ ODMOWA JEDNOZNACZNA (4xx) NIE MA PRAWA WRACAĆ CO GODZINĘ.
+        // Faktura SKASOWANA w inFakcie — przepływ wprost wspierany — oddaje
         // 404 NA ZAWSZE: bez rezerwacji byłby jeden `GET` na godzinę, jedna linia w logu
         // ZAMÓWIENIA na godzinę i stała lampka w logu procesu, czyli fałszywy alarm, który
         // uczy ignorować całą tę linię. Rezerwacja z własnym powodem zamyka dokument ŚWIADOMIE
@@ -221,17 +219,17 @@ export async function oznaczDoreczonePobrania({
       }
 
       // ⚠️⚠️ ZDEGRADOWANA ODPOWIEDŹ inFAKTU TO AWARIA ODCZYTU, A NIE ZGODA NA WYSYŁKĘ
-      // (recenzja poprawkowa 28.08.2026, K1 — BLOKUJĄCE). `zapytaj` (infakt/client.js) oddaje
+      // `zapytaj` (infakt/client.js) oddaje
       // `dane = null` dla KAŻDEJ odpowiedzi 2xx, której ciała nie da się sparsować, a
       // `pobierzFakture` składa wtedy dokument z samych `null`-i. `stanZaplaty` mówi na taki
-      // dokument `nieznany` — i dopóki sprawdzaliśmy tu wyłącznie `=== 'zaplacona'`, skan
-      // JECHAŁ DALEJ i wysyłał `POST /paid.json`. Ten `GET` istnieje DOKŁADNIE po to, żeby
-      // dokument oznaczony ręcznie przez właściciela wypadł z kandydatów; przy jednej złej
-      // odpowiedzi nie robił tego, a `bledy: 0, zlecone: 1` było nie do odróżnienia od czystego
-      // sukcesu. Do tego rezerwacja `pobranie_doreczone` zostawała, funkcji zwalniającej nie ma,
-      // więc dokument nie wracał NIGDY.
+      // dokument `nieznany` — i gdyby sprawdzać tu wyłącznie `=== 'zaplacona'`, skan
+      // pojechałby dalej i wysłał `POST /paid.json`. Ten `GET` istnieje DOKŁADNIE po to, żeby
+      // dokument oznaczony ręcznie wypadł z kandydatów; przy jednej złej
+      // odpowiedzi nie zrobiłby tego, a `bledy: 0, zlecone: 1` byłoby nie do odróżnienia od czystego
+      // sukcesu. Do tego rezerwacja `pobranie_doreczone` zostałaby, funkcji zwalniającej nie ma,
+      // więc dokument nie wróciłby NIGDY.
       //
-      // To odwrócenie doktryny z domain/lista-faktur.js: „ODSIEWAMY WYŁĄCZNIE NA DOWÓD ZAPŁATY,
+      // To odwrócenie doktryny z domena/lista-faktur.js: „ODSIEWAMY WYŁĄCZNIE NA DOWÓD ZAPŁATY,
       // nigdy na braku danych". Tam brak danych zostawia dokument na liście długów; tutaj
       // ma zostawić go NIETKNIĘTEGO. Brak rezerwacji jest tu treścią: stan jest PRZEJŚCIOWY,
       // więc ponowienie za godzinę to właściwa odpowiedź.
@@ -261,8 +259,8 @@ export async function oznaczDoreczonePobrania({
 
       const paidDate = dataZaplatyPobrania(w, dok.invoice_date);
 
-      // ⚠️⚠️ `null` ZNACZY „NIE ZNAMY ŻADNEJ DATY" (kontrakt `dataZaplatyPobrania` od Poprawki 1,
-      // 28.08.2026): kurier nie oddał stempla czasu, a `invoice_date` z inFaktu nie jest
+      // ⚠️⚠️ `null` ZNACZY „NIE ZNAMY ŻADNEJ DATY" (kontrakt `dataZaplatyPobrania`):
+      // kurier nie oddał stempla czasu, a `invoice_date` z inFaktu nie jest
       // poprawną datą. Zmyślona albo pusta data w DOKUMENCIE KSIĘGOWYM jest gorsza niż brak
       // oznaczenia, więc do inFaktu nie idzie NIC.
       //
@@ -307,7 +305,7 @@ export async function oznaczDoreczonePobrania({
           + `${mianownik} przetwarza to zadanie w tle.`;
       } catch (e) {
         bledy += 1;
-        // PRZ-119.05: status „opłacona” przyjęty, padł sam zapis daty zapłaty — faktura JEST opłacona.
+        // Status „opłacona” przyjęty, padł sam zapis daty zapłaty — faktura JEST opłacona.
         wynik = e?.zaplataOznaczona
           ? `UWAGA: paczka za pobraniem została doręczona; faktura ${w.faktura_numer ?? '(bez numeru)'} jest już oznaczona `
             + `jako opłacona w ${miejscownik} — popraw tylko datę zapłaty (${paidDate}). Powód: ${e.message}`
@@ -321,7 +319,7 @@ export async function oznaczDoreczonePobrania({
     } catch (e) {
       // Awaria SPOZA dwóch znanych dróg (odczyt / zlecenie) — nie wiemy, czy rezerwacja
       // powstała, więc niczego tu nie zakładamy i nie sprzątamy. Liczy się jako błąd, żeby
-      // zegar zapalił własną linię w logu procesu (bootstrap.js), i idziemy do następnego.
+      // zegar zapalił własną linię w logu procesu (moduly/wysylka/zegary.ts), i idziemy do następnego.
       bledy += 1;
       try {
         dopiszLog(db, w.zamowienie_id, {

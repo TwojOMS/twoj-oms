@@ -1,4 +1,4 @@
-// PRZ-108.08 (zmiana C1 planu automatyzacji, sekcja 2): zdarzenie „Paczka nadana — ma numer listu”.
+// Zdarzenie „Paczka nadana — ma numer listu”.
 //
 // Fakt: wiersz `przesylki` ze `status = 'nadana'` i numerem listu — ta sama reguła co mail „Zamówienie wysłane”
 // (`paczkiDoMaila`: bez 'blad' i 'do_wyjasnienia'). Zapisują go `zakonczPrzesylke` (nadanie z panelu i hurtem),
@@ -15,9 +15,9 @@
 // albo wcale — 48 h od terminu). Jedno wykonanie na ZAMÓWIENIE (przedmiot `zamowienie:<id>`): druga paczka w oknie
 // opóźnienia trafia do tego samego maila, bo `paczkiDoMaila` czyta stan w chwili wysyłki.
 //
-// Poprawka po recenzji 08 (usterka 4): okno czasu. Detektor czyta tylko paczki utworzone nie dawniej niż OKNO_PACZEK_DNI
+// Okno czasu. Detektor czyta tylko paczki utworzone nie dawniej niż OKNO_PACZEK_DNI
 // przed `od` (indeks `przesylki_utworzona_at`, migracja automatyzacje/0002) — koszt przebiegu nie rośnie z wiekiem
-// reguły (po roku 45 000 paczek: 147 → patrz raport PRZ-108.08). Cena: paczka „do wyjaśnienia” domknięta ponad
+// reguły. Cena: paczka „do wyjaśnienia” domknięta ponad
 // 14 dni po utworzeniu nie wyzwoli maila (brak maila, nigdy mail za dużo).
 const znaki = (n) => Array.from({ length: n }, () => '?').join(',');
 const ZYWA = "p.status = 'nadana' AND TRIM(COALESCE(p.numer_listu, '')) <> ''";

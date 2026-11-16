@@ -9,11 +9,11 @@ const meta = (z, klucz) => z?.meta_data?.find((m) => m.key === klucz)?.value ?? 
 /**
  * Punkt odbioru (paczkomat InPost) z `meta_data` zamówienia.
  *
- * Kształty odwzorowane z żywego sklepu (odczyt 2026-08-01): wtyczka paczkomatowa zapisuje
+ * Kształty odwzorowane z żywego sklepu: wtyczka paczkomatowa zapisuje
  * `_parcel_machine_id` (kod, np. „WRO10B") i `_parcel_machine_desc` (opis lokalizacji).
  *
  * Wystawione osobno, bo czyta to DWÓCH wywołujących: `mapujZamowienie` przy każdej
- * synchronizacji i przeliczenie wstecz w `db/db.js` — a przeliczenie ma czytać `surowe_json`
+ * synchronizacji i przeliczenie wstecz w `oms/db/uzupelnienia-zamowien.js` — a przeliczenie ma czytać `surowe_json`
  * DOKŁADNIE tak samo jak poller, nie drugą, rozjeżdżającą się kopią reguły.
  *
  * Pusty napis czytamy jako brak: Woo zapisuje niewypełnione pole raz jako `''`, raz wcale,
@@ -30,16 +30,16 @@ export function punktOdbioruZeSurowych(surowe) {
 // mimo ze panel etykietuje pole ceny jako brutto. Fallback do subtotal/subtotal_tax dziala
 // PARAMI — nie mieszamy total z subtotal_tax ani odwrotnie. Wspolne dla bruttoLinii()
 // i nettoLinii(), zeby obie liczyly „ta sama linie" tym samym kawalkiem sklepowych danych.
-// DATA ZAMOWIENIA W UTC Z SUFIKSEM `Z` (audyt 22.08.2026). Woo oddaje kazda date podwojnie:
+// DATA ZAMOWIENIA W UTC Z SUFIKSEM `Z`. Woo oddaje kazda date podwojnie:
 // lokalna sklepu (`date_created`) i UTC (`date_created_gmt`) — obie BEZ oznaczenia strefy.
 // Mapowanie bralo lokalna, wiec kanaly Woo pisaly czas warszawski obok allegrowego UTC-Z:
-// 53 nagie wiersze na produkcji, 3 ujemne czasy do nadania, kazde porownanie dat miedzy
-// kanalami w SQL bledne o 2 h.
+// nagie wiersze, ujemne czasy do nadania, kazde porownanie dat miedzy kanalami w SQL bledne
+// o godzine albo dwie.
 //
 // ⚠️ WYLACZNIE wersja GMT + dolozone `Z` — zadnego przeliczania stref: ten projekt
-// przejechal sie na czasie Warszawy juz dwa razy (przewodnik, rozdz. 10). Payload bez GMT
+// przejechal sie na czasie Warszawy. Payload bez GMT
 // (starsze Woo, atrapy) zostaje przy wersji lokalnej NIETKNIETEJ — takie wiersze domyka
-// backfill `znormalizujDatyWoo` (db/zamowienia.js), a nie zgadywanie tutaj.
+// backfill `znormalizujDatyWoo` (oms/db/zamowienia.js), a nie zgadywanie tutaj.
 function utcSklepu(gmt, lokalna) {
   const g = String(gmt ?? '').trim();
   if (g) return g.endsWith('Z') ? g : `${g}Z`;
@@ -63,7 +63,7 @@ export function bruttoLinii(pozycja) {
 
 // NETTO CALEJ LINII — WPROST z Woo (`total`/`subtotal`, bez podatku), NIGDY dzieleniem
 // brutto przez 1,23: to dokladnie ten blad, ktory juz raz zablokowal fakturowanie zamowien
-// z rabatem (patrz przewodnik OMS, sekcja 4.5, i cenaJednostkowa nizej). Netto linii idzie
+// z rabatem (reguła: netto ze źródła; patrz cenaJednostkowa niżej). Netto linii idzie
 // do kolumny `pozycje.netto_linii` i do kolumny „Cena netto"/„Suma" na karcie.
 export function nettoLinii(pozycja) {
   return nettoIPodatekLinii(pozycja).netto.toFixed(2);
@@ -108,10 +108,10 @@ export function kosztDostawyNetto(surowe) {
 }
 
 //  to CALA tablica dostaw sklepu (instancje + reguly zapasowe po pozycji) —
-// patrz domain/mapowanie-wysylki.js. Wczesniej byla to sama mapa instancji, przez co
+// patrz domena/mapowanie-wysylki.js. Wczesniej byla to sama mapa instancji, przez co
 // zamowienia bez linii wysylki nie mialy jak zostac rozpoznane.
 export function mapujZamowienie(surowe, mapowanie) {
-  // ⚠️ PARA, nie napis (2026-08-01): rodzaj dostawy i pobranie sa od siebie niezalezne,
+  // ⚠️ PARA, nie napis: rodzaj dostawy i pobranie sa od siebie niezalezne,
   // wiec rozpoznanie zwraca `{ metoda, pobranie }`. Rozpakowujemy TUTAJ, zeby dalej w tej
   // funkcji nie dalo sie przez pomylke wpisac calego obiektu do kolumny `metoda_wysylki`.
   const { metoda, pobranie } = metodaWysylkiZamowienia(surowe, mapowanie);
@@ -121,14 +121,12 @@ export function mapujZamowienie(surowe, mapowanie) {
   // "0" jest w JS prawdziwe, a Woo zapisuje pola wyboru raz jako '', raz jako '0' —
   // bez tego wyjatku panel proponowalby fakture komus, kto jej nie chcial.
   //
-  // `_billing_faktura` to pole WYLACZNIE ze sklepu A (Etap 2) — sklep B, jedyny
-  // sklep dzialajacy dzis, w ogole go nie ustawia. Samo `fakturaMeta` jako warunek robilo
-  // fakturowanie MARTWE na jedynym sklepie, dla ktorego je zbudowano: prawdziwe zamowienie
-  // 1267 mialo `_billing_nip` i nazwe firmy, a mimo to `chce_fakture` wychodzilo 0 — sekcja
-  // faktury w widoku w ogole sie nie renderowala. Dlatego liczy sie TAKZE sam NIP: nikt nie
-  // wpisuje NIP-u firmy przy zamowieniu bez powodu. Pole `_billing_faktura` zostaje
-  // (nietkniete) do Etapu 2, gdy sklep A wejdzie do panelu i checkbox znow bedzie mial
-  // sens jako osobny sygnal.
+  // `_billing_faktura` to pole ustawiane tylko przez czesc sklepow — inne w ogole go nie
+  // ustawiaja. Samo `fakturaMeta` jako warunek robilo fakturowanie MARTWE na sklepie bez
+  // tego pola: zamowienie mialo `_billing_nip` i nazwe firmy, a mimo to `chce_fakture`
+  // wychodzilo 0 — sekcja faktury w widoku w ogole sie nie renderowala. Dlatego liczy sie
+  // TAKZE sam NIP: nikt nie wpisuje NIP-u firmy przy zamowieniu bez powodu. Pole
+  // `_billing_faktura` zostaje jako osobny sygnal dla sklepow, ktore je ustawiaja.
   const chceFakture = (fakturaMeta && fakturaMeta !== '0') || nip ? 1 : 0;
   return {
     zrodlo_id: Number(surowe.id),
@@ -155,14 +153,14 @@ export function mapujZamowienie(surowe, mapowanie) {
     koszt_dostawy_brutto: kosztDostawyBrutto(surowe),
     koszt_dostawy_netto: kosztDostawyNetto(surowe),
     status_woo: surowe.status ?? null,
-    // ⚠️ PRZY POBRANIU `date_paid` NIE JEST WPŁATĄ (PRZ-137.05, decyzja właściciela). Woo wypełnia
+    // ⚠️ PRZY POBRANIU `date_paid` NIE JEST WPŁATĄ. Woo wypełnia
     // je także przy płatności przy odbiorze (np. przy oznaczeniu „zrealizowane"), a stąd
     // powstaje wpłata `zrodlo='sklep'` (db/platnosci.js): saldo „pokryte" i data sprzedaży
     // z dnia zapłaty, choć kurier zainkasuje dopiero przy doręczeniu. Tak samo jak Allegro
     // (allegro-mapowanie.js, `oplacone_at: pobranie ? null : …`).
     // ⚠️ Także przy bramce pobrania, gdy dostawa nie jest jeszcze w mapowaniu („nieznana",
     // `pobranie:false`): operator ustawi pobranie na karcie, a wpłata `sklep` odżywałaby przy
-    // każdej synchronizacji (recenzja A1). Odbiór osobisty z bramką pobrania — bez zmian.
+    // każdej synchronizacji. Odbiór osobisty z bramką pobrania — bez zmian.
     oplacone_at: (pobranie || (metoda !== 'odbior_osobisty' && bramkaPobrania(surowe, mapowanie) === true))
       ? null
       : utcSklepu(surowe.date_paid_gmt, surowe.date_paid),
@@ -173,28 +171,28 @@ export function mapujZamowienie(surowe, mapowanie) {
     metoda_platnosci: surowe.payment_method_title || null,
     anulowane: surowe.status === 'cancelled' ? 1 : 0,
     utworzone_at: utcSklepu(surowe.date_created_gmt, surowe.date_created),
-    // Uwagi klienta z zamówienia (Zadanie D) — Woo trzyma je na poziomie zamówienia jako
+    // Uwagi klienta z zamówienia — Woo trzyma je na poziomie zamówienia jako
     // `customer_note`, NIE w meta_data (inaczej niz NIP/checa faktury wyzej). To dana ZE
     // SKLEPU jak reszta naglowka: poller ma ja nadpisywac normalnie, wiec CELOWO bez wlasnej
     // kolumny recznej. Pusty string (klient nic nie napisal) sklepowo znaczy „brak uwag" —
     // widok renderuje wiersz WYLACZNIE gdy jest prawdziwa tresc.
     uwagi: surowe.customer_note || null,
     // Znacznik zamowienia z panelu indywidualnego — liczony z SUROWEJ odpowiedzi sklepu
-    // ta sama funkcja, co przeliczenie wstecz w db/db.js. Poller odswieza go przy kazdej
+    // ta sama funkcja, co przeliczenie wstecz w oms/db/uzupelnienia-zamowien.js. Poller odswieza go przy kazdej
     // synchronizacji, bo oferta moze dojsc do zamowienia juz po jego zlozeniu.
     indywidualne: czyIndywidualneZeSurowych(surowe) ? 1 : 0,
-    // Kupony rabatowe z coupon_lines (kampania WRZESIEN30) — ta sama funkcja, co
-    // przeliczenie wstecz w db/db.js (domain/kupony.js). Informacja OPISOWA: ceny pozycji
+    // Kupony rabatowe z coupon_lines — ta sama funkcja, co
+    // przeliczenie wstecz w oms/db/uzupelnienia-zamowien.js (domena/kupony.js). Informacja OPISOWA: ceny pozycji
     // ponizej sa juz PO rabacie, wiec kupon niczego w kwotach nie zmienia.
     kupony: kuponyZeSurowych(surowe),
     // Skad przyszedl kupujacy (WooCommerce Order Attribution) — ta sama funkcja, co
-    // przeliczenie wstecz w db/db.js. `null` znaczy „sklep tego nie zapisal", a nie
-    // „wejscie bezposrednie" (domain/atrybucja.js).
+    // przeliczenie wstecz w oms/db/uzupelnienia-zamowien.js. `null` znaczy „sklep tego nie zapisal", a nie
+    // „wejscie bezposrednie" (domena/atrybucja.js).
     atrybucja: atrybucjaZeSurowych(surowe),
     pozycje: (surowe.line_items ?? []).map((p) => ({
       // Identyfikator linii U ZRODLA. Sluzy do JEDNEJ rzeczy i trzeba o niej wiedziec:
       // jest TRWALYM kluczem recznych nadpisan tej pozycji (kluczPozycji
-      // w domain/pozycje-reczne.js). Nasze `pozycje.id` sie do tego nie nadaje, bo poller
+      // w domena/pozycje-reczne.js). Nasze `pozycje.id` sie do tego nie nadaje, bo poller
       // kasuje i wstawia pozycje sklepowe przy kazdej synchronizacji.
       zrodlo_id: Number.isInteger(Number(p.id)) ? Number(p.id) : null,
       nazwa: p.name,
@@ -211,18 +209,18 @@ export function mapujZamowienie(surowe, mapowanie) {
       vat: null,
       // Adres zdjęcia produktu — miniatura w kolumnie „Produkty" na stronie głównej.
       // Zapisujemy ORYGINAŁ tak, jak przyszedł; wariant 150×150 wyprowadza dopiero widok
-      // (domain/miniatury.js), żeby poprawka tamtej reguły nie wymagała migracji danych.
+      // (domena/miniatury.js), żeby poprawka tamtej reguły nie wymagała migracji danych.
       zdjecie_url: zdjecieLinii(p),
       // Identyfikator produktu w sklepie — wylacznie do odnosnika z miniatury na karcie
-      // (domain/link-pozycji.js). ⚠️ product_id RODZICA, nigdy variation_id: adres wariantu
+      // (domena/link-pozycji.js). ⚠️ product_id RODZICA, nigdy variation_id: adres wariantu
       // po identyfikatorze sie nie renderuje, a odnosnik raz dzialajacy, a raz nie, jest
       // gorszy niz jego brak. Brak wartosci ma dac NULL, a nie zero — „produkt numer 0"
       // nie istnieje, a odnoszacy sie do niego adres prowadzi donikad.
-      // Ta sama regula stoi w przeliczeniu wstecz (produktLinii w db/db.js).
+      // Ta sama regula stoi w przeliczeniu wstecz (produktLinii w oms/db/uzupelnienia-zamowien.js).
       produkt_id: Number.isInteger(Number(p.product_id)) && Number(p.product_id) > 0
         ? Number(p.product_id)
         : null,
-      // PRZ-091: identyfikator WARIANTU — wylacznie do powiazania pozycji z karta produktu przy stanach
+      // Identyfikator WARIANTU — wylacznie do powiazania pozycji z karta produktu przy stanach
       // magazynowych (karta jest per wariant). Odnosnik dalej idzie po `produkt_id` rodzica (wyzej).
       // Produkt prosty ma `variation_id = 0` — to nie wariant, wiec `null`.
       wariant_id: Number.isInteger(Number(p.variation_id)) && Number(p.variation_id) > 0

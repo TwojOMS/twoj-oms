@@ -1,7 +1,7 @@
 <%
-  // PRZ-160 E3d.02-02 (plan docs/plany/PRZ-160-e3d-02.md, D1, D4): tabela reguł „cennik według rozmiaru” w kroku
+  // Tabela reguł „cennik według rozmiaru” w kroku
   // „Oferty” Allegro i ERLI. Bez JS: zapisane wiersze plus dwa puste; kolejność reguł = kolejność wierszy od góry.
-  // Pola `cennikDostaw` tu nie ma — alias D4 zamieniłby listę reguł na jeden cennik.
+  // Pola `cennikDostaw` tu nie ma — ten alias zamieniłby listę reguł na jeden cennik.
   // Parametry: prefiks (id), zapisane (reguły z bazy: mm i g), wyslane (odrzucony formularz albo null),
   // bledy (błędy pól: `regula-<i>`, `cennikWiekszych`), opcje (lista cenników Allegro albo null = tekst dowolny).
   const tekstPola = (v) => typeof v === 'string' ? v : '';

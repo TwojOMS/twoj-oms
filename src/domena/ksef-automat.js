@@ -1,7 +1,8 @@
-// PRZ-102.12 — reguły automatu wysyłki faktur do KSeF o ustalonej godzinie (zlecenie właściciela 20.10.2026).
+// Reguły automatu wysyłki faktur do KSeF o ustalonej godzinie.
 //
-// ⚠️ Automat NIE MA własnej reguły „co wysłać”. Bierze dokumenty, które na ekranie Faktur dostaje „zaznacz
-// wszystkie” (`doZaznaczeniaWszystkich`, domena/wysylka-ksef.js), i wysyła je tą samą usługą co przycisk
+// ⚠️ Automat NIE MA własnej reguły „co wysłać”. Bierze kandydatów `doZaznaczeniaWszystkich` (domena/wysylka-ksef.js)
+// — pola wyboru na ekranie Faktur biorą szerzej (`doZaznaczenia`, domena/lista-faktur.js), a nadmiar odsiewa
+// przy wysyłce bariera — i wysyła je tą samą usługą co przycisk
 // (`wysylkaKsef.wyslij` — bariera `coWolnoWyslac`, rezerwacja, ślad w logu). Tu jest wyłącznie: KIEDY.
 //
 // ⚠️ CZAS WARSZAWY TYLKO DO ODCZYTU dnia i godziny (ta sama technika co `fmtDataCzasKrotko`), żadnej arytmetyki
@@ -19,7 +20,7 @@ export const POLE_DATY_AUTOMATU = 'invoice_date';
 const WZOR_GODZINY = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 /**
- * Najpóźniejsza godzina w formularzu (poprawka po recenzji PRZ-102.12). Zegar tyka co minutę, a pierwsze tyknięcie
+ * Najpóźniejsza godzina w formularzu. Zegar tyka co minutę, a pierwsze tyknięcie
  * przychodzi minutę po starcie panelu — przy 23:59 jedyne tyknięcie „po godzinie” mogło wypaść już po północy
  * i dzień przepadał (faktury czekały do jutra). Zamiast nadrabiania „wczoraj po północy” (druga ścieżka z innym
  * dniem i innym oknem miesięcy) — granica 23:45: zostaje 15 tyknięć do północy, a reguła „jedna próba na dzień”
@@ -91,7 +92,7 @@ export function najblizszyPrzebieg(stan, chwila) {
   return `dziś o ${stan.godzina}`;
 }
 
-// ── PRZ-123 C09: tryby wysyłki programu z własną wysyłką (TwojeFaktury) ─────────────────────────────────────────
+// ── Tryby wysyłki programu z własną wysyłką (TwojeFaktury) ─────────────────────────────────────────────────────
 // „reczna” (domyślnie) — automat nic nie robi; „po_wystawieniu” — co 5 minut, faktura idzie, gdy od zapisu jej
 // OSTATNIEJ wersji minął odstęp na poprawki; „o_godzinie” — raz dziennie zbiorczo, jak automat inFaktu.
 export const TRYBY_AUTOMATU = Object.freeze(['reczna', 'po_wystawieniu', 'o_godzinie']);

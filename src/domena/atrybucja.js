@@ -1,4 +1,4 @@
-// SKAD PRZYSZLO ZAMOWIENIE — WooCommerce Order Attribution (Etap 3 kampanii, 2026-08-25).
+// SKAD PRZYSZLO ZAMOWIENIE — WooCommerce Order Attribution.
 //
 // Sklep zapisuje przy kazdym zamowieniu, skad przyszedl kupujacy: rodzaj zrodla, adres
 // odsylajacy, strone wejscia, urzadzenie i wielkosc sesji. Panel mial te dane w
@@ -6,9 +6,9 @@
 // jak `kupony.js` wyjmuje kupony (jedna regula, czytana przez pollera i przez przeliczenie
 // wstecz, nigdy dwie kopie).
 //
-// ⚠️⚠️ `null` (brak atrybucji) TO CO INNEGO NIZ „wejscie bezposrednie". 21 produkcyjnych
-// zamowien powstalo PRZED wlaczeniem tej funkcji w sklepie (na PRO dopiero 31.07.2026)
-// i o ich zrodle nie dowiemy sie juz nigdy. Zlanie tych dwoch stanow w jeden zamienialoby
+// ⚠️⚠️ `null` (brak atrybucji) TO CO INNEGO NIŻ „wejście bezpośrednie". Zamówienia powstałe PRZED
+// włączeniem tej funkcji w sklepie nie mają atrybucji i o ich źródle nie dowiemy się już nigdy.
+// Zlanie tych dwóch stanów w jeden zamieniałoby
 // luke w danych w falszywy fakt „klient wszedl wprost".
 //
 // ⚠️ USER AGENTA CELOWO NIE PRZENOSIMY. Urzadzenie mamy osobnym polem, a pelny user agent

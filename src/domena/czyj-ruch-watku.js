@@ -1,10 +1,8 @@
-// src/oms/domain/czyj-ruch-watku.js
-//
 // Stan watku LICZONY Z FAKTOW, nigdy ustawiany recznie — ta sama zasada, co przy statusie
 // zamowienia w panelu. Zrodla sa dwa: „czy ostatnia wiadomosc jest od kupujacego" (lustro,
 // czyli Allegro) i „czy nasza ostatnia odpowiedz byla formulka" (dowody, czyli my).
 //
-// ⚠️ ZALATWIONE, GDY OSTATNIA NIE JEST KUPUJACEGO — nawet bez naszego dowodu. Wlasciciel
+// ⚠️ ZALATWIONE, GDY OSTATNIA NIE JEST KUPUJACEGO — nawet bez naszego dowodu. Sprzedawca
 // czesto odpisuje wprost w aplikacji Allegro; brak wpisu u nas nie znaczy, ze nikt nie
 // odpowiedzial. Traktowanie tego jako „czeka" zapalaloby lampke na zawsze.
 
@@ -41,7 +39,7 @@ export function liczbaWatkowCzekajacych(db) {
  * „czeka" SAM — bez tego jedno klikniecie uciszaloby go NA ZAWSZE, a nowe pytanie tego
  * samego czlowieka przepadloby po cichu. Cisza wyglada jak brak pytan, nie jak usterka.
  *
- * ⚠️ Powstalo 29.08.2026 na prosbe wlasciciela: sa watki, w ktorych kupujacy napisal na
+ * ⚠️ Po co reczne zamkniecie: sa watki, w ktorych kupujacy napisal na
  * koniec „Dziekuje" i nie ma na co odpisywac. Panel nie ma jak odroznic podziekowania od
  * pytania, wiec ta jedna rzecz musi powiedziec mu czlowiek.
  *

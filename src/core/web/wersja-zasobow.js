@@ -1,4 +1,4 @@
-// PRZ-100: wersja w adresach /public/*.css|js (`?v=`). Pośrednik przed panelem (Cloudflare przed demo: max-age=14400)
+// Wersja w adresach /public/*.css|js (`?v=`). Pośrednik przed panelem (Cloudflare przed demo: max-age=14400)
 // każe przeglądarce trzymać plik godzinami — bez wersji w adresie po wydaniu ekran składa nowy HTML ze starym CSS-em.
 // Wersja = odcisk treści plików, liczony raz przy starcie: zmienia się dokładnie wtedy, gdy zmienia się któryś plik.
 import { createHash } from 'node:crypto';

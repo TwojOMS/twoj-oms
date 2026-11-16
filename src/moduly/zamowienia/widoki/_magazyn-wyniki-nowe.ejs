@@ -1,5 +1,5 @@
 <%#
-  WYNIKI SZUKANIA W MAGAZYNIE — ekran ZAKŁADANIA zamówienia (21.08.2026, żywe szukanie).
+  WYNIKI SZUKANIA W MAGAZYNIE — ekran ZAKŁADANIA zamówienia (żywe szukanie).
 
   ⚠️⚠️ TEN SAM PLIK RENDERUJE DWIE RZECZY: całą stronę (przez `include` w nowe-zamowienie.ejs)
   ORAZ fragment odświeżany w trakcie pisania (trasa /zamowienia/nowe/magazyn/wyniki, htmx).
@@ -29,7 +29,7 @@
             <td>
               <%= p.nazwa %>
               <%# Rozmiar POKAZUJE SIE tylko wtedy, gdy nazwa go nie niesie — patrz %>
-              <%# rozmiarDoPokazania w domain/magazyn-do-zamowienia.js. %>
+              <%# rozmiarDoPokazania w domena/magazyn-do-zamowienia.js. %>
               <% if (p.rozmiar) { %><span class="magazyn-rozmiar"><%= p.rozmiar %></span><% } %>
               <% if (p.sku_sklepu) { %><div class="sku"><%= p.sku_sklepu %></div><% } %>
             </td>

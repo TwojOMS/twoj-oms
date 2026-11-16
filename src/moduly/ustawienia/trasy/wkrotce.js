@@ -1,4 +1,4 @@
-// PRZ-101.01: strony „wkrótce” w Ustawieniach — jedna trasa GET na pozycję, treść z domena/ustawienia-wkrotce.js.
+// Strony „wkrótce” w Ustawieniach — jedna trasa GET na pozycję, treść z domena/ustawienia-wkrotce.js.
 // Uprawnienie „ustawienia” sprawdza strażnik po prefiksie `/ustawienia`, jak przy reszcie ekranów.
 import { STRONY_WKROTCE } from '../../../domena/ustawienia-wkrotce.js';
 import { nawigacjaUstawien } from '../nawigacja.js';
@@ -6,7 +6,7 @@ import { nawigacjaUstawien } from '../nawigacja.js';
 /** @param {any} app @param {{ kopie?: (() => any) | null, drukFaktur?: (() => any) | null }} [opcje] */
 export function registerUstawieniaWkrotceRoutes(app, { kopie = null, drukFaktur = null } = {}) {
   for (const strona of STRONY_WKROTCE) {
-    if (strona.klucz === 'kopie') continue; // PRZ-127: rzeczywisty odczyt w trasy/kopie.js.
+    if (strona.klucz === 'kopie') continue; // Rzeczywisty odczyt w trasy/kopie.js.
     app.get(strona.href, async (req, reply) => {
       let stan = null;
       let stanDruku = null;

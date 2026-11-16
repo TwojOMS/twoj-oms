@@ -1,7 +1,7 @@
 import { odczytajNadpisania, zastosuj, polaZmienione, sklejUlice } from './dane-reczne.js';
 
 // Dane NABYWCY na fakturę, składane W JEDNYM MIEJSCU — dokładnie tą samą zasadą, co adres
-// odbiorcy (domain/adres-odbiorcy.js): wartość ręczna, jeśli jest; w przeciwnym razie ze
+// odbiorcy (domena/adres-odbiorcy.js): wartość ręczna, jeśli jest; w przeciwnym razie ze
 // sklepu. Używają tego DWIE strony, które muszą pokazywać to samo: karta zamówienia
 // (operator poprawia dane, bo klient napisał, że podał złe) i services/faktura.js (zakłada
 // z nich nabywcę w kartotece inFaktu i szuka go po NIP-ie).
@@ -11,10 +11,10 @@ import { odczytajNadpisania, zastosuj, polaZmienione, sklejUlice } from './dane-
 // z nich. Wspólny komplet zmuszałby operatora do decydowania, którą prawdę poświęcić.
 //
 // Źródłem sklepowym jest blok `klient` (Woo `billing`) plus kolumna `nip` (z meta
-// `_billing_nip`, patrz domain/mapowanie.js) — dlatego `nip` jest tu polem obok reszty,
+// `_billing_nip`, patrz domena/mapowanie.js) — dlatego `nip` jest tu polem obok reszty,
 // mimo że w bazie leży w innym miejscu niż `klient_json`.
 
-// `email` doszedł 2026-07-31 na prośbę właściciela i jest NIEOBOWIĄZKOWY: firma bywa
+// `email` jest NIEOBOWIĄZKOWY: firma bywa
 // „zakupy@", „faktury@" albo księgowość zupełnie spoza zamówienia, a adres ze sklepu
 // (billing) jest wtedy nie tym, pod który ma pójść dokument.
 export const POLA_FAKTURY_RECZNE = ['firma', 'nip', 'ulica', 'kod', 'miasto', 'email'];
@@ -27,13 +27,12 @@ const firmaZeSklepu = (zamowienie) => zamowienie?.klient?.company || null;
 /**
  * NIP bez wpisanej przez klienta ETYKIETY „NIP” — `null`, gdy po niej nic nie zostaje.
  *
- * ⚠️ Zgłoszenie właściciela 14.10.2026: kupujący na Allegro wpisał w pole NIP „NIP: <dziesięć cyfr>”,
- * panel podał to inFaktowi dosłownie i dostał 422 „Podany NIP jest nieprawidłowy”. W bazie
- * produkcyjnej były co najmniej dwa takie zamówienia z Allegro.
+ * ⚠️ Kupujący na Allegro potrafi wpisać w pole NIP „NIP: <dziesięć cyfr>”; panel podawał to
+ * inFaktowi dosłownie i dostawał 422 „Podany NIP jest nieprawidłowy”.
  *
  * Zdejmujemy WYŁĄCZNIE etykietę — resztę zostawiamy bajt w bajt. Prefiks kraju („PL”, „SK”)
- * i separatory mają własne, starannie rozdzielone reguły (domain/klient-zbiorczy.js:
- * normalizujNip, domain/wdt.js), a numer unijny nie ma prawa zlać się z polskim.
+ * i separatory mają własne, starannie rozdzielone reguły (domena/klient-zbiorczy.js:
+ * normalizujNip, domena/wdt.js), a numer unijny nie ma prawa zlać się z polskim.
  */
 export function bezEtykietyNip(surowy) {
   const t = String(surowy ?? '').trim().replace(/^NIP(?![A-Z0-9])\s*[:.\-]?\s*/i, '').trim();
@@ -55,7 +54,7 @@ function surowe(zamowienie) {
     // o dokument (faktura, proforma, karta, szukanie). Nie wolno go przepisywać do adresu
     // WYSYŁKI — patrz `firmaNabywcy` niżej.
     firma: firmaZeSklepu(zamowienie) || osoba || null,
-    // Bez etykiety „NIP” — także w zamówieniach zapisanych przed poprawką 14.10.2026.
+    // Bez etykiety „NIP” — także w zamówieniach zapisanych wcześniej.
     nip: bezEtykietyNip(zamowienie?.nip),
     // Numer budynku bywa OSOBNYM polem sklepu (address_2) — sklejamy dokładnie tą samą
     // regułą co adres wysyłki (sklejUlice w dane-reczne.js), żeby faktura i karta zamówienia
@@ -87,7 +86,7 @@ export function daneFaktury(zamowienie) {
  * poza dokumentem to podstawienie jest KŁAMSTWEM o kliencie, a przepisane do adresu
  * wysyłki — kłamstwem TRWAŁYM: „Skopiuj do wysyłki" zapisywało z niego
  * `{"company":"Jan Kowalski"}` do `dostawa_reczna_json`, czyli dokładnie ten błąd, który
- * 05.08 zdjęto z `adres-odbiorcy.js`, tyle że utrwalony w bazie i blokujący prawdziwą
+ * zdjęto z `adres-odbiorcy.js`, tyle że utrwalony w bazie i blokujący prawdziwą
  * nazwę firmy, gdyby sklep kiedyś ją dosłał.
  *
  * To ten sam kształt, co `adresZeSklepu()` obok (adres-odbiorcy.js): dana i podstawienie
@@ -106,8 +105,8 @@ export function polaReczneFaktury(zamowienie) {
   return polaZmienione(surowe(zamowienie), daneFaktury(zamowienie), POLA_FAKTURY_RECZNE);
 }
 
-// Czy klient chce fakturę. Na sklepie B NIE MA takiego pola — mapowanie
-// wnioskuje z NIP-u (patrz domain/mapowanie.js), a to z natury bywa nietrafione: ktoś nie
+// Czy klient chce fakturę. Sklep zwykle nie ma osobnego pola (część sklepów ma `_billing_faktura`),
+// więc mapowanie wnioskuje też z NIP-u (patrz domena/mapowanie.js), a to z natury bywa nietrafione: ktoś nie
 // poda NIP-u przy zamówieniu, a potem dzwoni po fakturę. Dlatego panel ma własny
 // przełącznik, i to ON rozstrzyga, gdy jest ustawiony.
 //

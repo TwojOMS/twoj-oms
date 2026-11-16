@@ -1,8 +1,8 @@
-// PRZ-160 E2.05 — pętla ofert ERLI (D9). Co przebieg zegara, dla każdego bieżącego konta ERLI:
+// Pętla ofert ERLI. Co przebieg zegara, dla każdego bieżącego konta ERLI:
 // odczyt własnych produktów z kanału (`_search`), wysyłka nowych ofert, synchronizacja ilości i ceny
 // względem ODCZYTU, treść względem skrótu ostatnio wysłanej, problemy po polsku.
-// Zasady (decyzje kierownika E2.05): każdy zapis do kanału idzie przez `bramkaZapisu` (D23, D24, tylko odczyt,
-// lista kont); wiersz (stan, próby, termin) zapisany PRZED wywołaniem kanału; `archived` nigdzie (D11).
+// Zasady: każdy zapis do kanału idzie przez `bramkaZapisu` (tylko odczyt,
+// lista kont); wiersz (stan, próby, termin) zapisany PRZED wywołaniem kanału; `archived` nigdzie.
 import { znakInstalacji, przerwaPonowienia, skrotTresci, bramkaZapisu, cenaWymagaPotwierdzenia, POLA_POZA_TRESCIA } from './oferty-wspolne.js';
 import { ofertaPoId, zmienOferte, ustawieniaOfertKonta } from '../../../oms/db/oferty-kanalow.ts';
 import { trescOferty } from './tresc-oferty.js';
@@ -10,7 +10,7 @@ import { migawkaStanow, przelacznikStanow, wyjasnieniaOfert } from '../../../oms
 import { iloscDlaKanalu, ocenRozjazdu, skokIlosci, wolnoPodniesc, zeroMasowe, PROBLEMY_ILOSCI,
   liczySieDoZeraMasowego, potwierdzenieZerZuzyte, bezPotwierdzeniaZer, potwierdzenieZerWazne } from '../../../domena/ilosc-kanalu.js';
 
-// D29: części wspólne z pętlą Allegro mieszkają w `oferty-wspolne.js`; ponowny eksport trzyma importy E2.
+// Części wspólne z pętlą Allegro mieszkają w `oferty-wspolne.js`; ponowny eksport zachowuje dotychczasowe importy.
 export { znakInstalacji, przerwaPonowienia, skrotTresci, bramkaZapisu, cenaWymagaPotwierdzenia } from './oferty-wspolne.js';
 
 export const ODSTEP_PETLI_OFERT_MS = 5 * 60_000;
@@ -21,7 +21,7 @@ const MAKS_STRON = 100;
 export const LIMIT_BATCH_ERLI = 100;
 
 const PROBLEMY_ERLI = {
-  // `category`: kod NIEPOTWIERDZONY (P2) — scenariusz atrapy E2.10a. D12 (puste `categories`) to osobne zadanie po P2.
+  // `category`: kod NIEPOTWIERDZONY w odpowiedzi kanału; puste `categories` to osobna sprawa.
   category: 'ERLI nie rozpoznało kategorii — przypisz ją w panelu ERLI.',
   'shop-activity': 'Sklep w ERLI jest nieaktywny — kupujący nie mogą kupić produktu.',
   shopKyc: 'ERLI nie zakończyło weryfikacji sprzedawcy (KYC) — produkt nie może być kupiony.',
@@ -44,7 +44,7 @@ export function tlumaczProblemyErli(lista) {
   });
 }
 
-/** `frozen` z odczytu → lista zamrożonych pól; `true` = wszystkie (`*`). Kształt przyjęty założeniem (P6). */
+/** `frozen` z odczytu → lista zamrożonych pól; `true` = wszystkie (`*`). Kształt przyjęty założeniem. */
 export function zamrozonePola(frozen) {
   if (frozen === true) return ['*'];
   if (Array.isArray(frozen)) return frozen.map(String).filter(Boolean);
@@ -70,11 +70,11 @@ export function problemyZdjec(oferta, produkt, terazMs) {
 
 const liczbaLubNull = w => (Number.isSafeInteger(w) && w >= 0 ? w : null);
 const komunikat = e => String(e?.message ?? e ?? 'nieznany błąd');
-// Horyzont wyjaśnień (B3, decyzja Szefa 14.11): okno zamówień zaczyna się od `ilosc_wyslana_at`, ale najwyżej 7 dni
+// Horyzont wyjaśnień: okno zamówień zaczyna się od `ilosc_wyslana_at`, ale najwyżej 7 dni
 // wstecz. Ogranicza TYLKO okno zapytania: oferta ze starszym T zostaje z prawdziwą bazą (W, stan karty), a jej wyjaśnienia
 // są zerowe (poller bez zmian) — niedoszacowanie daje alarm (skok, rozjazd-dol) i decyzję człowieka, nie cichą wysyłkę.
 const HORYZONT_WYJASNIEN_MS = 7 * 24 * 3600_000;
-// E4.32a: stany wiersza oferty ERLI, która jest wystawiona i może sprzedawać — tylko one tworzą mianownik zera masowego.
+// Stany wiersza oferty ERLI, która jest wystawiona i może sprzedawać — tylko one tworzą mianownik zera masowego.
 const STANY_SPRZEDAZY = Object.freeze(['aktywna', 'nieaktywna', 'problem']);
 
 export function createPetlaOfert({ db, konta, adresPublicznyZdjec = '', teraz = () => new Date(), log = () => {},
@@ -85,7 +85,7 @@ export function createPetlaOfert({ db, konta, adresPublicznyZdjec = '', teraz = 
   let timer = null;
   let migawka;
   let wyjasnienia = new Map();
-  // B1 r2: chwila tuż przed migawką — T dla każdego zapisu stanKartyWyslany z tej migawki (jedna chwila dla obu).
+  // Chwila tuż przed migawką — T dla każdego zapisu stanKartyWyslany z tej migawki (jedna chwila dla obu).
   let chwilaMigawki = null;
   let iloscPominieta = false;
   const iso = () => teraz().toISOString();
@@ -114,7 +114,7 @@ export function createPetlaOfert({ db, konta, adresPublicznyZdjec = '', teraz = 
     }
   }
 
-  /** Bramka dla każdej oferty → zapis wierszy → dopiero wtedy wywołanie kanału (decyzje 4 i 5). */
+  /** Bramka dla każdej oferty → zapis wierszy → dopiero wtedy wywołanie kanału. */
   async function zapisDoKanalu(konto, klucze, ids, zapiszWiersze, wywolaj, zakres = null) {
     for (const id of ids) {
       const oferta = ofertaPoId(db, id);
@@ -155,7 +155,7 @@ export function createPetlaOfert({ db, konta, adresPublicznyZdjec = '', teraz = 
     if (wolno) {
       const wyjasnienie = wyjasnienia.get(oferta.id) ?? {};
       const wspolne = { cel, odczyt, poller: wyjasnienie.poller, policzonoAt: migawka.policzonoAt, pollerMs };
-      // N5: objęta po zapytaniu o wyjaśnienia (zmiana trybu w trakcie przebiegu) — stary stan karty nie jest bazą.
+      // Objęta po zapytaniu o wyjaśnienia (zmiana trybu w trakcie przebiegu) — stary stan karty nie jest bazą.
       const nowoObjeta = !wyjasnienia.has(oferta.id);
       const stanKartyWyslany = nowoObjeta ? null : oferta.stanKartyWyslany;
       if (nowoObjeta && oferta.stanKartyWyslany != null) zapis.stanKartyWyslany = null;
@@ -164,8 +164,8 @@ export function createPetlaOfert({ db, konta, adresPublicznyZdjec = '', teraz = 
         alarmOd: ['karencja', 'rozjazd-dol'].includes(oferta.iloscProblem?.kod) ? oferta.iloscProblem.od : null });
       if (rozjazd.baza) {
         Object.assign(zapis, rozjazd.baza, { iloscWyslanaAt: chwilaMigawki, iloscWToku: null });
-        // B1 (D53): T przesuwa się razem ze stanem karty — inaczej sprzedaż tylko w kanale kumuluje fałszywy skok.
-        // T = chwila migawki (r2), bo z niej jest stan karty: ruch zapisany później wpada w okno następnego przebiegu.
+        // T przesuwa się razem ze stanem karty — inaczej sprzedaż tylko w kanale kumuluje fałszywy skok.
+        // T = chwila migawki, bo z niej jest stan karty: ruch zapisany później wpada w okno następnego przebiegu.
         const stanTeraz = migawka.stany.get(oferta.kartaId)?.stan;
         if (stanKartyWyslany != null && Number.isFinite(stanTeraz)) zapis.stanKartyWyslany = stanTeraz;
       }
@@ -181,13 +181,13 @@ export function createPetlaOfert({ db, konta, adresPublicznyZdjec = '', teraz = 
       if (zamrozone(zamrozonePola(produkt.frozen), 'stock')) { problem = problemIlosci('zamrozona-ilosc', cel, odczyt); wolno = false; }
       if (masoweZero && liczySieDoZeraMasowego(oferta, migawka)) { wolno = false; if (cel === 0 && odczyt > 0) problem = problemIlosci('zero-masowe', cel, odczyt); }
     }
-    // E4.30: potwierdzenie zer zużyte (kanał ma 0 albo cel > 0) — zdjęte; `oferta` też, bo dalsze zapisy treści
+    // Potwierdzenie zer zużyte (kanał ma 0 albo cel > 0) — zdjęte; `oferta` też, bo dalsze zapisy treści
     // w tym przebiegu rozwijają `oferta.wyslanePola`.
-    // E4.30p: potwierdzenie z innego przełączenia stanów jest nieważne — też zdjęte.
+    // Potwierdzenie z innego przełączenia stanów jest nieważne — też zdjęte.
     if (oferta.wyslanePola?.zeraPotwierdzone && (!potwierdzenieZerWazne(oferta, migawka) || potwierdzenieZerZuzyte({ cel, odczyt }))) {
       oferta.wyslanePola = zapis.wyslanePola = bezPotwierdzeniaZer(oferta.wyslanePola);
     }
-    // Alarm wymaga decyzji człowieka, także gdy kolejny odczyt jest już zgodny z celem albo cel/odczyt są nieznane (B2).
+    // Alarm wymaga decyzji człowieka, także gdy kolejny odczyt jest już zgodny z celem albo cel/odczyt są nieznane.
     if (oferta.iloscProblem?.wstrzymuje) {
       problem = oferta.iloscProblem;
       if (problem.kod !== 'rozjazd-gora') wolno = false;
@@ -197,7 +197,7 @@ export function createPetlaOfert({ db, konta, adresPublicznyZdjec = '', teraz = 
     return wolno && cel !== odczyt ? cel : null;
   }
 
-  /** Ten sam produkt, który wysłaliśmy (decyzja 6): nazwa i SKU równe wysłanym, nie zarchiwizowany. */
+  /** Ten sam produkt, który wysłaliśmy: nazwa i SKU równe wysłanym, nie zarchiwizowany. */
   function czySwoj(produkt, wyslane) {
     const swoj = produkt && produkt.name === wyslane?.name && produkt.sku === wyslane?.sku && !produkt.archived;
     return Boolean(swoj);
@@ -257,7 +257,7 @@ export function createPetlaOfert({ db, konta, adresPublicznyZdjec = '', teraz = 
     if (migawka.wlaczone) zmien(oferta.id, { iloscWyslanaAt: chwilaMigawki, stanKartyWyslany: migawka.stany.get(oferta.kartaId)?.stan ?? null, iloscWToku: null });
   }
 
-  /** Wiersz po wysyłce bez potwierdzenia (restart, błąd chwilowy): nigdy drugi POST bez odczytu (decyzja 5). */
+  /** Wiersz po wysyłce bez potwierdzenia (restart, błąd chwilowy): nigdy drugi POST bez odczytu. */
   async function wyslanaBezPotwierdzenia(konto, klucze, oferta, produkt, ustawienia) {
     if (produkt) {
       if (czySwoj(produkt, oferta.wyslanePola)) potwierdzWyslana(oferta); else konflikt(oferta.id);
@@ -281,7 +281,7 @@ export function createPetlaOfert({ db, konta, adresPublicznyZdjec = '', teraz = 
     const pola = zamrozonePola(produkt.frozen);
     const archived = produkt.archived === true;
     const problemy = tlumaczProblemyErli(produkt.buyableProblems);
-    // Stan `problem` przy kodzie `category` (niepotwierdzony, P2); zapisy ceny i ilości idą dalej.
+    // Stan `problem` przy kodzie `category` (niepotwierdzony); zapisy ceny i ilości idą dalej.
     let zablokowane = problemy.some(p => p.kod === 'category');
     if (archived) {
       problemy.push({ kod: 'zarchiwizowana', tekst: 'Produkt jest zarchiwizowany w ERLI — OMS go nie zmienia ani nie przywraca.' });
@@ -302,7 +302,7 @@ export function createPetlaOfert({ db, konta, adresPublicznyZdjec = '', teraz = 
       ...odczyt, problemy, stan: zablokowane ? 'problem' : stanOdczytu, ...dodatkowe,
     });
     const objeta = oferta.tryb === 'zarzadzana' || oferta.iloscZOms;
-    // D52: przy błędzie migawki ilość jest pominięta — bez oceny, problem ilości zostaje bez zmian.
+    // Przy błędzie migawki ilość jest pominięta — bez oceny, problem ilości zostaje bez zmian.
     const stock = migawka.wlaczone && objeta && !iloscPominieta ? ocenIlosc(oferta, produkt, ustawienia, masoweZero()) : null;
     if (oferta.liczbaProb > 0 && oferta.nastepnaProbaAt && Date.parse(oferta.nastepnaProbaAt) > Date.parse(terazIso)) { zapisz(); return; }
     if (oferta.tryb !== 'zarzadzana' || archived) {
@@ -321,7 +321,7 @@ export function createPetlaOfert({ db, konta, adresPublicznyZdjec = '', teraz = 
     }
     const wp = oferta.wyslanePola ?? {};
     if (karta.wycofana || wp.zdejmij) {
-      // D25: raz `inactive`, potem bez przywracania ilości; `archived` nigdy (D11).
+      // Raz `inactive`, potem bez przywracania ilości; `archived` nigdy.
       if (produkt.status === 'inactive' || wp.wycofanoAt || zamrozone(pola, 'status')) { zapisz(); return; }
       zapisz();
       const proby = oferta.liczbaProb + 1;
@@ -380,7 +380,7 @@ export function createPetlaOfert({ db, konta, adresPublicznyZdjec = '', teraz = 
       odczyt: produkt.stock, kartaId: oferta.kartaId, proby: ofertaPoId(db, oferta.id).liczbaProb + 1 });
   }
 
-  /** Pozycja nieprzyjęta: przy pewnej odmowie (`czyscWToku`) cel w toku znika — nie zostaje bazą rozjazdu (N5). */
+  /** Pozycja nieprzyjęta: przy pewnej odmowie (`czyscWToku`) cel w toku znika — nie zostaje bazą rozjazdu. */
   function odrzucona(b, e, czyscWToku) {
     bladWywolania(b.id, e);
     if (czyscWToku && migawka.wlaczone && b.zmiany.stock != null) zmien(b.id, { iloscWToku: null });
@@ -403,7 +403,7 @@ export function createPetlaOfert({ db, konta, adresPublicznyZdjec = '', teraz = 
       id => Object.keys(batch.find(b => b.id === id).zmiany).every(k => k === 'stock') ? 'ilosc' : null);
       if (!r.wyslano) return;
     } catch (e) {
-      // N5: limit czasu, zerwane połączenie i 5xx = wynik nieznany (ERLI mogło przyjąć) — cel w toku zostaje.
+      // Limit czasu, zerwane połączenie i 5xx = wynik nieznany (ERLI mogło przyjąć) — cel w toku zostaje.
       const nieznany = e?.status === undefined || e.status >= 500;
       for (const b of batch) odrzucona(b, e, !nieznany);
       return;
@@ -420,7 +420,7 @@ export function createPetlaOfert({ db, konta, adresPublicznyZdjec = '', teraz = 
         wyslanaIlosc: b.zmiany.stock ?? teraz.wyslanaIlosc, wyslanaCenaGr: b.zmiany.price ?? teraz.wyslanaCenaGr,
         ...(migawka.wlaczone && b.zmiany.stock != null ? { iloscWToku: null, iloscWyslanaAt: chwilaMigawki,
           stanKartyWyslany: migawka.stany.get(b.kartaId)?.stan ?? null } : {}),
-        // E4.30: zapisane 0 zużywa potwierdzenie „Wyślij zera”.
+        // Zapisane 0 zużywa potwierdzenie „Wyślij zera”.
         ...(b.zmiany.stock === 0 && teraz.wyslanePola?.zeraPotwierdzone ? { wyslanePola: bezPotwierdzeniaZer(teraz.wyslanePola) } : {}),
         liczbaProb: 0, nastepnaProbaAt: null, blad: null,
       });
@@ -455,9 +455,9 @@ export function createPetlaOfert({ db, konta, adresPublicznyZdjec = '', teraz = 
     }
     const ustawienia = ustawieniaOfertKonta(db, konto.klucz);
     const batch = [];
-    // Liczone leniwie, raz na konto: przy wyłączonych stanach albo pominiętej ilości — żadnych odczytów (D14).
+    // Liczone leniwie, raz na konto: przy wyłączonych stanach albo pominiętej ilości — żadnych odczytów.
     let zero;
-    // E4.32a: mianownik tylko z ofert, które sprzedają (jak B4 w Allegro) — szkice, błędy, „do wysłania”,
+    // Mianownik tylko z ofert, które sprzedają (jak w pętli Allegro) — szkice, błędy, „do wysłania”,
     // zarchiwizowane i nieobecne w odczycie nie rozcieńczają bezpiecznika.
     const sprzedaje = o => {
       const p = produkty.get(o.idZewnetrzne);
@@ -505,7 +505,7 @@ export function createPetlaOfert({ db, konta, adresPublicznyZdjec = '', teraz = 
         AND stan NOT IN ('szkic', 'blad')`).all(JSON.stringify(klucze));
     return wyjasnieniaOfert(db, wiersze.map(w => {
       const t = Date.parse(w.ilosc_wyslana_at);
-      // Stare T nie wyznacza okna i dostaje zera wyjaśnień (z pollerem) — baza oferty zostaje (decyzja Szefa 14.11).
+      // Stare T nie wyznacza okna i dostaje zera wyjaśnień (z pollerem) — baza oferty zostaje.
       const stare = Number.isFinite(t) && t < granica;
       return { id: Number(w.id), kanal: w.kanal, idZewnetrzne: w.id_zewnetrzne, kartaId: Number(w.karta_id),
         od: stare ? null : w.ilosc_wyslana_at, regula: 'zlozone' };
@@ -521,8 +521,8 @@ export function createPetlaOfert({ db, konta, adresPublicznyZdjec = '', teraz = 
       const lista = konta();
       const klucze = lista.map(k => k.klucz);
       wyjasnienia = new Map(); chwilaMigawki = null; iloscPominieta = false;
-      // D14: najpierw przełącznik — przy wyłączonych stanach żadnych dalszych zapytań ani nowych wyjątków.
-      // Włączone: puls pollera i wyjaśnienia przed jedną wspólną migawką (D64). Błąd = ilość pominięta (D52),
+      // Najpierw przełącznik — przy wyłączonych stanach żadnych dalszych zapytań ani nowych wyjątków.
+      // Włączone: puls pollera i wyjaśnienia przed jedną wspólną migawką. Błąd = ilość pominięta,
       // treść, cena i nowe oferty idą dalej.
       try {
         const przelacznik = przelacznikStanow(db);

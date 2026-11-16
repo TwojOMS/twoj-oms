@@ -2,7 +2,7 @@ import type {SrodowiskoAllegro,Wynik} from '../../moduly/kanaly/kontrakty-allegr
 import {bladAllegro} from '../../moduly/kanaly/kontrakty-allegro.ts';
 export type AplikacjaWewnetrzna={clientId:string;clientSecret:string;clientName:string;redirectUri:string;softwareStatementId:string;srodowisko:SrodowiskoAllegro};
 export type HttpAllegro=(url:string,init?:RequestInit)=>Promise<Response>;
-// `upload` — binarne wgrywanie zdjęć ofert (`POST /sale/images`, PRZ-160.E3.04).
+// `upload` — binarne wgrywanie zdjęć ofert (`POST /sale/images`).
 export const HOSTY_ALLEGRO={produkcja:{api:'https://api.allegro.pl',auth:'https://allegro.pl/auth/oauth',upload:'https://upload.allegro.pl'},sandbox:{api:'https://api.allegro.pl.allegrosandbox.pl',auth:'https://allegro.pl.allegrosandbox.pl/auth/oauth',upload:'https://upload.allegro.pl.allegrosandbox.pl'}} as const;
 export async function zarejestrujInstalacje(o:{kod:string;softwareStatementId:string;clientName:string;redirectUri:string;srodowisko:SrodowiskoAllegro},http:HttpAllegro):Promise<Wynik<AplikacjaWewnetrzna>>{
  if(!o.softwareStatementId.trim())return bladAllegro('brak_dostepu','Konfiguracja Allegro nie jest jeszcze gotowa (brak SSI).');
