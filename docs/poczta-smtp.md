@@ -78,7 +78,7 @@ i wpisz dane w formularzu.
 
 ## Usunięcie
 
-**Ustawienia → Integracje → Poczta wychodząca → Usunięcie** usuwa z OMS-u serwer, login
+**Ustawienia → Integracje → Poczta wychodząca → Usuń ustawienia poczty** usuwa z OMS-u serwer, login
 i hasło. Wysłane maile i historia wiadomości na zamówieniach zostają.
 
 ## W środowisku demo

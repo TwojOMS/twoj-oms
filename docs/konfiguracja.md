@@ -18,7 +18,7 @@ niczego nie zmienia. Dane zapisane wcześniej z ekranu można wtedy tylko usuną
 | Integracje → DPD | `DPD_URL` (z `DPD_LOGIN`, `DPD_PASSWORD`, `DPD_FID`, `DPD_INFO_URL`, `DPD_INFO_CHANNEL`) | — | `docs/kurier-dpd.md` |
 | Integracje → InPost | `INPOST_TOKEN` (z `INPOST_ORGANIZACJA`) | `INPOST_URL` (adres API) | `docs/kurier-inpost.md` |
 | Integracje → Poczta wychodząca | sekcja `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | — | `docs/poczta-smtp.md` |
-| Integracje → Poczta wychodząca → Adres OMS-u w mailach | `OMS_ADRES_PANELU` | — | `docs/poczta-smtp.md` |
+| Integracje → Poczta wychodząca (sekcja „Adres OMS-u w mailach”) | `OMS_ADRES_PANELU` | — | `docs/poczta-smtp.md` |
 
 Kiedy zmiana zaczyna działać: kolejne zmiany z ekranu — od razu (poczta: od następnego maila). Pierwsze
 podłączenie wymaga jednorazowo `sudo sh /opt/oms/aktualizuj.sh compose restart oms`, jeśli przy starcie
