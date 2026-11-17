@@ -46,7 +46,7 @@ describe('do zestawienia PDF', () => {
   it('dopuszcza faktury i korekty z uuid, poza czekającymi na KSeF', () => {
     expect(doZestawienia({ rodzaj: 'vat', uuid: 'a' })).toBe(true);
     expect(doZestawienia({ rodzaj: 'korekta', uuid: 'b' })).toBe(true);
-    expect(doZestawienia({ rodzaj: 'vat', uuid: 'c', stanDokumentu: { czekaNaKsef: true } })).toBe(true); // PRZ-126.C06: wchodzi podglądem
+    expect(doZestawienia({ rodzaj: 'vat', uuid: 'c', stanDokumentu: { czekaNaKsef: true } })).toBe(true); // Wchodzi podglądem
     expect(doZestawienia({ rodzaj: 'vat' })).toBe(false);
     expect(doZestawienia({ rodzaj: 'proforma', uuid: 'd' })).toBe(false);
     expect(doZestawienia(null)).toBe(false);
@@ -101,7 +101,7 @@ describe('czeka na przelew', () => {
   });
 });
 
-// ⚠️ NAZWA ARGUMENTU ZMIENIONA 28.08.2026 (recenzja poprawkowa, W4): `pobranieZwrocone` →
+// ⚠️ NAZWA ARGUMENTU ZMIENIONA 28.08.2026: `pobranieZwrocone` →
 // `pobranieBezGotowki`. Zwrot NIE JEST jedynym sposobem, w jaki gotówka przy pobraniu nie
 // dochodzi — nieudane doręczenie („adresat nieobecny", awizo) ma etap `doreczona` i pod starą
 // nazwą wypadało z pasa długów na stałe. Fakt składa `czyPaczkaBezGotowki`
@@ -198,7 +198,7 @@ describe('stan KSeF', () => {
     expect(stanKsef({})).toBe('brak');
   });
 
-  // ⚠️⚠️ TRZECI STAN (recenzja całości, Finding 1). Między zleceniem wysyłki a nadaniem numeru
+  // ⚠️⚠️ TRZECI STAN. Między zleceniem wysyłki a nadaniem numeru
   // mija ~70 sekund — i przez ten czas „brak" jest po prostu NIEPRAWDĄ: panel wysyłkę zlecił,
   // a ekran zapraszał do drugiego, nieodwracalnego zgłoszenia. Fakt („panel zlecił") przychodzi
   // argumentem, bo ta funkcja jest CZYSTA i do bazy nie sięga.

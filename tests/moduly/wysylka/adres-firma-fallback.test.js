@@ -10,9 +10,9 @@ import { createInpostClient } from '../../../src/oms/kurierzy/inpost.js';
 import { createNadanie } from '../../../src/moduly/wysylka/services/nadanie.js';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
-// Zgloszenie wlasciciela ze zrzutu (2026-08-04): karta zamowienia i ekran nadania pokazuja
+// Zgloszenie wlasciciela ze zrzutu: karta zamowienia i ekran nadania pokazuja
 // w polu „Firma" IMIE I NAZWISKO klienta przy KAZDYM zamowieniu od osoby prywatnej.
 //
 // ⚠️ TO NIE JEST KOSMETYKA — i dlatego ten plik istnieje osobno. Podstawienie nazwiska pod
@@ -24,7 +24,7 @@ import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
 //      wartosci i NIE dostaje znacznika „zmienione recznie" — czyli klikniecie wyglada na
 //      bezskuteczne. A w bazie lezy juz `{"company": null}`.
 //   2. Od tej chwili to nadpisanie BLOKUJE prawdziwa nazwe firmy, gdyby ta kiedys przyszla
-//      ze sklepu: zamowienie z `shipping.company = "Gammatech Sp. z o.o."` oddaje z powrotem
+//      ze sklepu: zamowienie z `shipping.company = "Lustrzanka Sp. z o.o."` oddaje z powrotem
 //      nazwisko. Paczka jedzie do firmy BEZ JEJ NAZWY na etykiecie.
 //
 // Naprawa: fallback schodzi z warstwy domenowej na GRANICE kuriera i formularza —
@@ -80,23 +80,23 @@ describe('pole „Firma": warstwa domenowa NIE podstawia juz nazwiska', () => {
   });
 
   it('nic sie nie zmienia dla PRAWDZIWEJ firmy ze sklepu — dalej dociera', () => {
-    const z = osobaPrywatna({ dostawa: { ...osobaPrywatna().dostawa, company: 'Gammatech Sp. z o.o.' } });
-    expect(adresOdbiorcy(z).company).toBe('Gammatech Sp. z o.o.');
-    expect(adresZeSklepu(z).company).toBe('Gammatech Sp. z o.o.');
+    const z = osobaPrywatna({ dostawa: { ...osobaPrywatna().dostawa, company: 'Lustrzanka Sp. z o.o.' } });
+    expect(adresOdbiorcy(z).company).toBe('Lustrzanka Sp. z o.o.');
+    expect(adresZeSklepu(z).company).toBe('Lustrzanka Sp. z o.o.');
   });
 
   // firmaZPlatnosci() zostaje NIETKNIETA — to osobna regula (zamowienie 1277) i nie ma nic
   // wspolnego z fallbackiem na nazwisko.
   it('firma z bloku PLATNOSCI przy tym samym adresie dalej dziala', () => {
     const z = osobaPrywatna({
-      klient: { ...osobaPrywatna().klient, company: 'Gammatech Sp. z o.o.', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa' },
+      klient: { ...osobaPrywatna().klient, company: 'Lustrzanka Sp. z o.o.', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa' },
     });
-    expect(adresOdbiorcy(z).company).toBe('Gammatech Sp. z o.o.');
+    expect(adresOdbiorcy(z).company).toBe('Lustrzanka Sp. z o.o.');
   });
 
   it('firma z platnosci przy INNYM adresie dalej NIE jest brana — teraz zostaje puste pole', () => {
     const z = osobaPrywatna({
-      klient: { ...osobaPrywatna().klient, company: 'Gammatech Sp. z o.o.', address_1: 'Budowlana 7', postcode: '00-001', city: 'Warszawa' },
+      klient: { ...osobaPrywatna().klient, company: 'Lustrzanka Sp. z o.o.', address_1: 'Budowlana 7', postcode: '00-001', city: 'Warszawa' },
     });
     expect(adresOdbiorcy(z).company).toBeNull();
   });
@@ -119,10 +119,10 @@ describe('nadpisanie {"company": null} znaczy „operator swiadomie wyczyscil"',
 
   it('gdy sklep DOPISZE prawdziwa firme, wyczyszczenie dalej wygrywa — ale jest WIDOCZNE', () => {
     const z = osobaPrywatna({
-      dostawa: { ...osobaPrywatna().dostawa, company: 'Gammatech Sp. z o.o.' },
+      dostawa: { ...osobaPrywatna().dostawa, company: 'Lustrzanka Sp. z o.o.' },
       dostawa_reczna_json: JSON.stringify({ company: null }),
     });
-    expect(adresZeSklepu(z).company).toBe('Gammatech Sp. z o.o.');
+    expect(adresZeSklepu(z).company).toBe('Lustrzanka Sp. z o.o.');
     expect(adresOdbiorcy(z).company).toBeNull();
     // Znacznik „zmienione recznie" jest jedynym sygnalem dla czlowieka, ze pole jest puste
     // Z DECYZJI, a nie z braku danych. Przed poprawka go NIE BYLO, bo obie strony
@@ -293,9 +293,9 @@ describe('InPost nie dostaje company_name, gdy firmy nie ma', () => {
 
   it('PRAWDZIWA firma dalej jedzie jako company_name', async () => {
     const { c, fetchImpl } = klientInpost();
-    const z = { ...paczkomatowe(), dostawa: { ...paczkomatowe().dostawa, company: 'Gammatech Sp. z o.o.' } };
+    const z = { ...paczkomatowe(), dostawa: { ...paczkomatowe().dostawa, company: 'Lustrzanka Sp. z o.o.' } };
     await c.nadaj({ zamowienie: z, paczka: { waga: 1.2, gabaryt: 'A' } });
-    expect(cialoPost(fetchImpl).receiver.company_name).toBe('Gammatech Sp. z o.o.');
+    expect(cialoPost(fetchImpl).receiver.company_name).toBe('Lustrzanka Sp. z o.o.');
   });
 });
 

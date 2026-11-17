@@ -33,7 +33,7 @@ async function zAplikacja(nadpisania, dzialanie) {
   finally { if (a) { await a.app.close(); a.db.close(); } vi.unstubAllGlobals(); }
 }
 
-describe('PRZ-024 domknięcie — rzeczywisty bootstrap i manifest', () => {
+describe('domknięcie — rzeczywisty bootstrap i manifest', () => {
   it('domyślna kompozycja udostępnia wszystkie 9 tras frozen', async () => {
     await zAplikacja(undefined, async ({ app }) => {
       for (const [method, suffix] of trasy) expect(app.hasRoute({ method, url: '/zamowienia/:id' + suffix }), suffix).toBe(true);

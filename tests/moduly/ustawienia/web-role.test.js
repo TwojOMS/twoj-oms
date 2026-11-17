@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia, ustawCzynne } from '../../../src/core/bezpieczenstwo/konta.js';
 import { listaRol, rolaPoKluczu, kluczeEkranow, odciskMacierzy } from '../../../src/moduly/ustawienia/role.js';
-import { nowyPanel, jako, get, post } from '../../pomoc/konta-prz068.js';
+import { nowyPanel, jako, get, post } from '../../pomoc/panel-konta-testowe.js';
 
 function panelZKontami() {
   const p = nowyPanel();
@@ -10,7 +10,7 @@ function panelZKontami() {
   return { ...p, admin: jako(p.db, 'adam') };
 }
 
-describe('PRZ-068 ekran Role i uprawnienia', () => {
+describe('ekran Role i uprawnienia', () => {
   it('pokazuje macierz ekran × rola, liczby kont i zablokowaną kolumnę Administratora', async () => {
     const { app, admin } = panelZKontami();
     const r = await get(app, '/ustawienia/role', admin);
@@ -21,7 +21,7 @@ describe('PRZ-068 ekran Role i uprawnienia', () => {
     expect(r.body).toMatch(/value="administrator:zamowienia" checked disabled/);
     expect(r.body).toMatch(/value="sprzedaz:magazyn" checked/);
     expect(r.body).not.toMatch(/value="produkcja:magazyn" checked/);
-    // PRZ-093.05: etykieta kolumny API opisuje funkcję (dostęp dla zewnętrznej aplikacji), nie aplikację właściciela.
+    // Etykieta kolumny API opisuje funkcję (dostęp dla zewnętrznej aplikacji), nie aplikację właściciela.
     expect(r.body).toContain('Dostęp przez API (zewnętrzna aplikacja)');
     expect(r.body).toContain('href="/ustawienia/role" aria-current="page"');
     expect(r.body).not.toContain('wyloguj-wszystkie');

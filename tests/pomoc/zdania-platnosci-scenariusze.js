@@ -1,5 +1,5 @@
-// PRZ-102.17: scenariusze maili o płatności — każdy wariant zdania zamykającego i każde zdanie bloku {dane_platnosci}.
-// Jedno źródło dla testu „bajt w bajt” (tests/moduly/wiadomosci/zdania-platnosci-rownosc-prz102-17.test.js) i dla
+// Scenariusze maili o płatności — każdy wariant zdania zamykającego i każde zdanie bloku {dane_platnosci}.
+// Jedno źródło dla testu „bajt w bajt” (tests/moduly/wiadomosci/zdania-platnosci-rownosc.test.js) i dla
 // skryptu, który przed zmianą zapisał wzorzec (tests/fixtures/zdania-platnosci-prz102-17.json). Dane zmyślone.
 
 export const OPRAWA = Object.freeze({ podpis: 'Pracownia Półcień', naglowek: 'Pracownia Półcień', footer: 'ul. Fikcyjna 1, 00-001 Testowo' });
@@ -33,7 +33,7 @@ export const SCENARIUSZE = Object.freeze([
   ['faktura WDT z potwierdzeniem wywozu', { z: zam(), dokument: FV, opcje: { ...wspolne, temat_id: 'faktura', dokument: FV, zalacznikWywozu: true, zalaczonyDokument: true } }],
 ]);
 
-// ——— PRZ-102.19: maile z blokami zamówienia i z podpisem ————————————————————————————————————————————————
+// Maile z blokami zamówienia i z podpisem.
 // Potwierdzenie (droga bez szablonu i szablon domyślny), szablon własny ze wszystkimi blokami zamówienia,
 // „Zamówienie wysłane" i tekst do wątku Allegro — każdy wariant stałego tekstu (nagłówki sekcji, kolumny tabeli,
 // „Razem brutto", „/szt", „Tak — wystawimy na:", „dane do uzgodnienia", „Nie", „(adres do uzgodnienia)",

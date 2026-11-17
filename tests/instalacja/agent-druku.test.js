@@ -1,4 +1,4 @@
-// PRZ-094.21: agent druku (deploy/drukarka) jest w repo i w paczce klienta, a jego skrypty wołają
+// Agent druku (deploy/drukarka) jest w repo i w paczce klienta, a jego skrypty wołają
 // dokładnie te trasy kolejek druku, które istnieją w kodzie. Bez tego obca firma nie wydrukuje etykiety.
 import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
@@ -41,7 +41,7 @@ function wywolaniaSkryptu(tresc) {
 const pliki = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], { cwd: ROOT, encoding: 'utf8' })
   .split('\0').filter(Boolean);
 
-describe('PRZ-094.21: agent druku w repo i w paczce', () => {
+describe('agent druku w repo i w paczce', () => {
   it('pliki agenta istnieją w repo i wchodzą do paczki klienta', () => {
     const brakuje = PLIKI.filter((p) => !existsSync(`${ROOT}${p}`));
     expect(brakuje).toEqual([]);

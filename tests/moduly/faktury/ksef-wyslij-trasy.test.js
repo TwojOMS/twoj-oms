@@ -10,7 +10,7 @@
 // Dwie warstwy, dwa `describe`: usluga (co naprawde leci do inFaktu i co zostaje w logu)
 // oraz trasa z ekranem wyniku (co widzi czlowiek).
 import { describe, it, expect } from 'vitest';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { rozpocznijFakture, zakonczFakture } from '../../../src/moduly/faktury/db/faktury.js';
@@ -73,7 +73,7 @@ describe('odmowa pustego identyfikatora w wyslijDokumentDoKsef jest oznaczona ja
   it('rzuca błąd ze statusem 4xx, mimo że żadne żądanie HTTP nie poszło', async () => {
     const c = createInfaktClient({ apiKey: 'x', fetchImpl: async () => { throw new Error('nie wolno wołać sieci'); } });
 
-    // ⚠️ Argumentem jest teraz JEDEN identyfikator, nie lista (07.08.2026) — sam `null`
+    // ⚠️ Argumentem jest teraz JEDEN identyfikator, nie lista — sam `null`
     // i same spacje muszą odbić się TAK SAMO, bo wklejone do ścieżki dałyby adres, który
     // niczego nie znaczy, i zapytanie o cudzy (albo żaden) dokument.
     for (const uuid of [undefined, null, '', '   ', '\n']) {
@@ -354,7 +354,7 @@ describe('usługa wysyłki do KSeF — wyslij()', () => {
     expect(w.blad).toMatch(/nie odpowiedział/i);
   });
 
-  // ⚠️⚠️ FINDING A1 (recenzja całości). Wysyłka jest nieodwracalna, więc kształtu odpowiedzi
+  // ⚠️⚠️ Wysyłka jest nieodwracalna, więc kształtu odpowiedzi
   // `send.json` NIE DA SIĘ zaobserwować inaczej niż prawdziwym zgłoszeniem. Jeśli pierwsza
   // nadzorowana wysyłka nie zostawi jej w logu, jedyną drogą, żeby ją jeszcze raz zobaczyć,
   // jest wysłanie KOLEJNEGO prawdziwego dokumentu do organu — a to jest cena, której nie da
@@ -869,8 +869,8 @@ describe('POST /faktury/ksef/wyslij', () => {
     expect(kto).toBe('t');
   });
 
-  // ⚠️⚠️ EKRAN NIE UDAJE ZESTAWIENIA, KTOREGO PANEL NIE UMIE ZROBIC (recenzja calosci,
-  // Finding 3). Stały tu dwa ostrzezenia — „liczby sie rozjezdzaja" i „panel nie dostal liczby
+  // ⚠️⚠️ EKRAN NIE UDAJE ZESTAWIENIA, KTOREGO PANEL NIE UMIE ZROBIC
+  // Stały tu dwa ostrzezenia — „liczby sie rozjezdzaja" i „panel nie dostal liczby
   // przyjetych" — a ZADNE nie moglo sie zapalic: `wyslijDokumentDoKsef` wyrzucalo tresc odpowiedzi
   // i oddawalo `przyjete` = dlugosc tego, co SAMO wyslalo. Liczba byla wiec zawsze rowna
   // zgloszonej i nigdy nie byla `null`; testy zadawaly kliencie ksztalt, ktorego nie umial

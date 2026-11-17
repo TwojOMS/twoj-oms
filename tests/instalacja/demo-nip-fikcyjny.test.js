@@ -1,4 +1,4 @@
-// właściciel 06.11: NIP sprzedawcy w demo i w próbnej instalacji nie może należeć do żadnej firmy. Wcześniejszy
+// NIP sprzedawcy w demo i w próbnej instalacji nie może należeć do żadnej firmy. Wcześniejszy
 // 1234563218 ma poprawną sumę kontrolną i krąży w sieci jako numer przykładowy. Fikcyjne NIP-y demo mają przedrostek 999 —
 // pierwsze trzy cyfry NIP-u to kod urzędu skarbowego, a urzędu 999 nie ma (ta sama zasada co FIRMY_B2B).
 import { describe, expect, it } from 'vitest';

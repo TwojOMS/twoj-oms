@@ -1,4 +1,4 @@
-import { definicjeKanalowHistoryczne } from '../pomoc/kanaly-historyczne-fixture.js';
+import { definicjeKanalowHistoryczne } from '../pomoc/przykladowe-definicje-kanalow.js';
 import { describe, it, expect } from 'vitest';
 import { metodaZId, METODY_ALLEGRO } from '../../src/domena/allegro-dostawa.js';
 import {
@@ -73,7 +73,7 @@ describe('metody dostawy Allegro', () => {
   // ⚠️ CALY SLOWNIK, a nie dwa wpisy. Test z planu sprawdzal DWA z osmiu identyfikatorow,
   // wiec literowka w pozostalych szesciu — jeden znak w UUID-zie — przechodzila niezauwazona
   // i konczyla sie metoda `allegro_inne` tam, gdzie znamy prawdziwa nazwe. Tabela ponizej
-  // jest PRZEPISANA Z POMIARU (notatka 2026-08-04-allegro-rozpoznanie.md, sekcja 4), razem
+  // jest PRZEPISANA Z POMIARU, razem
   // z liczebnoscia — po to, zeby dalo sie ja porownac ze zrodlem bez czytania kodu.
   const ZMIERZONE = [
     ['03f26351-f683-4db2-8895-f2c599280e3c', 42, 'Allegro Kurier DPD (AD)', 'allegro_dpd'],

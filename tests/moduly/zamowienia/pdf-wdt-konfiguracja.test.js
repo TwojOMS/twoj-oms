@@ -68,7 +68,7 @@ async function importuj(a, fetch) {
   return r;
 }
 
-describe('PRZ-021: rzeczywisty PDF bez danych dawnej firmy', () => {
+describe('rzeczywisty PDF bez danych dawnej firmy', () => {
   it.each(['Firma testowa Żółw', 'Pracownia testowa Łódź'])('HTTP bierze stopkę, autora i znormalizowany NIP z konfiguracji: %s', async nazwa => {
     const a = await zbudujOms({ env: { ...envBazowe, DPD_NADAWCA_NAZWA: nazwa } });
     try {
@@ -100,7 +100,7 @@ describe('PRZ-021: rzeczywisty PDF bez danych dawnej firmy', () => {
   });
 });
 
-describe('PRZ-021: jedna lista WDT w kompozycji zamówień i historii', () => {
+describe('jedna lista WDT w kompozycji zamówień i historii', () => {
   it.each(['OMS_KLIENCI_WDT', 'OMS_HISTORIA_MAILE_WDT'])('%s ustawione pojedynczo: PDF netto 123,00 zł i import zatrzymany przed utratą klasyfikacji WDT', async zmienna => {
     const fetch = przygotujOdczytHistorii('firma@wdt.invalid');
     const a = await zbudujOms({ env: { ...envBazowe, [zmienna]: ' FIRMA@WDT.INVALID ' } });

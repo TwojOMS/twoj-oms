@@ -1,4 +1,4 @@
-// PRZ-108.07 (zmiana B planu automatyzacji, właściciel 21.10): czyste reguły automatyzacji — walidacja formularza reguły,
+// Czyste reguły automatyzacji — walidacja formularza reguły,
 // biała lista kanałów, zgodność szablonu ze zdarzeniem, granica, kursor z zakładką, przeterminowanie od terminu,
 // klasyfikacja błędu poczty. Silnik i trasy: tests/moduly/automatyzacje/.
 import { describe, it, expect } from 'vitest';
@@ -25,7 +25,7 @@ describe('sprawdzRegule', () => {
     expect(w.ok).toBe(true);
     expect(w.regula).toEqual({
       nazwa: 'Wysłane — sklep', zdarzenie: 'status_zmieniony', zdarzenie_json: {},
-      // C1: warunki w chwili wykonania; szablon „Zamówienie wysłane” wymusza „ma numer listu”.
+      // Warunki w chwili wykonania; szablon „Zamówienie wysłane” wymusza „ma numer listu”.
       warunki: { kanaly: ['sklep'], kanalyZnane: ['sklep', 'allegro', 'reczne', 'indywidualne'], statusy: [],
         maNumerListu: true, metody: [], pobranie: 'dowolne' },
       akcja: 'mail_kupujacy', akcja_json: { szablon: 'wyslane' }, opoznienie_min: 30, limit_na_godzine: 20,
@@ -137,7 +137,7 @@ describe('granica, kursor, termin', () => {
     expect(czyPrzeterminowane(termin, new Date('2026-10-23T10:00:00.000Z'))).toBe(false);
     expect(czyPrzeterminowane(termin, new Date('2026-10-23T10:00:01.000Z'))).toBe(true);
   });
-  it('stałe bezpieczników z decyzji 21.10', () => {
+  it('stałe bezpieczników', () => {
     expect([BEZPIECZNIK_NARAZ, LIMIT_OMS_NA_GODZINE, PRZETERMINOWANIE_H, OPOZNIENIE_MAX_MIN]).toEqual([50, 100, 48, 10080]);
   });
   it('zmiana zdarzenia albo warunków przesuwa granicę; nazwy, szablonu, limitu i opóźnienia — nie', () => {
@@ -154,7 +154,7 @@ describe('granica, kursor, termin', () => {
 });
 
 describe('klasyfikujBladPoczty', () => {
-  // Recenzja 07, usterka 1: ECONNECTION nodemailer daje też po DATA (serwer ma treść) → nie ponawiać.
+  // ECONNECTION nodemailer daje też po DATA (serwer ma treść) → nie ponawiać.
   it('na pewno przed MAIL FROM (EDNS, ETLS, EAUTH) → ponow; reszta, także ECONNECTION → niepewne', () => {
     for (const code of ['EDNS', 'ETLS', 'EAUTH']) expect(klasyfikujBladPoczty(Object.assign(new Error('x'), { code }))).toBe('ponow');
     for (const code of ['ECONNECTION', 'ESOCKET', 'ETIMEDOUT', 'EMESSAGE', 'EENVELOPE', undefined]) expect(klasyfikujBladPoczty(Object.assign(new Error('x'), { code }))).toBe('niepewne');
@@ -162,8 +162,8 @@ describe('klasyfikujBladPoczty', () => {
   });
 });
 
-// PRZ-108.08 (zmiana C1): parametr zdarzenia „status zmienił się na …” i warunki w chwili wykonania w formularzu reguły.
-describe('sprawdzRegule — C1: status zdarzenia i warunki', () => {
+// Parametr zdarzenia „status zmienił się na …” i warunki w chwili wykonania w formularzu reguły.
+describe('sprawdzRegule — status zdarzenia i warunki', () => {
   const C1 = { ...KONTEKST, statusy: ['nowe', 'w_realizacji', 'wyslane', 'zwrot', 'anulowane', 'w_klosz'],
     zdarzenia: [{ klucz: 'status_zmieniony', opcje: ['wyslane', 'w_realizacji', 'w_klosz'] }, { klucz: 'paczka_nadana' }] };
   const FORM = { ...DOBRY, zdarzenie_status: 'wyslane', status_warunek: 'jeden_z', statusy: ['wyslane'], ma_numer_listu: ['0', '1'],

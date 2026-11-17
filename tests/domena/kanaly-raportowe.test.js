@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { kanalHistoryczny, kanalOms } from '../../src/domena/kanaly-raportowe.js';
-import { klasyfikacjaHistorycznaFixture, envRaportowHistorycznyFixture } from '../pomoc/raporty-historyczne-fixture.js';
+import { klasyfikacjaHistorycznaFixture, envRaportowHistorycznyFixture } from '../pomoc/przykladowe-dane-raportow.js';
 
 import { wczytajKlasyfikacje } from '../../src/moduly/kanaly/klasyfikacja.ts';
-import { definicjeKanalowHistoryczne } from '../pomoc/kanaly-historyczne-fixture.js';
+import { definicjeKanalowHistoryczne } from '../pomoc/przykladowe-definicje-kanalow.js';
 const h = (w) => kanalHistoryczny({ tagi_json: '[]', pozycje: [], ...w }, klasyfikacjaHistorycznaFixture);
 
 describe('kanaly historyczne (Apilo)', () => {

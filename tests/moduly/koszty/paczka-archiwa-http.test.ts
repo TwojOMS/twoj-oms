@@ -59,7 +59,7 @@ function koszt(z: Awaited<ReturnType<typeof zbudujOms>>) {
     netto:'100.00',vat:'23.00',brutto:'123.00',waluta:'PLN',rodzaj:'Vat',maZalacznik:0});
   zapiszSciezki(z.db,'K-ARCHIWUM',{pdf:'koszt.pdf'} as any);
 }
-describe('PRZ-025 HTTP paczki z rzeczywistymi archiwami i wizualizacją', () => {
+describe('HTTP paczki z rzeczywistymi archiwami i wizualizacją', () => {
   it('koszty czytają PDF z KSEF_ARCHIWUM przekazanego przez manifest', async () => {
     await fixture(async (z,kat,infakt,klient) => {
       koszt(z); writeFileSync(join(kat,'koszt.pdf'),await pdf(2));

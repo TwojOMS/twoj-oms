@@ -1,4 +1,4 @@
-// PRZ-093 — OMS lokalnie na laptopie wykonawcy: zmyślona firma demo („Pracownia Półcień”), atrapy integracji
+// OMS lokalnie na laptopie wykonawcy: zmyślona firma demo („Pracownia Półcień”), atrapy integracji
 // (deploy/proba/atrapy — ta sama droga co piaskownica), tylko 127.0.0.1, baza w katalogu tymczasowym.
 // Opis dla agenta: .claude/skills/run-oms/SKILL.md. Test: tests/instalacja/uruchom-lokalnie.test.js.
 //
@@ -112,7 +112,7 @@ async function start(o) {
   wyczyscBezKlucza(o.katalog); // resztki po poprzednim przebiegu (proces nie żyje) — zawsze świeże demo
   for (const k of [p.proformy, p.etykiety]) fs.mkdirSync(k, { recursive: true });
 
-  // PRZ-182: klucz poświadczeń z pliku klucz.env w katalogu próby — ten sam dla generatora demo i serwera.
+  // Klucz poświadczeń z pliku klucz.env w katalogu próby — ten sam dla generatora demo i serwera.
   // Istniejący plik jest tylko sprawdzany (pusty albo ucięty = odmowa); brak — nowy klucz. Wartość nie trafia na ekran.
   const { zapewnijKlucz } = await import('./instalacja-wspolne.mjs');
   const { tekst: klucz } = await zapewnijKlucz(p.klucz, p.baza);

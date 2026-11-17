@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { METODY_WYSYLKI, sprawdzZmianeMetody } from '../../../src/domena/wysylka.js';
 import { wybierzKuriera } from '../../../src/oms/kurierzy/index.js';
 

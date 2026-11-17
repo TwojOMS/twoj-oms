@@ -4,7 +4,7 @@ import {
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { rozpocznijPrzesylke, zakonczPrzesylke, zapiszStatusDpd } from '../../../src/moduly/wysylka/db/przesylki.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
 // UKLAD ZAKLADKI /przesylki — trzy zgloszenia właściciela z 18.09.2026:
 //  1. zmiana filtra WYRZUCALA ze statusu, na ktorym operator stal (formularz szedl GET-em

@@ -1,6 +1,6 @@
 import {it,expect} from 'vitest';
 const W=process.cwd();
-it('składanie zamówień nie buduje klientów: start przy połączonym koncie Allegro bez aplikacji (recenzja K05)',async()=>{
+it('składanie zamówień nie buduje klientów: start przy połączonym koncie Allegro bez aplikacji',async()=>{
   const {openOmsDb}=await import(W+'/src/oms/db/db.ts');
   const {migracjaKanalowSprzedazy}=await import(W+'/src/moduly/kanaly/migracje/0001-kanaly-sprzedazy.ts');
   const {migracjaTypuKanaluISklepow}=await import(W+'/src/moduly/kanaly/migracje/0003-kanaly-typ-sklepy.ts');

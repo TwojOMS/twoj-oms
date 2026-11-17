@@ -1,4 +1,4 @@
-// PRZ-119.02 — klient HTTP Fakturowni na ZAPISANYCH odpowiedziach z pomiarów F1–F17
+// Klient HTTP Fakturowni na ZAPISANYCH odpowiedziach z pomiarów F1–F17
 // (tests/fixtures/fakturownia/, konto próbne „firma-testowa”, dane zmyślone). Żadne żądanie nie wychodzi
 // z procesu: fetch jest wstrzyknięty i odpowiada wyłącznie tym, co zapisano w pomiarze.
 import { describe, it, expect, vi } from 'vitest';
@@ -73,7 +73,7 @@ const bezTokenu = (tekst) => {
   for (const p of POSTACIE_TOKENU) expect(String(tekst)).not.toContain(p);
 };
 
-describe('PRZ-119.02 klient Fakturowni — stałe i budowa', () => {
+describe('klient Fakturowni — stałe i budowa', () => {
   it('limit jednego żądania jest krótszy od progu zawieszonej faktury; strona 100, sufit 6 stron', () => {
     expect(LIMIT_ZADANIA_MS).toBe(60_000);
     expect(LIMIT_ZADANIA_MS).toBeLessThan(PROG_ZAWIESZONEJ_FAKTURY_MS);
@@ -95,7 +95,7 @@ describe('PRZ-119.02 klient Fakturowni — stałe i budowa', () => {
     expect(() => createFakturowniaClient({ token: TOKEN, domena: DOMENA, fetchImpl: async () => json([]), http })).toThrow(/http/);
   });
 
-  it('każde żądanie: Bearer w nagłówku, token nigdy w adresie, narzucony limit czasu (F01, F03)', async () => {
+  it('każde żądanie: Bearer w nagłówku, token nigdy w adresie, narzucony limit czasu', async () => {
     const { fetchImpl, zadania } = zPomiaru([...pomiar('F01').wymiany, ...pomiar('F03').wymiany]);
     await expect(klient(fetchImpl).sprawdzPolaczenie()).resolves.toEqual({ ok: true });
     expect(zadania).toHaveLength(1);
@@ -112,8 +112,8 @@ describe('PRZ-119.02 klient Fakturowni — stałe i budowa', () => {
   });
 });
 
-describe('PRZ-119.02 błędy na odpowiedziach z pomiaru', () => {
-  it('401 przy złym tokenie i bez tokenu (F02): rozpoznanie po kodzie, bez adresu konta i treści serwera', async () => {
+describe('błędy na odpowiedziach z pomiaru', () => {
+  it('401 przy złym tokenie i bez tokenu: rozpoznanie po kodzie, bez adresu konta i treści serwera', async () => {
     for (const w of pomiar('F02').wymiany) {
       const e = await blad(klient(async () => json(w.odpowiedz.cialo, w.odpowiedz.status)).sprawdzPolaczenie());
       expect(e.status).toBe(401);
@@ -125,14 +125,14 @@ describe('PRZ-119.02 błędy na odpowiedziach z pomiaru', () => {
     }
   });
 
-  it('401 przy zwykłej operacji też nie niesie adresu konta (F02 na liście faktur)', async () => {
+  it('401 przy zwykłej operacji też nie niesie adresu konta (na liście faktur)', async () => {
     const w = wymiana('F02', 0);
     const e = await blad(klient(async () => json(w.odpowiedz.cialo, 401)).pobierzFakture(595670707));
     expect(e.status).toBe(401);
     expect(`${e.message} ${JSON.stringify(e.tresc ?? null)}`).not.toMatch(/firma-testowa|Musisz/);
   });
 
-  it('404 (F10 #3): status 404 i „Not Found”', async () => {
+  it('404: status 404 i „Not Found”', async () => {
     const { fetchImpl } = zPomiaru(pomiar('F10').wymiany);
     const e = await blad(klient(fetchImpl).pobierzFakture(987654321));
     expect(e.status).toBe(404);
@@ -140,7 +140,7 @@ describe('PRZ-119.02 błędy na odpowiedziach z pomiaru', () => {
     expect(e.tresc).toEqual({ status: 404, error: 'Not Found' });
   });
 
-  it('422 duplikat oid (F11 #11): status i treść pola oddane, decyzja należy do adaptera', async () => {
+  it('422 duplikat oid: status i treść pola oddane, decyzja należy do adaptera', async () => {
     const w = wymiana('F11', 11);
     const { fetchImpl, zadania } = zPomiaru([w]);
     const e = await blad(klient(fetchImpl).wystaw(cialoZadania(w).invoice));
@@ -151,7 +151,7 @@ describe('PRZ-119.02 błędy na odpowiedziach z pomiaru', () => {
     expect(e.message).not.toMatch(/firma-testowa/);
   });
 
-  it('429: status i sekundy z Retry-After (Fakturownia nie dławiła w F08, ale klient to rozumie)', async () => {
+  it('429: status i sekundy z Retry-After (Fakturownia nie dławiła w pomiarze, ale klient to rozumie)', async () => {
     const e = await blad(klient(async () => json({ code: 'error', message: 'Too many requests' }, 429, { 'Retry-After': '30' })).pobierzFakture(1));
     expect(e.status).toBe(429);
     expect(e.ponowZaS).toBe(30);
@@ -184,10 +184,10 @@ describe('PRZ-119.02 błędy na odpowiedziach z pomiaru', () => {
   });
 });
 
-describe('PRZ-119.02 stronicowanie: goła tablica, koniec = strona krótsza niż per_page', () => {
+describe('stronicowanie: goła tablica, koniec = strona krótsza niż per_page', () => {
   const zakres = { period: 'more', date_from: '2026-10-10', date_to: '2026-10-11' };
 
-  it('101 dokumentów = 2 strony (F07 #28–#29)', async () => {
+  it('101 dokumentów = 2 strony', async () => {
     const { fetchImpl, zadania } = zPomiaru(pomiar('F07').wymiany);
     const wiersze = await klient(fetchImpl).listaFaktur(zakres);
     expect(wiersze).toHaveLength(101);
@@ -196,14 +196,14 @@ describe('PRZ-119.02 stronicowanie: goła tablica, koniec = strona krótsza niż
     expect(wiersze[100]).toEqual(wymiana('F07', 29).odpowiedz.cialo[0]);
   });
 
-  it('dokładnie 100 = pełna strona i pusta następna (F07 #26–#27)', async () => {
+  it('dokładnie 100 = pełna strona i pusta następna', async () => {
     const { fetchImpl, zadania } = zPomiaru(pomiar('F07').wymiany);
     const wiersze = await klient(fetchImpl).listaFaktur({ ...zakres, date_to: '2026-10-10' });
     expect(wiersze).toHaveLength(100);
     expect(zadania).toHaveLength(2);
   });
 
-  it('kinds[] jako tablica (F07 #35)', async () => {
+  it('kinds[] jako tablica', async () => {
     const { fetchImpl } = zPomiaru(pomiar('F07').wymiany);
     // Strona 2 tego zapytania nie padła w pomiarze — wystarczy, że pierwsza ma adres z pomiaru.
     const e = await blad(klient(fetchImpl).listaFaktur({ ...zakres, 'kinds[]': ['vat', 'wdt'] }));
@@ -257,7 +257,7 @@ describe('PRZ-119.02 stronicowanie: goła tablica, koniec = strona krótsza niż
     expect(e.message).toMatch(/nie rozpoznaję strony listy/);
   });
 
-  it('parametry spoza listy dozwolonych → odmowa bez żądania (nieznany filtr Fakturownia przemilcza, F16 #5)', async () => {
+  it('parametry spoza listy dozwolonych → odmowa bez żądania (nieznany filtr Fakturownia przemilcza)', async () => {
     const { fetchImpl, zadania } = nagrywacz(() => json([]));
     for (const zle of [{ send_to_ksef: 'yes' }, { api_token: 'x' }, { page: '3' }, { per_page: '1000' }, { numer_nieistniejacy_filtr: 'x' }]) {
       const e = await blad(klient(fetchImpl).listaFaktur(zle));
@@ -283,8 +283,8 @@ describe('PRZ-119.02 stronicowanie: goła tablica, koniec = strona krótsza niż
   });
 });
 
-describe('PRZ-119.02 operacje na pomiarze', () => {
-  it('pobierzFakture z polami (F12) i z pozycjami korekty (F15 #3) — surowy obiekt', async () => {
+describe('operacje na pomiarze', () => {
+  it('pobierzFakture z polami i z pozycjami korekty — surowy obiekt', async () => {
     const { fetchImpl } = zPomiaru([...pomiar('F12').wymiany, ...pomiar('F15').wymiany]);
     const k = klient(fetchImpl);
     await expect(k.pobierzFakture(595670707, { 'fields[invoice]': 'id,number,gov_status' })).resolves.toEqual(wymiana('F12', 0).odpowiedz.cialo);
@@ -300,7 +300,7 @@ describe('PRZ-119.02 operacje na pomiarze', () => {
     expect(zadania).toHaveLength(0);
   });
 
-  it('wystaw (F04 #1) i wystawKorekte (F15 #2): POST {invoice}, odpowiedź surowa', async () => {
+  it('wystaw i wystawKorekte: POST {invoice}, odpowiedź surowa', async () => {
     const f04 = wymiana('F04', 1);
     const f15 = wymiana('F15', 2);
     // Ten sam adres i metoda — każda wymiana dostaje własne nagranie.
@@ -319,12 +319,12 @@ describe('PRZ-119.02 operacje na pomiarze', () => {
     expect(zadania).toHaveLength(0);
   });
 
-  it('oznaczZaplacona (F09 #2)', async () => {
+  it('oznaczZaplacona', async () => {
     const { fetchImpl } = zPomiaru(pomiar('F09').wymiany);
     await expect(klient(fetchImpl).oznaczZaplacona(595670707)).resolves.toMatchObject({ id: 595670707, status: 'paid' });
   });
 
-  // PRZ-119.05 (recenzja 03 a): F09 — `change_status` ustawia `paid_date` na DZIŚ, więc data zapłaty
+  // F09 — `change_status` ustawia `paid_date` na DZIŚ, więc data zapłaty
   // z zamówienia idzie osobnym `PUT /invoices/{id}.json` (NIEZMIERZONE — pomiar przed profilem próby).
   it('oznaczZaplacona z paidDate: change_status, potem PUT {invoice:{paid_date}}', async () => {
     const { fetchImpl, zadania } = nagrywacz((z) => json(z.metoda === 'PUT'
@@ -356,7 +356,7 @@ describe('PRZ-119.02 operacje na pomiarze', () => {
     expect(e.message).toMatch(/oznaczona jako opłacona.*2026-11-10/);
   });
 
-  it('iluMaNumer (F16 #3, #4): per_page=100, liczy tylko RÓWNE numery; pełna strona → odmowa', async () => {
+  it('iluMaNumer: per_page=100, liczy tylko RÓWNE numery; pełna strona → odmowa', async () => {
     const trafienie = wymiana('F16', 3).odpowiedz.cialo;
     expect(trafienie).toHaveLength(1);
     const podobny = { ...trafienie[0], id: 595679999, number: 'WDT/1/10/2026-A' };
@@ -383,7 +383,7 @@ describe('PRZ-119.02 operacje na pomiarze', () => {
     expect(e.message).toMatch(/nie jest PDF/);
   });
 
-  it('znajdzKlientowPoNip: GET /clients.json?tax_no= — surowa tablica w kształcie z F03 #2', async () => {
+  it('znajdzKlientowPoNip: GET /clients.json?tax_no= — surowa tablica w kształcie z pomiaru', async () => {
     const klienci = wymiana('F03', 2).odpowiedz.cialo;
     expect(Array.isArray(klienci) && klienci.length).toBe(1);
     const nip = klienci[0].tax_no;
@@ -393,7 +393,7 @@ describe('PRZ-119.02 operacje na pomiarze', () => {
   });
 });
 
-describe('PRZ-119.02 strażnik adresów: send_to_ksef tylko w wyslijDokumentDoKsef', () => {
+describe('strażnik adresów: send_to_ksef tylko w wyslijDokumentDoKsef', () => {
   it('żadne żądanie poza wysyłką nie niesie send_to_ksef, gov_save_and_send ani api_token — w adresie ani treści', async () => {
     const { fetchImpl, zadania } = nagrywacz((z) => (z.url.includes('.pdf')
       ? new Response(Buffer.from('%PDF-1.4'), { status: 200 })
@@ -458,7 +458,7 @@ describe('PRZ-119.02 strażnik adresów: send_to_ksef tylko w wyslijDokumentDoKs
     }
   });
 
-  // PRZ-119.05 (recenzja 03 c): 503 przy zapisie → dokładnie jedno żądanie, także na transporcie
+  // 503 przy zapisie → dokładnie jedno żądanie, także na transporcie
   // DOMYŚLNYM (klient bez `fetchImpl` składa `utworzHttp` — tu nad podstawionym globalnym fetch).
   it('503 przy wystawieniu, korekcie, zapłacie i KSeF: dokładnie jedno żądanie (transport domyślny)', async () => {
     const r = nagrywacz(() => json({ code: 'error', message: 'chwilowo niedostępne' }, 503));

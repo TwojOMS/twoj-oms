@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie, pobierzZamowienie, oznaczWyslane } from '../../../src/oms/db/zamowienia.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { createPrzesylkiAllegro } from '../../../src/moduly/wysylka/services/przesylki-allegro.js';
 import { zarejestrujPrzesylkeReczna } from '../../../src/moduly/wysylka/db/przesylki.js';
 
-// ⚠️ KTO WOLA `odswiez` (decyzja Zadania 11).
+// ⚠️ KTO WOLA `odswiez`.
 //
 // Usluga sama z siebie niczego nie pokazuje — bez wolajacego numery listow z Allegro nie
 // pojawilyby sie w panelu w ogole. Wolajacym jest OTWARCIE KARTY ZAMOWIENIA, a nie poller:
@@ -197,7 +197,7 @@ describe('karta zamówienia dociąga numer listu z Allegro', () => {
     expect(log(id).some((w) => w.akcja === 'allegro.przesylka' && /401/.test(w.wynik))).toBe(true);
   });
 
-  // ⚠️ I-2: LOG MA ROSNAC OD FAKTOW, NIE OD ODSLON. Po cofnietej zgodzie (401) awaria trwa,
+  // ⚠️ LOG MA ROSNAC OD FAKTOW, NIE OD ODSLON. Po cofnietej zgodzie (401) awaria trwa,
   // a operator otwiera te sama karte raz za razem — kazde otwarcie dopisywalo IDENTYCZNY
   // wiersz „BŁĄD", czyli zasypywalo historie zamowienia dokladnie w chwili, w ktorej ktos
   // probuje ja czytac przy diagnozie. Dlawik: porownanie z OSTATNIM wpisem tej akcji.
@@ -244,7 +244,7 @@ describe('karta zamówienia dociąga numer listu z Allegro', () => {
     expect(wpisy.map((w) => w.wynik).join('|')).toMatch(/401[\s\S]*500/);
   });
 
-  // ⚠️⚠️ I-3 (recenzja calej galezi): DLAWIK CZESTOTLIWOSCI ODPYTYWANIA.
+  // ⚠️⚠️ I-3: DLAWIK CZESTOTLIWOSCI ODPYTYWANIA.
   //
   // `wyslane_at` ogranicza CZAS ZYCIA odpytywania („dopoki zamowienie wisi na liscie
   // roboczej"), ale nie ogranicza jego TEMPA — a to sa dwie rozne rzeczy. Kazde renderowanie
@@ -354,7 +354,7 @@ describe('karta zamówienia dociąga numer listu z Allegro', () => {
     expect(odp.body).toContain('nadana w Allegro');
   });
 
-  // ⚠️⚠️ I-1 (recenzja calej galezi), strona widoku. Numer WPISANY Z REKI przy zamowieniu
+  // ⚠️⚠️ I-1, strona widoku. Numer WPISANY Z REKI przy zamowieniu
   // z Allegro ma kuriera 'allegro' (kurierzy/index.js: kurierWpisuRecznego) — czyli po starym
   // warunku widok pisal przy nim „przeczytany z konta" i CHOWAL przycisk kasowania. Literowka
   // zostawala wtedy na zawsze: rejestracja reczna ustawia `wyslane_at`, wiec prawdziwy numer

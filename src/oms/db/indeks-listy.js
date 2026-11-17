@@ -16,7 +16,7 @@ import { statusyWKolejnosci } from './statusy.js';
 // zamówienie (odczyt z dziećmi + reguły) — przy dziesiątkach tysięcy to kilkanaście sekund. W `temp`
 // płaciłby to KAŻDY start procesu, a pierwszy widok listy po wydaniu czekałby na całość.
 //
-// ⚠️ ŚWIEŻOŚĆ — każda droga ma test w tests/prz051/indeks-listy.test.js:
+// ⚠️ ŚWIEŻOŚĆ — każda droga ma test w tests/moduly/zamowienia/lista/indeks-listy-zamowien.test.js:
 //   1. zapis kodem panelu: wyzwalacze TEMP (oms/db/sledzenie-listy.js) wpisują zamówienie do
 //      `lista_brudne` w tej samej transakcji; `odswiez` przelicza je PRZED odpowiedzią;
 //   2. sam upływ czasu: wiersz trzyma CHWILE, od których reguły mówią „tak" (domena/

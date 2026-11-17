@@ -47,17 +47,18 @@ it.each([
 });
 
 it('opcjonalne moduły pomija wyłącznie konkretny brak config, pozostałe awarie propaguje',()=>{
-  const minimalna=<T>(modul:string):T=>{
-    if(modul==='kanaly')return {sklepy:{},kanaly:{}} as T;
+  const minimalna=<T>(modul:string,nazwa?:string):T=>{
+    // Moduł kanałów jest obowiązkowy: config z pliku i cele kanałów z konfiguratora.
+    if(modul==='kanaly')return (nazwa==='celeLacznosci'?()=>({cele:[],zPliku:[]}):{sklepy:{},kanaly:{}}) as T;
     throw Error(`Usługa „${modul}.config" nie istnieje albo moduł „${modul}" nie jest zbudowany przed wołającym`);
   };
   expect(celeDiagnostyki(minimalna)).toEqual([]);
-  expect(()=>celeDiagnostyki(<T>(modul:string):T=>{
+  expect(()=>celeDiagnostyki(<T>(modul:string,nazwa?:string):T=>{
     if(modul==='faktury')throw Error('rzeczywista awaria konfiguracji');
-    return minimalna<T>(modul);
+    return minimalna<T>(modul,nazwa);
   })).toThrow('rzeczywista awaria konfiguracji');
-  expect(()=>celeDiagnostyki(<T>(modul:string):T=>{
+  expect(()=>celeDiagnostyki(<T>(modul:string,nazwa?:string):T=>{
     if(modul==='faktury')throw Error('Usługa „faktury.config” nie istnieje — awaria innego pochodzenia');
-    return minimalna<T>(modul);
+    return minimalna<T>(modul,nazwa);
   })).toThrow('awaria innego pochodzenia');
 });

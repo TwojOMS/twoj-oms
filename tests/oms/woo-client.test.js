@@ -35,7 +35,7 @@ describe('pobierzZamowienia', () => {
     expect(url).toContain('dates_are_gmt=true');
   });
 
-  // PRZ-117: LiteSpeed Cache trzymał tę odpowiedź 30 min (`x-litespeed-cache-control: private,max-age=1800`,
+  // LiteSpeed Cache trzymał tę odpowiedź 30 min (`x-litespeed-cache-control: private,max-age=1800`,
   // zmierzone 26.10 na żywym sklepie), a poller przy stojącym kursorze pyta CO DWIE MINUTY tym samym adresem —
   // zamówienie 28466 przyszło do panelu po 31 min. Nagłówek `Cache-Control: no-cache` pamięci nie omija
   // (zmierzone: dalej `hit`), unikalny parametr w adresie omija.

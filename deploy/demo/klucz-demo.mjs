@@ -1,4 +1,4 @@
-// PRZ-153.E9: publiczny klucz API demo (demo.twojoms.pl) — wyłącznie zakresy odczytu.
+// Publiczny klucz API demo (demo.twojoms.pl) — wyłącznie zakresy odczytu.
 // Jawny z założenia, jak konto gościa demo/demo (GOSC w konfiguracja.mjs): stoi w docs/api/README.md, żeby każdy
 // mógł wywołać API na zmyślonych danych „Pracowni Półcień”. Nie jest sekretem i nie otwiera żadnego zapisu.
 // Baza demo powstaje od nowa co godzinę, więc klucz wstawia zalozBazeDemo (baza.mjs) przy każdej budowie bazy.

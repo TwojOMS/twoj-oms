@@ -6,7 +6,7 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { proformyZamowienia } from '../../../src/moduly/faktury/db/proformy.js';
 import { createProforma } from '../../../src/moduly/faktury/services/proforma.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
 // ---------------------------------------------------------------------------------
 // Etap 1 planu 2026-08-18-layout-karty-i-koniec-apilo: DWIE TRASY API, ktorymi panel

@@ -5,7 +5,7 @@ import { ustawRejestrKanalow } from '../../../src/domena/moduly-kanalow.ts';
 import { createSyncSklep } from '../../../src/moduly/zamowienia/services/sync-sklep.js';
 import { sprawyKarty } from '../../../src/domena/sprawy-karty.js';
 import { createErliClient } from '../../../src/oms/erli/client.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
 let db, id, klient, sync;
 const surowe = { id: 'PC-ERLI-0001', sellerStatus: 'created', delivery: { name: 'Kurier testowy', typeId: 'kurierTestowy' } };

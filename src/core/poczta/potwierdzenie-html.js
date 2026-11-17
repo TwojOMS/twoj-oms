@@ -76,7 +76,7 @@ const akapit = (tekst, extra = '') => `<p style="margin:0 0 14px;font-family:${F
  * Sekcje potwierdzenia jako BLOKI szablonu — te same kawałki HTML, które składa
  * `renderPotwierdzenieHtml` niżej (ta funkcja bierze je stąd, zamiast trzymać drugą kopię).
  * Zgodność pilnują tests/moduly/wiadomosci/szablony-rownosc.test.js i wzorzec bajt w bajt
- * (zdania-platnosci-rownosc-prz102-17.test.js).
+ * (zdania-platnosci-rownosc.test.js).
  */
 export function blokiHtmlPotwierdzenia(m) {
   const t = tekstyModelu(m);

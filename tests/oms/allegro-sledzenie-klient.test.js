@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createAllegroSledzenieClient } from '../../src/oms/kurierzy/allegro.js';
 
-// KLIENT SLEDZENIA KANALU ALLEGRO (25.08.2026).
+// KLIENT SLEDZENIA KANALU ALLEGRO.
 //
 // Do 25.08 wiersz z `kurier = 'allegro'` nie mial klienta w mapie i bylo to udokumentowane
 // jako stan poprawny („panel o te paczke nikogo nie pyta, bo nadal jej nie my" —

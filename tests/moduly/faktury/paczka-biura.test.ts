@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { paczkaBiuraDlaTras } from '../../../src/moduly/faktury/paczka-biura.ts';
 
-describe('jawna usługa paczki biura PRZ-025', () => {
+describe('jawna usługa paczki biura', () => {
   it('wiąże rzeczywistą usługę po budowie modułów i przekazuje oba wywołania', async () => {
     let gotowe = false;
     const koszty = { zbuduj: vi.fn().mockResolvedValue({ bajty: Buffer.from('pdf') }),
@@ -17,7 +17,7 @@ describe('jawna usługa paczki biura PRZ-025', () => {
     expect(koszty.zbudujZestawieniePrzychodow).toHaveBeenCalledWith('2026-08');
   });
 
-  it('PRZ-122.B13d1: przekazuje zbudujZaznaczone z tym samym argumentem', async () => {
+  it('przekazuje zbudujZaznaczone z tym samym argumentem', async () => {
     const wynik = { bajty: Buffer.from('z'), nazwa: 'zestawienie-faktur-2026-08-zaznaczone.pdf' };
     const koszty = { zbuduj: vi.fn(), zbudujZestawieniePrzychodow: vi.fn(), zbudujZaznaczone: vi.fn().mockResolvedValue(wynik) };
     const paczka = paczkaBiuraDlaTras(() => koszty);

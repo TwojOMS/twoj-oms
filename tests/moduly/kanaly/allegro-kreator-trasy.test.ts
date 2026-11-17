@@ -135,9 +135,9 @@ it('aktywacja kandydata bez „To moje konto — dalej” jest odrzucana',async(
  expect((await f.post(k,'aktywuj',{probaId,potwierdz:'tak',pobieraj:'nie'})).statusCode).toBe(303);expect(f.repo.pobierz(k).autoryzacja).toBe('polaczone');
 });
 
-// PRZ-146.03 (B5–B7, B9): kreator pokazuje tylko bieżący krok; sekcje konta wracają po połączeniu.
+// Kreator pokazuje tylko bieżący krok; sekcje konta wracają po połączeniu.
 const sekcjeKonta=(html:string)=>({odlacz:/action="[^"]*\/odlacz"/.test(html),nazwa:/action="[^"]*\/nazwa"/.test(html),polaczenie:html.includes('<h2>Połączenie</h2>'),przerwij:/action="[^"]*\/przerwij"/.test(html)});
-it('B5/B6: kroki 2, 3 i 4 szkicu nie mają sekcji Połączenie, Nazwa i Odłączenie — mają „Przerwij podłączanie”; połączone konto je ma',async()=>{
+it('kroki 2, 3 i 4 szkicu nie mają sekcji Połączenie, Nazwa i Odłączenie — mają „Przerwij podłączanie”; połączone konto je ma',async()=>{
  const f=await setup(),k=await f.draft();
  const krok2=await f.req('GET',root+'/'+k);expect(krok2.body).toContain('aria-current="step"');expect(krok2.body).toContain('2. Zgoda w Allegro');
  const device=await f.post(k,'autoryzacja');
@@ -152,7 +152,7 @@ it('B5/B6: kroki 2, 3 i 4 szkicu nie mają sekcji Połączenie, Nazwa i Odłącz
  const konto=await f.req('GET',root+'/'+k);
  expect(sekcjeKonta(konto.body)).toEqual({odlacz:true,nazwa:true,polaczenie:true,przerwij:false});
 });
-it('B5c/d/e: kod w osobnym elemencie z ukrytym przyciskiem Kopiuj, wyjaśnienie w 3 krokach, adres środowiska Sandbox',async()=>{
+it('kod w osobnym elemencie z ukrytym przyciskiem Kopiuj, wyjaśnienie w 3 krokach, adres środowiska Sandbox',async()=>{
  const f=await setup();
  const r=await f.post(await f.draft(),'autoryzacja');
  expect(r.body).toMatch(/<code[^>]*>POLCIEN-123<\/code>/);
@@ -164,7 +164,7 @@ it('B5c/d/e: kod w osobnym elemencie z ukrytym przyciskiem Kopiuj, wyjaśnienie 
  const s=await f.req('GET',root+'/'+sandbox.klucz);
  expect(s.body).toContain('allegro.pl.allegrosandbox.pl');expect(s.body).not.toContain('zalogowana na allegro.pl. Jeśli');
 });
-it('B5b: „← Wróć do kroku 1” tylko na szkicu z autoryzacja=brak; zapis z kroku 1 zastępuje szkic',async()=>{
+it('„← Wróć do kroku 1” tylko na szkicu z autoryzacja=brak; zapis z kroku 1 zastępuje szkic',async()=>{
  const f=await setup(),k=await f.draft();
  const krok2=await f.req('GET',root+'/'+k);
  expect(krok2.body).toContain('href="'+root+'/'+k+'/krok-1"');expect(krok2.body).toContain('← Wróć do kroku 1');
@@ -195,7 +195,7 @@ it('Przerwij podłączanie usuwa szkic; odmawia przy połączonym koncie i przy 
  expect(f.repo.pobierz(p).autoryzacja).toBe('oczekuje_potwierdzenia');expect(f.repo.pobierz(p).kontoId).toBeTruthy();
  const ponowna=await f.post(p,'przerwij',{potwierdz:'tak'});expect(ponowna.statusCode).toBe(409);expect(f.repo.pobierz(p)).not.toBeNull();
 });
-it('B7: krok 4 bez pola wyboru, z ukrytym potwierdz=tak i zdaniem o koncie; POST /aktywuj bez potwierdz nadal odmawia',async()=>{
+it('krok 4 bez pola wyboru, z ukrytym potwierdz=tak i zdaniem o koncie; POST /aktywuj bez potwierdz nadal odmawia',async()=>{
  const f=await setup(),k=await f.draft(),{probaId}=await f.candidate(k);
  expect((await f.post(k,'potwierdz',{probaId})).statusCode).toBe(303);
  const krok4=(await f.req('GET',root+'/'+k)).body;
@@ -207,7 +207,7 @@ it('B7: krok 4 bez pola wyboru, z ukrytym potwierdz=tak i zdaniem o koncie; POST
  const bez=await f.post(k,'aktywuj',{probaId,pobieraj:'nie'});expect(bez.statusCode).toBe(400);expect(f.repo.pobierz(k).autoryzacja).not.toBe('polaczone');
  expect((await f.post(k,'aktywuj',{probaId,potwierdz:'tak',pobieraj:'nie'})).statusCode).toBe(303);
 });
-it('B9: odłączenie konta ma klasę przycisku niebezpiecznego z Ustawień, nie btn--cichy',async()=>{
+it('odłączenie konta ma klasę przycisku niebezpiecznego z Ustawień, nie btn--cichy',async()=>{
  const f=await setup(),k=await f.draft(),{probaId}=await f.candidate(k);
  await f.post(k,'potwierdz',{probaId});await f.post(k,'aktywuj',{probaId,potwierdz:'tak',pobieraj:'nie'});
  const html=(await f.req('GET',root+'/'+k)).body;
@@ -216,8 +216,7 @@ it('B9: odłączenie konta ma klasę przycisku niebezpiecznego z Ustawień, nie 
  expect(form).toMatch(/name="potwierdz" value="tak" required/);
 });
 
-// PRZ-148.06: drobne uwagi z recenzji PRZ-146.
-it('PRZ-148.06 (2): stary link kroku 1 nie zastępuje szkicu zmienionego w międzyczasie (wersja w adresie)',async()=>{
+it('stary link kroku 1 nie zastępuje szkicu zmienionego w międzyczasie (wersja w adresie)',async()=>{
  const f=await setup(),k=await f.draft();
  const krok1=await f.req('GET',root+'/'+k+'/krok-1');
  const formularzId=krok1.body.match(/name="formularzId" value="([^"]+)"/)![1];
@@ -228,13 +227,13 @@ it('PRZ-148.06 (2): stary link kroku 1 nie zastępuje szkicu zmienionego w międ
  expect(nowy.statusCode).toBe(303);
  expect(f.repo.pobierz(k)).toMatchObject({nazwa:'Półcień nowsza nazwa'});
 });
-it.each([['2026-10-15T22:00:00.000Z','2026-10-16'],['2025-06-01T00:00:00.000Z','2026-11-01'],['2026-12-24T23:00:00.000Z','2026-11-01'],['zepsute','2026-11-01']])('PRZ-148.06 (6): krok 1 pokazuje datę szkicu %s tylko z okna 12 miesięcy → %s',async(odUtc,widac)=>{
+it.each([['2026-10-15T22:00:00.000Z','2026-10-16'],['2025-06-01T00:00:00.000Z','2026-11-01'],['2026-12-24T23:00:00.000Z','2026-11-01'],['zepsute','2026-11-01']])('krok 1 pokazuje datę szkicu %s tylko z okna 12 miesięcy → %s',async(odUtc,widac)=>{
  const f=await setup(),k=await f.draft();
  db.prepare('UPDATE kanaly_sprzedazy SET od_utc=? WHERE klucz=?').run(odUtc,k);
  const krok1=await f.req('GET',root+'/'+k+'/krok-1');expect(krok1.statusCode).toBe(200);
  expect(krok1.body).toMatch(new RegExp('type="date" value="'+widac+'"'));
 });
-it('PRZ-148.06 (8): domyślne środowisko w kroku 0 i 1 to to, w którym jest aplikacja',async()=>{
+it('domyślne środowisko w kroku 0 i 1 to to, w którym jest aplikacja',async()=>{
  const f=await setup(false);
  expect((await f.req('GET',root+'/nowe')).body).toMatch(/value="produkcja" selected/);
  expect((await f.req('GET',root+'/aplikacja')).body).toMatch(/value="produkcja" selected/);
@@ -243,20 +242,20 @@ it('PRZ-148.06 (8): domyślne środowisko w kroku 0 i 1 to to, w którym jest ap
  const app=await f.req('GET',root+'/aplikacja');expect(app.statusCode).toBe(200);expect(app.body).toMatch(/value="sandbox" selected/);
  expect((await f.req('GET',root+'/aplikacja?srodowisko=cos')).statusCode).toBe(400);
 });
-it('PRZ-148.06 (3): ostrzeżenie o braku aplikacji stoi w formularzu kroku 1 nad przyciskiem „Dalej”',async()=>{
+it('ostrzeżenie o braku aplikacji stoi w formularzu kroku 1 nad przyciskiem „Dalej”',async()=>{
  const f=await setup();
  const html=(await f.req('GET',root+'/nowe')).body;
  const form=html.match(/<form method="post" action="[^"]*\/szkice[^"]*">[\s\S]*?<\/form>/)![0];
  const uwaga=form.indexOf('data-bez-aplikacji="sandbox"'),przycisk=form.indexOf('<button class="btn btn--glowny"');
  expect(uwaga).toBeGreaterThan(-1);expect(uwaga).toBeLessThan(przycisk);
  expect(form).toMatch(/<p class="ust-uwaga" data-bez-aplikacji="sandbox" hidden role="status">/);});
-it('PRZ-148.06 (5): przycisk „Podłącz konto” w karcie kroku 4',async()=>{
+it('przycisk „Podłącz konto” w karcie kroku 4',async()=>{
  const f=await setup(),k=await f.draft(),{probaId}=await f.candidate(k);
  expect((await f.post(k,'potwierdz',{probaId})).statusCode).toBe(303);
  const html=(await f.req('GET',root+'/'+k)).body;
  expect(html).toMatch(/<section class="ust-sekcja">\s*<h2>4\. Data startu<\/h2>(?:(?!<\/section>)[\s\S])*action="[^"]*\/aktywuj"(?:(?!<\/section>)[\s\S])*Podłącz konto<\/button>\s*<\/form>\s*<\/section>/);
 });
-it('PRZ-149.03 (C2): krok 1 z aplikacją ma zdanie o kolejnych kontach raz, krok 0 go nie ma',async()=>{
+it('krok 1 z aplikacją ma zdanie o kolejnych kontach raz, krok 0 go nie ma',async()=>{
  const zdanie='Aplikację zakładasz raz na środowisko — kolejne konta podłączasz od kroku 1. W kroku 2 zaloguj się na to konto, które chcesz podłączyć (najlepiej w oknie prywatnym).';
  const z=await setup();
  expect(((await z.req('GET',root+'/nowe')).body.split(zdanie).length-1)).toBe(1);

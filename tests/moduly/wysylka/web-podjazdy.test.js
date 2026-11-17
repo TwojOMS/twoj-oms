@@ -1,6 +1,6 @@
 import { expect, it, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
 const auth = { authorization: `Basic ${Buffer.from('adam:x').toString('base64')}` };
 

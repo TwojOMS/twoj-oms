@@ -93,8 +93,9 @@ npm run typy        # tylko kontrola typów
 npx vitest run tests/moduly/zwroty   # testy jednego modułu
 ```
 
-Część testów PDF potrzebuje programu `pdftotext` (pakiet Poppler) w `PATH`: bez niego jedne się pomijają,
-inne kończą błędem. CI tego repozytorium instaluje Popplera. Pełna bramka trwa kilkadziesiąt
+Do testów PDF potrzebny jest Poppler z `pdftotext` w `PATH` (`apt install poppler-utils`); bez niego testy
+odczytu PDF się pomijają, a na początku przebiegu pojawia się ostrzeżenie z liczbą pominiętych plików.
+CI tego repozytorium instaluje Popplera. Pełna bramka trwa kilkadziesiąt
 minut; w trakcie pracy uruchamiaj testy dotkniętego modułu. Zasady zmian i mapa kodu dla agenta:
 [AGENTS.md](AGENTS.md), [docs/dla-agenta/](docs/dla-agenta/).
 

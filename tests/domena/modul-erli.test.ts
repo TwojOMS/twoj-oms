@@ -13,7 +13,7 @@ it('ERLI z rejestru otrzymuje prawdziwy moduł bez ostrzeżenia, niezależnie od
   expect(nieznaneKanalyZamowien()).toEqual([]);
 });
 
-it('umiejętności ERLI odpowiadają D4 i katalogowi D20 (PRZ-160.E2.02)', async () => {
+it('umiejętności ERLI odpowiadają katalogowi', async () => {
   const { MODUL_ERLI } = await import('../../src/domena/modul-erli.ts');
   expect(MODUL_ERLI.umiejetnosci).toEqual({
     zdarzenia: 'skrzynka', wymagaAkceptacji: false, statusZwrotny: 'mapa', numerListu: 'przesylki',

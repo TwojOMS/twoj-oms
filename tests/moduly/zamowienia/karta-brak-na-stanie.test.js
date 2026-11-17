@@ -1,11 +1,11 @@
-// PRZ-091: pasek „Brak na stanie” na karcie zamówienia (stany magazynowe włączone, karta produktu < 0).
+// Pasek „Brak na stanie” na karcie zamówienia (stany magazynowe włączone, karta produktu < 0).
 import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie, zapiszNadpisaniaPozycji } from '../../../src/oms/db/zamowienia.js';
 import { zapiszProduktSklepowy, utworzKarte, powiazProdukt } from '../../../src/oms/db/magazyn.js';
 import { przelaczStany, dodajRuch } from '../../../src/oms/db/stany-magazynowe.js';
 import { brakiNaStanieZamowienia } from '../../../src/oms/db/stany-zamowienia.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
 const config = { auth: { user: 'adam', pass: 'x' } };
 const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64'), origin: 'http://localhost' };
@@ -43,7 +43,7 @@ const przyjmij = (karta, ilosc) => dodajRuch(db, { kartaId: karta, rodzaj: 'przy
 const karta = (id) => app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
 const pasek = (html) => /<div class="pasek-uwaga" id="brak-na-stanie">[\s\S]*?<\/div>/u.exec(html)?.[0] ?? null;
 
-describe('PRZ-091 karta zamówienia — brak na stanie', () => {
+describe('karta zamówienia — brak na stanie', () => {
   it('stany wyłączone: karta bez paska, mimo że zamówienie zjadłoby więcej, niż jest', async () => {
     const id = zamowienie([{ produkt_id: '10', ilosc: 5 }]);
     const r = await karta(id);
@@ -96,7 +96,7 @@ describe('PRZ-091 karta zamówienia — brak na stanie', () => {
     expect(brakiNaStanieZamowienia(db, id)).toEqual([{ karta_id: lampa, nazwa: 'Lampa stołowa Grzybek', stan: -2, ilosc: 3 }]);
   });
 
-  // PRZ-152.G2-01 — usunięta pozycja sklepowa nie idzie do rozchodu ani do paska.
+  // Usunięta pozycja sklepowa nie idzie do rozchodu ani do paska.
   it('brakiNaStanieZamowienia: usunięta pozycja nie liczy się do ilości ani do stanu', () => {
     wlacz();
     przyjmij(lampa, 1);

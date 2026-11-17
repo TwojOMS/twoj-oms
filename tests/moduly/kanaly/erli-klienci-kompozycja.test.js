@@ -133,7 +133,7 @@ it('samo ERLI nie włącza magazynu ofert ani faktur Allegro, włącza nadanie P
   expect(Object.keys(klienci)).toEqual(['konto_pc']);
   expect(app.usluga('magazyn', 'magazyn').gotowy()).toBe(false);
   expect(app.usluga('faktury', 'fakturaAllegro').gotowe()).toBe(false);
-  // Samo ERLI włącza nadanie: Przesyłki Erli są kurierem (PRZ-157.08), więc nadanie jest gotowe.
+  // Samo ERLI włącza nadanie: Przesyłki Erli są kurierem, więc nadanie jest gotowe.
   expect(app.usluga('wysylka', 'nadanie').gotowe()).toBe(true);
   expect(app.usluga('wiadomosci', 'klienciWiadomosci')).toBe(klienci);
 });

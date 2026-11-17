@@ -8,7 +8,7 @@ import { zapiszZamowienie, pobierzZamowienie } from '../../../src/oms/db/zamowie
 import { createNadanie, PACZKA_DOMYSLNA } from '../../../src/moduly/wysylka/services/nadanie.js';
 import { zapiszUstawienia } from '../../../src/oms/db/ustawienia.js';
 import { createDpdClient } from '../../../src/oms/kurierzy/dpd.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const fixture = (n) => readFileSync(join(__dir, 'fixtures', 'dpd', n), 'utf8');
@@ -19,7 +19,7 @@ const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('bas
 const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) };
 const NADAWCA = { nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL' };
 // Adres odbiorcy, DOKŁADNIE taki, jaki GET wypełniłby na ekranie nadania z adresOdbiorcy()
-// dla domyślnego `zmapowane()` niżej — od Zadania „adres edytowalny" POST wymaga go W
+// dla domyślnego `zmapowane()` niżej — POST wymaga go W
 // FORMULARZU (patrz domain/adres-formularza.js: puste pole wymagane blokuje zatwierdzenie),
 // więc każdy test, który ma dojść do prawdziwego wywołania nadaj(), musi go podać, tak jak
 // PRAWDZIWA przeglądarka odesłałaby wartości, którymi GET wypełnił pola.
@@ -40,7 +40,7 @@ const zmapowane = (nad = {}) => ({
   utworzone_at: '2026-07-29T13:19:52', pozycje: [], ...nad,
 });
 
-// Klient DPD z fetchImpl stubem odpowiadajacym PRAWDZIWYMI fikstsurami z Zadania 8 — te same,
+// Klient DPD z fetchImpl stubem odpowiadajacym PRAWDZIWYMI fikstsurami — te same,
 // z ktorych korzysta tests/oms/dpd.test.js. ZERO zadan sieciowych: fetchImpl nigdy nie
 // dotyka dpdservices.dpd.com.pl.
 function dpdKlient() {
@@ -137,12 +137,12 @@ describe('GET /zamowienia/:id/nadaj — ekran nadania', () => {
     expect(r.body).toContain('j@k.pl');
   });
 
-  // ⚠️ Decyzja właściciela 2026-08-04 (plan „ekran nadania"): OBA ostrzeżenia o
+  // ⚠️ OBA ostrzeżenia o
   // nieodwracalności znikają z ekranu — ani górne („UWAGA: zatwierdzenie jest
   // NIEODWRACALNE…"), ani dolne („Zatwierdzenie nada paczkę w DPD…"). To zmiana TEGO, co
   // widzi operator, NIE ochrony technicznej: numer kolejny niesiony przez formularz,
   // indeks częściowy `przesylki (zamowienie_id, kolejnosc)` i odmowa DPD dla powtórzonej
-  // referencji zostają nietknięte — patrz testy niżej i w tests/oms/wiele-paczek.test.js.
+  // referencji zostają nietknięte — patrz testy niżej i w tests/moduly/wysylka/wiele-paczek.test.js.
   it('NIE ostrzega już, że zatwierdzenie jest nieodwracalne (decyzja właściciela 04.08)', async () => {
     const { serwer, id } = zServerem();
     await serwer.ready();
@@ -151,7 +151,7 @@ describe('GET /zamowienia/:id/nadaj — ekran nadania', () => {
     expect(r.body).not.toContain('Zatwierdzenie nada paczkę w DPD i pobierze prawdziwy numer listu');
   });
 
-  // Zadanie 5 (usunięcie pola „Komentarz", decyzja właściciela 04.08): pole nigdy nie
+  // Pole „Komentarz” nigdy nie
   // jechało do kuriera (trafiało wyłącznie do logu zamówienia), więc znika z ekranu.
   // POST i `nadanie.nadaj()` zostają nietknięte — bez pola przyjdzie `null`, tak jak dziś.
   //
@@ -172,7 +172,7 @@ describe('GET /zamowienia/:id/nadaj — ekran nadania', () => {
     expect(formularz).not.toMatch(/Komentarz/i);
   });
 
-  // Zadanie 2: lista pozycji zamówienia (tylko do odczytu — bez formularza edycji/usunięcia)
+  // Lista pozycji zamówienia (tylko do odczytu — bez formularza edycji/usunięcia)
   // renderowana TYMI SAMYMI funkcjami co karta zamówienia (wierszePozycji + adresMiniatury).
   it('Zadanie 2: ekran nadania pokazuje zawartość paczki (pozycje), tylko do odczytu', async () => {
     const { serwer, id } = zServerem({
@@ -193,8 +193,8 @@ describe('GET /zamowienia/:id/nadaj — ekran nadania', () => {
     expect(r.body).not.toContain('Zapisz pozycje');
   });
 
-  // Zadanie 3: trzy przyciski w stopce, „Anuluj" jest LINKIEM (button wysłałby formularz
-  // i nadał paczkę — patrz przewodnik OMS).
+  // Trzy przyciski w stopce, „Anuluj" jest LINKIEM (button wysłałby formularz
+  // i nadał paczkę).
   it('Zadanie 3: stopka ma trzy akcje, „Anuluj" jest odnośnikiem, nie przyciskiem', async () => {
     const { serwer, id } = zServerem();
     await serwer.ready();
@@ -214,7 +214,7 @@ describe('GET /zamowienia/:id/nadaj — ekran nadania', () => {
     expect(r.body).toContain(`value="${PACZKA_DOMYSLNA.wysokosc}"`);
   });
 
-  // Zadanie 7 (paczkomaty InPost): ekran nadania dostał gałąź gabarytu A/B/C, ale DPD ma
+  // Ekran nadania dostał gałąź gabarytu A/B/C, ale DPD ma
   // zostać DOKŁADNIE taki, jak jest dziś — ani jednej zmiany w tej ścieżce. Ten test pilnuje
   // tego wprost, żeby regresja (np. przypadkowe pokazanie obu wariantów naraz) nie przeszła
   // niezauważona.
@@ -229,7 +229,7 @@ describe('GET /zamowienia/:id/nadaj — ekran nadania', () => {
     expect(r.body).not.toContain('name="punkt_odbioru"');
   });
 
-  // Doprecyzowanie właściciela (Zadanie „kolejka druku"): dwa przyciski zatwierdzające
+  // Dwa przyciski zatwierdzające
   // w TYM SAMYM formularzu — „Nadaj przesyłkę" (zapisuje numer listu) i „Nadaj i drukuj"
   // (to samo, plus wstawienie etykiety do kolejki druku). Oba niosą własną tożsamość
   // w `name="zatwierdzenie"`, żeby trasa POST mogła je rozróżnić bez zgadywania.
@@ -242,7 +242,7 @@ describe('GET /zamowienia/:id/nadaj — ekran nadania', () => {
     expect(r.body).not.toContain('Nadaj paczkę');
   });
 
-  // Dokładnie scenariusz z briefu: zamówienie założone w adminie sklepu potrafi mieć
+  // Zamówienie założone w adminie sklepu potrafi mieć
   // całkowicie pusty blok `shipping`.
   it('pusty blok shipping → wyraźne ostrzeżenie przy KAŻDYM brakującym polu (ulica, kod, miasto)', async () => {
     const { serwer, id } = zServerem({ nad: { dostawa: { first_name: '', last_name: '', address_1: '', postcode: '', city: '', country: '' } } });
@@ -268,11 +268,11 @@ describe('GET /zamowienia/:id/nadaj — ekran nadania', () => {
     expect(r.body).not.toContain('BRAK — DPD wymaga tego pola');
   });
 
-  // ⚠️ ZMIANA Z4 (2026-08-05): kwota pobrania przestala byc TEKSTEM („POBRANIE: 212.90 zl")
+  // ⚠️ Kwota pobrania przestala byc TEKSTEM („POBRANIE: 212.90 zl")
   // i stala sie POLEM EDYTOWALNYM, wypelnionym dzisiejsza kwota efektywna. Ten test pilnuje
   // dalej dokladnie tego samego, co pilnowal: ze operator widzi kwote, zanim zatwierdzi.
   // Komplet regul pola (kiedy istnieje, co znaczy puste, co jedzie do koperty) ma wlasny
-  // plik — tests/oms/kwota-pobrania-nadania.test.js.
+  // plik — tests/moduly/wysylka/kwota-pobrania-nadania.test.js.
   it('pobranie → kwota pobrania jest widoczna wyraźnie, jako pole do potwierdzenia', async () => {
     const { serwer, id } = zServerem({ nad: { metoda_wysylki: 'dpd', pobranie: 1, kwota_pobrania: '212.90' } });
     await serwer.ready();
@@ -312,7 +312,7 @@ describe('GET /zamowienia/:id/nadaj — ekran nadania', () => {
 // to sprawdza rzecz, która się zepsuła. Asercja na wartości zmiennej w widoku przeszłaby
 // mimo wszystko.
 //
-// Reguła ma być TA SAMA, co na karcie zamówienia (tests/oms/karta-wyglad.test.js): odnośnik
+// Reguła ma być TA SAMA, co na karcie zamówienia: odnośnik
 // wisi na miniaturze, a gdy miniatury nie ma — na nazwie. Bez tego drugiego pozycja z Allegro
 // nie ma na czym powiesić linku (Allegro nie oddaje zdjęcia pozycji).
 describe('GET /zamowienia/:id/nadaj — pozycja prowadzi do swojego źródła', () => {
@@ -322,7 +322,7 @@ describe('GET /zamowienia/:id/nadaj — pozycja prowadzi do swojego źródła', 
   // Własny wariant `zServerem` — inny sklep (kanał!) i konfiguracja z `baseUrl`. Reszta
   // pliku celowo pracuje na config bez sklepów, żeby nie zależała od adresu, którego
   // nie sprawdza.
-  // ⚠️ `query` doszlo 2026-08-07. Zamowienie z Allegro dostaje teraz NAJPIERW ekran wyboru
+  // ⚠️ Zamowienie z Allegro dostaje teraz NAJPIERW ekran wyboru
   // kuriera (panel nie zna kuriera dla tego kanalu — patrz domain/kurier-nadania.js), wiec
   // formularz z tabela pozycji jest pod `?kurier=...`. Regula odnosnika sie NIE ZMIENILA —
   // zmienil sie adres, pod ktorym stoi ekran, ktory ja renderuje.
@@ -522,11 +522,11 @@ describe('POST /zamowienia/:id/nadaj — walidacja wagi i wymiarów', () => {
   });
 });
 
-// Zadanie „adres edytowalny": puste pole adresu WYMAGANE PRZEZ DPD (ulica/kod/miasto) ma
+// Puste pole adresu WYMAGANE PRZEZ DPD (ulica/kod/miasto) ma
 // BLOKOWAĆ zatwierdzenie — dawniej (adres tylko do odczytu) to samo ostrzeżenie w widoku
 // wyłącznie podświetlało pole, NIE zatrzymując POST-a przed wywołaniem DPD.
 describe('POST /zamowienia/:id/nadaj — walidacja adresu odbiorcy', () => {
-  // ⚠️ MUTACJA OBOWIĄZKOWA z briefu: „puste pole wymagane przepuszczone do DPD" musi
+  // ⚠️ „puste pole wymagane przepuszczone do DPD" musi
   // zaczerwienić każdy z tych testów.
   it.each([
     ['ulica', { ...PACZKA, ulica: '' }],
@@ -569,7 +569,7 @@ describe('POST /zamowienia/:id/nadaj — walidacja adresu odbiorcy', () => {
 });
 
 // „Nadaj i drukuj" — drugi przycisk zatwierdzający na ekranie nadania (name="zatwierdzenie"
-// value="nadaj_i_drukuj"). Znaczenie z briefu: „nadaj, a etykietę wstaw do kolejki" — NIE
+// value="nadaj_i_drukuj"). Znaczenie: „nadaj, a etykietę wstaw do kolejki" — NIE
 // „nadaj tylko wtedy, gdy drukarka odpowiada".
 describe('POST /zamowienia/:id/nadaj — „Nadaj i drukuj" (kolejka druku)', () => {
   it('zwykłe „Nadaj przesyłkę" (value=nadaj) NIE wstawia nic do kolejki druku, nawet gdy ZPL istnieje', async () => {
@@ -597,7 +597,7 @@ describe('POST /zamowienia/:id/nadaj — „Nadaj i drukuj" (kolejka druku)', ()
     expect(wiersz.status).toBe('oczekuje');
   });
 
-  // MUTACJA OBOWIĄZKOWA z briefu: „błąd wstawienia do kolejki wywala Nadaj i drukuj"
+  // „błąd wstawienia do kolejki wywala Nadaj i drukuj"
   // musi zaczerwienić ten test. Symulujemy PRAWDZIWĄ awarię bazy (nie atrapę funkcji):
   // brak tabeli kolejka_druku sprawia, że dodajDoKolejki naprawdę rzuca wyjątkiem SQL-a.
   it('awaria wstawienia do kolejki NIE cofa ani nie blokuje udanego nadania', async () => {
@@ -617,8 +617,7 @@ describe('POST /zamowienia/:id/nadaj — „Nadaj i drukuj" (kolejka druku)', ()
     expect(wpis.wynik).toContain('BŁĄD');
   });
 
-  // Zgaszony komputer produkcyjny (brak ZPL-a od DPD) nie ma prawa zatrzymać wysyłki —
-  // dokładnie scenariusz z briefu.
+  // Zgaszony komputer produkcyjny (brak ZPL-a od DPD) nie ma prawa zatrzymać wysyłki.
   it('brak ZPL-a od DPD (drukarka/kolejka nieosiągalna) → nadanie i tak się udaje, kolejka pusta', async () => {
     const { dpd } = dpdKlient(); // celowo tylko 2 atrapy — ZPL "zawodzi"
     const { serwer, id } = zServerem({ dpd });
@@ -632,8 +631,7 @@ describe('POST /zamowienia/:id/nadaj — „Nadaj i drukuj" (kolejka druku)', ()
   });
 });
 
-// ⚠️ NAJWAŻNIEJSZY TEST TEGO ZADANIA. Od Zadania „adres edytowalny" niezmiennik BRZMI
-// INACZEJ niż dawniej: nie „ekran i DPD czytają to samo z zamówienia" (adres jest teraz
+// ⚠️ ADRES PRZEKAZANY KURIEROWI: nie „ekran i DPD czytają to samo z zamówienia" (adres jest teraz
 // formularzem, więc operator MOŻE go świadomie zmienić), tylko „do DPD leci DOKŁADNIE to,
 // co było w formularzu w chwili zatwierdzenia" — GET pokazuje wartości startowe z
 // adresOdbiorcy(zamowienie), a to, co POST faktycznie wyśle (czy to te same wartości, czy
@@ -767,7 +765,7 @@ describe('ekran nadania startuje wartościami z ustawień', () => {
     expect(r.body).toContain('60 × 40 × 20 cm');
   });
 
-  // ⚠️⚠️ NAJWAŻNIEJSZY TEST TEGO ZADANIA. Nadanie zbiorcze wysyła paczkę do DPD BEZ
+  // ⚠️⚠️ Nadanie zbiorcze wysyła paczkę do DPD BEZ
   // formularza i bez człowieka pośrodku — to jedyna droga, którą wymiary jadą do kuriera
   // niezobaczone. Sprawdzamy KOPERTĘ, a nie ekran: podgląd może pokazywać cokolwiek,
   // liczy się to, co naprawdę poszło w <sizeX>.
@@ -797,8 +795,8 @@ describe('ekran nadania startuje wartościami z ustawień', () => {
   });
 });
 
-// Recenzja PRZ-105 (P3): ekran nadania pokazuje netto pozycji — liczone stawką domyślną z Ustawień, jak na karcie.
-describe('ekran nadania — netto stawką domyślną z Ustawień (PRZ-105)', () => {
+// Ekran nadania pokazuje netto pozycji — liczone stawką domyślną z Ustawień, jak na karcie.
+describe('ekran nadania — netto stawką domyślną z Ustawień', () => {
   it('domyślna 8: pozycja ręczna 108,00 brutto pokazuje 100.00 zł netto', async () => {
     const { zapiszStawkeDomyslna } = await import('../../../src/moduly/faktury/db/stawka-vat.js');
     const { dodajPozycjeReczna } = await import('../../../src/oms/db/zamowienia.js');
@@ -810,7 +808,7 @@ describe('ekran nadania — netto stawką domyślną z Ustawień (PRZ-105)', () 
     expect(r.body).toMatch(/Album o lampach[\s\S]*?100\.00 zł[\s\S]*?108\.00 zł/u);
   });
 
-  // PRZ-122: przy programie wbudowanym (TwojeFaktury) pozycja „zw” ma netto = brutto — jak na karcie.
+  // Przy programie wbudowanym (TwojeFaktury) pozycja „zw” ma netto = brutto — jak na karcie.
   it('program wbudowany: pozycja „zw” 57,00 brutto pokazuje 57.00 zł netto, nie brutto÷1,23', async () => {
     const { dodajPozycjeReczna } = await import('../../../src/oms/db/zamowienia.js');
     const { programTestowy } = await import('../../pomoc/program-testowy.js');

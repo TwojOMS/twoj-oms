@@ -10,7 +10,7 @@ const faktura = () => ({
   ],
 });
 
-// ⚠️ KSZTALT ZMIERZONY, NIE Z DOKUMENTACJI (notatka 2026-08-14-oms-zwroty-pomiar.md).
+// ⚠️ KSZTALT ZMIERZONY, NIE Z DOKUMENTACJI.
 // Para to DWA WIERSZE o tym samym `group`, rozroznione flaga `correction`:
 // `false` = stan PRZED, `true` = stan PO. Pol `quantity_before_correction` NIE MA.
 describe('pary przed/po', () => {
@@ -98,7 +98,7 @@ describe('faktura ze ZDUBLOWANA nazwa pozycji', () => {
   });
 });
 
-// I1: pozycja zwrotu, ktorej NIE MA na fakturze, dostaje odmowe z nazwa — a dostawa
+// Pozycja zwrotu, ktorej NIE MA na fakturze, dostaje odmowe z nazwa — a dostawa
 // nie dostawala NIC. Faktura bez linii „Dostawa" + `kwota_dostawy` konczyla sie korekta
 // BEZ tych pieniedzy i bez sladu: raport zdejmowal 19 zl, korekta nie.
 describe('zwrot dostawy przy fakturze BEZ pozycji „Dostawa”', () => {
@@ -128,7 +128,7 @@ describe('zwrot dostawy przy fakturze BEZ pozycji „Dostawa”', () => {
   });
 });
 
-// ⚠️⚠️ DWA ZRODLA DLA JEDNEJ LINII (recenzja kontrolna 2026-08-15). Zwracana POZYCJA moze
+// ⚠️⚠️ DWA ZRODLA DLA JEDNEJ LINII. Zwracana POZYCJA moze
 // nazywac sie dokladnie „Dostawa" — bo tak nazywa sie pozycja faktury, a operator zaznaczyl ja
 // w tabeli zwrotu — i JEDNOCZESNIE moze byc wpisana kwota zwrotu dostawy. Galaz dostawy liczyla
 // wtedy `bruttoPo` OD NOWA, nadpisujac kwote policzona z pozycji: kwota na dokumencie
@@ -146,7 +146,7 @@ describe('zwracana pozycja o nazwie „Dostawa" RAZEM ze zwrotem kosztu dostawy'
     expect(blad).toMatch(/dwa razy|dwóch miejscach|dwa miejsca/i);
   });
 
-  // DROBIAZG 2 (recenzja 2026-08-15): dopoki PIENIEDZY NIE ODDANO, zwrot da sie skasowac
+  // Dopoki PIENIEDZY NIE ODDANO, zwrot da sie skasowac
   // (`usunZwrot`, domain/zwrot.js: `powodOdmowyUsunieciaZwrotu` — pieniadze to jedyna bariera)
   // i zapisac jeszcze raz poprawnie uksztaltowany — ta rada jest wtedy WYKONALNA.
   it('gdy pieniedzy JESZCZE nie oddano — rada to skasowanie i ponowny zapis (WYKONALNE)', () => {

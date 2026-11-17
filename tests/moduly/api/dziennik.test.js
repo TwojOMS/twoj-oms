@@ -1,10 +1,10 @@
-// PRZ-153.E1.3b — dziennik wywołań /api/v1 (hak onResponse pluginu) i zegar sprzątania (plan PRZ-153, E1.3).
+// Dziennik wywołań /api/v1 (hak onResponse pluginu) i zegar sprzątania.
 import Fastify from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 import { pluginApiV1 } from '../../../src/moduly/api/plugin.js';
 import { modulApi } from '../../../src/moduly/api/modul.ts';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { zalozKluczApi, dopiszDoDziennikaApi } from '../../../src/core/bezpieczenstwo/klucze-api.js';
 import { wpisDoDziennika } from '../../../src/core/bezpieczenstwo/dziennik-api.js';
 

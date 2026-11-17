@@ -55,7 +55,7 @@ describe('odzyskanie hasła administratora z konsoli serwera', () => {
     expect(db.prepare('SELECT count(*) AS n FROM logowania').get().n).toBe(0);
   });
 
-  // PRZ-109.12 (recenzja): lista tylko kont, dla których link da się wydać; pusta lista = odmowa z kodem ≠ 0.
+  // Lista tylko kont, dla których link da się wydać; pusta lista = odmowa z kodem ≠ 0.
   it('lista pomija wyłączonych administratorów, a pusta lista jest odmową', () => {
     zalozKonto(db, { login: 'byly-szef', imie: 'Były', haslo: 'Testowe-789!', rola: 'administrator', admin: true });
     db.prepare("UPDATE konta SET czynne = 0 WHERE login = 'byly-szef'").run();

@@ -19,7 +19,7 @@ function envProby(katalog, port, haslo) {
 async function main() {
   const { katalog, port } = opcje(process.argv.slice(2));
   const plikKlucza = sciezkaKlucza(katalog);
-  // PRZ-182: kolejność — najpierw stan katalogu, potem klucz, potem dane. Klucz utworzony przed kontrolą
+  // Kolejność — najpierw stan katalogu, potem klucz, potem dane. Klucz utworzony przed kontrolą
   // sprawiłby, że instalator odrzuci własny plik; jedynym dopuszczalnym śladem jest prawidłowy plik klucza.
   await wymagajPustegoKatalogu(katalog, plikKlucza);
   fs.mkdirSync(katalog, { recursive: true });

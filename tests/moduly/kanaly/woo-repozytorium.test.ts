@@ -5,7 +5,7 @@ import {migracjaTypuKanaluISklepow} from '../../../src/moduly/kanaly/migracje/00
 import {createRepozytoriumKanalow} from '../../../src/moduly/kanaly/repozytorium-kanalow.ts';
 import type {PolaczenieAllegro, Wynik} from '../../../src/moduly/kanaly/kontrakty-allegro.ts';
 
-// PRZ-132.02: sklep WooCommerce z panelu leży w tej samej tabeli co Allegro, ale lista() widzi tylko Allegro.
+// Sklep WooCommerce z panelu leży w tej samej tabeli co Allegro, ale lista() widzi tylko Allegro.
 const aktor={id:1,login:'administrator'};
 const odUtc='2026-10-31T23:00:00.000Z';
 const bazy:ReturnType<typeof openOmsDb>[]=[];

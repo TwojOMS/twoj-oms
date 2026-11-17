@@ -35,7 +35,7 @@ describe('status realizacji z Allegro trafia do KOLUMNY, nie tylko do surowe_jso
 
   // ⚠️ TO JEST TEST O POLLERZE, NIE O MAPOWANIU. Poller nadpisuje zamówienie co dwie minuty;
   // kolumna pominięta w liście UPDATE zapisze się przy pierwszym zapisie i ZAMROZI na zawsze —
-  // a reguła z Zadania 2 czytałaby wtedy stan sprzed tygodnia i wysyłała PROCESSING na SENT.
+  // a reguła czytałaby wtedy stan sprzed tygodnia i wysyłała PROCESSING na SENT.
   it('AKTUALIZUJE kolumnę przy powtórnym zapisie tego samego zamówienia', () => {
     const db = openOmsDb(':memory:');
     zapiszZamowienie(db, 'allegro_swietlik', mapujAllegro(surowe('NEW')), surowe('NEW'));

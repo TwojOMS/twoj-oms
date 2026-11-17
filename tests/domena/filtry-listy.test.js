@@ -1,4 +1,4 @@
-import { definicjeKanalowHistoryczne } from '../pomoc/kanaly-historyczne-fixture.js';
+import { definicjeKanalowHistoryczne } from '../pomoc/przykladowe-definicje-kanalow.js';
 import { describe, it, expect } from 'vitest';
 import { dzienWarszawa } from '../../src/domena/format-daty.js';
 import {
@@ -63,7 +63,7 @@ describe('parsujFiltry', () => {
     expect(parsujFiltry({ wysylka: 'dpd_pobranie' }, definicjeKanalowHistoryczne).wysylka).toBe(null);
   });
 
-  // ⚠️ Filtr pobrania usuniety na prosbe wlasciciela (2026-08-04) — jego miejsce zajal
+  // ⚠️ Filtr pobrania usuniety na prosbe wlasciciela — jego miejsce zajal
   // filtr kanalu sprzedazy. Stara wartosc w adresie (zakladka, wklejony link) ma zostac
   // ZIGNOROWANA, a nie oddac pusta liste bez slowa wyjasnienia.
   it('stary parametr „pobranie" nie jest już filtrem', () => {

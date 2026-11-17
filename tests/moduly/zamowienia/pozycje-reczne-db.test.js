@@ -41,8 +41,8 @@ async function przebiegPollera(nad = {}) {
 // po dacie utworzenia.
 const idZamowienia = () => listaZamowien(db).find((z) => z.numer === '1301').id;
 
-// PRZ-105: stawka pozycji ręcznej ląduje w `pozycje.vat` i zmienia się razem z edycją pozycji.
-describe('stawka VAT pozycji ręcznej w bazie (PRZ-105)', () => {
+// Stawka pozycji ręcznej ląduje w `pozycje.vat` i zmienia się razem z edycją pozycji.
+describe('stawka VAT pozycji ręcznej w bazie', () => {
   it('dodajPozycjeReczna zapisuje vat; zapiszPozycjeReczna go zmienia; bez vat zostawia stary', async () => {
     await przebiegPollera();
     const id = idZamowienia();

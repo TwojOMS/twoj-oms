@@ -4,9 +4,9 @@ import { oprawaMaila } from '../../../src/moduly/wiadomosci/oprawa.js';
 import { modelWiadomosci } from '../../../src/domena/wiadomosc-platnicza.js';
 import { DOMYSLNE } from '../../../src/domena/szablony-wiadomosci.js';
 
-// PRZ-101.03: DOMYŚLNY SZABLON = DZISIEJSZY MAIL CO DO ZNAKU.
+// DOMYŚLNY SZABLON = DZISIEJSZY MAIL CO DO ZNAKU.
 //
-// Lewa strona: droga bez szablonu (`szablon: null`) — te same funkcje, które składały maile przed PRZ-101
+// Lewa strona: droga bez szablonu (`szablon: null`) — funkcje składające treść bez szablonu
 // (trescPotwierdzenia/jakoTekst/renderPotwierdzenieHtml, TEMAT_MAILA/jakoTekstWiadomosci/renderWiadomoscHtml).
 // Prawa: silnik szablonów z treścią domyślną. Każda różnica w temacie, tekście albo HTML-u = czerwony test,
 // bo znaczy, że „Przywróć domyślny" albo pierwsza edycja zmieniłyby mail, którego operator nie ruszał.
@@ -53,7 +53,7 @@ describe('potwierdzenie: domyślny szablon = dzisiejszy mail', () => {
   }
 });
 
-// Recenzja 18.10: {kwota} to wartość zamówienia; po wpłacie częściowej przypomnienie ma prosić o RESZTĘ — {do_zaplaty}.
+// {kwota} to wartość zamówienia; po wpłacie częściowej przypomnienie ma prosić o RESZTĘ — {do_zaplaty}.
 describe('{do_zaplaty} po wpłacie częściowej', () => {
   it('zamówienie 476 zł, wpłacone 200 zł: {do_zaplaty} = 276,00 zł, {kwota} = 476,00 zł', () => {
     const z = baza({ platnosci: [{ data: '2026-10-15', kwota: '200.00' }] });

@@ -5,7 +5,7 @@ import { propozycje, propozycjeOfert } from '../../src/domena/dopasowanie-ofert.
 // oszczedza prace, czy ja produkuje.
 //
 // ⚠️⚠️ TA SUITA JEST SWIADECTWEM POMIARU NA PRAWDZIWYCH DANYCH (428 roznych nazw ofert,
-// 767 produktow sklepowych, 2026-08-11). Kazdy z opisow nizej odtwarza parę, ktora przy
+// 767 produktow sklepowych). Kazdy z opisow nizej odtwarza parę, ktora przy
 // GORSZEJ mierze ladowala w koszu „bez propozycji" albo trafiala w cudza karte. Nazwy sa
 // zmyslone, ale ich KSZTALT (liczba slow, slowa wspolne, ogonki, wielkie litery) odtwarza
 // pary z produkcji — to on tlumaczy, DLACZEGO miara wyglada tak, a nie inaczej.

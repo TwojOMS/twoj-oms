@@ -41,7 +41,7 @@ async function setup(status=200,envExtra:Record<string,string>={},device?:(body:
 }
 const dane={srodowisko:'produkcja',clientId:'polcien-device-id',clientSecret:SEKRET};
 
-it('PRZ-136.10: krok 0 ma polskie etykiety, główny zapis, wspólny steper i tytuł; sekret nie wraca do HTML',async()=>{
+it('krok 0 ma polskie etykiety, główny zapis, wspólny steper i tytuł; sekret nie wraca do HTML',async()=>{
  const f=await setup();
  for(const srodowisko of ['produkcja','sandbox']){
   const p=await f.req('GET',root+'?srodowisko='+srodowisko);
@@ -104,7 +104,7 @@ it('typ aplikacji: 400 daje 422 z tekstem o aplikacji bez przeglądarki',async()
  const r=await f.req('POST',akcja,dane);
  expect(r.statusCode).toBe(422);expect(r.body).toContain('bez dostępu do przeglądarki albo klawiatury');
 });
-it('PRZ-146.04: invalid_scope pokazuje listę brakujących uprawnień z sekcją panelu',async()=>{
+it('invalid_scope pokazuje listę brakujących uprawnień z sekcją panelu',async()=>{
  const f=await setup(200,{},body=>{
   const scope=new URLSearchParams(body).get('scope')??'';
   return scope.includes(' ')||scope==='allegro:api:orders:read'?Response.json({error:'invalid_scope'},{status:400}):Response.json({device_code:'KOD-ODRZUCONY',user_code:'X',verification_uri:'https://allegro.pl/skojarz',expires_in:600,interval:5});
@@ -157,11 +157,11 @@ it('nie-administrator dostaje 403, brak Origin odmowę CSRF; zły parametr środ
 it('ekran „Podłącz konto” bez aplikacji Device prowadzi do kroku 0',async()=>{
  const f=await setup();
  const n=await f.req('GET','/ustawienia/integracje/allegro/nowe');
- // U22: jeden „Dalej”; do kroku 0 prowadzi odnośnik, nie drugi przycisk wysyłający formularz.
+ // Jeden „Dalej”; do kroku 0 prowadzi odnośnik, nie drugi przycisk wysyłający formularz.
  expect(n.body).toContain('href="/ustawienia/integracje/allegro/aplikacja?srodowisko=produkcja"');expect(n.body).not.toContain('formaction="/ustawienia/integracje/allegro/aplikacja"');
 });
 
-it('PRZ-146.02 B2: krok 0 ma pole „Środowisko” z opcjami w kolejności modułu i zaznaczonym bieżącym',async()=>{
+it('krok 0 ma pole „Środowisko” z opcjami w kolejności modułu i zaznaczonym bieżącym',async()=>{
  const f=await setup();
  const opcje=MODUL_ALLEGRO.konfigurator.kroki.find(k=>k.numer===1)!.formularz!.pola.find(p=>p.id==='srodowisko')!.opcje!;
  expect(opcje.map(o=>o.wartosc)).toEqual(['produkcja','sandbox']);
@@ -176,7 +176,7 @@ it('PRZ-146.02 B2: krok 0 ma pole „Środowisko” z opcjami w kolejności modu
   expect(wartosci.filter(m=>/selected/.test(m[2])).map(m=>m[1])).toEqual([biezace]);
  }
 });
-it('PRZ-146.02 B3: uprawnienia są punktem przed regulaminem, regulamin na końcu; dopisek o edycji aplikacji',async()=>{
+it('uprawnienia są punktem przed regulaminem, regulamin na końcu; dopisek o edycji aplikacji',async()=>{
  await setup();
  const k=krokiInstrukcji('sandbox');
  const iU=k.findIndex(x=>x.lista),iR=k.findIndex(x=>/regulamin/.test(x.tekst));

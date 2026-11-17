@@ -1,18 +1,18 @@
 #!/bin/sh
-# Aktualizator V0 instalacji OMS u klienta (PRZ-059). Uruchamia operator przez sudo na serwerze:
+# Aktualizator V0 instalacji OMS u klienta. Uruchamia operator przez sudo na serwerze:
 #   sudo sh /opt/oms/aktualizuj.sh status
 #   sudo sh /opt/oms/aktualizuj.sh deploy <oms-XXXXXXXXXXXX.tar.gz> <sha256 paczki>
 #   sudo sh /opt/oms/aktualizuj.sh accept <operacja>
 #   sudo sh /opt/oms/aktualizuj.sh recover <operacja> [--przywroc-baze | --porzuc-prace]   (porzuc-prace: tylko po przejściu na pracę)
 #   sudo sh /opt/oms/aktualizuj.sh compose <polecenie docker compose…>   (w bieżącym wydaniu)
-#   sudo sh /opt/oms/aktualizuj.sh produkcja      przejście z próby na pracę (PRZ-062): pierwszy raz zakłada
+#   sudo sh /opt/oms/aktualizuj.sh produkcja      przejście z próby na pracę: pierwszy raz zakłada
 #                                                  config/produkcja.env do uzupełnienia, drugi raz przełącza
 #   sudo sh /opt/oms/aktualizuj.sh zdrowie        pełna odpowiedź /health (alarmy z nazwami zmiennych, bez wartości)
 #   sudo sh /opt/oms/aktualizuj.sh link-hasla [LOGIN]   odzyskanie hasła administratora (bez loginu: lista)
 #   sudo sh /opt/oms/aktualizuj.sh sekrety <polecenie> [arg…]   narzędzie poświadczeń w bazie (scripts/sekrety.mjs):
 #                                                  stan, sprawdz [--baza <plik>], klucz-zapewnij, odszyfruj, porzuc, sprzataj
-# Instrukcja: docs/aktualizacja-klienta-v0.md. Semantyka według docs/prz050-aktualizator-plan.md
-# i runnera produkcji deploy/nas/oms-release-remote.sh (deploy → NEEDS_ACCEPT → accept | recover).
+# Instrukcja: docs/aktualizacja-klienta-v0.md. Semantyka jak w runnerze produkcji
+# deploy/nas/oms-release-remote.sh (deploy → NEEDS_ACCEPT → accept | recover).
 #
 # Stan na dysku (przetrwa restart maszyny; nic nie wznawia się samo):
 #   /opt/oms/update-state/biezace   nazwa bieżącego wydania (oms-<12 znaków commita>), zmiana przez mv
@@ -31,7 +31,7 @@ OMS=${OMS_KATALOG:-/opt/oms}
 DOCKER=${OMS_DOCKER_BIN:-docker}
 CZEKAJ_S=${OMS_AKT_CZEKAJ_S:-180}
 ODSTEP_S=${OMS_AKT_ODSTEP_S:-2}
-# Zmierzone 10.10 na VM (Debian 13, Docker 29.9): nowy obraz + cache budowania na jedno wydanie ≈ 0,5 GB;
+# Nowy obraz + cache budowania na jedno wydanie zajmują około 0,5 GB;
 # próg z zapasem ×3. Poniżej — odmowa przed jakąkolwiek zmianą.
 MIN_DOCKER_MB=${OMS_AKT_MIN_DOCKER_MB:-1500}
 REZERWA_MB=${OMS_AKT_REZERWA_MB:-300}
@@ -96,7 +96,7 @@ czekaj_na_oms() {
       case "$ZDROWIE" in HTTP=200\ *) break ;; esac
     fi
     # Proces pada przy starcie → Docker restartuje go w kółko; czekanie pełnych CZEKAJ_S to tylko
-    # dłuższa przerwa (próba 10.10: 180 s ze zepsutym kandydatem). Trzeci restart = koniec czekania.
+    # dłuższa przerwa (ze zepsutym kandydatem nawet kilka minut). Trzeci restart = koniec czekania.
     restarty=$("$DOCKER" inspect --format '{{.RestartCount}}' oms 2>/dev/null || echo 0)
     case "$restarty" in ''|*[!0-9]*) restarty=0 ;; esac
     if [ "$restarty" -ge 3 ]; then echo "KANDYDAT_W_PETLI_RESTARTOW ($restarty restartów, ostatnio: $ZDROWIE)" >&2; return 1; fi
@@ -121,8 +121,8 @@ uruchom_wydanie() {
   [ "$(obraz_kontenera oms-kopia)" = "$uw_o" ] || { echo 'KONTENER_KOPII_NA_INNYM_OBRAZIE' >&2; return 1; }
 }
 
-# Oba naraz (docker stop zatrzymuje równolegle): pętla kopii PRZ-058 (sh jako PID 1) ignoruje SIGTERM
-# i czeka pełne 10 s — zmierzone 10.10, przerwa 17 s przy zatrzymaniu po kolei.
+# Oba naraz (docker stop zatrzymuje równolegle): stara pętla kopii (sh jako PID 1) ignoruje SIGTERM
+# i czeka pełne 10 s — zatrzymywanie po kolei wydłuża przerwę.
 zatrzymaj_oms() {
   "$DOCKER" stop oms-kopia oms >/dev/null 2>&1 || true
   ! dziala oms && ! dziala oms-kopia
@@ -130,7 +130,7 @@ zatrzymaj_oms() {
 
 wolne_mb() { df -Pk "$1" 2>/dev/null | awk 'NR==2 {print int($4/1024)}'; }
 
-# Compose podstawia $ w env_file: hasło z $ zmieni się po cichu (PRZ-058, wada 8). Tylko nazwy, bez wartości.
+# Compose podstawia $ w env_file: hasło z $ zmieni się po cichu. Tylko nazwy, bez wartości.
 ostrzez_dolar() {
   for f in "$OMS/config/oms.env" "$OMS/config/kopia.env" "$PRODUKCJA_ENV"; do
     [ -f "$f" ] || continue
@@ -148,7 +148,7 @@ wymagaj_roota() {
   [ "$(id -u)" = 0 ] || [ -n "${OMS_AKT_BEZ_ROOTA:-}" ] || fail 'URUCHOM_PRZEZ_SUDO'
 }
 
-# --- poświadczenia w bazie (PRZ-182) ------------------------------------------------------------
+# --- poświadczenia w bazie ------------------------------------------------------------
 
 # Format poświadczeń w bazie, który zna wydanie: pole formatSekretow w jego wydanie.json (paczka zapisuje je z pakowanego
 # commita); brak pola = 0, wydanie sprzed szyfrowania.
@@ -172,7 +172,7 @@ popraw_plik_klucza() {
 
 # Narzędzie poświadczeń: sekrety_w_obrazie <obraz> <config 0|1> <polecenie> [arg…]. Bez sieci, jako 10001. Klucz przez
 # --env-file (czyta go Docker jako root — działa bez względu na właściciela pliku). Katalog danych bez :ro: zmierzone
-# 17.11 (node:sqlite, Node 24) — zamknięta baza WAL bez plików -wal/-shm w katalogu tylko do odczytu nie otwiera się
+# node:sqlite w Node 24 — zamknięta baza WAL bez plików -wal/-shm w katalogu tylko do odczytu nie otwiera się
 # nawet w trybie readOnly, a polecenia odczytu chodzą też przy zatrzymanym OMS-ie; narzędzie w poleceniach odczytu
 # samo otwiera bazę tylko do odczytu. config=1 — katalog konfiguracji do zapisu pliku klucza. SW_KATALOG — katalog
 # sprawdzanego pliku spoza danych (kopia do odtworzenia), tylko do odczytu, w kontenerze /sprawdzana.
@@ -610,19 +610,19 @@ recover() {
   echo "RECOVERED operacja=$OP wydanie=$BAZA_WYD obraz=$BAZA_OBRAZ"
 }
 
-# --- produkcja: przejście z próby na pracę (PRZ-062) -------------------------------------------
+# --- produkcja: przejście z próby na pracę -------------------------------------------
 # Decyzja: CZYSTA BAZA PRODUKCYJNA OBOK. Cały katalog danych próby (baza z zamówieniami DEMO, konto
 # administratora próby), jej kopie, oms.env i dane konta przechodzą do /opt/oms/proba-archiwum/<op>/;
 # produkcja startuje na pustym /opt/oms/data z NOWYM kontem administratora. Z próby nie przechodzi nic —
 # usuwanie zamówień DEMO z żywej bazy zostawiłoby konto próby, jej kopie i numery w tej samej bazie.
 # Etapy: zablokowane → zatrzymane → kopia → przelaczanie → uruchomione → konto → czeka_na_akceptacje.
 # accept <op> kończy przejście; recover <op> (z każdego etapu, także po kill -9 i restarcie) wraca do próby.
-# PRZ-093.08: adres firmy (DPD_NADAWCA_*) nie jest wymagany do startu — można go wpisać w panelu
+# Adres firmy (DPD_NADAWCA_*) nie jest wymagany do startu — można go wpisać w panelu
 # (Ustawienia → Firma). Wpis w pliku wygrywa nad panelem. Kurier z pliku (DPD_URL, INPOST_TOKEN) nadal
 # wymaga adresu w pliku — tego pilnuje sam OMS przy starcie.
-# PRZ-102.20: rachunek firmy (OMS_RACHUNEK) też nie jest wymagany — można go wpisać w panelu (Ustawienia → Firma,
+# Rachunek firmy (OMS_RACHUNEK) też nie jest wymagany — można go wpisać w panelu (Ustawienia → Firma,
 # tylko administrator). Wpisany w pliku wygrywa nad panelem; zły numer w pliku zatrzymuje start OMS-u.
-# PRZ-108.10: NIP (OMS_SPRZEDAWCA_NIP) i BDO też nie są wymagane — można je wpisać w panelu (Ustawienia → Firma, tylko
+# NIP (OMS_SPRZEDAWCA_NIP) i BDO też nie są wymagane — można je wpisać w panelu (Ustawienia → Firma, tylko
 # administrator). Wpisany w pliku wygrywa nad panelem (każde pole osobno); zły NIP albo BDO w pliku zatrzymuje start.
 # KSEF_TOKEN dopisany do pliku nadal wymaga NIP-u w pliku — tego pilnuje sam OMS przy starcie.
 WYMAGANE_PRODUKCJI='OMS_USER OMS_PASS'
@@ -675,7 +675,7 @@ EOF
   mv "$PRODUKCJA_ENV.tmp.$$" "$PRODUKCJA_ENV"
 }
 
-# Czy jest do czego wrócić — sprawdzane ZANIM cokolwiek się zatrzyma albo zmieni etap (recenzja D8 r1:
+# Czy jest do czego wrócić — sprawdzane ZANIM cokolwiek się zatrzyma albo zmieni etap (
 # skasowane archiwum zostawiało OMS zatrzymany z blokadą). Próba jest w archiwum albo jeszcze na miejscu.
 jest_proba_do_powrotu() {
   if [ ! -f "$1/config/oms.env" ] && [ "$(env_wartosc "$OMS/config/oms.env" OMS_TRYB)" != proba ]; then
@@ -738,7 +738,7 @@ po_bledzie_produkcji() {
     "$DOCKER" logs --tail 60 oms > "$ARCH/dziennik-nieudanej-produkcji.txt" 2>&1 || true
     echo "Błędy konfiguracji z dziennika OMS (pełny: $ARCH/dziennik-nieudanej-produkcji.txt):" >&2
     # Odmowa startu wypisuje „[moduł] ZMIENNA: powód” (bez wartości), potem stos wywołań — pokazujemy powody.
-    # Próba 10.10 na VM: ostatnie 5 linii dziennika to był sam stos, bez nazwy zmiennej.
+    # Ostatnie linie dziennika mogą zawierać sam stos, bez nazwy zmiennej.
     if grep -qE '^\[[a-z0-9_-]+\] ' "$ARCH/dziennik-nieudanej-produkcji.txt"; then
       grep -E '^\[[a-z0-9_-]+\] ' "$ARCH/dziennik-nieudanej-produkcji.txt" | sort -u | head -n 10 >&2
     else
@@ -771,7 +771,7 @@ produkcja() {
   if [ ! -f "$PRODUKCJA_ENV" ]; then
     szablon_produkcji
     braki=$(braki_produkcji | tr '\n' ' ')
-    # PRZ-108.10: szablon ma wszystkie pola wymagane do startu; dane firmy są opcjonalne w pliku (można w panelu).
+    # Szablon ma wszystkie pola wymagane do startu; dane firmy są opcjonalne w pliku (można w panelu).
     if [ -n "$braki" ]; then echo "UTWORZONO $PRODUKCJA_ENV — uzupełnij: ${braki% }"
     else echo "UTWORZONO $PRODUKCJA_ENV — dane firmy (NIP, BDO, rachunek, adres) wpisz tutaj albo po przejściu w panelu (Ustawienia → Firma)"; fi
     echo "Edycja: sudo nano $PRODUKCJA_ENV ; potem ponownie: sudo sh $SKRYPT produkcja"
@@ -780,13 +780,13 @@ produkcja() {
   braki=$(braki_produkcji | tr '\n' ' ')
   [ -z "$braki" ] || fail "PRODUKCJA_NIEWYPELNIONE_POLA: ${braki% } — uzupełnij w $PRODUKCJA_ENV"
   for n in OMS_PASS OMS_SPRZEDAWCA_NIP OMS_RACHUNEK; do
-    # PRZ-102.20, PRZ-108.10: puste pole nie jest wartością z próby (pusty rachunek albo NIP = wpis w panelu; puste hasło
+    # Puste pole nie jest wartością z próby (pusty rachunek albo NIP = wpis w panelu; puste hasło
     # odrzuciły braki wyżej).
     [ -n "$(env_wartosc "$PRODUKCJA_ENV" "$n")" ] || continue
     [ "$(env_wartosc "$PRODUKCJA_ENV" "$n")" != "$(env_wartosc "$ENV_TERAZ" "$n")" ] || fail "PRODUKCJA_WARTOSC_Z_PROBY: $n — wpisz własną wartość, nie z próby"
   done
   ustal_baze
-  # Działające wydanie musi umieć przejście (PRZ-062+); inaczej przerwa i samoczynny powrót dopiero na etapie konta.
+  # Działające wydanie musi umieć przejście na pracę; inaczej przerwa i samoczynny powrót dopiero na etapie konta.
   dziala oms || fail "OMS_NIE_DZIALA — uruchom próbę: sudo sh $SKRYPT compose up -d, potem ponów"
   "$DOCKER" exec oms test -f scripts/produkcja-pierwszy-start.mjs \
     || fail "WYDANIE_BEZ_PRZEJSCIA: $BAZA_WYD nie ma scripts/produkcja-pierwszy-start.mjs — najpierw aktualizacja do wydania z PRZ-062 (docs/aktualizacja-klienta-v0.md)"
@@ -862,7 +862,7 @@ produkcja() {
   stan_ustaw etap czeka_na_akceptacje
   trap - EXIT INT TERM HUP
   historia "$OP NEEDS_ACCEPT produkcja wydanie=$BAZA_WYD archiwum=$ARCH"
-  # Po pierwszej kopii, nie sprzed niej: wcześniejszy odczyt liczy alarm „brak kopii” (próba na VM 10.10).
+  # Po pierwszej kopii, nie sprzed niej: wcześniejszy odczyt liczy alarm „brak kopii”.
   echo "zdrowie: $(zdrowie)"
   echo "NEEDS_ACCEPT operacja=$OP — OMS pracuje na pustej bazie produkcyjnej; próba w $ARCH"
   echo "Konto administratora: sudo cat $OMS/config/administrator.env"
@@ -874,10 +874,10 @@ recover_produkcja() {
   [ "$etap" != akceptowanie ] || fail "AKCEPTACJA_W_TOKU — dokończ: sudo sh $SKRYPT accept $OP"
   jest_proba_do_powrotu "$(stan_pole archiwum)" || exit 1
   # Praca z prawdziwymi zamówieniami (okno odbioru trwało, integracje dopisane) — powrót odkłada ją do archiwum,
-  # a ponowne przejście zaczyna od pustej bazy. Tylko jawnie (recenzja D8 r1).
+  # a ponowne przejście zaczyna od pustej bazy. Tylko jawnie.
   if [ "$PRZYWROC" != --porzuc-prace ] && [ -d "$(stan_pole archiwum)/data" ] && [ -f "$OMS/data/oms.sqlite" ]; then
     # Bez :ro na wolumenie — baza jest w trybie WAL: przy zatrzymanym OMS (brak -wal/-shm) SQLite musi je założyć,
-    # na montowaniu tylko do odczytu otwarcie pada (zmierzone na VM 11.10, recenzja D8 r2). Odczyt i tak readOnly.
+    # na montowaniu tylko do odczytu otwarcie pada. Odczyt i tak readOnly.
     ile=$("$DOCKER" run --rm --network none --user "$UID_OMS:$UID_OMS" -v "$OMS/data:/opt/oms/data" --entrypoint node "$BAZA_OBRAZ" \
       -e "const{DatabaseSync}=require('node:sqlite');const d=new DatabaseSync(process.argv[1],{readOnly:true,timeout:10000});console.log(d.prepare('SELECT COUNT(*) AS n FROM zamowienia').get().n)" \
       /opt/oms/data/oms.sqlite 2>/dev/null || echo '?')

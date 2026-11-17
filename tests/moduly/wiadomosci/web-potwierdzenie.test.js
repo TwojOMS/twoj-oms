@@ -1,13 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie, pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { createPotwierdzenie } from '../../../src/moduly/wiadomosci/services/potwierdzenie.js';
 import { createWiadomosci } from '../../../src/moduly/wiadomosci/services/wiadomosci.js';
 import { wiadomosciZamowienia } from '../../../src/oms/db/wiadomosci.js';
 
-// POTWIERDZENIE PRZYJĘCIA ZAMÓWIENIA — USŁUGA I ŚLAD PO NIEJ (21.08.2026, przepisane
-// 22.08.2026 przy sprzątaniu po recenzji całości gałęzi).
+// POTWIERDZENIE PRZYJĘCIA ZAMÓWIENIA — USŁUGA I ŚLAD PO NIEJ.
 //
 // ⚠️⚠️ CO SIĘ TU ZMIENIŁO I DLACZEGO. Do 22.08 ten plik pukał do WŁASNEGO ekranu potwierdzenia
 // (`GET/POST /zamowienia/:id/potwierdzenie` + `potwierdzenie-podglad.ejs`). Ten ekran był po
@@ -139,7 +138,7 @@ describe('wysyłka potwierdzenia', () => {
     expect(wiadomosciZamowienia(db, id)).toHaveLength(1);
     expect(wiadomosciZamowienia(db, id)[0].temat_id).toBe('potwierdzenie');
 
-    // ⚠️ SLAD PRZENIOSL SIE NA DOL KARTY (22.08.2026): do listy wyslanych w sekcji
+    // ⚠️ SLAD PRZENIOSL SIE NA DOL KARTY: do listy wyslanych w sekcji
     // „Wiadomosci", z paska pod danymi klienta. Ta sama rzecz, inne miejsce — i inny FORMAT
     // DATY, co jest tu sednem, a nie szczegolem: pasek ciął napis (`slice(0,16)`) i pokazywał
     // gołe UTC, czyli godzinę o dwie wcześniejszą niż WSZYSTKIE pozostałe daty na tej samej
@@ -227,7 +226,7 @@ describe('wysyłka potwierdzenia', () => {
 describe('panel bez poczty', () => {
   beforeEach(() => zbuduj({ mailer: null }));
 
-  // ⚠️ TEST „karta nie kusi przyciskiem" USUNIĘTY (recenzja 22.08.2026, Zadanie 10 — część B).
+  // ⚠️ TEST „karta nie kusi przyciskiem" USUNIĘTY.
   // Asercja `not.toContain('Wyślij potwierdzenie')` była PUSTA od przenosin 22.08: ten napis
   // żył WYŁĄCZNIE na osobnym ekranie podglądu, którego dziś nie ma w ogóle — więc test nie
   // miał jak się zaczerwienić, niezależnie od tego, czy poczta jest skonfigurowana. Prawdziwy

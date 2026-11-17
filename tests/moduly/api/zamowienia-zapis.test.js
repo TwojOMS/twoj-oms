@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { nowyPanel, BASIC, ORIGIN } from '../../pomoc/konta-prz068.js';
+import { nowyPanel, BASIC, ORIGIN } from '../../pomoc/panel-konta-testowe.js';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
 import { zalozKluczApi } from '../../../src/core/bezpieczenstwo/klucze-api.js';

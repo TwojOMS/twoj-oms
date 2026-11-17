@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   parsujRabat, cenaPoRabacie, cenaPoRabacieGrosze, czyPozycjaPanelu, przeliczenieRabatu, RABAT_MAX,
 } from '../../src/domena/rabat.js';
-import { pozycjaZProduktu } from '../pomoc/cenniki-historyczne-fixture.js';
+import { pozycjaZProduktu } from '../pomoc/przykladowe-cenniki-sklepow.js';
 
 const poz = (nad = {}) => ({
   id: 1, nazwa: 'Szablon inwalida 30x30', zrodlo: 'reczna', ilosc: 10,

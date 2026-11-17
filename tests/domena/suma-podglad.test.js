@@ -11,15 +11,15 @@ import { czyNipUe as czyNipUeSerwer } from '../../src/domena/wdt.js';
 import { bezEtykietyNip } from '../../src/domena/dane-faktury.js';
 import { parsujNowaPozycje } from '../../src/domena/pozycje-reczne.js';
 
-// ⚠️ PO CO TEN PLIK ISTNIEJE (07.08.2026).
+// ⚠️ PO CO TEN PLIK ISTNIEJE.
 //
-// Ekran „Nowe zamówienie" liczy kwotę NA ŻYWO, w przeglądarce — decyzja właściciela. Do tego
-// dnia widok wprost odmawiał: „liczenie w przeglądarce byłoby DRUGĄ implementacją reguły
-// z domain/suma-pozycji.js — dwa miejsca, które prędzej czy później się rozjadą".
+// Ekran „Nowe zamówienie” liczy kwotę NA ŻYWO, w przeglądarce. Wcześniej
+// widok wprost odmawiał: „liczenie w przeglądarce byłoby DRUGĄ implementacją reguły
+// z src/domena/suma-pozycji.js — dwa miejsca, które prędzej czy później się rozjadą”.
 //
-// Obiekcja była słuszna i nie znika przez to, że funkcja została zamówiona. Ten test jest jej
+// Obiekcja pozostaje aktualna. Ten test jest jej
 // spłatą: importuje **DOKŁADNIE TEN PLIK, KTÓRY WYKONUJE PRZEGLĄDARKA**
-// (`src/web/public/suma-podglad.js`, ładowany przez `<script type="module">`) i puszcza go
+// (`src/public/suma-podglad.js`, ładowany przez `<script type="module">`) i puszcza go
 // razem z PRAWDZIWYM parserem serwera po wspólnej tablicy przypadków. Rozjazd którejkolwiek
 // strony wywala test, a nie fakturę.
 //
@@ -88,7 +88,7 @@ describe('podgląd kwoty w przeglądarce liczy TO SAMO, co serwer przy zapisie',
       { nazwa: 'B', ilosc: '11', cena_brutto: '9.09' },
       { nazwa: 'C', ilosc: '1', cena_netto: '250,49' },
     ], '23,00'],
-    // PRZ-106: nowy wiersz ma ilość 1 od razu (prośba właściciela 21.10) — wiersz z SAMĄ ilością jest
+// Nowy wiersz ma ilość 1 od razu — wiersz z SAMĄ ilością jest
     // pusty po obu stronach, inaczej nietknięty wiersz blokowałby zapis („Wiersz 2: …”).
     ['wiersz z samą ilością jest pusty', [{ nazwa: 'A', ilosc: '1', cena_brutto: '10.00' }, { ilosc: '1' }], '19,00'],
     ['tylko nietknięty wiersz z ilością 1', [{ ilosc: '1' }], '19,00'],
@@ -177,10 +177,10 @@ describe('reguły pojedynczego wiersza', () => {
   });
 });
 
-// PRZ-105: stawka WIERSZA (poz_vat), NIP faktury z formularza (f_nip — nabywca z UE = 0%) i podsumowanie
+// Stawka WIERSZA (poz_vat), NIP faktury z formularza (f_nip — nabywca z UE = 0%) i podsumowanie
 // netto / VAT / brutto. Kontrakt jak wyżej: przeglądarka liczy TO SAMO, co serwer — parser formularza,
 // `podsumowanieWierszami` (reguła faktury) i `czyNipUe`. Rozjazd wywala test, a nie fakturę.
-describe('PRZ-105 — stawka wiersza, WDT i podsumowanie: przeglądarka == serwer', () => {
+describe('stawka wiersza, WDT i podsumowanie: przeglądarka == serwer', () => {
   const cialoZeStawka = (wiersze, koszt, nip) => ({
     ...cialo(wiersze, koszt), poz_vat: wiersze.map((w) => w.vat ?? ''), f_nip: nip,
   });
@@ -243,11 +243,11 @@ describe('PRZ-105 — stawka wiersza, WDT i podsumowanie: przeglądarka == serwe
   });
 });
 
-// PRZ-122.B07a: stawka „zw” (zwolnienie z VAT) — formularz dostanie ją na liście tylko przy programie wbudowanym
+// Stawka „zw” (zwolnienie z VAT) — formularz dostanie ją na liście tylko przy programie wbudowanym
 // (domena z flagą `{ zw: true }`). Kopia przeglądarki liczy wtedy TO SAMO, co domena z flagą: netto = brutto, VAT 0,
 // „zw” nie jest „0% krajowym”. Wspólna tablica jak wyżej; po stronie serwera `parsujNowaPozycje` +
 // `podsumowanieWierszami` z flagą (parser formularza flagi jeszcze nie przekazuje — B07b).
-describe('PRZ-122.B07a — stawka „zw”: przeglądarka == domena z flagą', () => {
+describe('stawka „zw”: przeglądarka == domena z flagą', () => {
   function serwerZw(wiersze, koszt, nip, domyslna) {
     try {
       const wdt = czyNipUeSerwer(bezEtykietyNip(nip));
@@ -275,7 +275,7 @@ describe('PRZ-122.B07a — stawka „zw”: przeglądarka == domena z flagą', (
     ['domyślna „zw”: pusta stawka wiersza i dostawa bez VAT', [{ nazwa: 'Kurs', ilosc: '1', cena_netto: '40,50' }], '12,90', '', 'zw'],
     ['domyślna „zw”, wiersz 8%', [{ nazwa: 'Album', ilosc: '2', cena_netto: '10', vat: '8' }], '19,00', '', 'zw'],
     ['WDT wygrywa z „zw” (0% — WDT)', [{ nazwa: 'Kurs', ilosc: '1', cena_netto: '40', vat: 'zw' }], '19,00', 'DE123456789', 'zw'],
-    ['bez „zw” — jak PRZ-105: 5% i 23%', [
+    ['bez „zw” — 5% i 23%', [
       { nazwa: 'Album', ilosc: '2', cena_brutto: '10,50', vat: '5' }, { nazwa: 'Lampa', ilosc: '1', cena_brutto: '123.00', vat: '23' },
     ], '0', '', '23'],
   ];

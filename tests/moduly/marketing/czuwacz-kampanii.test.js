@@ -3,7 +3,7 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { createCzuwaczKampanii, kampanieDoOdswiezenia } from '../../../src/moduly/marketing/uslugi/czuwacz-kampanii.js';
 import { metaDni, ga4Dni, stanyZrodel } from '../../../src/oms/db/kampanie.js';
 
-// Czuwacz kampanii (Etapy 1-2). Atrapy klientow — suita nie rozmawia ani z Meta, ani z GA4.
+// Czuwacz kampanii. Atrapy klientow — suita nie rozmawia ani z Meta, ani z GA4.
 // Jawna neutralna fixture kampanii (24.08–07.09, GA4 123456789, /promocja-test).
 
 const teraz = (dzien) => () => new Date(`${dzien}T09:00:00Z`);

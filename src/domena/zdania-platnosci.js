@@ -13,7 +13,7 @@
 // Wartości (kwota, rachunek, tytuł, termin, pozycje, adres) dalej liczy kod — z panelu zmienia się tylko napis obok.
 //
 // ⚠️ BRAK ZAPISU = MAIL Z TEKSTAMI DOMYŚLNYMI CO DO ZNAKU. Test porównuje maile z zapisanym wzorcem
-// (tests/moduly/wiadomosci/zdania-platnosci-rownosc-prz102-17.test.js).
+// (tests/moduly/wiadomosci/zdania-platnosci-rownosc.test.js).
 
 export const KLUCZ_ZDAN = 'wiadomosci.zdania_platnosci';
 

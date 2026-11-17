@@ -5,7 +5,7 @@ import {
   zapiszNadpisaniaWysylki, zapiszNadpisaniaFaktury, zapiszNadpisanieWysylki,
 } from '../../../src/oms/db/zamowienia.js';
 import { utworzZamowienieReczne, przeliczKwoteRecznego } from '../../../src/oms/db/zamowienia-reczne.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { wierszePozycji } from '../../../src/domena/tabela-pozycji.js';
 import { KLUCZ_WYSYLKI } from '../../../src/domena/wysylka-kwota.js';
 
@@ -158,7 +158,7 @@ describe('ostrzeżenie o nadanej paczce — dopiero po kliknięciu „Edytuj”'
     expect((await karta(id, '?edytuj=wysylka')).body).not.toMatch(/załatw to w panelu/);
   });
 
-  // PRZ-152.G4: napis o wystawionej fakturze stoi TYLKO w trybie edycji (po „Edytuj"), tak jak pasek przy wysyłce.
+  // Napis o wystawionej fakturze stoi TYLKO w trybie edycji (po „Edytuj"), tak jak pasek przy wysyłce.
   it('napis o wystawionej fakturze: brak na karcie do odczytu, jest w edycji', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
     db.prepare("INSERT INTO faktury (zamowienie_id, numer, infakt_uuid, utworzona_at) VALUES (?, 'FV/1/2026', 'u1', '2026-07-30T10:00:00')").run(id);

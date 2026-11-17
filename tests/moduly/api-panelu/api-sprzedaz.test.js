@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { zapewnijOkres } from '../../../src/oms/db/okresy.js';
 import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
 import { zalozKluczApi } from '../../../src/core/bezpieczenstwo/klucze-api.js';
@@ -291,7 +291,7 @@ describe('GET /api/v1/sprzedaz', () => {
         .toEqual(['W/1', 'R/2026/001']);
     });
 
-    // ── I-2 (recenzja calej galezi): KANAL ALLEGRO ──────────────────────────────────────
+    // ── I-2: KANAL ALLEGRO ──────────────────────────────────────
     // ⚠️ Galaz dodala kanal sprzedazy i tego pliku nie tknela, wiec regula „wszystko, co nie
     // jest `reczne`, to SKLEP" wchlaniala zamowienia z Allegro: sprzedaz z Allegro wychodzila
     // stad OZNACZONA JAKO DETAL ZE SKLEPU — kanal, ktory konsument odrzuca jako liczony

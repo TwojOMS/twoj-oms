@@ -1,4 +1,4 @@
-// PRZ-062: przejście instalacji klienta z próby na pracę (aktualizuj.sh produkcja → accept | recover).
+// Przejście instalacji klienta z próby na pracę (aktualizuj.sh produkcja → accept | recover).
 // Całe sekwencje na skutkach: katalogi danych, kopie, konfiguracja, blokada, kontenery (atrapa dockera ze
 // stanem), prawdziwa baza SQLite, prawdziwy kopia.mjs (kopia próby przed zmianą i pierwsza kopia pracy).
 // Decyzja: czysta baza produkcyjna OBOK — próba w całości do /opt/oms/proba-archiwum/<op>/, nowe konto.
@@ -28,7 +28,7 @@ const WYD = `oms-${COMMIT.slice(0, 12)}`;
 const HASLO_PROBY = 'tajne-haslo-serwisu-proby';
 const DZIS = new Date().toISOString().slice(0, 10);
 
-/** Instalacja po PRZ-058/059: próba z demo (3 zamówienia, konto próby, kopia z dziś), oms + kopia działają. */
+/** Instalacja: próba z demo (3 zamówienia, konto próby, kopia z dziś), oms + kopia działają. */
 function instalacja({ bezPrzejscia = false } = {}) {
   const baza = fs.mkdtempSync(path.join(os.tmpdir(), 'oms-przejscie-'));
   katalogi.push(baza);
@@ -56,7 +56,7 @@ function instalacja({ bezPrzejscia = false } = {}) {
     [`${WYD}/deploy/klient/.env`, Buffer.from(`OMS_REVISION=${COMMIT}\n`)],
     [`${WYD}/deploy/klient/aktualizuj.sh`, fs.readFileSync(AKTUALIZATOR)],
     [`${WYD}/deploy/klient/kopia.mjs`, fs.readFileSync(KOPIA)],
-    // Wydanie sprzed PRZ-062 nie ma skryptu pierwszego startu pracy.
+    // Starsze wydanie nie ma skryptu pierwszego startu pracy.
     ...(bezPrzejscia ? [] : [[`${WYD}/scripts/produkcja-pierwszy-start.mjs`, Buffer.from('// atrapa\n')]]),
   ]);
   const x = spawnSync('tar', ['-xzf', '-', '-C', u(path.join(oms, 'releases'))], { input: gzipSync(tarUstar(pliki, 1760000000)), encoding: 'utf8' });
@@ -108,14 +108,14 @@ describe('przejście próba → praca: przygotowanie i odmowy', () => {
     const r = akt(k, ['produkcja']);
     expect(r.status, r.wyjscie).toBe(0);
     expect(r.stdout).toContain('UTWORZONO');
-    // PRZ-108.10 (zmiana zachowania): NIP przestał być polem do uzupełnienia (można w panelu: Ustawienia → Firma) — szablon
+    // NIP przestał być polem do uzupełnienia (można w panelu: Ustawienia → Firma) — szablon
     // ma wszystkie pola wymagane do startu, a komunikat mówi, gdzie wpisać dane firmy. Wcześniej wymieniał OMS_SPRZEDAWCA_NIP.
     expect(r.stdout).not.toContain('uzupełnij:');
     expect(r.stdout).toContain('po przejściu w panelu (Ustawienia → Firma)');
     expect(r.stdout).not.toContain('OMS_SPRZEDAWCA_NIP');
-    // PRZ-102.20: rachunek też nie jest polem do uzupełnienia (można w panelu: Ustawienia → Firma) — w szablonie, pusty.
+    // Rachunek też nie jest polem do uzupełnienia (można w panelu: Ustawienia → Firma) — w szablonie, pusty.
     expect(r.stdout).not.toContain('OMS_RACHUNEK');
-    // PRZ-093.08: adres firmy już nie jest polem do uzupełnienia (można go wpisać w panelu) — jest w szablonie, pusty.
+    // Adres firmy już nie jest polem do uzupełnienia (można go wpisać w panelu) — jest w szablonie, pusty.
     expect(r.stdout).not.toContain('DPD_NADAWCA_');
     const t = czytaj(k, 'config/produkcja.env');
     for (const n of ['DPD_NADAWCA_NAZWA', 'DPD_NADAWCA_ULICA', 'DPD_NADAWCA_KOD', 'DPD_NADAWCA_MIASTO']) expect(t).toMatch(new RegExp(`^${n}=$`, 'm'));
@@ -130,7 +130,7 @@ describe('przejście próba → praca: przygotowanie i odmowy', () => {
     expect(istnieje(k, 'update-state/blokada')).toBe(false);
     expect(zamowienia(k)).toEqual(['DEMO-001', 'DEMO-002', 'DEMO-003']);
     expect(JSON.stringify(stanDockera(k).kontenery)).toBe(przed);
-    // Drugie hasło nie powstaje: plik już jest, a puste wymagane pole jest odmową z nazwą (PRZ-108.10: NIP przestał być
+    // Drugie hasło nie powstaje: plik już jest, a puste wymagane pole jest odmową z nazwą (NIP przestał być
     // wymagany, więc odmowę sprawdzamy na wyczyszczonym haśle serwisowym).
     uzupelnij(k, { OMS_PASS: '' });
     const r2 = akt(k, ['produkcja']);
@@ -157,10 +157,10 @@ describe('przejście próba → praca: przygotowanie i odmowy', () => {
   it('pole w cudzysłowie albo z CRLF liczy się jak w compose; OMS_TRYB inny niż produkcja to brak', () => {
     const k = instalacja();
     akt(k, ['produkcja']);
-    // PRZ-093.08: puste-w-cudzysłowie sprawdzane dawniej na NIP-ie; PRZ-108.10: NIP przestał być wymagany (można
+    // Puste-w-cudzysłowie: NIP nie jest wymagany (można
     // w panelu), więc sprawdzamy na haśle serwisowym.
     uzupelnij(k, { OMS_PASS: '""', OMS_TRYB: 'proba' });
-    // Druga, pusta linia OMS_USER na końcu: compose bierze OSTATNIĄ — więc to brak (recenzja D8 r1). PRZ-102.20: dawniej
+    // Druga, pusta linia OMS_USER na końcu: compose bierze OSTATNIĄ — więc to brak. Dawniej
     // sprawdzane na OMS_RACHUNEK, który przestał być wymagany (można go wpisać w panelu).
     fs.writeFileSync(plik(k, 'config/produkcja.env'), (czytaj(k, 'config/produkcja.env') + 'OMS_USER=\n').replaceAll('\n', '\r\n'));
     const r = akt(k, ['produkcja']);
@@ -168,7 +168,7 @@ describe('przejście próba → praca: przygotowanie i odmowy', () => {
     expect(r.stderr).toContain('PRODUKCJA_NIEWYPELNIONE_POLA: OMS_TRYB(=produkcja) OMS_USER OMS_PASS — ');
   });
 
-  // PRZ-108.10: firma bez NIP-u i BDO w pliku przechodzi na pracę — wpisze je w panelu (Ustawienia → Firma).
+  // Firma bez NIP-u i BDO w pliku przechodzi na pracę — wpisze je w panelu (Ustawienia → Firma).
   it('bez NIP-u i BDO w pliku przejście na pracę rusza (pusty NIP nie jest ani brakiem, ani wartością z próby)', () => {
     const k = instalacja();
     akt(k, ['produkcja']);
@@ -180,7 +180,7 @@ describe('przejście próba → praca: przygotowanie i odmowy', () => {
     expect(r.stdout).toContain('NEEDS_ACCEPT operacja=');
   });
 
-  // PRZ-093.08: firma bez adresu w pliku przechodzi na pracę — adres wpisze w panelu (Ustawienia → Firma).
+  // Firma bez adresu w pliku przechodzi na pracę — adres wpisze w panelu (Ustawienia → Firma).
   it('bez adresu firmy w pliku przejście na pracę rusza (adres nie jest wymagany do startu)', () => {
     const k = instalacja();
     akt(k, ['produkcja']);
@@ -191,7 +191,7 @@ describe('przejście próba → praca: przygotowanie i odmowy', () => {
     expect(r.stdout).toContain('NEEDS_ACCEPT operacja=');
   });
 
-  // PRZ-102.20: firma bez rachunku w pliku przechodzi na pracę — rachunek wpisze w panelu (Ustawienia → Firma).
+  // Firma bez rachunku w pliku przechodzi na pracę — rachunek wpisze w panelu (Ustawienia → Firma).
   it('bez rachunku w pliku przejście na pracę rusza (pusty rachunek nie jest ani brakiem, ani wartością z próby)', () => {
     const k = instalacja();
     akt(k, ['produkcja']);
@@ -288,7 +288,7 @@ describe('przejście próba → praca: przełączenie, accept, recover', () => {
     expect(r.status).toBe(1);
     expect(r.stderr).toContain('KANDYDAT_W_PETLI_RESTARTOW');
     expect(r.stderr).toContain('WYCOFANE na etapie uruchomione');
-    // Powody z nazwą zmiennej (bez wartości), nie ogon stosu wywołań (próba na VM 10.10).
+    // Powody z nazwą zmiennej (bez wartości), nie ogon stosu wywołań.
     expect(r.stderr).toContain('[rdzen] OMS_SPRZEDAWCA_NIP: niepoprawny NIP');
     expect(r.stderr).not.toContain('at przygotujModuly');
     expect(zamowienia(k)).toEqual(['DEMO-001', 'DEMO-002', 'DEMO-003']);
@@ -337,8 +337,8 @@ describe('przejście próba → praca: przełączenie, accept, recover', () => {
   });
 });
 
-// Poprawki po recenzji D8 r1 (P3-3, P3-4, P3-5, P3-6).
-describe('przejście próba → praca: odmowy i przerwania po recenzji', () => {
+
+describe('przejście próba → praca: odmowy i przerwania', () => {
   it('wydanie bez skryptu przejścia: odmowa przed blokadą, próba nie zatrzymana', () => {
     const k = instalacja({ bezPrzejscia: true });
     akt(k, ['produkcja']); uzupelnij(k);

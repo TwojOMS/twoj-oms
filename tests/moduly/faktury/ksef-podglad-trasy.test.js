@@ -4,13 +4,13 @@
 // pokazuje, co POLECIALOBY, gdyby operator zatwierdzil. Zatwierdzenie to osobna trasa
 // (/faktury/ksef/wyslij), ktora liczy zbior JESZCZE RAZ, od nowa.
 import { describe, it, expect } from 'vitest';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 
 const AUTH = { authorization: `Basic ${Buffer.from('t:h').toString('base64')}`, origin: 'http://localhost' };
 // ⚠️ KSZTALT JAK U PRAWDZIWEJ USLUGI: inFakt oddaje kwote W GROSZACH (`gross_price`),
 // a `services/faktury-widok.js` doklada do niej gotowy napis w zlotowkach (`kwotaZl`).
-// Widok pyta o ZRODLO, zeby brak kwoty nie wydrukowal sie jako „0.00 zl" (recenzja calosci,
+// Widok pyta o ZRODLO, zeby brak kwoty nie wydrukowal sie jako „0.00 zl"
 // M3), wiec fikstura bez `gross_price` testowalaby co innego niz produkcja.
 //
 // ⚠️ `client_tax_code` JEST CZESCIA KSZTALTU, a nie ozdoba: od 28.08.2026 dokument bez NIP-u
@@ -51,7 +51,7 @@ describe('POST /faktury/ksef/podglad', () => {
   });
 
   // ⚠️⚠️ „0,00 zł" TO ZDANIE O PIENIADZACH, a przy dokumencie bez kwoty prawda brzmi
-  // „nie wiadomo" (recenzja calosci, M3). Warunek stal na `d.kwotaZl`, a `zl(0)` daje NAPIS
+  // „nie wiadomo". Warunek stal na `d.kwotaZl`, a `zl(0)` daje NAPIS
   // „0.00" — prawdziwy, wiec komorka drukowala zero przy dokumencie, ktory kwoty nie ma.
   it('dokument bez kwoty zostawia pustą komórkę, a nie „0.00 zł"', async () => {
     const bezKwoty = { ...dok('u1', '1/08/2026'), gross_price: null, kwotaZl: '0.00' };
@@ -83,7 +83,7 @@ describe('POST /faktury/ksef/podglad', () => {
     expect(r.body).toMatch(/jest już w KSeF/i);
   });
 
-  // ⚠️⚠️ LICZBA NA CZERWONYM PRZYCISKU MA BYC PRAWDZIWA (recenzja calosci, Finding 1). Dokument,
+  // ⚠️⚠️ LICZBA NA CZERWONYM PRZYCISKU MA BYC PRAWDZIWA. Dokument,
   // ktorego wysylke panel juz zlecil, nie ma jeszcze numeru KSeF (~70 sekund), wiec przed
   // poprawka wchodzil do „Poleci do KSeF" i zwiekszal liczbe na przycisku o dokument, ktory
   // i tak odbilby sie od rezerwacji w bazie.
@@ -95,7 +95,7 @@ describe('POST /faktury/ksef/podglad', () => {
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('Poleci do KSeF — 1');
     expect(r.body).toContain('Pominięte — 1');
-    // PRZ-152.G15: na ekranie krótkie zdanie zamiast długiego „Panel już zlecił… duplikatem”.
+    // Na ekranie krótkie zdanie zamiast długiego „Panel już zlecił… duplikatem”.
     expect(r.body).toContain('Ten dokument już wysłano do KSeF 6.8 16:00 — sprawdź go w inFakcie.');
     expect(r.body).not.toContain('Panel już zlecił');
     // Przycisk obiecuje DOKLADNIE tyle, ile poleci.

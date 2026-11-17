@@ -1,5 +1,5 @@
-// PRZ-087 — miniatury produktów w demo. Do PRZ-087 katalog demo dawał zaślepki `data:image/svg+xml`, a ekrany
-// (domena/miniatura-pozycji.js, domena/miniatury.js) przepuszczają wyłącznie adresy http(s) — gość nie widział
+// Miniatury produktów w demo. Zaślepki `data:image/svg+xml` nie wystarczają, bo ekrany
+// (src/domena/miniatura-pozycji.js, src/domena/miniatury.js) przepuszczają wyłącznie adresy http(s) — gość nie widział
 // ani jednej miniatury: ani na liście zamówień, ani na karcie, ani w Magazynie.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import fs from 'node:fs';
@@ -13,7 +13,7 @@ import { miniaturaZLustra } from '../../src/domena/miniatura-pozycji.js';
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite');
 
 const KATALOG_ZDJEC = path.resolve(import.meta.dirname, '../../src/public/demo-produkty');
-// PRZ-160.08 — celowe braki galerii; zdjęcia pozycji zamówień pozostają dostępne.
+// Celowe braki galerii; zdjęcia pozycji zamówień pozostają dostępne.
 const BEZ_GALERII = new Set(['LMP-KIN-001', 'LMP-KIN-002']);
 /** Adres demo → plik w src/public; adres spoza puli zdjęć demo = null. */
 function plikZAdresu(adres) {

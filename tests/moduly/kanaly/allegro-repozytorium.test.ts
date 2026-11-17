@@ -47,7 +47,7 @@ describe('trwałe kanały Allegro',()=>{
   const again=createRepozytoriumKanalow({db,definicjeEnv:[{klucz:'rynek',typ:'allegro',prefiks:'RYNEK'}],konfiguracjaEnv:{rynek:{od:'2026-01-01T00:00:00'}}});expect(again.lista()[0]).toMatchObject({klucz:'rynek',nazwa:'Nowa etykieta',pobieranie:'wylaczone',raport:'RYNEK_RAPORT'});
  });
 });
-// PRZ-132.02: po migracji 0003 kanał Allegro ma typ i aplikację; data startu zmienialna tylko przed pierwszym importem.
+// Po migracji 0003 kanał Allegro ma typ i aplikację; data startu zmienialna tylko przed pierwszym importem.
 describe('kanały Allegro po migracji 0003',()=>{
  function setup3(env=false){const s=setup(env);migracjaTypuKanaluISklepow.wykonaj(s.db);return s;}
  it('lista() i szkic mają typ allegro i aplikację NULL; zapiszZmiane zapisuje aplikację device/dcr i odrzuca inną',()=>{

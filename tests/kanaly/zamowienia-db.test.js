@@ -80,7 +80,7 @@ describe('zapiszZamowienie', () => {
     expect(pobierzZamowienie(db, id).oplacone_at).toBe('2026-07-30T08:00:00');
   });
 
-  // Zadanie 4: kolumny netto obok istniejacych kolumn brutto (patrz mapowanie.js).
+  // Kolumny netto obok istniejacych kolumn brutto (patrz mapowanie.js).
   it('zapisuje i odczytuje koszt dostawy netto oraz netto pozycji', () => {
     const zNetto = {
       ...zmapowane,

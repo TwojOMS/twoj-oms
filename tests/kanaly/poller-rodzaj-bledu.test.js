@@ -75,7 +75,7 @@ describe('poller — rodzaj bledu i poczatek serii', () => {
     expect(p.stan().ostatni_blad_od_at).not.toBe(pierwszy);
   });
 
-  // LICZNIK NIEUDANYCH PRZEBIEGOW Z RZEDU (10.09.2026, decyzja wlasciciela: komunikat
+  // LICZNIK NIEUDANYCH PRZEBIEGOW Z RZEDU (komunikat
   // w panelu po TRZECH). Osobna kolumna, bo `ostatni_blad_od_at` mierzy CZAS, a nie PROBY.
   it('licznik prob rosnie z kazda wpadka z rzedu', async () => {
     const p = pollerZ(vi.fn().mockRejectedValue(new Error('fetch failed')));

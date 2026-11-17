@@ -1,7 +1,7 @@
 import { it, expect } from 'vitest';
 import { listaNaZadanie, mapaNaZadanie } from '../../../src/moduly/kanaly/kolekcje-na-zadanie.ts';
 
-// PRZ-157.12b: piaskownica zagnieżdża listy na żądanie (kompozycja → atrapy → raporty). Gdy przejście listy
+// Piaskownica zagnieżdża listy na żądanie (kompozycja → atrapy → raporty). Gdy przejście listy
 // pytało dostawcę przy każdym indeksie, trzy poziomy dawały setki zapytań do bazy i start ~4,4 s (demo-reset-prz083).
 it('przejście listy na żądanie pyta dostawcę raz, także zagnieżdżonej', () => {
   let wolania = 0;

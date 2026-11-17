@@ -5,8 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createGa4Client } from '../../src/oms/ga4/client.js';
 
-// Klient GA4 Data API (Etap 2 kampanii). Atrapa `fetch` — suita nie rozmawia z Google.
-// Ksztalt odpowiedzi odwzorowany z ZYWEGO odczytu (25.08.2026, właściwość 398443619):
+// Klient GA4 Data API. Atrapa `fetch` — suita nie rozmawia z Google.
+// Ksztalt odpowiedzi odwzorowany z ZYWEGO odczytu:
 // `rows: [{ dimensionValues: [{value:'20260824'}], metricValues: [{value:'28'}] }]`.
 //
 // Klucz jest PRAWDZIWYM kluczem RSA generowanym na potrzeby testu — atrapa napisu nie

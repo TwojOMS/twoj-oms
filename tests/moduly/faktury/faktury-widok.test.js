@@ -51,7 +51,7 @@ function pobranieZPaczka(db, { nr, uuid, opisKuriera }) {
   return id;
 }
 
-// ⚠️ WIELOPACZKOWY WARIANT (nauczka Zadania 5, K1 — komentarz przy `POBRANIA_PRZESYLKI`
+// ⚠️ WIELOPACZKOWY WARIANT (komentarz przy `POBRANIA_PRZESYLKI`
 // w services/faktury-widok.js): `rozpocznijPrzesylke` broni się przed drugą paczką pod tym
 // samym numerem kolejnym, więc `kolejnosc` trzeba podać wprost (1, potem 2).
 function pobranieZDwiemaPaczkami(db, { nr, uuid, paczki }) {
@@ -128,7 +128,7 @@ describe('widok faktur', () => {
     expect(await w.nieoplacone({ dzis: '2026-08-06' })).toEqual([]);
   });
 
-  // ⚠️ REGRESJA DO PILNOWANIA (decyzja właściciela 06.08.2026, spec §4.1): panel NIE liczy
+  // ⚠️ REGRESJA DO PILNOWANIA: panel NIE liczy
   // własnego zdania o tym, czy faktura jest zapłacona, choć dane po temu ma (wpłaty
   // zamówienia). Statusy porządkuje właściciel w inFakcie; druga prawda o pieniądzach
   // zostałaby w kodzie na zawsze, a przy pierwszym rozjeździe z innego powodu (zaliczka,
@@ -149,14 +149,14 @@ describe('widok faktur', () => {
     const wynik = await w.nieoplacone({ dzis: '2026-08-06' });
     const oczekiwane = [
       ...Object.keys(surowy),
-      // `ksefZleconaAt` dopisane ŚWIADOMIE 06.08.2026 (recenzja całości, Finding 1): to jest
+      // `ksefZleconaAt` dopisane ŚWIADOMIE 06.08.2026: to jest
       // FAKT z `wysylki_ksef` — „panel zlecił wysyłkę tego dokumentu do KSeF" — a nie zdanie
       // o pieniądzach. Bez niego lista mówiła „brak KSeF" przez ~70 sekund po wysyłce, którą
       // sama zleciła, i oddawała pole wyboru do drugiego, nieodwracalnego zgłoszenia.
       'zamowienie', 'okres', 'stanKsef', 'ksefZleconaAt', 'stanTerminu', 'opisTerminu',
       'kwotaZl', 'pozostaloZl',
-      // `stanZaplaty` dopisane ŚWIADOMIE 28.08.2026 (Zadanie 2): to jest wynik wspólnej reguły
-      // `stanZaplaty` z domain/lista-faktur.js (Zadanie 1), nie własne zdanie widoku o
+      // `stanZaplaty` dopisane ŚWIADOMIE 28.08.2026: to jest wynik wspólnej reguły
+      // `stanZaplaty` z domain/lista-faktur.js, nie własne zdanie widoku o
       // opłaceniu — ta sama kategoria co `stanKsef` czy `stanTerminu` wyżej.
       'stanZaplaty',
     ].sort();
@@ -286,7 +286,7 @@ describe('widok faktur', () => {
     expect(lista).toEqual([]);
   });
 
-  // ⚠️⚠️ POPRAWKA PO RECENZJI (28.08.2026, KRYTYCZNE): zamówienie złożone w sklepie BEZ
+  // ⚠️⚠️ POPRAWKA PO RECENZJI: zamówienie złożone w sklepie BEZ
   // pobrania (`z.pobranie = 0`), przełączone na pobranie RĘCZNIE z karty. Zapis idzie
   // WYŁĄCZNIE do `wysylka_reczna_json` — `zapiszNadpisanieWysylki` w db/zamowienia.js nigdy
   // nie rusza kolumny `pobranie`. Faktura dostaje w inFakcie `payment_method: 'delivery'`,
@@ -315,7 +315,7 @@ describe('widok faktur', () => {
     expect(lista.map((d) => d.number)).toContain('50/08/2026');
   });
 
-  // ⚠️⚠️ DRUGI KIERUNEK TEGO SAMEGO NADPISANIA (recenzja poprawkowa 28.08.2026, W3) i jedyny,
+  // ⚠️⚠️ DRUGI KIERUNEK TEGO SAMEGO NADPISANIA i jedyny,
   // który był CICHY. Zamówienie sklepowe Z pobraniem, przełączone RĘCZNIE na PRZEDPŁATĘ:
   // `z.pobranie = 1` przechodziło prefiltr SQL, a `czyPobranie` — wartość EFEKTYWNA — nie było
   // tu wołane ANI RAZU, więc jedynym testem „czy to pobranie" był ten prefiltr. Po zwrocie
@@ -335,7 +335,7 @@ describe('widok faktur', () => {
     expect(lista).toEqual([]);
   });
 
-  // ⚠️⚠️ BEZPIECZNIK NIEUDANEGO DORĘCZENIA PO OBU STRONACH (recenzja poprawkowa 28.08.2026, W4).
+  // ⚠️⚠️ BEZPIECZNIK NIEUDANEGO DORĘCZENIA PO OBU STRONACH.
   // „Nie doręczono — adresat nieobecny" ma `etapPrzesylki === 'doreczona'`, więc czuwacz
   // przesyłek PRZESTAJE tę paczkę odpytywać (doręczone wypadają z puli) — a pas długów, dopóki
   // pytał wyłącznie o `'zwrot'`, jej NIE POKAZYWAŁ. Gotówki nie ma, faktura nieopłacona,
@@ -397,7 +397,7 @@ describe('stan zapłaty na wzbogaconym dokumencie', () => {
   });
 });
 
-// ⚠️⚠️ DOKUMENT, KTÓREGO WYSYŁKĘ PANEL JUŻ ZLECIŁ (recenzja całości, Finding 1). inFakt nadaje
+// ⚠️⚠️ DOKUMENT, KTÓREGO WYSYŁKĘ PANEL JUŻ ZLECIŁ. inFakt nadaje
 // numer KSeF dopiero po ~70 sekundach od przyjęcia zlecenia, więc przez ten czas `ksef_number`
 // jest pusty — a lista pokazywała wtedy „brak", oddawała pole wyboru i liczyła taki dokument
 // do wysyłki, która i tak odbiłaby się od rezerwacji w `wysylki_ksef`. Ekran, którego jedynym

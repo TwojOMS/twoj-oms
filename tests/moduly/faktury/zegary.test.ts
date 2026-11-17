@@ -23,7 +23,7 @@ describe('zegary faktur — ślad przebiegu', () => {
     await z.przebieg(); expect(log).toHaveBeenCalledWith('archiwum sprzedaży: pominięty —', POWOD_TRWA);
     await z.przebieg(); expect(log).toHaveBeenCalledWith('archiwum sprzedaży:', 'dysk');
   });
-  it('PRZ-102.12: zegar automatu KSeF tyka co minutę, pominięcie milczy, wyjątek zostawia ślad i nie wychodzi', async () => {
+  it('zegar automatu KSeF tyka co minutę, pominięcie milczy, wyjątek zostawia ślad i nie wychodzi', async () => {
     const log = vi.fn();
     const przebieg = vi.fn().mockResolvedValueOnce({ pominiety: true, powod: 'nie ta pora' }).mockRejectedValueOnce(new Error('baza'));
     const z = zegarAutomatuKsef({ automat: { przebieg }, log, odstepMs: 60000 });

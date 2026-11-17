@@ -3,11 +3,11 @@ import {
 } from 'vitest';
 
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { klientPoNip, wszyscyKlienci } from '../../../src/oms/db/klienci.js';
 import { zalozZamowienieReczne } from '../../../src/moduly/zamowienia/services/zamowienie-reczne.js';
 
-// „ZAPAMIĘTAJ KLIENTA” DLA NOWEGO KLIENTA PRZY NIEROZPOZNANEJ DOSTAWIE (PRZ-102.24).
+// „ZAPAMIĘTAJ KLIENTA” DLA NOWEGO KLIENTA PRZY NIEROZPOZNANEJ DOSTAWIE.
 //
 // Allegro/Woo z dostawą, której panel nie zna, dają `metoda_wysylki = 'nieznana'` (albo
 // nazwę spoza `DOSTAWY`). U nowego klienta trasa walidowała tę dostawę przez
@@ -83,7 +83,7 @@ describe('„Zapamiętaj klienta” — nowy klient z nierozpoznaną dostawą', 
     });
   }
 
-  // ⚠️ KOSZT Z ZAMÓWIENIA NIE JEST USTALENIEM Z KLIENTEM (PRZ-102.24, po recenzji). Kupon
+  // ⚠️ KOSZT Z ZAMÓWIENIA NIE JEST USTALENIEM Z KLIENTEM. Kupon
   // darmowej wysyłki dawał klientowi „wysyłka gratis” na stałe, koszt null zamieniał się
   // w 0,00, dwie paczki po 19,00 w stałe 38,00. Z zamówienia przechodzi tylko rozpoznana metoda.
   it('dostawa rozpoznana (dpd): metoda z zamówienia, koszt nieustalony, „Wstaw dane” daje kwotę domyślną', async () => {
@@ -190,7 +190,7 @@ function formularzZEkranu(html) {
   return pola;
 }
 
-// FORMULARZ STAŁYCH KLIENTÓW PRZY PUSTEJ DOSTAWIE (PRZ-102.24, druga część). Lista wyboru
+// FORMULARZ STAŁYCH KLIENTÓW PRZY PUSTEJ DOSTAWIE. Lista wyboru
 // nie miała opcji „nie ustalono”, więc przeglądarka wysyłała pierwszą (DPD), a pusty koszt
 // zapisywał się jako 0,00 — czyli poprawka samego adresu robiła z klienta „wysyłka gratis”.
 // Koszt z karty klienta wchodzi potem do nowych zamówień: to są pieniądze.
@@ -248,9 +248,7 @@ describe('Formularz Stałych klientów — dostawa nieustalona', () => {
     expect([po.metoda_wysylki, po.koszt_dostawy_brutto]).toEqual(['dpd', '19.00']);
   });
 
-  // Dzisiejsza reguła zostaje: WYBRANA dostawa z pustym polem kosztu to 0,00.
-  // ⚠️ PUSTE POLE KOSZTU TO „NIE USTALONO” TAKŻE PRZY WYBRANEJ DOSTAWIE (decyzja kierownika
-  // pętli, PRZ-102.24). Do tej poprawki puste pole zapisywało 0,00, więc poprawka samego adresu
+  // ⚠️ PUSTE POLE KOSZTU TO „NIE USTALONO” TAKŻE PRZY WYBRANEJ DOSTAWIE. Do tej poprawki puste pole zapisywało 0,00, więc poprawka samego adresu
   // u klienta z DPD i pustym kosztem dawała „wysyłka gratis” na stałe. Pusty koszt jest
   // bezpieczny: „Wstaw dane” podstawia kwotę domyślną z Ustawień.
   it('wybrana dostawa z pustym kosztem zapisuje pusty koszt, nie 0.00', async () => {

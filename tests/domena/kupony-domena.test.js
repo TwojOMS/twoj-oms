@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { kuponyZeSurowych, kuponyZWiersza } from '../../src/domena/kupony.js';
 
-// Kupony rabatowe ze sklepu (kampania WRZESIEN30, 2026-08-25). Woo oddaje je w
+// Kupony rabatowe ze sklepu (kampania WRZESIEN30). Woo oddaje je w
 // `coupon_lines`: kod + rabat netto (`discount`) + VAT od rabatu (`discount_tax`).
 // Panel pokazuje rabat BRUTTO (netto + VAT), bo wszystkie kwoty na karcie sa brutto —
 // rabat w innej skali niz kwota zamowienia obok bylby liczba, ktorej nie da sie

@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { adresOdbiorcy, adresZeSklepu, polaReczneAdresu } from '../../src/domena/adres-odbiorcy.js';
 
-// Zgłoszenie właściciela z prawdziwego zamówienia 1277 (2026-07-31): „pole z nazwą firmy
+// Zgłoszenie właściciela z prawdziwego zamówienia 1277: „pole z nazwą firmy
 // w danych wysyłki źle się pobiera".
 //
 // Co pokazała baza: WooCommerce wypełnił `shipping` imieniem, adresem i telefonem, ale
 // `shipping.company` ZOSTAWIŁ PUSTE, mimo że klient podał firmę przy płatności
-// (`billing.company` = „Gammatech Spółka Sp. z o.o. Sp. K"). Panel pokazywał wtedy jako
+// (`billing.company` = „Lustrzanka Spółka Sp. z o.o. Sp. K"). Panel pokazywał wtedy jako
 // „Firma" IMIĘ I NAZWISKO — ostateczny fallback dla DPD, który wymaga niepustego pola —
 // czyli paczka do firmy jechała bez jej nazwy na etykiecie.
 
@@ -16,7 +16,7 @@ const zamowienie = (nad = {}) => ({
     address_1: 'Polna 38', address_2: '', postcode: '01-234', city: 'Dolnowo', country: 'PL',
   },
   klient: {
-    first_name: 'Maria', last_name: 'Wiśniewska', company: 'Gammatech Spółka Sp. z o.o. Sp. K',
+    first_name: 'Maria', last_name: 'Wiśniewska', company: 'Lustrzanka Spółka Sp. z o.o. Sp. K',
     address_1: 'Polna 38', address_2: '', postcode: '01-234', city: 'Dolnowo',
     email: 'biuro@example.pl', phone: '500900006',
   },
@@ -25,7 +25,7 @@ const zamowienie = (nad = {}) => ({
 
 describe('firma na etykiecie, gdy sklep zostawił shipping.company puste', () => {
   it('bierze firmę z bloku płatności, a nie imię i nazwisko', () => {
-    expect(adresOdbiorcy(zamowienie()).company).toBe('Gammatech Spółka Sp. z o.o. Sp. K');
+    expect(adresOdbiorcy(zamowienie()).company).toBe('Lustrzanka Spółka Sp. z o.o. Sp. K');
   });
 
   it('firma WPISANA w bloku wysyłki wygrywa z firmą z płatności', () => {
@@ -45,7 +45,7 @@ describe('firma na etykiecie, gdy sklep zostawił shipping.company puste', () =>
         address_1: 'Budowlana 7', postcode: '00-001', city: 'Warszawa', country: 'PL',
       },
     });
-    // ⚠️ ZMIENIONE 2026-08-05: pole zostaje PUSTE. Dawniej wchodził tu ostateczny fallback
+    // ⚠️ ZMIENIONE: pole zostaje PUSTE. Dawniej wchodził tu ostateczny fallback
     // na imię i nazwisko (DPD wymaga niepustego <company>), ale siedział we wspólnym źródle
     // dla karty, ekranu nadania i kuriera — i wychodził operatorowi na ekran. Dziś fallback
     // stoi na granicy kuriera (kurierzy/dpd.js) i formularza (domain/adres-formularza.js);
@@ -67,7 +67,7 @@ describe('firma na etykiecie, gdy sklep zostawił shipping.company puste', () =>
         address_1: 'polna  38', postcode: '01234', city: 'DOLNOWO',
       },
     });
-    expect(adresOdbiorcy(z).company).toBe('Gammatech Spółka Sp. z o.o. Sp. K');
+    expect(adresOdbiorcy(z).company).toBe('Lustrzanka Spółka Sp. z o.o. Sp. K');
   });
 
   // Numer budynku bywa OSOBNYM polem (address_2) — porównanie musi to znieść, inaczej
@@ -76,7 +76,7 @@ describe('firma na etykiecie, gdy sklep zostawił shipping.company puste', () =>
     const z = zamowienie({
       dostawa: { ...zamowienie().dostawa, address_1: 'Polna', address_2: '38' },
     });
-    expect(adresOdbiorcy(z).company).toBe('Gammatech Spółka Sp. z o.o. Sp. K');
+    expect(adresOdbiorcy(z).company).toBe('Lustrzanka Spółka Sp. z o.o. Sp. K');
   });
 });
 
@@ -88,7 +88,7 @@ describe('co się przez to NIE zmienia', () => {
   });
 
   it('adresZeSklepu widzi tę samą firmę — to dalej dana ze SKLEPU, nie nasza', () => {
-    expect(adresZeSklepu(zamowienie()).company).toBe('Gammatech Spółka Sp. z o.o. Sp. K');
+    expect(adresZeSklepu(zamowienie()).company).toBe('Lustrzanka Spółka Sp. z o.o. Sp. K');
   });
 
   it('ręczna poprawka firmy dalej wygrywa ze wszystkim', () => {

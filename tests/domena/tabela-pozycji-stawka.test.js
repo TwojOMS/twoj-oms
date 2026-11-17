@@ -3,7 +3,7 @@ import { wierszePozycji, podsumowanieVatKarty } from '../../src/domena/tabela-po
 import { pozycjeDokumentu } from '../../src/domena/pozycje-faktury.js';
 import { podsumowanieWierszami } from '../../src/domena/podsumowanie-wierszami.js';
 
-// PRZ-105: karta pokazuje stawkę każdej pozycji i podsumowanie netto / VAT / brutto — liczone z TYCH SAMYCH linii,
+// Karta pokazuje stawkę każdej pozycji i podsumowanie netto / VAT / brutto — liczone z TYCH SAMYCH linii,
 // które idą na fakturę (pozycjeDokumentu), regułą faktury (podsumowanieWierszami). Grosz różnicy = błąd.
 const zamowienie = (nad = {}) => ({
   sklep: 'pro',
@@ -16,7 +16,7 @@ const zamowienie = (nad = {}) => ({
   ...nad,
 });
 
-describe('wierszePozycji — stawka w wierszu (PRZ-105)', () => {
+describe('wierszePozycji — stawka w wierszu', () => {
   it('sklepowa → domyślna, ręczna → własna, wysyłka → domyślna; „Razem” bez stawki', () => {
     const w = wierszePozycji(zamowienie(), { stawkaDomyslna: '23' });
     expect(w.map((x) => x.stawka)).toEqual(['23', '8', '23', null]);
@@ -43,7 +43,7 @@ describe('wierszePozycji — stawka w wierszu (PRZ-105)', () => {
   });
 });
 
-describe('podsumowanieVatKarty (PRZ-105)', () => {
+describe('podsumowanieVatKarty', () => {
   it('równa się podsumowaniu linii faktury: 123/23 + 108/8 + 25/23 dostawy', () => {
     const z = zamowienie();
     const s = podsumowanieVatKarty(z, { stawkaDomyslna: '23' });

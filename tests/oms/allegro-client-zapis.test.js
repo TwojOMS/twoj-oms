@@ -5,7 +5,7 @@
 // Test jest DYNAMICZNY: wywołuje KAŻDĄ metodę klienta szpiegiem `fetchImpl` z „bogatą”
 // odpowiedzią, zbiera (metoda HTTP, ścieżka) i porównuje zbiór ZAPISÓW (wszystko poza GET)
 // z wyliczeniem niżej. Nowa metoda bez wpisu w tabeli ARGUMENTY = czerwony test, więc nie da się
-// dopisać zapisu tylnymi drzwiami. PRZ-160.E3.03 dołożyło zapis ofert, zdjęć, komend i podgląd opłat.
+// dopisać zapisu tylnymi drzwiami. Obejmuje zapis ofert, zdjęć, komend i podgląd opłat.
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { createAllegroClient } from '../../src/oms/allegro/client.js';
@@ -47,7 +47,6 @@ const ARGUMENTY = {
   deklarujZalacznikWiadomosci: ['faktura.pdf', 100],
   wgrajZalacznikWiadomosci: [ID, PDF, 'application/pdf'],
   pobierzSprawy: [],
-  // PRZ-160.E3.03
   utworzOferte: [{ name: 'Lampa', external: { id: 'oms-1' } }],
   edytujOferte: [ID, { publication: { status: 'ACTIVE' } }],
   stanOperacji: [`/sale/product-offers/${ID}/operations/${ID}`],
@@ -73,21 +72,21 @@ const ARGUMENTY = {
 
 // DOKŁADNIE te zapisy wolno robić. Każda zmiana tej listy to decyzja, nie poprawka testu.
 const ZAPISY = [
-  // Plan B (05.08.2026): status realizacji i faktura.
+  // Status realizacji i faktura.
   'PUT /order/checkout-forms/{id}/fulfillment',
   'POST /order/checkout-forms/{id}/invoices',
   'PUT /order/checkout-forms/{id}/invoices/{id}/file',
-  // „Wysyłam z Allegro” (11.08.2026) — create-commands KUPUJE przewóz.
+  // „Wysyłam z Allegro” — create-commands KUPUJE przewóz.
   'POST /shipment-management/shipments/create-commands',
   'POST /shipment-management/label',
-  // Podjazdy (22.09.2026).
+  // Podjazdy.
   'POST /shipment-management/pickup-proposals',
   'POST /shipment-management/pickups/create-commands',
-  // Centrum wiadomości (28.08.2026) — wiadomość do człowieka, nieodwracalna.
+  // Centrum wiadomości — wiadomość do człowieka, nieodwracalna.
   'POST /messaging/message-attachments',
   'PUT /messaging/message-attachments/{id}',
   'POST /messaging/threads/{id}/messages',
-  // PRZ-160.E3.03 — wystawianie ofert (bez kasowania: D38).
+  // Wystawianie ofert (bez kasowania).
   'POST /sale/product-offers',
   'PATCH /sale/product-offers/{id}',
   'POST upload:/sale/images',

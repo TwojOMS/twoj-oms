@@ -6,7 +6,7 @@ import { METODY_WYSYLKI } from '../../src/domena/wysylka.js';
 import { adresOdbiorcy } from '../../src/domena/adres-odbiorcy.js';
 import { daneFaktury } from '../../src/domena/dane-faktury.js';
 
-// ⚠️ PARA, NIE JEDNA WARTOSC (2026-08-01): ekran od poczatku pytal o dostawe i platnosc
+// ⚠️ PARA, NIE JEDNA WARTOSC: ekran od poczatku pytal o dostawe i platnosc
 // osobno, a funkcja sklejala odpowiedzi w jedna nazwe. Teraz obie decyzje jada dalej
 // w tej postaci, w jakiej zostaly podjete — `{ metoda, pobranie }`.
 describe('metodaWysylkiZWyboru — dostawa i płatność jako DWIE niezależne wartości', () => {
@@ -54,7 +54,7 @@ describe('metodaWysylkiZWyboru — dostawa i płatność jako DWIE niezależne w
 });
 
 describe('parsujNoweZamowienie — pola', () => {
-  // „Wszystkie pola nieobowiazkowe" (decyzja wlasciciela 2026-08-01): numer nadany przy
+  // „Wszystkie pola nieobowiazkowe": numer nadany przy
   // telefonie jest wart wiecej niz komplet danych, a karta i tak zapali ostrzezenia przy
   // nadaniu i fakturze. Pusty formularz MUSI przejsc.
   it('pusty formularz przechodzi i nie wymaga ani jednego pola', () => {
@@ -200,9 +200,9 @@ describe('parsujNoweZamowienie — pozycje z pięciu wierszy', () => {
   });
 });
 
-// PRZ-105: kolumna „Stawka VAT” (poz_vat) — dziewiąta tablica wiersza. Pusta = domyślna z Ustawień (podaje trasa),
+// Kolumna „Stawka VAT” (poz_vat) — dziewiąta tablica wiersza. Pusta = domyślna z Ustawień (podaje trasa),
 // sama stawka nie robi wiersza niepustego, NIP z UE (f_nip) przelicza netto stawką 0.
-describe('parsujNoweZamowienie — stawka VAT wiersza (PRZ-105)', () => {
+describe('parsujNoweZamowienie — stawka VAT wiersza', () => {
   const wiersz = (nad = {}) => ({
     poz_nazwa: ['Album o lampach'], poz_sku: [''], poz_ilosc: ['1'], poz_cena_netto: [''], poz_cena_brutto: [''],
     poz_vat: [''], ...nad,
@@ -231,7 +231,7 @@ describe('parsujNoweZamowienie — stawka VAT wiersza (PRZ-105)', () => {
       .toThrow(/wiersz 1.*stawk/i);
   });
 
-  // Recenzja PRZ-105 (P3): dokument zdejmuje etykietę „NIP:” (dane-faktury.js: bezEtykietyNip) — ekran też musi.
+  // Dokument zdejmuje etykietę „NIP:” (dane-faktury.js: bezEtykietyNip) — ekran też musi.
   it('NIP z etykietą „NIP: DE…” to też WDT', () => {
     const d = parsujNoweZamowienie(wiersz({ f_nip: 'NIP: DE123456789', poz_cena_netto: ['100'], poz_vat: ['23'] }),
       { stawkaDomyslna: '23' });
@@ -245,7 +245,7 @@ describe('parsujNoweZamowienie — stawka VAT wiersza (PRZ-105)', () => {
   });
 });
 
-describe('wstawPozycjeDoFormularza — netto i stawka produktu z magazynu (PRZ-105, uwaga właściciela 21.10)', () => {
+describe('wstawPozycjeDoFormularza — netto i stawka produktu z magazynu', () => {
   const pozycja = { nazwa: 'Lampa', sku: 'L-1', ilosc: 1, cena_brutto: '108.00' };
 
   it('wstawia stawkę domyślną i netto liczone jej stawką', () => {

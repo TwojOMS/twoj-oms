@@ -1,4 +1,4 @@
-// PRZ-108.08 (zmiana C1 planu automatyzacji, test 10): warunki reguły sprawdzane w chwili wykonania — czysta funkcja.
+// Warunki reguły sprawdzane w chwili wykonania — czysta funkcja.
 // Każdy warunek osobno spełniony i niespełniony; status własny przy `wyslane_at`; pusty zestaw statusów = dowolny.
 import { describe, it, expect } from 'vitest';
 import { sprawdzWarunki, opisWarunkow, historiaPrzedGranica } from '../../src/domena/warunki-automatyzacji.js';
@@ -86,7 +86,7 @@ describe('opisWarunkow', () => {
   });
 });
 
-// PRZ-108.08b (recenzja 08, runda 2, R2-1): numer z Allegro dociągnięty ponad 14 dni po złożeniu zamówienia → pominięte.
+// Numer z Allegro dociągnięty ponad 14 dni po złożeniu zamówienia → pominięte.
 describe('historiaPrzedGranica — numer z Allegro dociągnięty długo po złożeniu (R2-1)', () => {
   const GRANICA = { at: '2026-10-21T10:00:00.000Z', przesylki: 10 };
   const zAllegro = (zrodlo) => zam({ utworzone_at: '2026-10-25T10:00:00.000Z',

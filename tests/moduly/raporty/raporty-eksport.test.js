@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import { openOmsDb } from '../../pomoc/dane-miesieczne-parytetu.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { openOmsDb } from '../../pomoc/testowe-dane-miesieczne.js';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { ustawGranice, zapiszHistorie } from '../../../src/oms/db/historia-sprzedazy.js';
-import { KANALY } from '../../pomoc/raporty-historyczne-fixture.js';
-import { sprzedazWOkresie } from '../../pomoc/raporty-parytetu.js';
+import { KANALY } from '../../pomoc/przykladowe-dane-raportow.js';
+import { sprzedazWOkresie } from '../../pomoc/testowe-reguly-raportow.js';
 
 const naglowek = { authorization: `Basic ${Buffer.from('adam:x').toString('base64')}` };
 const config = { auth: { user: 'adam', pass: 'x' }, klienciZbiorczy: [] };

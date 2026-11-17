@@ -1,4 +1,4 @@
-import { potwierdzOdmoweHistorycznegoSchema } from '../../pomoc/baseline-historyczne.js';
+import { potwierdzOdmoweHistorycznegoSchema } from '../../pomoc/sprawdzanie-schematu-bazy.js';
 import { describe, it, expect } from 'vitest';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';

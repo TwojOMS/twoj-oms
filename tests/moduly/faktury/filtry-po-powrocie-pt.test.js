@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { nowyPanel, jako, get, post } from '../../pomoc/konta-prz068.js';
+import { nowyPanel, jako, get, post } from '../../pomoc/panel-konta-testowe.js';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
 
 let p;

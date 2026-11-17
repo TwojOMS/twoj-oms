@@ -1,4 +1,4 @@
-// PRZ-059: kopie u klienta (deploy/klient/kopia.mjs) — dzienna kopia bazy, archiwum plików
+// Kopie u klienta (deploy/klient/kopia.mjs) — dzienna kopia bazy, archiwum plików
 // z rotacją, kopia na nośnik zewnętrzny i kopia operacji aktualizatora. Prawdziwy SQLite i pliki.
 import { afterEach, describe, expect, it } from 'vitest';
 import { spawnSync } from 'node:child_process';
@@ -75,7 +75,7 @@ describe('kopia operacji aktualizatora', () => {
   });
 });
 
-describe('PRZ-182: id kluczy kopii — z samej kopii, bez klucza', () => {
+describe('id kluczy kopii — z samej kopii, bez klucza', () => {
   it('kopia dzienna, kopia na nośniku i kopia operacji: `sekrety.mjs stan --baza` podaje wymagane id bez klucza i bez wartości', () => {
     const k = instalacja();
     const klucz = nowyKlucz();

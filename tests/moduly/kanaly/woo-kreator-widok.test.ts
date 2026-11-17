@@ -16,11 +16,11 @@ const render=(env=false,zmiany:Record<string,unknown>={},wartosci:Record<string,
 it('pokazuje cztery metody, strefę 0 i wybór z mapowaniem; sekrety są puste',async()=>{
  const html=await render();for(let i=1;i<=4;i++)expect(html).toContain('Metoda '+i);expect(html).toContain('Pozostałe lokalizacje (0)');expect(html).toContain('Nie przypisuj');expect(html).toContain('local_pickup');expect(html).toContain('nieznana');
  expect(html).toMatch(/value="dpd" selected/);expect(html).toContain('autocomplete="off"');expect(html).not.toMatch(/type="password"[^>]*value=/);expect(html).toContain('zapisane');
- // PRZ-134.PT9: krok 4 szkicu widać dopiero, gdy jest bieżący
+ // Krok 4 szkicu widać dopiero, gdy jest bieżący
  expect(html).not.toContain('<h2>4.');expect(await render(false,{},undefined,{kroki:START})).toContain('<h2>4.');
 });
 it('sklep env pokazuje te same sekcje bez formularzy',async()=>{const html=await render(true);expect(html).not.toContain('<form');expect(html).toContain('ustawił administrator serwera — zmiany zgłoś jemu');expect(html).toContain('Metoda 4');for(const krok of MODUL_WOO.konfigurator.kroki)expect(html).toContain(krok.tytul.replaceAll('„','„'));});
-// PRZ-134.PT9: „Aktywuj” szkicu jest w kroku 4 (karta 5 tylko dla aktywnego sklepu); przed krokiem 4 go nie ma
+// „Aktywuj” szkicu jest w kroku 4 (karta 5 tylko dla aktywnego sklepu); przed krokiem 4 go nie ma
 it('stan po polsku, „Aktywuj” w karcie 4 szkicu, jedno sprawdzenie bez zapisanych kluczy',async()=>{
  const sekcja4=(h:string)=>h.slice(h.indexOf('<h2>4.'));
  expect(await render()).not.toContain('/aktywuj');
@@ -39,7 +39,7 @@ it('zapisane klucze: jeden przycisk sprawdzenia w kroku 2, pomoc mówi o pustych
  expect(s).not.toContain('Zostaw pola puste');expect(s.match(/ required/g)).toHaveLength(2);
 });
 const START=stanKrokow(MODUL_WOO.konfigurator,{biezacy:'start',zrobione:['nazwa','klucze','mapowanie']});
-it('C4/C7: polskie klucze i instrukcja w kolejności formularza Woo',async()=>{
+it('polskie klucze i instrukcja w kolejności formularza Woo',async()=>{
  const html=await render(false,{},{ck:false,cs:false});
  for(const etykieta of ['Klucz konsumenta (ck_…)','Tajny konsumenta (cs_…)'])expect(html).toContain(etykieta);
  expect(html).not.toMatch(/Consumer (key|secret)/i);
@@ -51,7 +51,7 @@ const BRAMKI=[{id:'cod',tytul:'Za pobraniem',nazwaWoo:'Cash on delivery',wlaczon
 const METODY_POBRANIA=[{strefa:'Polska',instanceId:3,tytul:'Kurier DPD pobranie',metodaWoo:'flat_rate'},{strefa:'Polska',instanceId:5,tytul:'Przesyłka',metodaWoo:'flat_rate'}];
 const sekcja3=(h:string)=>h.slice(h.indexOf('<h2>3.'),h.indexOf('<h2>4.'));
 const wiersz=(h:string,tytul:string)=>h.split(/<tr>|<label/).find(w=>w.includes(tytul))??'';
-it('PRZ-134 krok 3: kolumna „Za pobraniem”, bramki ze sklepu, cod zaznaczony tylko bez decyzji',async()=>{
+it('krok 3: kolumna „Za pobraniem”, bramki ze sklepu, cod zaznaczony tylko bez decyzji',async()=>{
  let s=sekcja3(await render(false,{},undefined,{bramki:BRAMKI,metody:METODY_POBRANIA}));
  expect(s).toContain('<th>Za pobraniem</th>');expect(s).toContain('<h3>Płatność przy odbiorze (pobranie)</h3>');
  expect(s).toContain('Zaznacz bramki płatności, przy których kurier ma pobrać pieniądze. Kwota pobrania = wartość zamówienia.');
@@ -70,7 +70,7 @@ it('PRZ-134 krok 3: kolumna „Za pobraniem”, bramki ze sklepu, cod zaznaczony
  expect(s).toMatch(/name="pobranie_3" value="tak" checked/);expect(s).not.toMatch(/value="cod" checked/);expect(s).toMatch(/value="bacs" checked/);
  expect(s).toMatch(/value="stara_bramka" checked/);expect(s).toContain('stara_bramka (stara_bramka) — nie ma jej już w sklepie');
 });
-it('PRZ-134 krok 3: bez listy bramek pole tekstowe z zapisanymi albo cod',async()=>{
+it('krok 3: bez listy bramek pole tekstowe z zapisanymi albo cod',async()=>{
  let s=sekcja3(await render(false,{},undefined,{bramki:null,bladBramek:'Nie udało się odczytać bramek płatności ze sklepu.'}));
  expect(s).toMatch(/name="bramki_tekst"[^>]*value="cod"/);expect(s).toContain('Identyfikatory bramek za pobraniem, oddzielone przecinkami');
  expect(s).toContain('Nie udało się odczytać bramek płatności ze sklepu. Identyfikator znajdziesz w WooCommerce → Ustawienia → Płatności (w adresie strony bramki po <code>section=</code>).');
@@ -78,8 +78,8 @@ it('PRZ-134 krok 3: bez listy bramek pole tekstowe z zapisanymi albo cod',async(
  s=sekcja3(await render(false,{},undefined,{bramki:null,mapowanie:{instancje:{},bramkiPobrania:['cod','moja_bramka']}}));expect(s).toMatch(/name="bramki_tekst"[^>]*value="cod, moja_bramka"/);
  s=sekcja3(await render(false,{},undefined,{bramki:null,mapowanie:{instancje:{},bramkiPobrania:[]}}));expect(s).toMatch(/name="bramki_tekst"[^>]*value=""/);
 });
-// PRZ-134.PT9: karta 5 tylko dla aktywnego sklepu — szkic ma pasek raz (krok 3)
-it('PRZ-134: pasek „Uzupełnij pobranie” w krokach 3 i 5 aktywnego sklepu, w szkicu w kroku 3; sklep z pliku pokazuje wiersz „Pobranie”',async()=>{
+// Karta 5 tylko dla aktywnego sklepu — szkic ma pasek raz (krok 3)
+it('pasek „Uzupełnij pobranie” w krokach 3 i 5 aktywnego sklepu, w szkicu w kroku 3; sklep z pliku pokazuje wiersz „Pobranie”',async()=>{
  const pasek=/<div class="pas-blad" role="alert"><p>Uzupełnij pobranie w kroku 3\. Do czasu zapisu żadne zamówienie z tego sklepu nie dostanie pobrania\.<\/p><\/div>/g;
  let html=await render(false,{},undefined,{bramki:BRAMKI});expect(html.match(pasek)).toHaveLength(1);expect(sekcja3(html)).toMatch(pasek);
  html=await render(false,{autoryzacja:'polaczone',pobieranie:'wlaczone'},undefined,{bramki:BRAMKI,kroki:stanKrokow(MODUL_WOO.konfigurator,{biezacy:'stan',zrobione:['nazwa','klucze','mapowanie','start']})});expect(html.match(pasek)).toHaveLength(2);
@@ -89,7 +89,7 @@ it('PRZ-134: pasek „Uzupełnij pobranie” w krokach 3 i 5 aktywnego sklepu, w
  html=await render(true);expect(html).toContain('Pobranie: według metod wysyłki ustawionych na serwerze');expect(html).not.toContain('Uzupełnij pobranie');expect(html).not.toContain('name="bramki');
  html=await render(true,{},undefined,{mapowanie:{instancje:{'1':{metoda:'dpd'}},bramkiPobrania:['cod','cod_pl']}});expect(html).toContain('Pobranie: bramki cod, cod_pl');
 });
-it('PRZ-134 krok 3: sklep nieosiągalny — zapisana decyzja tylko do odczytu, bez zdania o bramkach',async()=>{
+it('krok 3: sklep nieosiągalny — zapisana decyzja tylko do odczytu, bez zdania o bramkach',async()=>{
  let s=sekcja3(await render(false,{},undefined,{mapowanieBezSklepu:true,mapowanie:{instancje:{'1':{metoda:'dpd'}},bramkiPobrania:['cod','moja_bramka']}}));
  expect(s).toContain('Pobranie: bramki cod, moja_bramka');expect(s).not.toContain('Nie udało się odczytać bramek');expect(s).not.toContain('name="bramki');expect(s).not.toContain('pobranie_decyzja');
  s=sekcja3(await render(false,{},undefined,{mapowanieBezSklepu:true,mapowanie:{instancje:{'1':{metoda:'dpd'}}}}));

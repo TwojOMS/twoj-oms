@@ -1,6 +1,6 @@
 import Fastify from 'fastify';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { openOmsDb } from '../../pomoc/baza-prz012.js';
+import { openOmsDb } from '../../pomoc/testowa-baza-oms.js';
 import { pluginApiV1 } from '../../../src/moduly/api/plugin.js';
 import { migracjaDokumentuProgramu } from '../../../src/moduly/rdzen/migracje/0008-dokument-programu.ts';
 

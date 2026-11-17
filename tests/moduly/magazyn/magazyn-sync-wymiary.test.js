@@ -1,4 +1,4 @@
-// PRZ-090 — lustro zapisuje wymiary i wagę, które podaje sklep WooCommerce, razem z jednostką sklepu.
+// Lustro zapisuje wymiary i wagę, które podaje sklep WooCommerce, razem z jednostką sklepu.
 import { describe, it, expect, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { odswiezMagazyn } from '../../../src/moduly/magazyn/services/magazyn-sync.js';

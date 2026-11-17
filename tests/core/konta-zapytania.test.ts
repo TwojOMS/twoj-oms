@@ -1,11 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 import { otworzBaze, wykonajMigracje } from '../../src/core/baza.ts';
-import { rdzen as modulRdzen, dopiszLogowanieZIp } from '../pomoc/bezpieczenstwo-prz-007.ts';
+import { rdzen as modulRdzen, dopiszLogowanieZIp } from '../pomoc/bezpieczenstwo-typowane.ts';
 import * as konta from '../../src/core/bezpieczenstwo/konta.js';
 import { zgodneHaslo } from '../../src/domena/hasla.js';
 
-// Pełne stare konta-db.test.js pozostają do PRZ-030, wraz z fabryką bazy serwera.
 // Tu sprawdzamy rzeczywiste zapytania przeszczepu na obecnych migracjach rdzenia.
 let db: DatabaseSync;
 beforeEach(() => { db = otworzBaze(':memory:'); wykonajMigracje(db, [modulRdzen]); });

@@ -35,11 +35,22 @@ const cel = (klucz, nazwa, url) => ({ klucz, nazwa, url: String(url ?? ''), host
 export function celeLacznosci(config = {}) {
   const cele = [];
 
+  // Kanały z konfiguratora i sklepy ERLI z pliku (`config.celeKanalow = [{ klucz: 'typ:…', nazwa, url }]`, gotowe
+  // nazwy, tylko połączone) — każdy obok kanałów z pliku tego samego rodzaju.
+  const zKanalow = config.celeKanalow ?? [];
+  const dodajZKanalow = (prefiks) => {
+    for (const c of zKanalow) if (c.klucz.startsWith(`${prefiks}:`)) cele.push(cel(c.klucz, c.nazwa, c.url));
+  };
   for (const [klucz, sklep] of Object.entries(config.sklepy ?? {})) {
     cele.push(cel(`sklep:${klucz}`, `Sklep ${klucz}`, sklep?.baseUrl));
   }
+  dodajZKanalow('sklep');
   for (const [klucz, kanal] of Object.entries(config.kanaly ?? {})) {
     cele.push(cel(`allegro:${klucz}`, kanal?.etykieta ? `Allegro — ${kanal.etykieta}` : `Allegro ${klucz}`, kanal?.api));
+  }
+  dodajZKanalow('allegro');
+  for (const c of zKanalow) {
+    if (!c.klucz.startsWith('sklep:') && !c.klucz.startsWith('allegro:')) cele.push(cel(c.klucz, c.nazwa, c.url));
   }
   // Program fakturowy — klucz i nazwa z opisu programu (`config.program = { opis, url }`), adres podaje
   // wołający (ten, którego używa skonfigurowany klient; ustawienia/cele-diagnostyki.ts). Stary kształt `config.infakt`

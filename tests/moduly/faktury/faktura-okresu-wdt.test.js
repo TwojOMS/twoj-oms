@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapewnijOkres } from '../../../src/oms/db/okresy.js';
 import { zarezerwujNumerWdt } from '../../../src/moduly/faktury/db/wdt-numery.js';
-import { createFakturaOkresu, pozycjeOkresu } from '../../pomoc/faktura-okresu-parytetu.js';
+import { createFakturaOkresu, pozycjeOkresu } from '../../pomoc/fabryka-faktury-okresowej.js';
 import { STAN } from '../../../src/domena/okres-rozliczeniowy.js';
 
 // GAŁĄŹ WDT FAKTURY OKRESU — fixture wzorem tests/oms/faktura-okresu-wystaw.test.js.
@@ -50,7 +50,7 @@ describe('pozycjeOkresu — stawka dokumentu', () => {
     koszt_dostawy_brutto: '0.00',
   }];
 
-  // PRZ-105: zmiana zachowania — „bez opcji 23%” zastąpione odmową: stawka domyślna przychodzi z Ustawień
+  // Zmiana zachowania — „bez opcji 23%” zastąpione odmową: stawka domyślna przychodzi z Ustawień
   // i jej brak ma być błędem, nie cichym 23 (instalacja z domyślną 8 dostałaby fakturę zbiorczą z 23).
   it('stawka domyślna 23 — każda pozycja 23', () => {
     expect(pozycjeOkresu(zamowienia, { stawkaDomyslna: '23' })[0].tax_symbol).toBe('23');
@@ -66,7 +66,7 @@ describe('pozycjeOkresu — stawka dokumentu', () => {
     expect(pozycjeOkresu(z, { stawkaDomyslna: '23', wdt: true }).map((s) => s.tax_symbol)).toEqual(['0', '0', '0']);
   });
 
-  it('PRZ-105: stawka per pozycja — ręczna z 8% → 8, sklepowa i dostawa → domyślna', () => {
+  it('stawka per pozycja — ręczna z 8% → 8, sklepowa i dostawa → domyślna', () => {
     const z = [{ ...zamowienia[0], koszt_dostawy_brutto: '10.00',
       pozycje: [...zamowienia[0].pozycje, { nazwa: 'Album', ilosc: 1, brutto_linii: '10.80', zrodlo: 'reczna', vat: '8' }] }];
     expect(pozycjeOkresu(z, { stawkaDomyslna: '5' }).map((s) => s.tax_symbol)).toEqual(['5', '8', '5']);

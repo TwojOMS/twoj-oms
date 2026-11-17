@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie, pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
-// ⚠️ O CO TU CHODZI (Zadanie 9, landmina spoza planu).
+// ⚠️ O CO TU CHODZI.
 //
 // Do tej pory karta zamowienia odswiezala status PETLA PO WSZYSTKICH przesylkach, wolajac
 // `dpd.statusPrzesylki(p.numer_listu)` — BEZ SPRAWDZENIA, CZYJ TO KURIER. Odkad panel nadaje
@@ -55,7 +55,7 @@ const przesylki = (id) => pobierzZamowienie(db, id).przesylki;
 const wpisyLogu = (id) => db.prepare('SELECT * FROM log WHERE zamowienie_id = ?').all(id);
 
 describe('odświeżanie statusu pyta kuriera TEJ przesyłki', () => {
-  // ⚠️ MUTACJA 2. Powrot do dzisiejszego stanu (zawsze `kurierzy.dpd`) musi ten test wywalic.
+  // ⚠️ Powrot do dzisiejszego stanu (zawsze `kurierzy.dpd`) musi ten test wywalic.
   it('paczkomat pyta InPost, a DPD nie jest w ogóle wołane', async () => {
     const id = zPaczka(2101, { kurier: 'inpost', numerListu: NUMER_INPOST });
     const dpd = atrapa('Doręczona przez DPD');
@@ -221,7 +221,7 @@ describe('odświeżanie statusu pyta kuriera TEJ przesyłki', () => {
   });
 });
 
-// ——— KOD ZDARZENIA W BAZIE (25.08.2026) ————————————————————————————————————————————
+// ——— KOD ZDARZENIA W BAZIE ————————————————————————————————————————————
 // Allegro jako jedyny kurier oddaje wartosc MASZYNOWA (`code`) obok opisu, ktory jest
 // TLUMACZENIEM. Etap liczy sie z wiersza przy KAZDYM renderowaniu, wiec kod musi PRZETRWAC
 // ZAPIS — inaczej klasyfikacja spada z powrotem na tekst, ktory Allegro zmieni bez pytania.

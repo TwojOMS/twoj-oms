@@ -170,7 +170,7 @@ export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPa
   const komunikatLoginZajety = (login) => `Login „${login}” jest już zajęty przez inne konto — wybierz inny.`;
   // Mail i „Pokaż link” — ta sama zasada (adres-panelu.ts, adresLinkow): plik → zapis → adres, z którego
   // admin właśnie korzysta. Adres z żądania jest tu dopuszczalny, bo każda trasa tego pliku, która wydaje link, stoi
-  // za `tylkoAdmin` (test: adres-panelu-domyslny-prz094-10.test.js, „(f)”).
+  // za `tylkoAdmin` (test: adres-panelu-domyslny.test.js, „(f)”).
   const adresLinkowDla = (req) => adresLinkow(adresTeraz(), req);
   const komunikatZapisu = (req) => {
     if (req.query?.zapisano !== 'wyslano-domyslny') return KOMUNIKATY_ZAPISU[req.query?.zapisano] ?? null;

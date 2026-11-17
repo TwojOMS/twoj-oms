@@ -1,3 +1,4 @@
+// Paczka sprzedaży dla biura przez HTTP: scalanie PDF-ów, zestawienie i odmowa dokumentu bez KSeF.
 import { describe, it, expect, vi } from 'vitest';
 import { tmpdir } from 'node:os';
 import { PDFDocument } from 'pdf-lib';
@@ -18,7 +19,7 @@ const faktura = { uuid: 'u-faktura', id: 1, number: '1/08/2026', kind: 'vat',
 const korekta = { ...faktura, uuid: 'u-korekta', id: 2, number: 'KOR/08/2026', kind: 'correction',
   net_price: -1000, tax_price: -230, gross_price: -1230, ksef_number: 'KS-2' };
 
-describe('PRZ-025 paczka kosztów przez przyjęte trasy faktur', () => {
+describe('paczka kosztów przez przyjęte trasy faktur', () => {
   it('HTTP zbuduj scala zestawienie, fakturę i korektę prawdziwymi bajtami PDF', async () => {
     const infakt = { listaFaktur: vi.fn().mockResolvedValue([faktura]), listaKorekt: vi.fn().mockResolvedValue([korekta]),
       pobierzPdf: vi.fn().mockResolvedValue(await pdf(2)), pobierzPdfKorekty: vi.fn().mockResolvedValue(await pdf(1)) };
@@ -39,7 +40,7 @@ describe('PRZ-025 paczka kosztów przez przyjęte trasy faktur', () => {
       expect(transport).not.toHaveBeenCalled();
     } finally { await z.app.close(); z.db.close(); transport.mockRestore(); }
   });
-  // PRZ-126.C06-6: inFakt nie ma podglądu — dokument bez numeru KSeF nadal zatrzymuje paczkę (409), ale odmowa jest
+  // InFakt nie ma podglądu — dokument bez numeru KSeF nadal zatrzymuje paczkę (409), ale odmowa jest
   // stroną w układzie panelu z powrotem na listę, a nie surowym napisem.
   it('HTTP inFakt bez podglądu: korekta czeka na KSeF → 409 strona panelu z komunikatem i powrotem na listę', async () => {
     const czeka = Object.assign(new Error('Korekta KOR/08/2026 czeka na numer KSeF'), { czekaNaKsef: true });

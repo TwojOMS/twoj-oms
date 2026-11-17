@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie, pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { dodajWplateReczna, platnosciZamowienia } from '../../../src/oms/db/platnosci.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { saldoWplat } from '../../../src/domena/platnosci.js';
 import { dzienWarszawa } from '../../../src/domena/format-daty.js';
 import { dodajZwrot, oznaczPieniadzeOddane } from '../../../src/oms/db/zwroty.js';
@@ -40,7 +40,7 @@ const log = (id) => db.prepare('SELECT * FROM log WHERE zamowienie_id = ? ORDER 
 const karta = (id, query = '') => app.inject({ method: 'GET', url: `/zamowienia/${id}${query}`, headers: naglowek });
 const sekcjaPlatnosci = (body) => body.match(/<section class="panel" id="platnosci">[\s\S]*?<\/section>/)[0];
 
-describe('PRZ-152.G9a2 — jedna lista ruchów', () => {
+describe('jedna lista ruchów', () => {
   it('pokazuje plakietkę, cztery liczby i zwrot z minusem oraz przecinkiem, bez sekund', async () => {
     const id = zamowienieZRozjechanymiLicznikami({ kwota_brutto: '51.80', pozycje: [{ nazwa: 'Próbka', sku: 'DEMO', ilosc: 1, cena_brutto: '51.80', brutto_linii: '51.80', vat: null }] });
     dodajWplateReczna(db, id, { kwota: '51.80', data: '2026-08-01T13:38:27', metoda: 'BLIK' });
@@ -85,7 +85,7 @@ describe('PRZ-152.G9a2 — jedna lista ruchów', () => {
     dodajWplateReczna(db, id, { kwota: '12.90', data: '2026-07-30', metoda: 'BLIK' });
     const html = sekcjaPlatnosci((await karta(id)).body);
     expect(html).toContain('Wpłata pojawi się, gdy kurier rozliczy pobranie');
-    // Sama liczba w bloku, po przedpłacie 12,90 — inna niż Kwota i |saldo| (recenzja G9a2).
+    // Sama liczba w bloku, po przedpłacie 12,90 — inna niż Kwota i |saldo|.
     expect(html).toMatch(/Pobranie<br><strong class="znacznik [^"]*">200,00 zł<\/strong>/);
     expect(html).toContain('Data zapłaty ze sklepu przy pobraniu — nie jest wpłatą');
     expect(html).toContain('ruch--szary');
@@ -109,7 +109,7 @@ describe('sekcja Płatności na karcie', () => {
     expect(r.body).toContain('dopłata za szablon');
   });
 
-  // PRZ-152.G9b: decyzja z 04.11 zastępuje formularz na stałe z 07.08.
+  // Decyzja z 04.11 zastępuje formularz na stałe z 07.08.
   // Natywne details otwiera pola bez JavaScriptu i bez przeładowania karty.
   it('formularz wpłaty jest domyślnie zamknięty i otwiera się przez summary bez JS', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
@@ -174,7 +174,7 @@ describe('sekcja Płatności na karcie', () => {
     const platnosci = r.body.slice(r.body.indexOf('id="platnosci"'));
     // G9a2: stan i saldo są osobnymi elementami z kwotą po polsku.
     expect(platnosci).toMatch(/Nadpłata[\s\S]*Saldo[\s\S]*50,00 zł/);
-    // ⚠️ Zdanie „sprawdź, czy nadwyżki…" zostalo TYLKO w pasku spraw (2026-08-07) — patrz
+    // ⚠️ Zdanie „sprawdź, czy nadwyżki…" zostalo TYLKO w pasku spraw — patrz
     // asercja wyzej. Trzy kopie tego samego na jednym ekranie zamienialy je w tlo.
     expect(platnosci).not.toContain('sprawdź, czy nadwyżki nie trzeba zwrócić klientowi');
   });
@@ -329,7 +329,7 @@ describe('POST /zamowienia/:id/wplata („Zaksięguj wpłatę")', () => {
   });
 });
 
-// ——— FORMULARZ WPŁATY: DWA POLA Z WARTOŚCIAMI DOMYŚLNYMI (2026-08-07) ————————————————
+// ——— FORMULARZ WPŁATY: DWA POLA Z WARTOŚCIAMI DOMYŚLNYMI ————————————————
 //
 // Prośba właściciela: „powinny być dwa pola, jedno z datą, drugie z kwotą […] domyślnie
 // data dzisiejsza i cała kwota, bo tak jest najczęściej". Pole daty ISTNIAŁO, ale było

@@ -6,7 +6,7 @@ import { setTimeout as poczekaj } from 'node:timers/promises';
 import type { AddressInfo } from 'node:net';
 import type { DatabaseSync } from 'node:sqlite';
 import { otworzBaze, wykonajMigracje } from '../../src/core/baza.ts';
-import { rdzen } from '../pomoc/bezpieczenstwo-prz-007.ts';
+import { rdzen } from '../pomoc/bezpieczenstwo-typowane.ts';
 import { zalozKonto } from '../../src/core/bezpieczenstwo/konta.js';
 import { zgodneHaslo } from '../../src/domena/hasla.js';
 import { zbudujStraznika } from '../../src/core/bezpieczenstwo/straznik.js';

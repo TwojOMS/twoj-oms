@@ -7,9 +7,9 @@ import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { createInpostClient } from '../../../src/oms/kurierzy/inpost.js';
 import { createNadanie } from '../../../src/moduly/wysylka/services/nadanie.js';
 import { zapiszUmowePobrania } from '../../../src/moduly/wysylka/db/umowy-pobrania.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
-// Od PRZ-152.G1 błąd nadania to strona w układzie OMS — porównujemy sam komunikat z paska uwagi.
+// Błąd nadania to strona w układzie OMS — porównujemy sam komunikat z paska uwagi.
 const komunikatNadania = (html) => (html.match(/<p class="pasek-uwaga" role="alert">([\s\S]*?)<\/p>/)?.[1] ?? html)
   .replace(/&#34;|&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 
@@ -103,9 +103,9 @@ describe('umowa InPost na pobranie w nadaniu', () => {
     expect(r.body).not.toContain(PODPOWIEDZ);
   });
 
-  // PRZ-137.01: paczkomat Allegro za pobraniem to pobranie SKLEPOWE — idzie do kuriera niezależnie
-  // od przełącznika umowy (decyzja właściciela 03.11). Odmowę dla pobrania OMS-owego pilnuje
-  // tests/domena/pobranie-sklepowe-137.test.ts.
+  // Paczkomat Allegro za pobraniem to pobranie SKLEPOWE — idzie do kuriera niezależnie
+  // od przełącznika umowy. Odmowę dla pobrania OMS-owego pilnuje
+  // tests/domena/pobranie-sklepowe.test.ts.
   it.each([true, false])('podgląd hurtu, umowa %s: sklepowy paczkomat za pobraniem idzie do kuriera', async (umowa) => {
     const t = przygotuj({ umowa, metoda: 'allegro_paczkomat' });
     const r = await t.hurt();

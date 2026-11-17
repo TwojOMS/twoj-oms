@@ -1,6 +1,6 @@
-// PRZ-135.T2.01 — umowa firmy na pobranie w InPoście (ustawienie `wysylka.umowa_pobrania.inpost`)
+// Umowa firmy na pobranie w InPoście (ustawienie `wysylka.umowa_pobrania.inpost`)
 // wchodzi do reguł PARAMETREM `umowyPobrania`. Rejestr kurierów i pamięć reguł zostają nietknięte,
-// a bez parametru (albo z `[]`) wszystko działa bit w bit jak w złotych testach PRZ-135/PRZ-070.
+// a bez parametru (albo z `[]`) wszystko działa bit w bit jak w złotych testach pobrania.
 import { describe, expect, it } from 'vitest';
 import { kurierzyDoWyboru, metodaNadania } from '../../src/domena/kurier-nadania.js';
 import { podzielDoNadania } from '../../src/domena/masowe.js';
@@ -75,7 +75,7 @@ describe('kurierzyDoWyboru z umowyPobrania: [inpost] — metoda × pobranie × n
     }
   });
 
-  // PRZ-137.03 (D2): adapter InPostu wysyła cod także na zamienniku, więc z umową paczkomat zostaje;
+  // Adapter InPostu wysyła cod także na zamienniku, więc z umową paczkomat zostaje;
   // WzA odpada nawet dla zamówienia allegro_dpd — Allegro nie przyjmie pobrania na kolejnej paczce.
   it('zamiennik (paczka 2, pobranie na tej paczce) z umową: DPD i paczkomat, nigdy WzA', () => {
     for (const m of ['inpost_paczkomat', 'allegro_paczkomat', 'dpd']) {
@@ -136,7 +136,7 @@ describe('nadanie hurtem (podzielDoNadania) z umową na pobranie w InPoście', (
     id: 7, numer: 'PC-7', sklep: 'pro', metoda_wysylki: 'inpost_paczkomat', punkt_odbioru: 'POL01A', anulowane: 0,
     oplacone_at: null, przesylki: [], pobranie: 1, kwota_pobrania: '87.40', ...nad,
   });
-  // PRZ-137.01: odmowa dotyczy tylko pobrania OMS-owego (zamówienie ręczne); sklepowe jedzie bez umowy.
+  // Odmowa dotyczy tylko pobrania OMS-owego (zamówienie ręczne); sklepowe jedzie bez umowy.
   const ODMOWA = 'pobranie przez InPost wymaga umowy — włącz ją w Ustawieniach → Integracje albo zmień kuriera na karcie zamówienia';
 
   it('włączone: paczkomat za pobraniem z dobrą kwotą przechodzi, z uwagą o inkasie', () => {

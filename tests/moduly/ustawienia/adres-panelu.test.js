@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { adresPaneluZEnv } from '../../../src/moduly/ustawienia/adres-panelu.ts';
 import { modulUstawienia } from '../../../src/moduly/ustawienia/modul.ts';
 
-describe('PRZ-069 OMS_ADRES_PANELU', () => {
+describe('OMS_ADRES_PANELU', () => {
   it('pusty albo brak = brak adresu; sam schemat i host przechodzą jako origin', () => {
     expect(adresPaneluZEnv(undefined)).toBeNull();
     expect(adresPaneluZEnv('')).toBeNull();

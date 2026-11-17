@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { zbudujOms } from '../../../src/oms/bootstrap.ts';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { ustawGranice, zapiszHistorie } from '../../../src/oms/db/historia-sprzedazy.js';
-import { KANALY } from '../../pomoc/raporty-historyczne-fixture.js';
+import { KANALY } from '../../pomoc/przykladowe-dane-raportow.js';
 import { wgrajDaneStartowe, zapiszDaneMiesiaca, daneMiesiaca } from '../../../src/oms/db/dane-miesieczne.js';
 import { KLIENCI_WDT } from '../../../src/domena/sprzedaz-okresu.js';
 import { PODLOGA, PODLOGA_ZWROTOW, rachunekOkresu } from '../../../src/domena/rachunek-zarzadczy.js';
@@ -11,7 +11,7 @@ import { zamowieniaOkresu } from '../../../src/domena/statystyki-okresu.js';
 import { wczytajRaporty } from '../../../src/moduly/raporty/konfiguracja.ts';
 import { regulyHistorii, konfiguracjaHistorii } from '../../../src/moduly/kanaly/historia.ts';
 
-// PRZ-027: produkt startuje bez danych i reguł firmy. Wszystko, co różni instalacje
+// Produkt startuje bez danych i reguł firmy. Wszystko, co różni instalacje
 // (WDT, filtry testowe, daty pokrycia, etykiety, dane miesięczne), przychodzi z env albo
 // z jawnego importu. Dane poniżej są fikcyjne.
 const env = { OMS_USER: 'operator027', OMS_PASS: 'fixture-027',
@@ -35,7 +35,7 @@ async function zAplikacja(srodowisko: Record<string, string>, db: any, test: (z:
   try { await test(z); } finally { await z.app.close(); }
 }
 
-describe('PRZ-027 neutralny start produktu', () => {
+describe('neutralny start produktu', () => {
   it('produkcyjny openOmsDb nie wgrywa danych miesięcznych ani ich znacznika', () => {
     const db = openOmsDb();
     try {
@@ -74,7 +74,7 @@ describe('PRZ-027 neutralny start produktu', () => {
     } finally { await z.app.close(); z.db.close(); }
   });
 
-  // PRZ-073: GDD jest kanałem algorytmicznym — granicę ma w każdej instancji (generator demo
+  // GDD jest kanałem algorytmicznym — granicę ma w każdej instancji (generator demo
   // zakłada ją wszystkim kanałom raportu). O kanale mówi tylko instancja z `tagGdd`.
   it('ostrzeżenie o kanale GDD stoi tylko w instancji, której klasyfikacja ma tagGdd', async () => {
     const pasGdd = async (srodowisko: Record<string, string>) => {
@@ -109,7 +109,7 @@ describe('PRZ-027 neutralny start produktu', () => {
       await zAplikacja(env, db, async (z) => {
         const odp = await z.app.inject({ method: 'GET', url: '/statystyki?od=2031-01-01&do=2031-01-31', headers });
         expect(odp.statusCode).toBe(200);
-        // PRZ-093.07: pusta baza bez env — pasek mówi, co wpisać (stary tekst nie dawał wskazówki).
+        // Pusta baza bez env — pasek mówi, co wpisać (stary tekst nie dawał wskazówki).
         expect(odp.body).toContain('Nie ustalono początku danych o wysyłce i płatnościach');
         expect(odp.body).toContain('OMS_STATYSTYKI_PIERWSZY_DZIEN=RRRR-MM-DD');
         expect(odp.body).not.toMatch(/obejmują zamówienia <strong>od/);
@@ -118,7 +118,7 @@ describe('PRZ-027 neutralny start produktu', () => {
   });
 });
 
-describe('PRZ-027 WDT i filtry testowe — jedna reguła z kanaly/historia.ts', () => {
+describe('WDT i filtry testowe — jedna reguła z kanaly/historia.ts', () => {
   const probki: [string, string][] = [
     ['wdt@klient.example', 'Firma UE'], ['WLASNY@instalacja.example', 'Ktoś'], ['ala@proba.example', 'Ala'],
     ['qa-7@sklep.example', 'Kupiec'], ['kupiec@sklep.example', 'Sklep ATRAPA sp.'], ['kupiec@sklep.example', 'Kupiec'],
@@ -210,7 +210,7 @@ describe('PRZ-027 WDT i filtry testowe — jedna reguła z kanaly/historia.ts', 
   });
 });
 
-describe('PRZ-027 konfiguracja dat pokrycia i etykiet', () => {
+describe('konfiguracja dat pokrycia i etykiet', () => {
   it('przyjmuje realne dni, także 29 lutego roku przestępnego, i niepuste etykiety', () => {
     const c = wczytajRaporty({ OMS_RAPORTY_PODLOGA_ZWROTOW: ' 2028-02-29 ', OMS_STATYSTYKI_PIERWSZY_DZIEN: '2031-12-31',
       OMS_RAPORTY_DATA_IMPORTU_HISTORII: '2031-01-01', OMS_RAPORTY_SKLEP_HISTORII: ' sklep.example ',
@@ -246,7 +246,7 @@ describe('PRZ-027 konfiguracja dat pokrycia i etykiet', () => {
   });
 });
 
-describe('PRZ-027 jawny import danych miesięcznych', () => {
+describe('jawny import danych miesięcznych', () => {
   const wiersz = (miesiac: string, razem = '100.00') =>
     [miesiac, '60.00', '30.00', '10.00', razem, '0.00', '0.00', '1000.00', '400.00', '0.00', null];
   let db: any;
@@ -295,7 +295,7 @@ describe('PRZ-027 jawny import danych miesięcznych', () => {
   });
 });
 
-describe('PRZ-027 zastrzeżenie historii bez konta (F27-1)', () => {
+describe('zastrzeżenie historii bez konta', () => {
   // Baza ma prawdziwy wiersz Apilo, więc zdanie „nie ma ani jednego wiersza z Apilo” byłoby
   // nieprawdą. Bez OMS_RAPORTY_KONTO_HISTORII granica jest nieznana z braku konfiguracji.
   it('GET /raporty bez konta historii mówi o nieustawionym koncie, nie o braku wierszy Apilo', async () => {

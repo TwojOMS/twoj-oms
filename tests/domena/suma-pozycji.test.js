@@ -153,9 +153,9 @@ describe('kwotaOczekiwanaGrosze', () => {
   });
 });
 
-// PRZ-152.G2-01 — usunięta pozycja sklepowa znika z `pozycje` (nakładka), ale `kwota_brutto`
+// Usunięta pozycja sklepowa znika z `pozycje` (nakładka), ale `kwota_brutto`
 // ze sklepu dalej ją obejmuje. Kwota oczekiwana odejmuje jej SKLEPOWĄ wartość z `pozycje_usuniete`.
-describe('kwotaOczekiwanaGrosze — pozycje usunięte (PRZ-152.G2)', () => {
+describe('kwotaOczekiwanaGrosze — pozycje usunięte', () => {
   const linia = (nazwa, ilosc, cena, brutto) => ({ zrodlo: 'sklep', nazwa, ilosc, cena_brutto: cena, brutto_linii: brutto });
   const woo = (nad = {}) => ({
     sklep: 'sklep', kwota_brutto: '237.99', koszt_dostawy_brutto: '19.99',

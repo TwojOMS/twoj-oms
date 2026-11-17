@@ -12,11 +12,11 @@ describe('adresat klienta', () => {
   // ⚠️ Adres zamawiającego to pole `klient.email` (Woo `billing`), NIE `dostawa.email` —
   // `dostawa` (Woo `shipping`) nie niesie e-maila w ogóle, więc `adresOdbiorcy()` (patrz
   // domain/adres-odbiorcy.js) i tak czyta go z `klient`. Ustalone na żywym kodzie po tym,
-  // jak fikstura z e-mailem w `dostawa` dawała fałszywie czerwony test (22.08.2026).
+  // jak fikstura z e-mailem w `dostawa` dawała fałszywie czerwony test.
   //
   // ⚠️ OBA ADRESY MUSZĄ SIĘ RÓŻNIĆ, inaczej test przechodzi niezależnie od kolejności
   // gałęzi w `adresatKlienta` i nie broni już niczego (fałszywa zieleń, znalezisko z
-  // recenzji 22.08.2026). Bez ręcznego nadpisania `adresOdbiorcy(z).email` ZAWSZE równa się
+  // przeglądu). Bez ręcznego nadpisania `adresOdbiorcy(z).email` ZAWSZE równa się
   // `klient.email` (patrz adres-odbiorcy.js:87), więc jedyny sposób na dwa różne adresy w
   // tej funkcji to ręczna poprawka adresu wysyłki w `dostawa_reczna_json` — nie zwykłe pole
   // `dostawa.email`, którego żaden kod produkcyjny nie czyta. Nie „upraszczać" z powrotem do
@@ -82,7 +82,7 @@ describe('termin zamówienia', () => {
     expect(terminZamowienia(zam({ termin_platnosci: null }), '2026-08-22')).toBeNull();
   });
 
-  // ⚠️⚠️ BŁĄD Z RECENZJI (22.08.2026): `String(dzis) > data` porównywało NAPISY, nie daty.
+  // ⚠️⚠️ BŁĄD: `String(dzis) > data` porównywało NAPISY, nie daty.
   // `String(null)` to „null", `String(new Date(...))` zaczyna się od dnia tygodnia
   // („Sat Aug…") — a każdy z tych napisów jest LEKSYKALNIE WIĘKSZY od jakiejkolwiek daty ISO
   // („RRRR-MM-DD"), bo zaczyna się literą, nie cyfrą. Efekt: KAŻDY mail fałszywie oskarżał
@@ -139,7 +139,7 @@ describe('blok płatności', () => {
   });
 });
 
-// ⚠️⚠️ BŁĄD Z RECENZJI (22.08.2026): `blokPlatnosci` oddawał `null` z CZTERECH różnych
+// ⚠️⚠️ BŁĄD: `blokPlatnosci` oddawał `null` z CZTERECH różnych
 // powodów, a `wiadomosc-platnicza.js` czytał tylko `Boolean(platnosc)` — więc np. FAKTURA
 // DO ZAMÓWIENIA ZA POBRANIEM mówiła klientowi „Zamówienie jest opłacone", zanim kurier
 // cokolwiek zainkasował. `stanPlatnosci` nazywa wszystkie cztery powody z osobna, żeby blok
@@ -156,7 +156,7 @@ describe('stan płatności', () => {
     expect(stanPlatnosci(z, opcje)).toBe(STAN_PLATNOSCI.POKRYTE);
   });
 
-  // ⚠️ POBRANIE WYGRYWA Z BRAKIEM RACHUNKU (kolejność strażników z recenzji 22.08.2026):
+  // ⚠️ POBRANIE WYGRYWA Z BRAKIEM RACHUNKU:
   // pobranie to FAKT o zamówieniu (kurier inkasuje), brak rachunku to nasza usterka
   // konfiguracji — przy obu naraz klientowi należy się zdanie o kurierze, nie o configu.
   it('pobranie: wygrywa nawet bez skonfigurowanego rachunku', () => {
@@ -195,14 +195,14 @@ const kontekst = (nad = {}) => ({
 });
 
 describe('tematy wiadomości', () => {
-  // PRZ-102.21: piąty temat „Zamówienie wysłane" (ręcznie z karty) — zmiana zachowania, było cztery.
+  // Piąty temat „Zamówienie wysłane" (ręcznie z karty) — zmiana zachowania, było cztery.
   it('jest ich pięć, w kolejności pracy', () => {
     expect(TEMATY).toEqual(['potwierdzenie', 'proforma', 'faktura', 'przypomnienie', 'wyslane']);
     expect(NAZWA_TEMATU.przypomnienie).toBe('Przypomnienie o płatności');
     expect(NAZWA_TEMATU.wyslane).toBe('Zamówienie wysłane');
   });
 
-  // ⚠️ ASERCJA NA `powod`, NIE TYLKO NA `wolno` (recenzja 22.08.2026): zamiana odmowy na
+  // ⚠️ ASERCJA NA `powod`, NIE TYLKO NA `wolno`: zamiana odmowy na
   // `{ wolno: false, powod: null }` zostawiałaby ten test zielonym, a operator dostałby
   // pusty wiersz zamiast wyjaśnienia — dokładnie to, przed czym ten moduł ma bronić
   // (niezmiennik 4.9).
@@ -222,7 +222,7 @@ describe('tematy wiadomości', () => {
     }
   });
 
-  // ⚠️ ASERCJA NA `powod` W PĘTLI (recenzja 22.08.2026) — ten sam powód co wyżej: samo
+  // ⚠️ ASERCJA NA `powod` W PĘTLI — ten sam powód co wyżej: samo
   // `wolno === false` przechodzi też dla odmowy z pustym powodem.
   it('bez adresu e-mail nie idzie nic', () => {
     for (const t of TEMATY) {
@@ -240,7 +240,7 @@ describe('tematy wiadomości', () => {
       .toContain('pliku');
   });
 
-  // ⚠️ PROFORMA UNIEWAŻNIONA NIE MA PRAWA WYJŚĆ (recenzja 22.08.2026, proforma-stan.js:33-34):
+  // ⚠️ PROFORMA UNIEWAŻNIONA NIE MA PRAWA WYJŚĆ:
   // klient dostałby dokument na STARĄ kwotę i przelałby według niej. `plik_sciezka` zostaje
   // ustawiona celowo — dowodzi, że blokuje WŁAŚNIE `uniewazniona_at`, nie brak pliku.
   it('proforma unieważniona nie idzie, mimo zapisanego pliku', () => {
@@ -257,7 +257,7 @@ describe('tematy wiadomości', () => {
       .toContain('Najpierw wystaw fakturę');
     expect(czyWolnoWyslac(pelne(), 'faktura', kontekst({ faktura: { numer: '42/08/2026', infakt_uuid: null } })).powod)
       .toContain('do końca wystawiona');
-    // ⚠️ NUMER WYMAGANY OBOK infakt_uuid (recenzja 22.08.2026, allegro-faktura.js:42 ma tę
+    // ⚠️ NUMER WYMAGANY OBOK infakt_uuid
     // samą regułę): bez niego `stanTematu` napisałby „bez numeru · PDF z inFaktu".
     expect(czyWolnoWyslac(pelne(), 'faktura', kontekst({ faktura: { numer: null, infakt_uuid: 'abc-123' } })).powod)
       .toContain('do końca wystawiona');
@@ -274,7 +274,7 @@ describe('tematy wiadomości', () => {
     expect(czyWolnoWyslac(pobranie, 'przypomnienie', kontekst()).powod).toContain('kurier');
   });
 
-  // ⚠️ TRZECIA DROGA BLOKADY PRZYPOMNIENIA (dopisane po recenzji, 22.08.2026): błąd wyceny
+  // ⚠️ TRZECIA DROGA BLOKADY PRZYPOMNIENIA: błąd wyceny
   // pozycji. `saldoWplat` ma gałąź `catch`, gdy wyceny pozycji nie da się policzyć — `grosze()`
   // wtedy rzuca. Bez tego strażnika przypomnienie żądałoby od klienta kwoty, której panel sam
   // nie umie policzyć. Wymuszamy ją POZYCJĄ Z PUSTĄ CENĄ, dokładnie jak test „blad" w bloku
@@ -295,7 +295,7 @@ describe('tematy wiadomości', () => {
 });
 
 describe('stan tematu', () => {
-  // ⚠️ FIKSTURA W UTC („Z" na końcu), ASERCJA W CZASIE WARSZAWSKIM (recenzja 22.08.2026):
+  // ⚠️ FIKSTURA W UTC („Z" na końcu), ASERCJA W CZASIE WARSZAWSKIM:
   // `wyslana_at` zapisujemy jako `new Date().toISOString()` w kontenerze z TZ=UTC, a karta
   // czyta wszystkie inne znaczniki przez `fmtDataCzas`/`fmtDataCzasKrotko`, czyli po
   // przeliczeniu na Europe/Warsaw. Sierpień to CEST (UTC+2), więc 12:40 UTC ma wyjść jako
@@ -318,7 +318,7 @@ describe('stan tematu', () => {
     expect(stanTematu(pelne(), 'faktura', kontekst({ faktura: null }))).toContain('Najpierw wystaw fakturę');
   });
 
-  // ⚠️ REZERWA `?? 'bez numeru'` USUNIĘTA (sprzątanie po recenzji całości gałęzi, 22.08.2026)
+  // ⚠️ REZERWA `?? 'bez numeru'` USUNIĘTA
   // jako stan nieosiągalny. Ten test pilnuje POWODU, dla którego wolno ją było usunąć: faktura
   // bez numeru NIGDY nie dochodzi do zdania o stanie, bo wcześniej odmawia `czyWolnoWyslac`.
   // Gdyby ktoś zdjął tamten strażnik, zaczerwieni się tutaj — a nie u klienta w skrzynce.

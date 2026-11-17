@@ -1,12 +1,13 @@
+// Karta zamówienia przez HTTP: pozycje, dokumenty, nadanie i obsługa stanów przesyłki.
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { mkdtempSync, writeFileSync, rmSync, readFileSync } from '../../pomoc/pliki-parytetu.js';
+import { mkdtempSync, writeFileSync, rmSync, readFileSync } from '../../pomoc/odczyt-testowych-plikow.js';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie, pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { createNadanie } from '../../../src/moduly/wysylka/services/nadanie.js';
 import { createFaktura } from '../../../src/moduly/faktury/services/faktura.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { bladOperatora } from '../../../src/domena/bledy.js';
 import { PROG_ZAWIESZONEGO_NADANIA_MS } from '../../../src/domena/przesylka-stan.js';
 import { dodajDoKolejki, oznaczBladDruku, oznaczWydrukowano } from '../../../src/moduly/wysylka/db/kolejka-druku.js';
@@ -152,7 +153,7 @@ describe('szczegóły zamówienia', () => {
     expect(zapis.body).not.toContain('obcy.example');
   });
 
-  // C1, druga linia obrony. Pierwsza siedzi w nadaj() — patrz test HTTP nizej.
+  // Druga linia obrony. Pierwsza siedzi w nadaj() — patrz test HTTP nizej.
   it('anulowane zamówienie nie pokazuje przycisku „Nadaj paczkę”', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1402, { anulowane: 1 }), {});
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
@@ -185,7 +186,7 @@ describe('szczegóły zamówienia', () => {
     expect(r.body).not.toContain('NIEOPŁACONE');
   });
 
-  // I7: nieudany sync ze sklepem byl calkowicie niewidoczny — trasa oddawala 302
+  // Nieudany sync ze sklepem byl calkowicie niewidoczny — trasa oddawala 302
   // (wyglada jak sukces), a tabela `log` nie jest nigdzie renderowana.
   it('nieudany sync ze sklepem → widoczna plakietka przy przesyłce', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1405), {});
@@ -206,7 +207,7 @@ describe('szczegóły zamówienia', () => {
     expect(r.body).not.toContain('Nadaj paczkę');
   });
 
-  // I4 (recenzja galezi): odbior osobisty nie ma zadnego kuriera (kurierzy/index.js:
+  // Odbior osobisty nie ma zadnego kuriera (kurierzy/index.js:
   // DLA_METODY celowo bez wpisu) — nadanie i tak by odmowilo NA KONCU sciezki, ale karta
   // nie ma prawa PODPOWIADAC akcji, ktora zaraz odmowi. „Ekran nadania istnieje po to,
   // zeby NIE klamac" — ta sama zasada dotyczy przycisku, ktory na niego prowadzi.
@@ -217,14 +218,14 @@ describe('szczegóły zamówienia', () => {
     expect(r.body).toContain('nie ma czego nadawać');
   });
 
-  // I5 (recenzja galezi): galaz „else" drukowala „DPD” dla kazdej metody poza pobraniem
+  // Galaz „else" drukowala „DPD” dla kazdej metody poza pobraniem
   // i „nieznana” — w tym dla odbioru osobistego. To jest WLASNIE pole, w ktorym operator
   // sprawdza metode zamowienia.
   //
-  // 2026-08-01 pole PRZENIOSLO SIE z belki do „Szczegolow zamowienia" (belka powtarzala
+  // pole PRZENIOSLO SIE z belki do „Szczegolow zamowienia" (belka powtarzala
   // fakty z sekcji nizej) i przy okazji przestalo miec wlasny lancuch `if`-ow — nazwa idzie
   // ze slownika w domain/wysylka.js. Test sprawdza wiec to samo, ale w nowym miejscu:
-  // gdyby przeprowadzka zgubila nazywanie po imieniu, blad I5 wrocilby niezauwazony.
+  // gdyby przeprowadzka zgubila nazywanie po imieniu, blad wrocilby niezauwazony.
   it('odbiór osobisty w Szczegółach nazwany po imieniu, nie jako „DPD”', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1411, { metoda_wysylki: 'odbior_osobisty' }), {});
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
@@ -236,7 +237,7 @@ describe('szczegóły zamówienia', () => {
   });
 });
 
-// Zadanie 4: sekcja „Pozycje" — lp/nazwa/SKU/ilość/netto/brutto/suma, wysyłka jako
+// Sekcja „Pozycje" — lp/nazwa/SKU/ilość/netto/brutto/suma, wysyłka jako
 // OSTATNI wiersz tabeli, suma pod tabelą sprawdzona przeciw kwocie zamówienia.
 describe('sekcja „Pozycje”', () => {
   // Zamówienie zgodne co do grosza: 123,00 (pozycje) + 89,90 (wysyłka) = 212,90.
@@ -249,17 +250,9 @@ describe('sekcja „Pozycje”', () => {
     ...nad,
   });
 
-  // ZMIANA ŚWIADOMA (przebudowa karty 2026-07-31): kolumny „Lp." i „SKU" zniknęły z nagłówka.
-  // Numer porządkowy nie niesie przy pakowaniu nic, czego nie widać z kolejności wierszy,
-  // a SKU stoi teraz POD nazwą pozycji — dalej widoczne, tylko bez własnej kolumny. Ilość
-  // przeszła na pierwsze miejsce i jest wyróżniona, bo przy pakowaniu to jedyna liczba,
-  // która się liczy. Reszta kolumn zostaje bez zmian.
-  // ⚠️ PRZEBUDOWA 2026-08-07: kolumny „Cena netto" JUZ NIE MA — netto stoi drobnym drukiem
-  // POD cena brutto. Szesc kolumn nie miescilo sie czytelnie, a netto jest liczba pomocnicza:
-  // na fakture i do bariery arytmetycznej idzie BRUTTO. Sama wartosc netto zostaje widoczna
-  // (test nizej: „pokazuje netto, brutto i sumę linii pozycji").
-  // ZMIANA ŚWIADOMA PRZ-152.G13a (właściciel 05.11): odczyt ma te same kolumny co edycja — SKU, „Cena netto”
-  // i „Stawka VAT” wracają jako osobne kolumny, kwoty z przecinkiem („61,50 zł”).
+  // Odczyt ma te same kolumny co edycja: SKU, „Cena netto” i „Stawka VAT”
+  // jako osobne kolumny, kwoty z przecinkiem („61,50 zł”).
+  // ⚠️ Netto jest liczbą pomocniczą: na fakturę i do bariery arytmetycznej idzie BRUTTO.
   it('pokazuje nagłówki kolumn jak w edycji: Ilość, Nazwa, SKU, Cena netto, Stawka VAT, Cena brutto, Suma', async () => {
     const id = zapiszZamowienie(db, 'pro', zPozycjamiIWysylka(1501), {});
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
@@ -287,15 +280,15 @@ describe('sekcja „Pozycje”', () => {
     expect(r.body).toContain('73,09 zł');
   });
 
-  // SEDNO ZADANIA: darmowa dostawa dostaje ZERO widoczne na ekranie, nie znika z tabeli.
+  // darmowa dostawa dostaje ZERO widoczne na ekranie, nie znika z tabeli.
   it('darmowa dostawa → wiersz „Wysyłka” zostaje, z widocznym zerem', async () => {
     const id = zapiszZamowienie(db, 'pro', zPozycjamiIWysylka(1504, {
       kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00', koszt_dostawy_netto: '0.00',
     }), {});
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.body).toContain('Wysyłka');
-    // PRZ-152.G9a2: trzecie „0.00 zł” brał dawny pasek „Wpłacono 0.00 zł” z sekcji Płatności — wiersz Wysyłki ma dwa.
-    // PRZ-152.G13a: kwoty w tabeli z przecinkiem.
+    // Trzecie „0.00 zł” brał dawny pasek „Wpłacono 0.00 zł” z sekcji Płatności — wiersz Wysyłki ma dwa.
+    // Kwoty w tabeli z przecinkiem.
     expect(r.body).toMatch(/Wysyłka[\s\S]*?0,00 zł[\s\S]*?0,00 zł/);
   });
 
@@ -319,7 +312,7 @@ describe('sekcja „Pozycje”', () => {
     expect(r.body).not.toContain('NIE ZGADZA SIĘ');
   });
 
-  // SEDNO ZADANIA: rozjazd sumy z kwotą zamówienia musi być widoczny NA KARCIE, z obiema
+  // rozjazd sumy z kwotą zamówienia musi być widoczny NA KARCIE, z obiema
   // kwotami, zanim operator w ogóle spróbuje wystawić fakturę.
   it('rozjazd sumy z kwotą zamówienia → widoczne ostrzeżenie z obiema kwotami', async () => {
     const id = zapiszZamowienie(db, 'pro', zPozycjamiIWysylka(1507, { kwota_brutto: '999.99' }), {});
@@ -329,7 +322,7 @@ describe('sekcja „Pozycje”', () => {
     expect(r.body).toContain('999.99');
   });
 
-  // Zadanie 4 nie dotyka wierszy sprzed dołożenia kolumn netto — mają się dalej renderować
+  // Wiersze sprzed dołożenia kolumn netto mają się dalej renderować
   // (bez netto, nie wywalając karty), co jest dokładnie tym, co robi domyślny fikstura tego
   // pliku (zmapowane() bez pól netto/brutto_linii/koszt_dostawy_*).
   it('zamówienie bez kolumn netto (fikstura sprzed migracji) nie wywraca karty', async () => {
@@ -340,7 +333,7 @@ describe('sekcja „Pozycje”', () => {
   });
 });
 
-// Finding recenzji Zadania 6 (Important): skrypt przeliczajacy netto/brutto mial wpisana
+// Skrypt przeliczajacy netto/brutto mial wpisana
 // wprost stawke VAT (`var VAT = 1.23`) — druga kopia wartosci, ktorej JEDYNYM zrodlem ma
 // byc STAWKA_VAT (domain/vat.js). Serwer traktuje przyslane brutto jako wartosc zrodlowa
 // i NIE przelicza go z netto — gdyby stawka kiedys sie zmienila, przegladarka policzylaby
@@ -361,7 +354,7 @@ describe('skrypt netto/brutto — stawka VAT z data-vat, nie wpisana w skrypcie'
     expect(atrybut[1]).toBe(STAWKA_VAT);
 
     // 2. Skrypt nie ma prawa niesc WLASNEJ, niezaleznej kopii stawki — musi ja odczytac
-    // z dokumentu (`dataset.vat`). PRZ-105: skrypt jest plikiem (public/cena-netto.js), wiec
+    // z dokumentu (`dataset.vat`). Skrypt jest plikiem (public/cena-netto.js), wiec
     // sprawdzamy, ze strona go laduje, i czytamy TEN plik — bez liczbowego literalu stawki.
     expect(r.body).toMatch(/<script type="module" src="\/public\/cena-netto\.js[^"]*"><\/script>/);
     const skrypt = readFileSync('src/public/cena-netto.js', 'utf8');
@@ -380,18 +373,15 @@ describe('skrypt netto/brutto — stawka VAT z data-vat, nie wpisana w skrypcie'
   });
 });
 
-// I6. POST /nadaj i GET /etykieta to jedyne miejsce, z ktorego czlowiek wyzwala
+// POST /nadaj i GET /etykieta to jedyne miejsce, z ktorego czlowiek wyzwala
 // nieodwracalne nadanie — i wlasnie tam siedzial C1. Dotad nie mialy ani jednego testu.
 describe('trasy nadania i etykiety', () => {
   const NUMER_LISTU = '1000000000001U';
-  // Wartosci podane przez wlasciciela (patrz PACZKA_DOMYSLNA w nadanie.js) — trasa POST
-  // od Zadania „ekran nadania" WYMAGA jawnej wagi i wymiarow, wiec kazdy test, ktory ma
-  // dojsc do prawdziwego wywolania nadaj(), musi je podac.
-  //  jest czescia formularza nadania — trasa POST bez niej odmawia.
-  // Adres odbiorcy — od Zadania „adres edytowalny" trasa POST wymaga go W FORMULARZU
-  // (puste pole wymagane blokuje zatwierdzenie, patrz domain/adres-formularza.js). Testy
-  // w tym pliku sprawdzają zachowanie trasy nadania (anulowane, błędy DPD, etykieta), nie
-  // samą treść adresu, więc wystarczy dowolny KOMPLETNY adres.
+  // Trasa POST wymaga jawnej wagi i wymiarów (patrz PACZKA_DOMYSLNA w nadanie.js),
+  // więc każdy test, który ma dojść do prawdziwego wywołania nadaj(), musi je podać.
+  // Adres odbiorcy też musi być w formularzu — puste wymagane pole blokuje zatwierdzenie.
+  // Testy sprawdzają zachowanie trasy nadania (anulowane, błędy DPD, etykieta),
+  // więc wystarczy dowolny KOMPLETNY adres.
   const PACZKA = {
     waga: '1', dlugosc: '110', szerokosc: '75', wysokosc: '1', kolejnosc: '1',
     nazwa: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa',
@@ -425,7 +415,7 @@ describe('trasy nadania i etykiety', () => {
     expect(pobierzZamowienie(db, id).przesylki[0].numer_listu).toBe(NUMER_LISTU);
   });
 
-  // Zadanie „adres edytowalny": bez tej karty operator nie miałby jak sprawdzić, dokąd
+  // Bez tej karty operator nie miałby jak sprawdzić, dokąd
   // paczka NAPRAWDĘ pojechała, gdy adres w formularzu różnił się od adresu w zamówieniu.
   it('karta zamówienia pokazuje adres FAKTYCZNIE użyty przy nadaniu tej paczki', async () => {
     const { serwer, id } = zApp();
@@ -480,7 +470,7 @@ describe('trasy nadania i etykiety', () => {
     expect(r.statusCode).toBe(503);
   });
 
-  // M2: 400 pokazywalo surowy komunikat systemowy z pelna sciezka serwera.
+  // 400 pokazywalo surowy komunikat systemowy z pelna sciezka serwera.
   it('błąd techniczny → czytelny komunikat na ekranie, szczegóły tylko w logu', async () => {
     const techniczny = new Error("ENOENT: no such file or directory, open 'C:\\srv\\oms\\etykiety\\x.pdf'");
     const { serwer, id } = zApp({ dpdNadaj: vi.fn().mockRejectedValue(techniczny) });
@@ -519,7 +509,7 @@ describe('trasy nadania i etykiety', () => {
     expect(r.statusCode).toBe(404);
   });
 
-  // M3: skasowany plik dawal 500 z pelna sciezka serwera w JSON-ie.
+  // Skasowany plik dawal 500 z pelna sciezka serwera w JSON-ie.
   it('GET /etykieta gdy plik zniknął → 404 z czytelnym komunikatem, bez ścieżki serwera', async () => {
     const { serwer, id } = zApp();
     await serwer.ready();
@@ -541,7 +531,7 @@ describe('trasy nadania i etykiety', () => {
   });
 });
 
-// I6. POST /faktura to NAJGROZNIEJSZA trasa w panelu — jedyna, ktora tworzy dokument
+// POST /faktura to NAJGROZNIEJSZA trasa w panelu — jedyna, ktora tworzy dokument
 // w rejestrze panstwowym, nieusuwalny i poprawiany wylacznie korekta. Nie miala ani
 // jednego testu HTTP, podczas gdy znacznie mniej grozne /nadaj mialo komplet.
 describe('trasa wystawienia faktury', () => {
@@ -554,7 +544,7 @@ describe('trasa wystawienia faktury', () => {
     const faktura = createFaktura({ db, infakt });
     const serwer = buildOmsServer({ db, config, poller, faktura });
     const id = zapiszZamowienie(db, 'pro', zmapowane(1601, {
-      // PRZ-126.P1: aktywny formularz wymaga kompletu danych nabywcy.
+      // Aktywny formularz wymaga kompletu danych nabywcy.
       klient: { first_name: 'Jan', last_name: 'Przykładowy', address_1: 'Fikcyjna 1', postcode: '00-001', city: 'Miasto Testowe' },
       chce_fakture: 1, nip: '1200001200', kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00', ...nad,
     }), {});
@@ -574,13 +564,13 @@ describe('trasa wystawienia faktury', () => {
     await serwer.ready();
     const r = await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/faktura`, headers: naglowek });
     expect(r.statusCode).toBe(302);
-    // PRZ-126.C02: po wystawieniu operator zostaje przy sekcji faktury, nie na górze karty.
+    // Po wystawieniu operator zostaje przy sekcji faktury, nie na górze karty.
     expect(r.headers.location).toBe(`/zamowienia/${id}#faktura`);
     expect(infakt.wystaw).toHaveBeenCalledTimes(1);
     expect(pobierzZamowienie(db, id).faktura.numer).toBe('FV/1/2026');
   });
 
-  // C2, sciezka, ktora naprawde klika czlowiek.
+  // Sciezka, ktora naprawde klika czlowiek.
   it('POST /faktura na ANULOWANYM zamówieniu → odmowa i inFakt nietknięty', async () => {
     const { serwer, id, infakt } = zFaktura({ anulowane: 1 });
     await serwer.ready();
@@ -607,7 +597,7 @@ describe('trasa wystawienia faktury', () => {
     expect(r.statusCode).toBe(503);
   });
 
-  // I3: nieudana proba bez sladu w logu to najgorszy mozliwy stan — przycisk zostaje,
+  // Nieudana proba bez sladu w logu to najgorszy mozliwy stan — przycisk zostaje,
   // historia pusta, a dokument mogl juz istniec.
   it('porażka → 400 i wpis w logu zamówienia', async () => {
     const wystaw = vi.fn().mockRejectedValue(
@@ -623,7 +613,7 @@ describe('trasa wystawienia faktury', () => {
     expect(wpis.wynik).toContain('nazwę firmy');
   });
 
-  // I4: przed poprawka trasa przepuszczala surowy e.message, wiec przy dwukliku operator
+  // Przed poprawka trasa przepuszczala surowy e.message, wiec przy dwukliku operator
   // dostawal na ekran „UNIQUE constraint failed: faktury.zamowienie_id" — nazwe tabeli
   // i kolumny bazy panelu.
   it('błąd techniczny → czytelny komunikat, szczegóły sterownika tylko w logu', async () => {
@@ -632,7 +622,7 @@ describe('trasa wystawienia faktury', () => {
     await serwer.ready();
     const r = await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/faktura`, headers: naglowek });
     expect(r.statusCode).toBe(400);
-    // PRZ-126.C02: odmowa wraca jako karta zamówienia, a komunikat stoi w akapicie #blad-faktury.
+    // Odmowa wraca jako karta zamówienia, a komunikat stoi w akapicie #blad-faktury.
     // Karta ma też (od dawna, przed C02) pasek i podsumowanie „Faktura do wyjaśnienia: <opis>” z opisem
     // zapisanym przy rezerwacji — tam szczegół zostaje jak dotąd (do uzgodnienia z programem).
     // Poza tymi miejscami tekstu sterownika na ekranie być nie może.
@@ -653,8 +643,8 @@ describe('trasa wystawienia faktury', () => {
   });
 
   // ⚠️ ZDANIE „Panel wystawi fakturę w inFakcie, BEZ wysyłki do KSeF — wysyła ją właściciel
-  // sam, wieczorem." ZDJĘTE 2026-08-07 na prośbę właściciela (przebudowa sekcji „Faktura").
-  // Punkt B pierwotnego briefu żądał go PRZY PRZYCISKU; dziś ten sam fakt niesie PASTYLKA
+  // sam, wieczorem." ZDJĘTE.
+  // Ten sam fakt niesie PASTYLKA
   // STANU w wierszu dokumentu („jeszcze nie wysłana do KSeF") — czyli tam, gdzie stoi numer,
   // i przez cały czas życia faktury, a nie tylko przez sekundę przed kliknięciem. Pilnuje
   // tego test niżej. Tutaj zostaje kontrola, że zdanie NIE WRÓCIŁO i że formularz jest cały.
@@ -671,7 +661,7 @@ describe('trasa wystawienia faktury', () => {
 
   // Ta sama zasada, ale PO wystawieniu: karta faktury wystawionej ma dalej mówić, że
   // dokument czeka w inFakcie na wieczorną wysyłkę, a nie sugerować, że już poszedł.
-  // ⚠️ ATRAPA BEZ `ksefStatus` — I TO JEST WIERNIEJSZE PRODUKCJI (2026-08-07). Panel wystawia
+  // ⚠️ ATRAPA BEZ `ksefStatus` — I TO JEST WIERNIEJSZE PRODUKCJI. Panel wystawia
   // dokument BEZ wysyłki do KSeF (wysyła właściciel, wieczorem), więc `ksef_status` zostaje
   // wtedy PUSTY i karta ma powiedzieć wprost, że dokumentu w KSeF jeszcze nie ma. Poprzednia
   // wersja testu podstawiała `ksefStatus: 'sent'` i sprawdzała zdanie drukowane BEZWARUNKOWO —
@@ -681,7 +671,7 @@ describe('trasa wystawienia faktury', () => {
     await serwer.ready();
     await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/faktura`, headers: naglowek });
     const r = await serwer.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
-    // ⚠️ PRZEBUDOWA 2026-08-07: zdanie „wystawiona w inFakcie z panelu, BEZ wysyłki do KSeF"
+    // ⚠️ zdanie „wystawiona w inFakcie z panelu, BEZ wysyłki do KSeF"
     // zastąpiła PASTYLKA STANU w wierszu dokumentu. Fakt jest ten sam — panel do KSeF nie
     // wysyła — tylko powiedziany raz, przy numerze, zamiast akapitem obok tabeli.
     expect(r.body).toMatch(/jeszcze nie wysłana do KSeF/);
@@ -689,7 +679,7 @@ describe('trasa wystawienia faktury', () => {
   });
 
   // Przycisk prowadzacy prosto w 503 to zaproszenie do klikania w nic.
-  it('bez skonfigurowanego inFaktu widok wyszarza przycisk (PRZ-126.P1)', async () => {
+  it('bez skonfigurowanego inFaktu widok wyszarza przycisk', async () => {
     const serwer = buildOmsServer({ db, config, poller });
     await serwer.ready();
     const id = zapiszZamowienie(db, 'pro', zmapowane(1603, { chce_fakture: 1 }), {});
@@ -698,8 +688,8 @@ describe('trasa wystawienia faktury', () => {
     expect(r.body).toMatch(/inFakt nie jest skonfigurowany/);
   });
 
-  // C2, druga linia obrony (pierwsza siedzi w wystaw()).
-  it('anulowane zamówienie wyszarza przycisk faktury (PRZ-126.P1)', async () => {
+  // Druga linia obrony (pierwsza siedzi w wystaw()).
+  it('anulowane zamówienie wyszarza przycisk faktury', async () => {
     const { serwer, id } = zFaktura({ anulowane: 1 });
     await serwer.ready();
     const r = await serwer.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
@@ -851,9 +841,7 @@ describe('odblokowanie faktury po sprawdzeniu w inFakcie', () => {
   });
 });
 
-// Zdarzenie z 2026-07-30, na produkcji: wlasciciel wystawil prawdziwa fakture przez panel,
-// obejrzal ja w inFakcie i skasowal — bo od tego dnia panel wystawia BEZ wysylki do KSeF
-// (wysyla ja sam, zbiorczo, wieczorem), wiec niewyslana faktura wolno po prostu skasowac.
+// Faktura wystawiona przez panel może zostać skasowana w programie przed wysyłką do KSeF.
 // odblokuj CELOWO odmawia dla kazdej faktury WYSTAWIONEJ, wiec bez tej trasy zamowienie
 // zostawaloby zablokowane NA ZAWSZE: UNIQUE (zamowienie_id) nie pozwala wystawic drugiej.
 describe('faktura skasowana w inFakcie — wyjście dla operatora', () => {
@@ -971,10 +959,9 @@ describe('faktura skasowana w inFakcie — wyjście dla operatora', () => {
   // Przycisk widoczny WYLACZNIE przy fakturze wystawionej, jeszcze niewyslanej do KSeF —
   // to DRUGA linia obrony (pierwsza siedzi w fakturaSkasowanaWInfakcie), zeby nie kusic
   // operatora akcja, ktora i tak zostanie odrzucona.
-  // ⚠️⚠️ ODNOTOWANIE PRZENIESIONE NA ZAKLADKE FAKTURY (01.09.2026, prosba właściciela: „na co
-  // dzien jest to nieuzywane — chyba ani razu nie skorzystalem z tego"). Karta ma tego
+  // ⚠️⚠️ ODNOTOWANIE PRZENIESIONE NA ZAKLADKE FAKTURY. Karta ma tego
   // przycisku NIE MIEC, a sama trasa POST zostaje ta sama i dziala (testy wyzej).
-  // Gdzie stoi dzis i czego pilnuje: tests/oms/web-faktury-skasowana.test.js.
+  // Gdzie stoi dzis i czego pilnuje: tests/moduly/faktury/web-faktury-skasowana.test.js.
   it('karta NIE pokazuje już przycisku — akcja mieszka w zakładce Faktury', async () => {
     const id = zamowienie();
     wystawiona(id);
@@ -1003,7 +990,7 @@ describe('faktura skasowana w inFakcie — wyjście dla operatora', () => {
     expect(r.body).not.toContain('/faktura/skasowana');
   });
 
-  // ⚠️⚠️ RECENZJA PARTII 2, K3 — DOWÓD Z `ksef_numer`, KTÓREGO KARTA WCZEŚNIEJ NIE WIDZIAŁA.
+  // ⚠️⚠️ DOWÓD Z `ksef_numer`, KTÓREGO KARTA WCZEŚNIEJ NIE WIDZIAŁA.
   //
   // Przy ręcznej wysyłce do KSeF `ksef_status` zostaje PUSTY NA ZAWSZE (panel dostaje tam
   // `ksef_data` z chwili wystawienia, a właściciel wysyła dokument dopiero potem). Dowód
@@ -1044,7 +1031,7 @@ describe('faktura skasowana w inFakcie — wyjście dla operatora', () => {
   });
 });
 
-// I3. Osierocone nadanie ('w_trakcie' po restarcie procesu w trakcie `klient.nadaj`) bylo
+// Osierocone nadanie ('w_trakcie' po restarcie procesu w trakcie `klient.nadaj`) bylo
 // slepym zaulkiem: karta pokazywala przycisk „Nadaj paczke", kazde klikniecie odpowiadalo
 // „Nadanie wlasnie trwa", a jedynym wyjsciem byl reczny UPDATE w pliku SQLite.
 describe('zawieszone nadanie — wyjście dla operatora', () => {
@@ -1076,7 +1063,7 @@ describe('zawieszone nadanie — wyjście dla operatora', () => {
     expect(r.body).not.toContain('Nadaj paczkę');
   });
 
-  // PRZ-142.01: komunikaty mówią o kurierze TEJ przesyłki, nie zakładają DPD.
+  // Komunikaty mówią o kurierze TEJ przesyłki, nie zakładają DPD.
   it('przesyłka InPost: karta odsyła do panelu InPost, nie DPD; bez znanego kuriera — „panelu kuriera”', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1905), {});
     db.prepare("INSERT INTO przesylki (zamowienie_id, kurier, status, utworzona_at) VALUES (?, 'inpost', 'w_trakcie', ?)")
@@ -1184,8 +1171,7 @@ describe('zawieszone nadanie — wyjście dla operatora', () => {
   });
 });
 
-// Luka odlozona SWIADOMIE w Zadaniu 10 („przestawienie na `nadana` wymaga UPDATE w SQLite").
-// Po dorobieniu wyjscia z zawieszonego nadania byla juz jedyna asymetria.
+// Przestawienie przesyłki na `nadana` wymaga UPDATE w SQLite.
 describe('domknięcie przesyłki „do wyjaśnienia”', () => {
   const przesylka = (id) => db.prepare('SELECT * FROM przesylki WHERE zamowienie_id = ?').get(id);
   const zWyjasnieniem = () => {
@@ -1225,7 +1211,7 @@ describe('domknięcie przesyłki „do wyjaśnienia”', () => {
     expect(wpis.wynik).toContain('adam');
     expect(wpis.wynik).toContain('1000000000001U');
 
-    // Od 2026-07-31 „wysłane" to własny fakt: sama nadana paczka nie zdejmuje zamówienia
+    // „Wysłane” to własny fakt: sama nadana paczka nie zdejmuje zamówienia
     // z listy roboczej. Tu chodzi o ZDJĘCIE SPRAWY, więc zamówienie jest już oznaczone jako wysłane.
     db.prepare('UPDATE zamowienia SET wyslane_at = ? WHERE id = ?').run('2026-07-29T13:30:00', id);
     const lista = await app.inject({ method: 'GET', url: '/', headers: naglowek });
@@ -1246,9 +1232,9 @@ describe('domknięcie przesyłki „do wyjaśnienia”', () => {
   });
 });
 
-// Wada z przegladu galezi: sync_woo_blad i „brak etykiety" przy nadanej przesylce wpychaja
+// Sync_woo_blad i „brak etykiety" przy nadanej przesylce wpychaja
 // zamowienie na liste robocza, a NIC nie umie ich zdjac. Ten opis odtwarza dokladnie
-// zmierzony przebieg z brief-u: do_wyjasnienia -> POST /przesylka/domknij -> zamowienie
+// przebieg: do_wyjasnienia -> POST /przesylka/domknij -> zamowienie
 // zostaje na liscie z odznaka „brak etykiety" NA ZAWSZE.
 describe('sprawa przesyłki załatwiona ręcznie', () => {
   const przesylka = (id) => db.prepare('SELECT * FROM przesylki WHERE zamowienie_id = ?').get(id);
@@ -1280,16 +1266,15 @@ describe('sprawa przesyłki załatwiona ręcznie', () => {
     expect(wpis.wynik).toContain('adam');
     expect(wpis.wynik).not.toContain('x:');
 
-    // Od 2026-07-31 „wysłane" to własny fakt: sama nadana paczka nie zdejmuje zamówienia
+    // „Wysłane” to własny fakt: sama nadana paczka nie zdejmuje zamówienia
     // z listy roboczej. Tu chodzi o ZDJĘCIE SPRAWY, więc zamówienie jest już oznaczone jako wysłane.
     db.prepare('UPDATE zamowienia SET wyslane_at = ? WHERE id = ?').run('2026-07-29T13:30:00', id);
     const lista = await app.inject({ method: 'GET', url: '/', headers: naglowek });
     expect(lista.body).not.toContain('2001');
   });
 
-  // Dokladny scenariusz z przegladu galezi (numery 2002/1000000000001U dobrane tak samo
-  // jak w brief-ie): domkniecie przestawia przesylke na 'nadana' bez etykiety, i dopiero
-  // TA trasa umie zdjac odznake „brak etykiety".
+  // Domknięcie przestawia przesyłkę na `nadana` bez etykiety i dopiero
+  // ta trasa umie zdjąć odznakę „brak etykiety”.
   it('domyka scenariusz z przeglądu: do_wyjaśnienia → domknij → nadal brak etykiety → załatw ręcznie', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(2002), {});
     db.prepare(
@@ -1301,7 +1286,7 @@ describe('sprawa przesyłki załatwiona ręcznie', () => {
     expect(przesylka(id).status).toBe('nadana');
     expect(przesylka(id).etykieta_sciezka).toBeNull();
     // Zamowienie MUSI dalej byc na liscie roboczej z odznaka „brak etykiety" — inaczej
-    // przyklad z brief-u przestalby cokolwiek dowodzic.
+    // test przestalby cokolwiek dowodzic.
     let lista = await app.inject({ method: 'GET', url: '/', headers: naglowek });
     expect(lista.body).toContain('2002');
     expect(lista.body).toContain('brak etykiety');
@@ -1310,7 +1295,7 @@ describe('sprawa przesyłki załatwiona ręcznie', () => {
     expect(r.statusCode).toBe(302);
     expect(przesylka(id).etykieta_reczna).toBe(1);
     // I dopiero teraz zamowienie schodzi z listy roboczej.
-    // Od 2026-07-31 „wysłane" to własny fakt: sama nadana paczka nie zdejmuje zamówienia
+    // „Wysłane” to własny fakt: sama nadana paczka nie zdejmuje zamówienia
     // z listy roboczej. Tu chodzi o ZDJĘCIE SPRAWY, więc zamówienie jest już oznaczone jako wysłane.
     db.prepare('UPDATE zamowienia SET wyslane_at = ? WHERE id = ?').run('2026-07-29T13:30:00', id);
     lista = await app.inject({ method: 'GET', url: '/', headers: naglowek });
@@ -1350,7 +1335,7 @@ describe('sprawa przesyłki załatwiona ręcznie', () => {
   });
 });
 
-// I5. Anulowanie PO nadaniu i po wystawieniu faktury. Zmierzone przed poprawka: karta
+// Anulowanie PO nadaniu i po wystawieniu faktury. Zmierzone przed poprawka: karta
 // W OGOLE nie renderowala sekcji „Faktura" (warunek zawieral `!z.anulowane`), wiec panel
 // milczal o dokumencie w inFakcie, ktory trzeba recznie zatrzymac przed wieczorna wysylka
 // do KSeF (albo skorygowac, gdy juz tam pojechal). Paczka byla w drodze.
@@ -1377,7 +1362,7 @@ describe('anulowanie po nadaniu i po fakturze — karta nie milczy', () => {
     expect(r.body).toContain('1000000000001U');
   });
 
-  // PRZ-126.P1: anulowane bez dokumentu ma wyszarzony przycisk; bez alarmu o istniejącej paczce/fakturze.
+  // Anulowane bez dokumentu ma wyszarzony przycisk; bez alarmu o istniejącej paczce/fakturze.
   it('anulowane bez przesyłki i faktury nie dorabia ostrzeżeń', async () => {
     const id = zAnulowanym(2003);
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
@@ -1388,7 +1373,7 @@ describe('anulowanie po nadaniu i po fakturze — karta nie milczy', () => {
   });
 });
 
-// Zadanie 13: status przesyłki z usługi zdarzeń DPD, odświeżany przy otwarciu karty.
+// Status przesyłki z usługi zdarzeń DPD, odświeżany przy otwarciu karty.
 // Najważniejsze wymaganie tego bloku: awaria DPD NIE MA PRAWA wywalić ani zawiesić karty.
 describe('status DPD odświeżany przy otwarciu karty', () => {
   const NUMER_LISTU = '1000000000001U';
@@ -1413,7 +1398,7 @@ describe('status DPD odświeżany przy otwarciu karty', () => {
     return serwer.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
   };
 
-  // Do fali z dlawikiem GET karty byl czysto ODCZYTOWY. Teraz kazde otwarcie zamowienia
+  // Kazde otwarcie zamowienia
   // z przesylka robi UPDATE, wiec awaria zapisu (pelny dysk, blad I/O, baza tylko do odczytu)
   // moglaby wywalic karte surowym komunikatem sterownika — i to dokladnie wtedy, gdy ktos
   // probuje diagnozowac awarie. Kartoteka ma sie otwierac zawsze.
@@ -1508,7 +1493,7 @@ describe('status DPD odświeżany przy otwarciu karty', () => {
     expect(r.body).not.toContain('brak zdarzeń');
   });
 
-  // Zadanie „strona główna", punkt C: znacznik próby (teraz(), UTC) jest teraz PRZELICZANY
+  // Znacznik próby (teraz(), UTC) jest teraz PRZELICZANY
   // na czas polski (fmtDataCzas) zamiast pokazywany surowo z dopiskiem „UTC" — po przeliczeniu
   // dopisek stałby się nieprawdą. Wartość jest dynamiczna (zapisywana w chwili żądania),
   // więc liczymy oczekiwany, sformatowany czas z wiersza w bazie PO żądaniu.
@@ -1517,7 +1502,7 @@ describe('status DPD odświeżany przy otwarciu karty', () => {
     const dpd = { statusPrzesylki: vi.fn().mockResolvedValue({ opis: 'Nadana', at: '2026-07-30T09:00:00.000' }) };
     const r = await zDpd(id, dpd);
     const zapisany = przesylka(id).status_kuriera_pobrany_at;
-    // PRZ-152.G8: stopka karty paczki pokazuje czas bez sekund („status sprawdzony 21:14”,
+    // Stopka karty paczki pokazuje czas bez sekund („status sprawdzony 21:14”,
     // z dniem, gdy inny niż dzień nadania) — godzina dalej polska, nie UTC.
     expect(r.body).toMatch(new RegExp(`status sprawdzony [^<]*${fmtDataCzas(zapisany).slice(11, 16)}`));
     expect(r.body).not.toMatch(/sprawdzony[^<]*UTC/);
@@ -1579,8 +1564,8 @@ describe('status DPD odświeżany przy otwarciu karty', () => {
     expect(dpd.statusPrzesylki).toHaveBeenCalledTimes(1);
   });
 
-  // M7: eventTime z DPD nie ma strefy ('2026-07-29T20:07:14.918'), wiec Date.parse czytalby
-  // go w strefie hosta (na produkcji TZ=UTC => zdarzenie wyglada na 2 h nowsze). Po C1 czas
+  // EventTime z DPD nie ma strefy ('2026-07-29T20:07:14.918'), wiec Date.parse czytalby
+  // go w strefie hosta (na produkcji TZ=UTC => zdarzenie wyglada na 2 h nowsze). Czas
   // z DPD nie bierze udzialu w liczeniu progu W OGOLE — ten test to przypieczetowuje:
   // znacznik proby jest swiezy, wiec „przyszly" czas zdarzenia niczego nie zmienia.
   it('czas zdarzenia z DPD (bez strefy) nie ma wpływu na próg odświeżania', async () => {
@@ -1637,11 +1622,11 @@ describe('status DPD odświeżany przy otwarciu karty', () => {
     const r = await zDpd(id, { statusPrzesylki: vi.fn().mockResolvedValue({ opis: 'Doręczona', at: '2026-07-30T09:00:00.000' }) });
 
     expect(przesylka(id).status_kuriera_blad).toBeNull();
-    expect(r.body).toContain('status sprawdzony'); // PRZ-152.G8: nowy napis stopki karty paczki
+    expect(r.body).toContain('status sprawdzony'); // Nowy napis stopki karty paczki
     expect(r.body).not.toContain('status niedostępny');
   });
 
-  // Wymaganie briefu, ktorego brakowalo: brak zdarzen ma byc NAPISANY, a nie objawiac sie
+  // Brak zdarzen ma byc NAPISANY, a nie objawiac sie
   // zniknieciem kawalka linii.
   it('brak zdarzeń (status_kuriera = null) jest napisany wprost', async () => {
     const id = zPrzesylka();
@@ -1735,7 +1720,7 @@ describe('status DPD odświeżany przy otwarciu karty', () => {
   });
 });
 
-// Zadanie „kolejka druku": przycisk „Pobierz" (rename istniejącego pobrania PDF-a) i
+// Przycisk „Pobierz" (rename istniejącego pobrania PDF-a) i
 // „Drukuj" (nowy, obok niego) — widoczny WYŁĄCZNIE gdy ZPL istnieje.
 describe('karta zamówienia — „Pobierz" i „Drukuj" (kolejka druku)', () => {
   const przesylka = (id, over = {}) => db.prepare(
@@ -1792,7 +1777,7 @@ describe('karta zamówienia — „Pobierz" i „Drukuj" (kolejka druku)', () =>
     expect(r.body).toContain('Etykieta niezapisana — pobierz ją z panelu DPD.');
   });
 
-  // Rename z briefu — stara etykieta linku znika.
+  // Stara etykieta linku znika.
   it('link pobrania PDF-a NIE nazywa się już „etykieta PDF"', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(2102), {});
     przesylka(id);
@@ -1835,11 +1820,11 @@ describe('karta zamówienia — „Pobierz" i „Drukuj" (kolejka druku)', () =>
     const w = dodajDoKolejki(db, przesylkaId(id));
     oznaczWydrukowano(db, w.id);
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
-    expect(r.body).toMatch(/etykieta wydrukowana/); // PRZ-152.G8: napis stopki karty paczki
+    expect(r.body).toMatch(/etykieta wydrukowana/); // Napis stopki karty paczki
     const wiersz = db.prepare('SELECT wydrukowane_at FROM kolejka_druku WHERE id = ?').get(w.id);
-    // Zadanie „strona główna", punkt C: znacznik (teraz(), UTC) jest teraz PRZELICZANY
+    // Znacznik (teraz(), UTC) jest teraz PRZELICZANY
     // na czas polski, nie pokazany surowo.
-    // PRZ-152.G8: bez sekund (i bez daty, gdy to dzień nadania) — godzina polska.
+    // Bez sekund (i bez daty, gdy to dzień nadania) — godzina polska.
     expect(r.body).toMatch(new RegExp(`etykieta wydrukowana [^<]*${fmtDataCzas(wiersz.wydrukowane_at).slice(11, 16)}`));
     // Porzuć ma sens tylko przy pozycji, która jeszcze próbuje — wydrukowana go nie pokazuje.
     expect(r.body).not.toContain('Porzuć');
@@ -1854,7 +1839,7 @@ describe('karta zamówienia — „Pobierz" i „Drukuj" (kolejka druku)', () =>
   });
 });
 
-// ⚠️ ZGLOSZENIE WLASCICIELA 11.08.2026, po pierwszym prawdziwym wydruku etykiety WzA:
+// ⚠️ Podgląd etykiety WzA w nowej karcie:
 // „gdy kliknę pobierz PDF otwiera się w przeglądarce w tej samej karcie co zamówienie.
 // lepiej jakby otwierał się w nowej karcie którą sobie zamknę po wydrukowaniu".
 //
@@ -1890,7 +1875,7 @@ describe('etykieta otwiera się w nowej karcie', () => {
   });
 });
 
-// ⚠️⚠️ ZGLOSZENIE WLASCICIELA 11.08.2026: „jest jakiś problem z pobieraniem statusów
+// ⚠️⚠️ „jest jakiś problem z pobieraniem statusów
 // z paczek allegro".
 //
 // Kurier `allegro_wza` kupuje przewoz u Allegro, ale SLEDZENIA przez to API NIE MA — zasob
@@ -1901,10 +1886,10 @@ describe('etykieta otwiera się w nowej karcie', () => {
 // dwa razy (`dpd.statusPrzesylki is not a function`) — tyle ze wywolana brakiem metody,
 // a nie zla mapa kurierow. Suita byla zielona, bo zaden test nie otwieral karty paczki
 // nadanej kurierem BEZ sledzenia.
-// Od 23.08 rozstrzyga to BEHAWIORALNIE domain/sledzenie-przesylki.js (jedna czysta regula
+// Rozstrzyga to BEHAWIORALNIE domain/sledzenie-przesylki.js (jedna czysta regula
 // dla karty i zegara przesylek), a stary test po zrodle odszedl razem z przeprowadzka
 // funkcji do services/status-kuriera.js. WzA z para carrierId+carrierWaybill w surowej
-// odpowiedzi pytamy PODWYKONAWCE (zmierzone sonda 23.08: kanal zdarzen DPD odpowiada
+// odpowiedzi pytamy PODWYKONAWCE (kanal zdarzen DPD odpowiada
 // takze dla listow kupionych przez Allegro); bez pary — cisza i sprzatniecie osadu,
 // dokladnie jak dawna galaz `bezSledzenia`.
 describe('kurier bez śledzenia nie zaśmieca logu', () => {
@@ -1940,7 +1925,7 @@ describe('kurier bez śledzenia nie zaśmieca logu', () => {
   });
 });
 
-// Pastylka ETAPU przesylki na karcie (23.08) — ta sama regula, co zakladka /przesylki
+// Pastylka ETAPU przesylki na karcie — ta sama regula, co zakladka /przesylki
 // (domain/etap-przesylki.js): klasa stanu + dni KALENDARZOWE w drodze, surowy opis obok.
 describe('pastylka etapu przesyłki na karcie', () => {
   it('paczka w drodze pokazuje etap z dniami, surowy opis zostaje obok', async () => {

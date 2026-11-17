@@ -1,4 +1,4 @@
-// PRZ-108.06 (zmiana A planu automatyzacji, właściciel 21.10): ekran Ustawienia → Automatyzacje (tylko admin) i przeniesiony
+// Ekran Ustawienia → Automatyzacje (tylko admin) i przeniesiony
 // na niego formularz automatu wysyłki do KSeF. Logika automatu bez zmian — przenosi się ekran i adres zapisu; stary
 // adres zapisu (`/ustawienia/integracje/infakt/ksef-automat`) dalej zapisuje, ale wraca na nowy ekran.
 // Prawdziwy serwer i moduły, inFakt niepodłączony — żadne żądanie nie wychodzi z procesu.
@@ -6,8 +6,8 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
 import { ekranyRoli } from '../../../src/domena/ekrany.js';
-import { nowyPanel, jako, get, post, POLLER, CONFIG } from '../../pomoc/konta-prz068.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { nowyPanel, jako, get, post, POLLER, CONFIG } from '../../pomoc/panel-konta-testowe.js';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { wczytajAutomatKsef } from '../../../src/moduly/faktury/db/ksef-automat.js';
 
@@ -23,7 +23,7 @@ function panel({ demo = null } = {}) {
     ? (() => { const db = openOmsDb(':memory:'); return { db, app: buildOmsServer({ poller: POLLER, db, config: { auth: { ...CONFIG.auth }, demo } }) }; })()
     : nowyPanel();
   zalozKonto(p.db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
-  // Konto z Ustawieniami, ale bez admina — od PRZ-108.06 nie zapisze automatu KSeF (dawniej mogło).
+  // Konto z Ustawieniami, ale bez admina nie zapisze automatu KSeF.
   zalozKonto(p.db, { login: 'ewa', imie: 'Ewa', haslo: 'h', rola: 'sprzedaz' });
   ustawUprawnienia(p.db, kontoPoLoginie(p.db, 'ewa').id, ['zamowienia', 'faktury', 'ustawienia']);
   zalozKonto(p.db, { login: 'ola', imie: 'Ola', haslo: 'h', rola: 'sprzedaz' });
@@ -40,18 +40,18 @@ afterEach(async () => {
   for (const p of otwarte.splice(0)) { await p.app.close(); p.db.close(); }
 });
 
-describe('PRZ-108.06 ekran Ustawienia → Automatyzacje', () => {
+describe('ekran Ustawienia → Automatyzacje', () => {
   it('admin: 200, tytuł z menu, automaty systemowe — KSeF (domyślnie wyłączony) i autoodpowiedź Allegro', async () => {
     const p = panel();
     const r = await get(p.app, EKRAN, p.admin);
     expect(r.statusCode).toBe(200);
-    // PRZ-108.11 (decyzja właściciela 22.10): przy tytule plakietka BETA.
-    expect(r.body).toMatch(/<h1>Automatyzacje<\/h1>[\s\S]*?<span class="menu-ustawien-beta">BETA<\/span>/); // PRZ-154: wspólny nagłówek działu.
+    // Przy tytule plakietka BETA.
+    expect(r.body).toMatch(/<h1>Automatyzacje<\/h1>[\s\S]*?<span class="menu-ustawien-beta">BETA<\/span>/); // Wspólny nagłówek działu.
     expect(r.body).toContain('<title>Automatyzacje</title>');
     expect(r.body).toContain('Automaty systemowe');
     const ksef = sekcja(r.body, 'ksef-automat');
     expect(ksef).toContain('Automatyczna wysyłka do KSeF');
-    // PRZ-108.11 (decyzja właściciela 22.10): akapit o „zaznacz wszystkie” usunięty z kafla.
+    // Akapit o „zaznacz wszystkie” usunięty z kafla.
     expect(ksef).not.toContain('zaznacz wszystkie');
     expect(ksef).toContain('nie da się cofnąć');
     expect(ksef).toContain('inFakt nie jest podłączony');
@@ -63,7 +63,7 @@ describe('PRZ-108.06 ekran Ustawienia → Automatyzacje', () => {
     expect(auto).toContain('Autoodpowiedź Allegro');
     expect(auto).toContain('Wyłączona');
     expect(auto).toContain('href="/ustawienia/wiadomosci-i-automatyzacje"');
-    // PRZ-108.08 (C1): rejestr zdarzeń nie jest już pusty — sekcja reguł z przyciskiem dodawania (zmiana zachowania).
+    // Rejestr zdarzeń udostępnia sekcję reguł z przyciskiem dodawania.
     const reguly = await get(p.app, '/ustawienia/automatyzacje', p.admin);
     expect(reguly.body).toContain('Dodaj automatyzację');
     expect(reguly.body).toContain('/ustawienia/automatyzacje/nowa');
@@ -117,8 +117,8 @@ describe('PRZ-108.06 ekran Ustawienia → Automatyzacje', () => {
     const p = panel();
     const r = await post(p.app, ZAPIS, p.admin, { wlaczony, godzina });
     expect(r.statusCode).toBe(400);
-    // PRZ-108.11 (decyzja właściciela 22.10): przy tytule plakietka BETA.
-    expect(r.body).toMatch(/<h1>Automatyzacje<\/h1>[\s\S]*?<span class="menu-ustawien-beta">BETA<\/span>/); // PRZ-154: wspólny nagłówek działu.
+    // Przy tytule plakietka BETA.
+    expect(r.body).toMatch(/<h1>Automatyzacje<\/h1>[\s\S]*?<span class="menu-ustawien-beta">BETA<\/span>/); // Wspólny nagłówek działu.
     expect(sekcja(r.body, 'ksef-automat')).toContain('Nie zapisano');
     expect(wczytajAutomatKsef(p.db)).toMatchObject({ wlaczony: false, godzina: '20:00', zmienil: null });
   });
@@ -134,7 +134,7 @@ describe('PRZ-108.06 ekran Ustawienia → Automatyzacje', () => {
   });
 });
 
-describe('PRZ-108.06 stary adres zapisu automatu KSeF', () => {
+describe('stary adres zapisu automatu KSeF', () => {
   it('admin: zapis działa, 303 na ekran Automatyzacji', async () => {
     const p = panel();
     const r = await post(p.app, STARY_ZAPIS, p.admin, { wlaczony: ['0', '1'], godzina: '21:15' });
@@ -154,15 +154,15 @@ describe('PRZ-108.06 stary adres zapisu automatu KSeF', () => {
     const p = panel();
     const r = await post(p.app, STARY_ZAPIS, p.admin, { wlaczony: '1', godzina: '25:00' });
     expect(r.statusCode).toBe(400);
-    // PRZ-108.11 (decyzja właściciela 22.10): przy tytule plakietka BETA.
-    expect(r.body).toMatch(/<h1>Automatyzacje<\/h1>[\s\S]*?<span class="menu-ustawien-beta">BETA<\/span>/); // PRZ-154: wspólny nagłówek działu.
+    // Przy tytule plakietka BETA.
+    expect(r.body).toMatch(/<h1>Automatyzacje<\/h1>[\s\S]*?<span class="menu-ustawien-beta">BETA<\/span>/); // Wspólny nagłówek działu.
     expect(sekcja(r.body, 'ksef-automat')).toContain('Nie zapisano');
     expect(r.body).toMatch(/<li class="aktywna">\s*<a href="\/ustawienia\/automatyzacje"/u);
     expect(wczytajAutomatKsef(p.db).zmienil).toBeNull();
   });
 });
 
-describe('PRZ-108.06 ekran inFaktu po przeniesieniu automatu', () => {
+describe('ekran inFaktu po przeniesieniu automatu', () => {
   it('admin: bez formularza automatu, ze stanem i odnośnikiem do Automatyzacji; faktury konsumenckie zostają', async () => {
     const p = panel();
     const r = await get(p.app, INFAKT, p.admin);

@@ -110,7 +110,7 @@ describe('czuwacz archiwum sprzedazy', () => {
     expect(stanArchiwumSprzedazy(db).ostatnie_udane_at).toBeNull();
   });
 
-  // ⚠️⚠️ BUDZET PILNUJE TEZ POBIERANIA LIST, NIE TYLKO POBIERAN DOKUMENTOW (recenzja calej
+  // ⚠️⚠️ BUDZET PILNUJE TEZ POBIERANIA LIST, NIE TYLKO POBIERAN DOKUMENTOW
   // galezi). Bramka siedziala WYLACZNIE w petli po dokumentach, wiec przebieg po miesiacach
   // BEZ ANI JEDNEGO dokumentu nie sprawdzal budzetu ANI RAZU: pierwszy przebieg od podlogi
   // ciagnal listy wszystkich miesiecy (a tych przybywa z kazdym miesiacem kalendarza), kazda

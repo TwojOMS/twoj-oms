@@ -5,7 +5,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-// Odczyt POWROTNY PDF-a `pdftotext`-em dla testow wydrukow z menu „Wydruki" (PRZ-084). Ta sama
+// Odczyt POWROTNY PDF-a `pdftotext`-em dla testow wydrukow z menu „Wydruki". Ta sama
 // detekcja poppera, co w specyfikacja-pdf.test.js: tylko odczyt powrotny dowodzi, ze w pliku
 // siedza prawdziwe litery (font z polskimi znakami), a poppera NIE MA w kontenerze na NAS-ie —
 // brak binarki POMIJA testy tresci z ostrzezeniem, nie wywraca suity.

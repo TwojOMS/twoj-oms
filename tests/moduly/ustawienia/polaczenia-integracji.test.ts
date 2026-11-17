@@ -1,5 +1,5 @@
 import { it, expect } from 'vitest';
-import { nowyPanel } from '../../pomoc/konta-prz068.js';
+import { nowyPanel } from '../../pomoc/panel-konta-testowe.js';
 import * as service from '../../../src/moduly/ustawienia/services/polaczenia-integracji.ts';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -17,7 +17,7 @@ const renderuj = (polaczenia: any[], katalog = false, kanaly: any[] = []) => ren
   uslugi: KATALOG_INTEGRACJI, wszystkieUslugi: KATALOG_INTEGRACJI, polaczenia, liczPolaczenia: service.liczPolaczenia, podsumowanie: (service as any).podsumowanie(polaczenia), kanaly,
   fmtDataCzas: (d: string) => d, fmtKiedy: (d: string) => fmtKiedy(d, TERAZ),
 });
-// Wiersz w kształcie z modelu PRZ-136.06 (polaczeniaIntegracji).
+// Wiersz w kształcie z modelu `polaczeniaIntegracji`.
 const wiersz = (o: any = {}) => ({ id: 'allegro:allegro_polcien', usluga: 'allegro', nazwa: 'Allegro Półcień', nazwaLudzka: 'Allegro Półcień', kanal: 'allegro_polcien', opis: '',
   stan: 'niesprawdzone', etykietaStanu: 'Niesprawdzone', zrodlo: 'serwer', atrapa: false, ostatniSukcesAt: null, czasOdczytu: null, grupa: 'sprzedaz', konto: null,
   komunikat: null, akcja: { etykieta: 'Zarządzaj', href: '/ustawienia/integracje/allegro/allegro_polcien', glowna: false }, wiecej: [], ...o });
@@ -31,7 +31,7 @@ it('karta Allegro pozwala dodać konto i zarządzać istniejącymi', async () =>
   for (const lista of [[], [konto]]) {
     const html = await renderuj(lista, true);
     expect(html).toMatch(/class="btn btn--drugi btn--maly" href="\/ustawienia\/integracje\/allegro\/nowe">Dodaj konto<\/a>/);
-    // PRZ-143.02 N5 (właściciel 04.11): przy jednym koncie „Zarządzaj” w katalogu otwiera ekran tego konta.
+    // Przy jednym koncie „Zarządzaj” w katalogu otwiera ekran tego konta.
     expect(hrefZarzadzaj(html, 'allegro')).toBe(lista.length ? '/ustawienia/integracje/allegro/allegro_polcien' : null);
   }
   const html = await renderuj([konto]);
@@ -41,7 +41,7 @@ it('karta Allegro pozwala dodać konto i zarządzać istniejącymi', async () =>
   expect(lista).toMatch(/<section class="pol-grupa" id="grupa-sprzedaz"/);
   expect(lista).not.toContain('id="polaczenia-allegro"');
 });
-it('karta WooCommerce pozwala dodać sklep i zarządzać istniejącymi (B2: odnośnik do istniejącego elementu)', async () => {
+it('karta WooCommerce pozwala dodać sklep i zarządzać istniejącymi (odnośnik do istniejącego elementu)', async () => {
   const sklep = wiersz({ id: 'woocommerce:sklep_polcien', usluga: 'woocommerce', nazwa: 'Sklep Półcień', kanal: 'sklep_polcien', akcja: null });
   const drugi = wiersz({ id: 'woocommerce:sklep_dwa', usluga: 'woocommerce', nazwa: 'Sklep Dwa', kanal: 'sklep_dwa', akcja: null });
   for (const lista of [[], [sklep], [sklep, drugi]]) {
@@ -66,7 +66,7 @@ it('katalog: usługi planowane są wyciszone, z pastylką „Wkrótce” i bez p
     expect(karta).not.toMatch(/<a /);
   }
   for (const img of html.match(/<img [^>]*>/g) ?? []) expect(img).toMatch(/width="\d+" height="\d+"/);
-  // PRZ-136.14 (#11): katalog ma jeden własny <h1> z tytułem zakładki.
+  // Katalog ma jeden własny <h1> z tytułem zakładki.
   expect(html.match(/<h1[\s>]/g) ?? []).toHaveLength(1);
 });
 it('wiersz sklepu WooCommerce (env i panel) ma odnośnik do zarządzania', async () => {
@@ -100,7 +100,7 @@ it('wiersze kont Allegro z serwera i panelu prowadzą do zarządzania, atrapy ni
   expect(await renderuj([{ ...konto, atrapa: true, akcja: null }])).not.toContain('href="/ustawienia/integracje/allegro/allegro_polcien"');
 });
 
-// ── PRZ-136.07: widok listy (U1–U4, U10–U11) ──
+// Widok listy połączeń.
 const piec = () => [
   wiersz({ id: 'allegro:outlet', kanal: 'outlet', nazwa: 'Allegro Półcień Outlet', nazwaLudzka: 'Allegro Półcień Outlet', stan: 'uwaga', etykietaStanu: 'Wymaga uwagi', konto: 'pracownia_polcien_2',
     wysylkaAllegro: 'wlaczona', komunikat: 'Dostęp do konta wygasa 6 listopada.', czasOdczytu: '2026-11-03T21:18:00Z',
@@ -115,7 +115,7 @@ const piec = () => [
     akcja: { etykieta: 'Zarządzaj', href: '/ustawienia/integracje/woocommerce/stary', glowna: false } }),
 ];
 const wiersze = (html: string) => html.match(/<li class="pol-wiersz[\s\S]*?<\/li>/g) ?? [];
-it('lista: grupy z licznikiem, kotwice, liczniki nad listą, jedna akcja główna przy problemie, wstrzymane zwinięte (U1, U2, U10, U11)', async () => {
+it('lista: grupy z licznikiem, kotwice, liczniki nad listą, jedna akcja główna przy problemie, wstrzymane zwinięte', async () => {
   const html = await renderuj(piec());
   expect(html).toContain('class="pol-podsumowanie"');
   expect(html).toMatch(/<strong>5<\/strong> połączeń/);
@@ -184,9 +184,9 @@ it('Woo z panelu ma nazwę z repozytorium i rzeczywisty stan pollera również w
     expect(JSON.stringify(czytaj())).not.toMatch(/ck_polcien|cs_polcien/);
   } finally {db.close();}
 });
-// PRZ-134.PT7: zgłoszenie właściciela 03.11 — klucze odrzucone przy dodawaniu, szkic został w bazie, a lista go nie
-// pokazywała; ponowne dodanie odmawiało („adres już zapisany”), więc sklepu nie dało się ani dokończyć, ani usunąć.
-it('szkic Woo z panelu bez udanego połączenia jest na liście z odnośnikiem do dokończenia (PRZ-134.PT7)', async () => {
+// Szkic sklepu z odrzuconymi kluczami musi być widoczny na liście,
+// żeby dało się go dokończyć lub usunąć bez blokady „adres już zapisany”.
+it('szkic Woo z panelu bez udanego połączenia jest na liście z odnośnikiem do dokończenia', async () => {
   const db=openOmsDb();
   try {
     migracjaKanalowSprzedazy.wykonaj(db);migracjaTypuKanaluISklepow.wykonaj(db);
@@ -222,7 +222,7 @@ it('dwa konta Allegro i dwa Woo zachowują osobne stany, WzA jest polem konta', 
     expect(m.filter((p: any)=>p.usluga==='woocommerce')).toHaveLength(2);
     expect(m.find((p: any)=>p.id==='allegro:a1')).toMatchObject({stan:'dziala',ostatniSukcesAt:'2026-10-31T10:00:00Z'});
     expect(m.find((p: any)=>p.id==='allegro:a2')).toMatchObject({stan:'uwaga',ostatniSukcesAt:null});
-    // PRZ-136.06 (U6): WzA nie jest osobnym wierszem, tylko polem konta Allegro.
+    // WzA nie jest osobnym wierszem, tylko polem konta Allegro.
     expect(m.filter((p: any)=>p.usluga==='allegro').map((p: any)=>p.wysylkaAllegro)).toEqual(['wlaczona','wlaczona']);
     expect(m.some((p: any)=>p.usluga==='wza')).toBe(false);
     expect(JSON.stringify(m)).not.toContain('SEKRET');
@@ -246,11 +246,11 @@ it('atrpa piaskownicy nie jest dowodem rzeczywistego działania', async () => {
   } finally { await app.close(); db.close(); }
 });
 
-// ── PRZ-136.06: model wiersza listy „Moje połączenia” (B1, U5–U9, U13–U14) ──
+// Model wiersza listy „Moje połączenia”.
 const allegroPanelu = (klucz: string, nazwa: string, o: any = {}) => ({ klucz, nazwa, srodowisko: 'produkcja', zrodlo: 'panel', kontoId: `k-${klucz}`, login: `login_${klucz}`,
   autoryzacja: 'polaczone', pobieranie: 'wlaczone', odUtc: '2026-11-01T00:00:00Z', raport: '', wersja: 1, generacja: 1, generacjaImportu: 1, ...o });
 
-it('B1: atrapa inFaktu bez zapisanych danych nie jest „skonfigurowana” — wiersz mówi „Niepodłączony” (PRZ-140 N1), nie udaje połączenia', async () => {
+it('atrapa inFaktu bez zapisanych danych nie jest „skonfigurowana” — wiersz mówi „Niepodłączony”, nie udaje połączenia', async () => {
   const stanIntegracji = (service as any).stanIntegracji;
   expect(stanIntegracji({ usluga: { atrapa: true, zEnv: false }, zapisany: false })).toEqual({ skonfigurowana: false, atrapa: true, zrodlo: 'panel' });
   expect(stanIntegracji({ usluga: { atrapa: true }, zapisany: true })).toMatchObject({ skonfigurowana: true, atrapa: false });
@@ -297,7 +297,7 @@ it('kolejność w grupie: uwaga, działa, niesprawdzone; grupy w stałej kolejno
     expect(JSON.stringify(m)).not.toContain('SEKRET');
   } finally { await app.close(); db.close(); }
 });
-it('każdy wiersz ma akcję i ludzką nazwę: atrapa Woo „Zarządzaj”, reklamy z nazwą z katalogu i kontem w drugiej linii (U5, U7)', async () => {
+it('każdy wiersz ma akcję i ludzką nazwę: atrapa Woo „Zarządzaj”, reklamy z nazwą z katalogu i kontem w drugiej linii', async () => {
   const { app, db } = nowyPanel();
   try {
     const { zapiszPolaczenie } = await import('../../../src/oms/db/reklamy.js');
@@ -320,7 +320,7 @@ it('widoki dostają fmtKiedy z defaultContext (czas odczytu formatuje widok)', a
   } finally { await app.close(); db.close(); }
 });
 
-it('PRZ-136.08: pusta lista pokazuje stan pusty z trzema krokami i linkami z katalogu, bez podsumowania (U12)', async () => {
+it('pusta lista pokazuje stan pusty z trzema krokami i linkami z katalogu, bez podsumowania', async () => {
   const html = await renderuj([]);
   expect(html).not.toContain('pol-podsumowanie');
   expect(html).toContain('class="pol-pusto"');
@@ -334,7 +334,7 @@ it('PRZ-136.08: pusta lista pokazuje stan pusty z trzema krokami i linkami z kat
   expect(kroki).toMatch(/btn--glowny[^>]*href="[^"]*allegro[^"]*">Podłącz Allegro/);
   expect(html).not.toContain('Dodaj pierwszą integrację');
 });
-it('PRZ-136.08: niepusta lista nie pokazuje stanu pustego', async () => {
+it('niepusta lista nie pokazuje stanu pustego', async () => {
   const html = await renderuj([wiersz()]);
   expect(html).not.toContain('pol-pusto');
   expect(html).toContain('pol-podsumowanie');

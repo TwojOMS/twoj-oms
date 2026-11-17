@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { zalozKonto, kontoPoLoginie } from '../../../src/core/bezpieczenstwo/konta.js';
 import { dodajRole, przypiszRole } from '../../../src/moduly/ustawienia/role.js';
 import { NAZWA_CIASTECZKA_OMS } from '../../../src/core/bezpieczenstwo/sesja.js';
-import { nowyPanel, jako, get, post, BASIC } from '../../pomoc/konta-prz068.js';
+import { nowyPanel, jako, get, post, BASIC } from '../../pomoc/panel-konta-testowe.js';
 
 const HASLO = 'obecne-haslo-123';
 function panel() {
@@ -15,7 +15,7 @@ function panel() {
 }
 const ciastko = (r) => [].concat(r.headers['set-cookie'] ?? []).filter((c) => c.startsWith(`${NAZWA_CIASTECZKA_OMS}=`)).at(-1)?.split(';')[0];
 
-describe('PRZ-069 Moje konto', () => {
+describe('Moje konto', () => {
   it('każde konto z tabeli (także bez ani jednego ptaszka) widzi swoją stronę i link w menu', async () => {
     const { app, ewa } = panel();
     const r = await get(app, '/konto', ewa);

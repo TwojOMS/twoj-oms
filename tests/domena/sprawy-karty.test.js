@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { sprawyKarty } from '../../src/domena/sprawy-karty.js';
 
-// Pasek „Do załatwienia" na karcie zamówienia (przebudowa 2026-07-31). Zbiera w JEDNO
+// Pasek „Do załatwienia” na karcie zamówienia. Zbiera w JEDNO
 // miejsce sprawy dziś rozsypane po całej karcie. Reguła jest CZYSTA — testuje się bez bazy
-// i bez HTTP; to jest ten plik. Że trasa jej używa, pilnuje tests/oms/web-karta.test.js.
+// i bez HTTP.
 
 const zamowienie = (nad = {}) => ({
   numer: '1276', kwota_brutto: '212.90', anulowane: 0,
@@ -112,12 +112,12 @@ describe('faktura czekająca na KSeF (Allegro)', () => {
     expect(s.kotwica).toBe('#faktura');
   });
 
-  // ⚠️⚠️ SPRAWA MA WSKAZYWAC WYJSCIE, KTORE ISTNIEJE DZISIAJ (recenzja Partii 2, K4).
+  // ⚠️⚠️ SPRAWA MA WSKAZYWAC WYJSCIE, KTORE ISTNIEJE DZISIAJ.
   //
-  // Do 06.08.2026 stalo tu ODWROTNE oczekiwanie — „nie obiecuje przycisku, ktorego w panelu
+  // Dawniej stalo tu ODWROTNE oczekiwanie — „nie obiecuje przycisku, ktorego w panelu
   // jeszcze nie ma" — i bylo SLUSZNE: wzmianka o wysylce bez numeru KSeF wysylala czlowieka
   // szukac przycisku, ktorego nie bylo, wiec niezmiennik 4.9 byl spelniony wylacznie napisem.
-  // Zadanie 11 ten przycisk DOLOZYLO (trasa POST /zamowienia/:id/faktura-allegro-bez-ksef
+  // Ten przycisk DOLOZONO (trasa POST /zamowienia/:id/faktura-allegro-bez-ksef
   // i furtka na karcie), wiec asercja musiala ustapic: teraz milczenie o drugim wyjsciu jest
   // tym samym bledem, tylko odwroconym — sprawa pokazywalaby jedno wyjscie z dwoch istniejacych.
   //
@@ -137,7 +137,7 @@ describe('faktura czekająca na KSeF (Allegro)', () => {
     const s = sprawyKarty(allegro({ ksef_odczyt: 'nieznana' }), TERAZ + 25 * GODZINA)
       .find((w) => w.klucz === 'ksef');
     expect(s.tekst).not.toMatch(/bez numeru KSeF/i);
-    // ⚠️ WSKAZANIE PRZENIESIONE NA ZAKLADKE FAKTURY (01.09.2026) — patrz test nizej.
+    // ⚠️ WSKAZANIE PRZENIESIONE NA ZAKLADKE FAKTURY — patrz test nizej.
     expect(s.tekst).toMatch(/zakładce Faktury/);
   });
 
@@ -145,7 +145,7 @@ describe('faktura czekająca na KSeF (Allegro)', () => {
   // Ta wiedza ma zmieniac tresc sprawy, zamiast ladowac wylacznie w logu: wyjsciem jest
   // akcja, ktora ISTNIEJE.
   //
-  // ⚠️⚠️ OD 01.09.2026 TA AKCJA STOI NA ZAKLADCE FAKTURY, nie na karcie (prosba właściciela:
+  // ⚠️⚠️ TA AKCJA STOI NA ZAKLADCE FAKTURY, nie na karcie (powód:
   // „na co dzien jest to nieuzywane"). Sprawa odsylajaca do przycisku, ktorego na karcie
   // juz nie ma, byla by gorsza niz brak sprawy — dlatego tekst jest tu ASERCJA, a nie
   // szczegolem: to on jest jedyna instrukcja, jaka operator dostaje.
@@ -176,7 +176,7 @@ describe('faktura czekająca na KSeF (Allegro)', () => {
     expect(klucze(allegro({ ksef_numer: 'KS-1' }), TERAZ + 25 * GODZINA)).not.toContain('ksef');
   });
 
-  // Wyslanie bez numeru KSeF jest SWIADOMA decyzja czlowieka (Zadanie 11) — po niej kupujacy
+  // Wyslanie bez numeru KSeF jest SWIADOMA decyzja czlowieka — po niej kupujacy
   // fakture MA, wiec pasek nie ma o co wolac.
   it('faktura już wysłana do Allegro nie jest sprawą', () => {
     expect(klucze(allegro({ allegro_wyslana_at: '2026-08-05T12:00:00Z' }), TERAZ + 25 * GODZINA))
@@ -192,7 +192,7 @@ describe('faktura czekająca na KSeF (Allegro)', () => {
     expect(klucze(z, TERAZ + 30 * 24 * GODZINA)).not.toContain('ksef');
   });
 
-  // ⚠️⚠️ ZAKRES POSZERZONY 06.08.2026 (Zadanie 11): dokument, ktorego wysylke do KSeF ZLECIL
+  // ⚠️⚠️ ZAKRES POSZERZONY : dokument, ktorego wysylke do KSeF ZLECIL
   // PANEL, czeka na numer tak samo — takze ze sklepu. `ksef_zlecona_at` to kolumna `zlecona_at`
   // z `wysylki_ksef`, dokladana przy odczycie zamowienia.
   describe('faktura SKLEPOWA, ktorej wysylke do KSeF zlecil panel', () => {
@@ -227,8 +227,8 @@ describe('faktura czekająca na KSeF (Allegro)', () => {
       expect(s.tekst).not.toMatch(/2026-07-01T08:00:00Z/);
     });
 
-    // ⚠️⚠️ DOBA LICZY SIE OD WYSYLKI, A NIE OD WYSTAWIENIA DOKUMENTU (recenzja calosci,
-    // Finding 2) — i sam tekst sprawy tego NIE PILNOWAL: test wyzej przechodzil takze wtedy,
+    // ⚠️⚠️ DOBA LICZY SIE OD WYSYLKI, A NIE OD WYSTAWIENIA DOKUMENTU
+    // Sam tekst sprawy tego NIE PILNOWAL: test wyzej przechodzil takze wtedy,
     // gdy prog mierzyl czas od `utworzona_at`, bo sprawdzal wylacznie brzmienie zdania.
     //
     // AWARIA, KTORA TO ZAMYKA: zakladka „FAKTURY" jest MIESIECZNA, wiec wysylanie dokumentow
@@ -263,7 +263,7 @@ describe('faktura czekająca na KSeF (Allegro)', () => {
     });
   });
 
-  // PRZ-126 (F03): faktura do zamowienia z Allegro, przy ktorym kupujacy NIE prosil o fakture,
+  // Faktura do zamowienia z Allegro, przy ktorym kupujacy NIE prosil o fakture,
   // ale panel zlecil wysylke do KSeF. Przycisku „bez numeru KSeF" tu nie ma (Allegro odmawia).
   it('Allegro bez żądania faktury, zlecone panelem: treść „Panel zlecił”, bez wysyłki do Allegro', () => {
     const z = allegro({ ksef_zlecona_at: '2026-08-05T10:05:00Z' }, { sklep: 'allegro_polcien', chce_fakture: 0 });
@@ -290,7 +290,7 @@ describe('faktura czekająca na KSeF (Allegro)', () => {
   // Sam uplyw doby od wystawienia nie jest zadnym dowodem — przy zdechlym czuwaczu (albo
   // niedostepnym inFakcie) KAZDA allegrowa faktura starsza niz doba zapalalaby BLOKADE
   // „wyslij dokument do KSeF" wlascicielowi, ktory juz go wyslal. To ta sama klasa usterki,
-  // ktora Partia 1 zamknela commitem 1cf1554: uzasadnienie kolumny nieprawda.
+  // ktora juz raz zamknieto: uzasadnienie kolumny nieprawda.
   it('czuwacz NIGDY nie pytał → nie ma sprawy, choćby minęła doba', () => {
     expect(klucze(allegro({ ksef_odczyt: null, ksef_sprawdzona_at: null }), TERAZ + 25 * GODZINA))
       .not.toContain('ksef');
@@ -300,7 +300,7 @@ describe('faktura czekająca na KSeF (Allegro)', () => {
     expect(klucze(allegro({ ksef_odczyt: 'blad' }), TERAZ + 25 * GODZINA)).not.toContain('ksef');
   });
 
-  // ⚠️ W4. inFakt potrafi oddac sukces BEZ pola `number` — wiersz jest wtedy „wystawiony",
+  // ⚠️ InFakt potrafi oddac sukces BEZ pola `number` — wiersz jest wtedy „wystawiony",
   // ale czuwacz o niego NIGDY nie zapyta (wymaga numeru i UUID-a). Pasek pokazywal przy nim
   // blokade z PUSTYM numerem: „Faktura  czeka na KSeF od …".
   it('faktura BEZ numeru dokumentu nie jest sprawą — czuwacz o nią nie zapyta', () => {
@@ -311,7 +311,7 @@ describe('faktura czekająca na KSeF (Allegro)', () => {
     expect(klucze(allegro({ infakt_uuid: null }), TERAZ + 25 * GODZINA)).not.toContain('ksef');
   });
 
-  // ⚠️ W5. Anulowane zamowienie dostawalo po dobie DWIE blokady: poprawna („anulowane po
+  // ⚠️ Anulowane zamowienie dostawalo po dobie DWIE blokady: poprawna („anulowane po
   // wystawieniu faktury") i falszywa („kupujacy jej jeszcze nie ma", choc nic nie kupil).
   it('zamówienie anulowane ma TYLKO swoją blokadę, bez fałszywej o KSeF', () => {
     const k = klucze(allegro({}, { anulowane: 1 }), TERAZ + 25 * GODZINA);
@@ -367,7 +367,7 @@ describe('anulowanie wymagające uwagi', () => {
     expect(kluczeSpraw(zamowienie({ anulowane: 1 }))).not.toContain('anulowane');
   });
 
-  // ⚠️ Treści tej sprawy NIC nie pilnowało do 13.09.2026 — dotychczasowy test sprawdzał
+  // ⚠️ Treści tej sprawy NIC nie pilnowało — dotychczasowy test sprawdzał
   // wyłącznie wagę i to, że tekst zawiera słowo „anulowane". Stąd dwie asercje wprost:
   // jedna na treść, druga na kotwicę, bo to one prowadzą operatora do właściwej sekcji.
   it('anulowane po nadaniu paczki mówi o PACZCE i kotwiczy w przesyłce', () => {
@@ -387,7 +387,7 @@ describe('anulowanie wymagające uwagi', () => {
     expect(s.kotwica).toBe('#faktura');
   });
 
-  // ⚠️⚠️ WADA WAŻNA Z RECENZJI 13.09.2026: `anulowaneWymagaUwagi` liczy już tylko paczki
+  // ⚠️⚠️ WADA WAŻNA: `anulowaneWymagaUwagi` liczy już tylko paczki
   // NIEUKRYTE (`przesylkaUkryta`), a ten wybór treści został na gołej liczbie wierszy
   // przesyłek. Zamówienie anulowane z JEDYNĄ paczką UKRYTĄ i wiszącą fakturą słusznie
   // zostaje sprawą — ale z powodu FAKTURY. Karta pisała mimo to „anulowane po nadaniu

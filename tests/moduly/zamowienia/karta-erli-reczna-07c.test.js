@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { nowyPanel, jako, get } from '../../pomoc/konta-prz068.js';
+import { nowyPanel, jako, get } from '../../pomoc/panel-konta-testowe.js';
 import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { mapujZamowienieErli } from '../../../src/domena/erli-mapowanie.js';
@@ -7,7 +7,7 @@ import { createFabrykaErli } from '../../../src/moduly/kanaly/services/kanal-erl
 import { zapiszKonfiguracjeIntegracji } from '../../../src/oms/db/konfiguracja-integracji.js';
 import { createAtrapaErli } from '../../../deploy/proba/atrapy/erli.mjs';
 
-// Odtworzenie recenzji tmp/07br/repro-07br.test.js, rozszerzone o pobranie i brak nieaktualnej drogi.
+// Odtworzenie zgłoszonego przypadku, rozszerzone o pobranie i brak nieaktualnej drogi.
 it('karta ERLI zachowuje ręczne DPD i pobranie, a usuwa nieaktualną linię nadania', async () => {
   const p = nowyPanel();
   try {

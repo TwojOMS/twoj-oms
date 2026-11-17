@@ -1,5 +1,5 @@
 import { wzorzecNazw } from '../pomoc/skroty-nazw-firmy.js';
-// PRZ-072 — generator danych demo (scripts/demo-dane.mjs): każda zakładka menu ma dane, dane są
+// Generator danych demo (scripts/demo-dane.mjs): każda zakładka menu ma dane, dane są
 // zmyślone, generator jest deterministyczny i nie nadpisuje istniejącej bazy.
 //
 // ⚠️ Zakładki bierzemy z `aplikacja.menu`, nie z listy w teście: nowa zakładka bez znacznika
@@ -12,7 +12,7 @@ import { createRequire } from 'node:module';
 import { uruchomPiaskownice } from '../../deploy/proba/atrapy/index.mjs';
 import { zalozKonto } from '../../src/core/bezpieczenstwo/konta.js';
 import { utworzBazeDemo, wygenerujDaneDemo, ENV_DEMO, nipFikcyjny } from '../../scripts/demo-dane.mjs';
-import { FIRMY_B2B } from '../../scripts/demo-dane-firma.mjs';
+import { FIRMY_B2B, KOSZTY } from '../../scripts/demo-dane-firma.mjs';
 import { etapPrzesylki, kategoriaPrzesylki, bezRuchu } from '../../src/domena/etap-przesylki.js';
 import { przewoznikWiersza } from '../../src/domena/przewoznik-przesylki.js';
 import { pobierzZamowienie } from '../../src/oms/db/zamowienia.js';
@@ -31,16 +31,16 @@ function envDla(k) {
 afterAll(() => { for (const p of katalogi.splice(0)) fs.rmSync(p, { recursive: true, force: true }); });
 
 // Adres zakładki → co MUSI na niej stać, gdy demo ma dane. Demo stoi jak w piaskownicy: z atrapami inFaktu, Woo
-// i Allegro (deploy/proba/atrapy, PRZ-076), więc Faktury i Magazyn — czytające na żywo z inFaktu i sklepu — też mają dane.
+// i Allegro (deploy/proba/atrapy), więc Faktury i Magazyn — czytające na żywo z inFaktu i sklepu — też mają dane.
 const ZNACZNIKI = {
   '/': ['Sklep Półcień', 'Allegro Półcień Outlet'],
   '/przesylki': ['0000'],
-  '/faktury': ['FV '], // 1. dnia miesiąca stoi tu 1 faktura, w połowie ~13 (pomiar 14.10) — nic pewniejszego od „FV ”
+  '/faktury': ['FV '], // Na początku miesiąca stoi tu pojedyncza faktura, później kilkanaście — nic pewniejszego od „FV ”
   '/okresy': ['Kawiarnie Dzbanuszek'],
   '/klienci': ['Hotel Zaciszny Brzeg', 'Wohnlicht Nordstrand GmbH (demo)'],
   '/wiadomosci': ['demo-watek-1', 'oprawka jest E27'],
   '/magazyn': ['Lampa stołowa Gliwka', 'LMP-STO-001', 'Lampa wisząca Kopuła'],
-  '/analityka': ['Nowe zamówienia', 'W realizacji'], // PRZ-167
+  '/analityka': ['Nowe zamówienia', 'W realizacji'],
   '/raporty': ['Sprzedaż brutto', 'Lampa'],
   '/statystyki': ['Paczkomat'],
   '/kampania': ['Google · GA4', 'Meta · insights'],
@@ -76,7 +76,7 @@ describe('generator danych demo na świeżej bazie', () => {
     return { status: r.status, html: await r.text() };
   };
 
-  // PRZ-163 (właściciel 14.11): zamówienie z 15 różnymi produktami — lista pokazuje 5, resztę zwija.
+  // Zamówienie z 15 różnymi produktami — lista pokazuje 5, resztę zwija.
   it('jest zamówienie z 15 różnymi produktami, a lista zamówień zwija je pod „Pokaż jeszcze 10”', async () => {
     const db = new DatabaseSync(env.OMS_DB_PATH, { readOnly: true });
     let id;
@@ -91,7 +91,7 @@ describe('generator danych demo na świeżej bazie', () => {
     expect(wiersz[0]).toContain('Pokaż jeszcze 10');
   });
 
-  // PRZ-164 (właściciel 14.11): w „Nowych” jedno zamówienie z 7 i jedno z 12 pozycjami — oba zwinięte (widać 5).
+  // W „Nowych” jedno zamówienie z 7 i jedno z 12 pozycjami — oba zwinięte (widać 5).
   it('lista „Nowe” ma zamówienie z 7 i z 12 różnymi produktami, zwinięte pod „Pokaż jeszcze 2” i „Pokaż jeszcze 7”', async () => {
     const { status, html } = await strona('/?status=nowe');
     expect(status).toBe(200);
@@ -99,10 +99,10 @@ describe('generator danych demo na świeżej bazie', () => {
     expect(pokaz).toEqual([2, 7]);
   });
 
-  // PRZ-087: pętla pomija ostatnie 3 dni (−19), uzupełnienia PRZ-087 dokładają 40 (12 nowych, 24 w realizacji, 4 wysłane; PRZ-152.G5: bez „indywidualnych”).
-  // PRZ-160.demo: +19 dużych koszyków i paczek, +10–13 zamówień firm zbiorczych (3 z miesiąca sprzed dwóch wypadają
-  // z okna 58 dni pod koniec miesiąca) — 206–209 zależnie od dnia. PRZ-163: +1 koszyk z 15 produktami — 207–210. PRZ-164: +2 duże „nowe” — 209–212.
-  it('ok. 212 zamówień z 60 dni (131 z pliku firmy + 6 PRZ-082 + 40 PRZ-087 + 29–32 PRZ-160 + 1 PRZ-163 + 2 PRZ-164), wszystkie statusy, faktury z WDT, zwroty, przesyłki, koszty', () => {
+  // Pętla pomija ostatnie 3 dni (−19), uzupełnienia dokładają 40 (12 nowych, 24 w realizacji, 4 wysłane; bez „indywidualnych”).
+  // +19 dużych koszyków i paczek, +10–13 zamówień firm zbiorczych (3 z miesiąca sprzed dwóch wypadają
+  // z okna 58 dni pod koniec miesiąca) — 206–209 zależnie od dnia; +1 koszyk z 15 produktami i +2 duże „nowe” daje 209–212.
+  it('ok. 212 zamówień z 60 dni (wszystkie scenariusze demo), wszystkie statusy, faktury z WDT, zwroty, przesyłki, koszty', () => {
     expect(wynik.zamowienia).toBeGreaterThanOrEqual(209);
     expect(wynik.zamowienia).toBeLessThanOrEqual(212);
     expect(Object.keys(wynik.statusy).sort()).toEqual(['anulowane', 'nowe', 'w_realizacji', 'wyslane', 'zwrot']);
@@ -126,8 +126,8 @@ describe('generator danych demo na świeżej bazie', () => {
     } finally { db.close(); }
   });
 
-  // PRZ-152.G5 (właściciel 04.11): demo i piaskownica bez statusu „Indywidualne”; praca „w toku” zostaje (nowe + w realizacji).
-  it('PRZ-152.G5: bez zamówień indywidualnych, kanał indywidualny wyłączony, „w toku” nie spada (było 34)', () => {
+  // Demo i piaskownica bez statusu „Indywidualne”; praca „w toku” zostaje (nowe + w realizacji).
+  it('bez zamówień indywidualnych, kanał indywidualny wyłączony, „w toku” nie spada (było 34)', () => {
     expect(ENV_DEMO.OMS_KANAL_INDYWIDUALNY).toBeUndefined();
     expect(wynik.statusy.indywidualne).toBeUndefined();
     expect((wynik.statusy.nowe ?? 0) + (wynik.statusy.w_realizacji ?? 0)).toBeGreaterThanOrEqual(34);
@@ -137,8 +137,8 @@ describe('generator danych demo na świeżej bazie', () => {
     } finally { db.close(); }
   });
 
-  // PRZ-152.G2: pozycja bez identyfikatora linii sklepu nie da się usunąć „×” na karcie — demo musi je mieć.
-  it('PRZ-152.G2: każda pozycja zamówienia ze sklepu ma identyfikator linii, różny w obrębie zamówienia', () => {
+  // Pozycja bez identyfikatora linii sklepu nie da się usunąć „×” na karcie — demo musi je mieć.
+  it('każda pozycja zamówienia ze sklepu ma identyfikator linii, różny w obrębie zamówienia', () => {
     const db = new DatabaseSync(env.OMS_DB_PATH, { readOnly: true });
     try {
       const sklepowe = "FROM pozycje p WHERE p.zrodlo = 'sklep'";
@@ -226,6 +226,14 @@ describe('generator danych demo — determinizm i odmowy', () => {
       const w = db.prepare("SELECT COUNT(*) n, MAX(data_wystawienia) d FROM koszty WHERE data_wystawienia LIKE '2026-11-%'").get();
       expect(w.n).toBe(8);
       expect(w.d).toBe('2026-11-01');
+      // Pierwszego dnia minęła 1/30 miesiąca — kwota każdego kosztu to ta część przedziału z pliku firmy, nie pełny miesiąc.
+      const wiersze = db.prepare("SELECT numer_dokumentu, netto, kategoria_dokumentu k FROM koszty WHERE numer_dokumentu LIKE 'DEMO/2026-11/%' ORDER BY numer_dokumentu").all();
+      expect(wiersze.map((x) => x.k)).toEqual(KOSZTY.map((x) => x.kategoria));
+      wiersze.forEach((x, i) => {
+        const gr = Math.round(Number(x.netto) * 100);
+        expect(gr).toBeGreaterThanOrEqual(Math.round(KOSZTY[i].netto_od_gr / 30));
+        expect(gr).toBeLessThanOrEqual(Math.round(KOSZTY[i].netto_do_gr / 30));
+      });
     } finally { db.close(); }
   });
 
@@ -255,9 +263,9 @@ describe('generator danych demo — determinizm i odmowy', () => {
   });
 });
 
-// PRZ-160.demo (właściciel 13.11) — nowe dane demo i piaskownicy: duże koszyki, więcej faktur, „nowe” tylko z dziś,
+// Nowe dane demo i piaskownicy: duże koszyki, więcej faktur, „nowe” tylko z dziś,
 // okresy rozliczeniowe w różnych stanach, korekty, przesyłki utworzone i w drodze u różnych przewoźników i w kanałach.
-describe('PRZ-160.demo: dane demo do pokazania', () => {
+describe('dane demo do pokazania', () => {
   const dzienW = (t) => new Date(t).toLocaleDateString('sv-SE', { timeZone: 'Europe/Warsaw' });
   /** Godzina zegara w Polsce danego dnia → ISO UTC (strefa z Intl, także w dniu zmiany czasu). */
   const chwilaWarszawy = (dzis, hhmm) => {
@@ -283,18 +291,18 @@ describe('PRZ-160.demo: dane demo do pokazania', () => {
   const nowe = (db) => tylko(db, `SELECT id, sklep, utworzone_at FROM zamowienia z WHERE anulowane = 0 AND indywidualne = 0
     AND w_realizacji_at IS NULL AND wyslane_at IS NULL AND zwrot_at IS NULL AND NOT EXISTS (SELECT 1 FROM zwroty w WHERE w.zamowienie_id = z.id)`);
 
-  it('1. co najmniej 8 zamówień z 4–7 różnymi produktami, w sklepie, na obu kontach Allegro i w B2B; część z ilością > 1', async () => {
+  it('co najmniej 8 zamówień z 4–7 różnymi produktami, w sklepie, na obu kontach Allegro i w B2B; część z ilością > 1', async () => {
     const { db } = await baza('2026-11-13');
     const duze = tylko(db, `SELECT z.id, z.sklep, COUNT(DISTINCT p.sku) rodzajow, MAX(p.ilosc) maks FROM zamowienia z JOIN pozycje p ON p.zamowienie_id = z.id
       WHERE p.sku IS NOT NULL GROUP BY z.id HAVING COUNT(DISTINCT p.sku) >= 4`);
     expect(duze.length).toBeGreaterThanOrEqual(8);
-    // PRZ-163 (właściciel 14.11): wyjątki: koszyk z 15 produktami (PRZ-163) i „nowe” z 12 (PRZ-164) do zwijania na liście zamówień.
+    // Wyjątki: koszyk z 15 produktami i „nowe” z 12 do zwijania na liście zamówień.
     expect(duze.filter((z) => z.rodzajow > 7).map((z) => z.rodzajow).sort((a, b) => a - b)).toEqual([12, 15]);
     expect(new Set(duze.map((z) => z.sklep))).toEqual(new Set(['polcien', 'allegro', 'allegro-outlet', 'reczne']));
     expect(duze.filter((z) => z.maks > 1).length).toBeGreaterThanOrEqual(4);
   });
 
-  it('2. faktura przy co najmniej 30% zamówień (było 34/177 = 19%), także osoby prywatne bez NIP-u i Allegro', async () => {
+  it('faktura przy co najmniej 30% zamówień (było 34/177 = 19%), także osoby prywatne bez NIP-u i Allegro', async () => {
     const { db } = await baza('2026-11-13');
     const razem = tylko(db, 'SELECT COUNT(*) n FROM zamowienia')[0].n;
     const zFaktura = tylko(db, `SELECT COUNT(*) n FROM zamowienia z WHERE EXISTS (SELECT 1 FROM faktury f WHERE f.zamowienie_id = z.id)
@@ -309,7 +317,7 @@ describe('PRZ-160.demo: dane demo do pokazania', () => {
   });
 
   it.each([['2026-11-13', undefined, '06:30'], ['2026-11-13', '00:20', '00:20'], ['2026-11-01', '00:20', '00:20'], ['2026-03-29', '09:00', '09:00']])(
-    '3. status „nowe” tylko z dziś i nie z przyszłości (%s, teraz %s)', async (dzis, teraz, godzina) => {
+    'status „nowe” tylko z dziś i nie z przyszłości (%s, teraz %s)', async (dzis, teraz, godzina) => {
       const { db } = await baza(dzis, teraz);
       const terazIso = chwilaWarszawy(dzis, godzina);
       const lista = nowe(db);
@@ -327,7 +335,7 @@ describe('PRZ-160.demo: dane demo do pokazania', () => {
       expect(najpozniej <= terazIso, `${najpozniej} > ${terazIso}`).toBe(true);
     });
 
-  it.each(['2026-11-13', '2026-11-02', '2026-11-30', '2026-03-01'])('4. okresy rozliczeniowe (%s): ≥ 4 firmy, ≥ 8 okresów, wszystkie stany, różne ustalenia', async (dzis) => {
+  it.each(['2026-11-13', '2026-11-02', '2026-11-30', '2026-03-01'])('okresy rozliczeniowe (%s): ≥ 4 firmy, ≥ 8 okresów, wszystkie stany, różne ustalenia', async (dzis) => {
     const { db } = await baza(dzis);
     const firmy = tylko(db, 'SELECT klucz, termin_platnosci, prog_darmowej_dostawy_gr, oplata_obslugi_gr, rabat_procent FROM klienci WHERE rozliczenie_zbiorcze = 1');
     expect(firmy.length).toBeGreaterThanOrEqual(4);
@@ -352,11 +360,11 @@ describe('PRZ-160.demo: dane demo do pokazania', () => {
     const nieoplacone = zafakturowane.filter((o) => !oplacony(o) && dok(o).status !== 'paid');
     expect(nieoplacone.filter((o) => dok(o).payment_date >= dzis).length, 'nieopłacony w terminie').toBeGreaterThanOrEqual(1);
     expect(nieoplacone.filter((o) => dok(o).payment_date < dzis).length, 'nieopłacony po terminie').toBeGreaterThanOrEqual(1);
-    // Firma z własną etykietą płaci za obsługę zamiast dostawy (P2.03).
+    // Firma z własną etykietą płaci za obsługę zamiast dostawy.
     expect(tylko(db, "SELECT COUNT(*) n FROM pozycje WHERE nazwa LIKE 'Obsługa%' AND zrodlo = 'reczna'")[0].n).toBeGreaterThanOrEqual(1);
   });
 
-  it('5. co najmniej 3 korekty na liście faktur (atrapa inFaktu), jedna wystawiona usługą korekty do zwrotu części koszyka', async () => {
+  it('co najmniej 3 korekty na liście faktur (atrapa inFaktu), jedna wystawiona usługą korekty do zwrotu części koszyka', async () => {
     const { db } = await baza('2026-11-13');
     const zwroty = tylko(db, 'SELECT * FROM zwroty WHERE korekta_numer IS NOT NULL');
     expect(zwroty.length).toBeGreaterThanOrEqual(3);
@@ -368,7 +376,7 @@ describe('PRZ-160.demo: dane demo do pokazania', () => {
     expect(czesciowa).toBeTruthy();
   });
 
-  it('6. przesyłki: utworzone i w drodze u różnych przewoźników i w różnych kanałach, jedna stoi bez ruchu', async () => {
+  it('przesyłki: utworzone i w drodze u różnych przewoźników i w różnych kanałach, jedna stoi bez ruchu', async () => {
     const { db } = await baza('2026-11-13');
     const kubly = { utworzone: [], w_drodze: [] };
     const terazIso = new Date(Date.parse('2026-11-13T05:30:00Z')).toISOString();

@@ -3,7 +3,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import basicAuth from '@fastify/basic-auth';
 import type { DatabaseSync } from 'node:sqlite';
 import { otworzBaze, wykonajMigracje } from '../../src/core/baza.ts';
-import { rdzen as modulRdzen, podpiszWersje as podpisz, straznikZKontami as zbudujStraznika } from '../pomoc/bezpieczenstwo-prz-007.ts';
+import { rdzen as modulRdzen, podpiszWersje as podpisz, straznikZKontami as zbudujStraznika } from '../pomoc/bezpieczenstwo-typowane.ts';
 import * as konta from '../../src/core/bezpieczenstwo/konta.js';
 import { zgodneHaslo } from '../../src/domena/hasla.js';
 import { wczytajSekret, odczytajSekret } from '../../src/core/bezpieczenstwo/sekret-sesji.js';

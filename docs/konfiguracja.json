@@ -4411,7 +4411,7 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "tests/pomoc/bootstrap-synchroniczny.ts:26",
-        "tests/pomoc/konfiguracja-parytetu.ts:10"
+        "tests/pomoc/konfiguracja-testowej-instalacji.ts:10"
       ],
       "aktywacja": "tooling",
       "wlaczoneWMainNaPinie": false,
@@ -4478,7 +4478,7 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "tests/pomoc/bootstrap-synchroniczny.ts:26",
-        "tests/pomoc/konfiguracja-parytetu.ts:10"
+        "tests/pomoc/konfiguracja-testowej-instalacji.ts:10"
       ],
       "aktywacja": "tooling",
       "wlaczoneWMainNaPinie": false,
@@ -7790,31 +7790,10 @@
     },
     {
       "path": "src/moduly/kanaly/modul.ts",
-      "line": 25,
-      "expression": "env",
-      "callee": "efektywnyTryb",
-      "call": "efektywnyTryb(env)"
-    },
-    {
-      "path": "src/moduly/kanaly/modul.ts",
-      "line": 25,
-      "expression": "env",
-      "callee": "profilAllegroProby",
-      "call": "profilAllegroProby(env)"
-    },
-    {
-      "path": "src/moduly/kanaly/modul.ts",
       "line": 26,
       "expression": "env",
       "callee": "efektywnyTryb",
       "call": "efektywnyTryb(env)"
-    },
-    {
-      "path": "src/moduly/kanaly/modul.ts",
-      "line": 27,
-      "expression": "env",
-      "callee": "konfiguracjaKanalow",
-      "call": "konfiguracjaKanalow(definicje,env,niekompletneJakoAlarm)"
     },
     {
       "path": "src/moduly/kanaly/klasyfikacja.ts",
@@ -8326,6 +8305,27 @@
       "expression": "env",
       "callee": "sejfZEnv",
       "call": "sejfZEnv(env)"
+    },
+    {
+      "path": "src/moduly/kanaly/modul.ts",
+      "line": 26,
+      "expression": "env",
+      "callee": "profilAllegroProby",
+      "call": "profilAllegroProby(env)"
+    },
+    {
+      "path": "src/moduly/kanaly/modul.ts",
+      "line": 27,
+      "expression": "env",
+      "callee": "efektywnyTryb",
+      "call": "efektywnyTryb(env)"
+    },
+    {
+      "path": "src/moduly/kanaly/modul.ts",
+      "line": 28,
+      "expression": "env",
+      "callee": "konfiguracjaKanalow",
+      "call": "konfiguracjaKanalow(definicje,env,niekompletneJakoAlarm)"
     }
   ],
   "prefiksy": {
@@ -8695,12 +8695,12 @@
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "c7ca22f92811b96c1282028b5770890a19fad57ccae6dde3a1bb80cf72a17dc4",
+      "sha256": "4ac18360c5f321b5b0f1a9588cebbfdc9f7349927648c8d41e3613bf0ba8904d",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/wysylka/modul.ts",
-      "sha256": "352d6cc874bfdb3e0e12d53b5934cbb676165094e58a1a789b41abb4f29a7b40",
+      "sha256": "6a5c02529c1a13fc5264a995c9dfed307e10c551e49da51ff661a97b7780f8b0",
       "normalizacja": "LF"
     },
     {
@@ -8787,12 +8787,12 @@
     },
     {
       "path": "src/moduly/kanaly/modul.ts",
-      "sha256": "fa3c0cdae9a5fc05de6d9156d475f6825b69e42a94f61dcc1bb8475a998fc08a",
+      "sha256": "997b9a3d50be6b92ba54502e93f87ffbebf3ee015faa087b698197c48559a662",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "c7ca22f92811b96c1282028b5770890a19fad57ccae6dde3a1bb80cf72a17dc4",
+      "sha256": "4ac18360c5f321b5b0f1a9588cebbfdc9f7349927648c8d41e3613bf0ba8904d",
       "normalizacja": "LF"
     },
     {
@@ -8827,12 +8827,12 @@
     },
     {
       "path": "src/domena/lacznosc.js",
-      "sha256": "5ee42bd20b5a64788a2fe126f938ae751107e453455495291a1140a871fc29f0",
+      "sha256": "ad3c14bfc0cabb24d50a0aaf079477ccd001ad12121ac838138aec7900a87a33",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/ustawienia/cele-diagnostyki.ts",
-      "sha256": "21e84ccffbd1c22a85d17244e54bef2786605e49e5c512dfffb8d32b6b1edf81",
+      "sha256": "c5ce48bc8dd3eaea6d679c7a58297edb02e0c56487e2165142ee6fe655d620c0",
       "normalizacja": "LF"
     },
     {
@@ -9128,7 +9128,7 @@
       },
       {
         "path": "src/moduly/wysylka/modul.ts",
-        "sha256": "352d6cc874bfdb3e0e12d53b5934cbb676165094e58a1a789b41abb4f29a7b40",
+        "sha256": "6a5c02529c1a13fc5264a995c9dfed307e10c551e49da51ff661a97b7780f8b0",
         "odczyty": [
           {
             "expression": "env[klucz]",
@@ -9225,7 +9225,7 @@
       },
       {
         "path": "src/moduly/faktury/modul.ts",
-        "sha256": "c7ca22f92811b96c1282028b5770890a19fad57ccae6dde3a1bb80cf72a17dc4",
+        "sha256": "4ac18360c5f321b5b0f1a9588cebbfdc9f7349927648c8d41e3613bf0ba8904d",
         "expression": "wczytajSprzedawce(env)"
       },
       {
@@ -9270,7 +9270,7 @@
       },
       {
         "path": "src/moduly/wysylka/modul.ts",
-        "sha256": "352d6cc874bfdb3e0e12d53b5934cbb676165094e58a1a789b41abb4f29a7b40",
+        "sha256": "6a5c02529c1a13fc5264a995c9dfed307e10c551e49da51ff661a97b7780f8b0",
         "expression": "wczytajKurierow(env)"
       },
       {

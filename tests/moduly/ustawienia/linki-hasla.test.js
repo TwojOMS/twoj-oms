@@ -20,7 +20,7 @@ function baza() {
   return db;
 }
 
-describe('PRZ-069 linki do hasła', () => {
+describe('linki do hasła', () => {
   it('w bazie wyłącznie SHA-256 tokenu, token 43 znaki base64url, ważność 48 h', () => {
     const db = baza();
     const id = zalozKontoZaproszone(db, { login: 'nowa', imie: 'Nowa', rola: 'produkcja', teraz: o(0) });

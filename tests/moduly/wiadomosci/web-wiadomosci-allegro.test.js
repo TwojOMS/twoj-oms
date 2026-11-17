@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszWatek, zapiszWiadomosci, dowody } from '../../../src/oms/db/allegro-watki.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
 // ZAKLADKA /wiadomosci — lista watkow Centrum wiadomosci Allegro z obu kont.
 //
 // ⚠️ EKRAN CZYTA WYLACZNIE LUSTRO i nigdy nie dzwoni do Allegro (ta sama zasada, co przy
 // /kampania). Jedyne wyjscie na zewnatrz to POST odpowiedzi — i tylko za potwierdzeniem.
 //
-// Wzorzec z tests/oms/web-przesylki.test.js: `buildOmsServer` wprost, KAZDE zadanie
+// Wzorzec z tests/moduly/wysylka/web-przesylki.test.js: `buildOmsServer` wprost, KAZDE zadanie
 // z naglowkiem Basic Auth.
 // ⚠️ `origin` JEST OBOWIAZKOWY przy POST — OMS ma ochrone CSRF sprawdzajaca zgodnosc `Origin`
 // z `Host` i odrzuca 403 KAZDE zadanie zapisujace bez tego naglowka. Bez niego test odpowiedzi
@@ -67,9 +67,8 @@ describe('zakładka /wiadomosci', () => {
     expect(r.body).toContain('Robimy na wymiar.');
   });
 
-  // ⚠️ Allegro oddaje `text` z encjami HTML (`&Oacute;`, `&oacute;`, `&quot;`) — pomiar na
-  // kopii produkcji 14.10.2026. Bez rozwiniecia szablon ucieka `&` drugi raz i na ekranie
-  // stoi dosłownie „&amp;Oacute;" zamiast „Ó" (zgloszenie wlasciciela PRZ-074).
+  // ⚠️ Allegro oddaje `text` z encjami HTML (`&Oacute;`, `&oacute;`, `&quot;`). Bez rozwiniecia szablon ucieka `&` drugi raz i na ekranie
+  // stoi dosłownie „&amp;Oacute;" zamiast „Ó".
   it('„Ó/ó" z encji Allegro widać jako litery na liście i w karcie wątku', async () => {
     zapiszWatek(db, watek({ ostatniaTresc: 'DZI&Oacute;BEK kr&oacute;tki' }));
     zapiszWiadomosci(db, 'allegro_swietlik', 't1', [
@@ -146,7 +145,7 @@ describe('zakładka /wiadomosci', () => {
   });
 });
 
-// ⚠️⚠️ RECZNE „ZALATWIONE" — prosba wlasciciela z 29.08.2026: „sa stare wiadomosci gdzie
+// ⚠️⚠️ RECZNE „ZALATWIONE" — „sa stare wiadomosci gdzie
 // klient napisal na koniec «Dziekuje» - temat zamkniety". Panel nie ma jak odroznic
 // podziekowania od pytania, wiec te jedna rzecz musi mu powiedziec czlowiek.
 //

@@ -82,7 +82,7 @@ describe('http — sześć wymagań planu', () => {
   });
 });
 
-describe('http — poprawki recenzji', () => {
+describe('http — sekrety w błędach, ponawianie i anulowanie', () => {
   it('nieprawidłowy nagłówek nie ujawnia wartości w wyjątku ani logu', async () => {
     const log = vi.fn<(t: string) => void>();
     const fetchImpl = vi.fn<typeof fetch>();
@@ -395,10 +395,10 @@ describe('http — doprecyzowania i granice ponowień', () => {
   });
 });
 
-// PRZ-117: „błąd sieci” w logu produkcji nie mówił, CO padło — DNS (EAI_AGAIN/ENOTFOUND) czy połączenie
+// „błąd sieci” w logu produkcji nie mówił, CO padło — DNS (EAI_AGAIN/ENOTFOUND) czy połączenie
 // (ECONNRESET/UND_ERR_SOCKET). 26.10.2026 to pytanie zostało bez odpowiedzi; kod systemowy idzie teraz do logu
 // (sam kod, nie cause — cause może nieść URL i nagłówki). Komunikat błędu dla wołającego bez zmian.
-describe('http — kod systemowy w logu błędu sieci (PRZ-117)', () => {
+describe('http — kod systemowy w logu błędu sieci', () => {
   it('log niesie kod z cause, wyjątek dalej mówi tylko „błąd sieci”', async () => {
     const log = vi.fn();
     const fetchImpl = vi.fn<typeof fetch>(async () => {

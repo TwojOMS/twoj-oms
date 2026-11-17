@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { createCzuwaczKosztow } from '../../../src/moduly/koszty/services/czuwacz-kosztow.js';
 
-// ⚠️⚠️ JEDYNY TEST PRZECHODZACY CALA DROGE: KSZTALT ODPOWIEDZI KSeF → EKRAN (recenzja, W5).
+// ⚠️⚠️ JEDYNY TEST PRZECHODZACY CALA DROGE: KSZTALT ODPOWIEDZI KSeF → EKRAN.
 //
 // Kazdy klocek tej galezi ma swoje testy — `naWiersz` (koszt-metadane), `zapiszKoszt`
 // i `kosztyMiesiaca` (db-koszty), `zlozWidok` (lista-kosztow), trasa (koszty-trasy) — ale ZLOZENIE

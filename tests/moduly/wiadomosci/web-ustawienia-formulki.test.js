@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { wczytajUstawienia } from '../../../src/oms/db/ustawienia.js';
 import { KLUCZE } from '../../../src/domena/ustawienia-formulki.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
 // ⚠️ `origin` obowiazkowy przy POST — OMS odrzuca 403 kazdy zapis bez zgodnego naglowka.
 const AUTH = {

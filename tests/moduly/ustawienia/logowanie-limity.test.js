@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { zalozKonto, ostatnieLogowania } from '../../../src/core/bezpieczenstwo/konta.js';
 import { setTimeout as czekaj } from 'node:timers/promises';
 

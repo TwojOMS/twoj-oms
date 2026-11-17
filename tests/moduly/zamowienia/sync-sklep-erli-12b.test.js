@@ -3,7 +3,7 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie, pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { createSyncSklep } from '../../../src/moduly/zamowienia/services/sync-sklep.js';
 
-// PRZ-157.12b (recenzja): klient ERLI w mapie kanałów nie może zrobić z zamówienia Allegro bez konta Allegro sprawy na karcie.
+// Klient ERLI w mapie kanałów nie może zrobić z zamówienia Allegro bez konta Allegro sprawy na karcie.
 const zam = (id) => ({ zrodlo_id: String(id), numer: 'A-' + id, klient: {}, dostawa: {}, metoda_wysylki: 'allegro_dpd',
   kwota_pobrania: null, chce_fakture: 0, nip: null, oplacone_at: null, anulowane: 0, punkt_odbioru: null,
   kwota_brutto: '10.00', status_woo: 'READY_FOR_PROCESSING', utworzone_at: '2026-11-11T10:00:00Z', pozycje: [] });

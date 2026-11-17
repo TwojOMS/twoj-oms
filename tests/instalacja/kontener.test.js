@@ -1,5 +1,5 @@
 import { wzorzecNazw } from '../pomoc/skroty-nazw-firmy.js';
-// PRZ-058: instalacja OMS w Dockerze u klienta — compose, obraz, pierwszy start i paczka wydania.
+// Instalacja OMS w Dockerze u klienta — compose, obraz, pierwszy start i paczka wydania.
 import { afterEach, describe, expect, it } from 'vitest';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -27,7 +27,7 @@ function usluga(nazwa) {
   return linie.slice(start, koniec < 0 ? undefined : koniec).join('\n');
 }
 
-describe('compose i obraz klienta PRZ-058', () => {
+describe('compose i obraz klienta', () => {
   it('jest neutralny: zero nazw firmy autora, kanałów i adresów sieci domowej', () => {
     for (const tekst of [compose(), dockerfile(), ...['diagnostyka.sh', 'aktualizuj.sh', 'kopia.mjs'].map(p => fs.readFileSync(path.join(KLIENT, p), 'utf8'))]) {
       expect(wzorzecNazw([{"wzor": "\\p{L}{8}", "skrot": "3876cd847a24f6d3a8f3542919b9f6545e500e2eea8583bb58583508cefe9a57", "bezWielkosci": true}, {"wzor": "\\p{L}{8}", "skrot": "a2ac0b2e157811634f85a0cd5e7ec6ae46b6123e724924eba975ef822566f72e", "bezWielkosci": true}, {"wzor": "\\p{L}{7}", "skrot": "bbad42404dae7eccdb5c9da096a448d035cbe65c428a1f58cad5e8617dff6d6a", "bezWielkosci": true}, {"wzor": "\\p{L}{7}", "skrot": "621ff5bc8c1a1c6efc971f9b84d23fd0cd4d1253e9591b25270647d40c165c4b", "bezWielkosci": true}], /zetaklient|synology|volume1|192\.168|panel-zamowien/i).test(tekst)).toBe(false);
@@ -44,7 +44,7 @@ describe('compose i obraz klienta PRZ-058', () => {
     expect(usluga('oms')).toContain('container_name: oms\n');
     expect(usluga('kopia')).toContain('container_name: oms-kopia');
     expect(usluga('kopia')).toContain('- /opt/oms/backups:/opt/oms/backups');
-    // PRZ-059: kopia klienta (kopia.mjs) zamiast pętli produkcji: archiwum plików z rotacją, nośnik zewnętrzny.
+    // Kopia klienta (kopia.mjs) zamiast pętli produkcji: archiwum plików z rotacją, nośnik zewnętrzny.
     expect(usluga('kopia')).toContain('OMS_KOPIE_KATALOG: /opt/oms/backups');
     expect(usluga('kopia')).toContain('OMS_DB_PATH: /opt/oms/data/oms.sqlite');
     expect(usluga('kopia')).toContain('OMS_ETYKIETY_KATALOG: /opt/oms/data/etykiety');
@@ -71,7 +71,7 @@ describe('compose i obraz klienta PRZ-058', () => {
     // Konfiguracja nie jest montowana w działającym OMS — compose czyta ją na hoście.
     expect(usluga('oms')).not.toContain('/opt/oms/config:');
     expect(usluga('oms')).toContain('path: /opt/oms/config/oms.env');
-    // PRZ-182: klucz poświadczeń trzecim env_file usługi oms (bez pliku compose nie pada — OMS odmawia startu
+    // Klucz poświadczeń trzecim env_file usługi oms (bez pliku compose nie pada — OMS odmawia startu
     // czytelnym zdaniem). Kopia klucza nie dostaje: kopiuje szyfrogramy, nie klucz.
     expect(usluga('oms')).toMatch(/- path: \/opt\/oms\/config\/klucz\.env\n {8}required: false/);
     expect(usluga('kopia')).not.toContain('klucz.env');
@@ -95,7 +95,7 @@ describe('compose i obraz klienta PRZ-058', () => {
     expect(compose()).toContain('pull_policy: never');
     expect(usluga('oms')).toMatch(/APP_REVISION: \$\{OMS_REVISION:-nieznana\}/);
     const d = dockerfile();
-    // PRZ-059: obraz bazowy przypięty skrótem indeksu (amd64 i arm64).
+    // Obraz bazowy przypięty skrótem indeksu (amd64 i arm64).
     expect(d).toMatch(/^FROM node:24-bookworm-slim@sha256:[0-9a-f]{64}$/m);
     expect(d).toContain('LABEL org.opencontainers.image.revision=$APP_REVISION');
     expect(d).toMatch(/^USER 10001:10001$/m);
@@ -125,7 +125,7 @@ describe('pierwszy start w kontenerze (instalacja-kontener.mjs)', () => {
     const wynik = uruchom(dane, konfiguracja, 39160, { OMS_PASS: 'cudzy-sekret', ALLEGRO_CLIENT_SECRET: 'cudzy-sekret' });
     expect(wynik.status, wynik.stderr).toBe(0);
     expect(wynik.stdout).toContain('instalacja-zakonczona');
-    // PRZ-093.03: „co dalej” dla człowieka, JSON nadal ostatnią linią (instrukcja Dockera: „Kończy się wierszem…”).
+    // „co dalej” dla człowieka, JSON nadal ostatnią linią (instrukcja Dockera: „Kończy się wierszem…”).
     expect(JSON.parse(wynik.stdout.trim().split(/\r?\n/).at(-1)).status).toBe('instalacja-zakonczona');
     expect(wynik.stdout).toContain('sudo docker compose up -d');
     expect(wynik.stdout).toContain(':39160/login');
@@ -148,7 +148,7 @@ describe('pierwszy start w kontenerze (instalacja-kontener.mjs)', () => {
       expect(db.prepare("SELECT count(*) AS n FROM zamowienia WHERE numer LIKE 'DEMO-%'").get().n).toBe(3);
       expect(db.prepare("SELECT login FROM konta WHERE login='administrator-proby'").get()?.login).toBe('administrator-proby');
     } finally { db.close(); }
-    // PRZ-182: klucz poświadczeń powstaje od razu w katalogu konfiguracji — nigdy w katalogu danych (kopie),
+    // Klucz poświadczeń powstaje od razu w katalogu konfiguracji — nigdy w katalogu danych (kopie),
     // nigdy na ekranie; wynik podaje ścieżkę pliku i każe go zapisać w menedżerze haseł.
     const plikKlucza = path.join(konfiguracja, 'klucz.env');
     const klucz = /^OMS_KLUCZ_SEKRETOW=([A-Za-z0-9_-]{43})$/m.exec(fs.readFileSync(plikKlucza, 'utf8'))?.[1];

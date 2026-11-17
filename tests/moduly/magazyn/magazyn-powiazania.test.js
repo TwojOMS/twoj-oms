@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import {
   zapiszProduktSklepowy, utworzKarte, powiazProdukt, niepowiazaneOfertyAllegro,
 } from '../../../src/oms/db/magazyn.js';
@@ -476,7 +476,7 @@ describe('GET /magazyn/powiazania — szukanie i kolejnosc z adresu', () => {
       .toEqual(['Kandelabr srebrny', 'KANDELABR duży dekoracyjny do salonu w domu jednorodzinnym']);
 
     // ⚠️ `SORTOWANIE[x] ?? domyslne` oddaje TU funkcje z Object.prototype — realna
-    // pieciusetka zlapana przy Zadaniu 4 na ekranie magazynu. Nierozpoznana nazwa WRACA
+    // pieciusetka zlapana na ekranie magazynu. Nierozpoznana nazwa WRACA
     // DO DOMYSLNEJ (alfabetycznej), bo kolejnosc nie zaweza zbioru.
     for (const zly of ['constructor', 'toString', 'hasOwnProperty']) {
       const r = await get(app, `/magazyn/powiazania?sort=${zly}`);
@@ -505,7 +505,7 @@ describe('GET /magazyn/powiazania — szukanie i kolejnosc z adresu', () => {
 describe('wejscie na ekran powiazan', () => {
   it('ekran importu prowadzi na powiazania odnosnikiem', async () => {
     // Bez tego odnosnika trasa istnieje wylacznie dla kogos, kto zna adres.
-    // ⚠️ PRZ-160 P3b.03b: odnośnik zszedł z listy magazynu na ekran importu (`/magazyn/import`),
+    // ⚠️ odnośnik zszedł z listy magazynu na ekran importu (`/magazyn/import`),
     // do którego lista prowadzi przyciskiem „Importuj" w nagłówku.
     const r = await get(serwer(), '/magazyn/import');
     expect(r.body).toMatch(/<a href="\/magazyn\/powiazania">Powiąż ręcznie oferty z kartami →<\/a>/);
@@ -513,7 +513,7 @@ describe('wejscie na ekran powiazan', () => {
   });
 
   // ---------------------------------------------------------------------------------
-  // POWROT NA ZAWEZONY MAGAZYN (4.13d, trzecia partia z 2026-09-10).
+  // POWROT NA ZAWEZONY MAGAZYN (4.13d).
   //
   // ⚠️ Ten ekran ma WLASNA nawigacje — filtry, szukajke i trzy naglowki sortujace — wiec
   // adres powrotu musi ja PRZEZYC. Odnosnik naprawiony bez tego dzialalby wylacznie do
@@ -529,7 +529,7 @@ describe('wejscie na ekran powiazan', () => {
       return m[0];
     };
 
-    // PRZ-160 P3b.03b: lista nie prowadzi już na powiązania wprost (wejście jest z ekranu importu);
+    // Lista nie prowadzi już na powiązania wprost (wejście jest z ekranu importu);
     // sam ekran powiązań nadal przyjmuje `wroc` — testy niżej.
     it('lista magazynu nie ma już odnośnika do powiązań', async () => {
       kartaO('Kandelabr 70x100');
@@ -547,7 +547,7 @@ describe('wejscie na ekran powiazan', () => {
     });
 
     // ⚠️ Adres jedzie KAZDA droga tego ekranu — tak samo, jak tryb kolumn na liscie magazynu
-    // (4.66). Naglowek sortujacy skladany od zera zgubilby go po pierwszym klknieciu.
+    // Naglowek sortujacy skladany od zera zgubilby go po pierwszym klknieciu.
     it('przeżywa własną nawigację ekranu: sortowanie, filtry i szukajkę', async () => {
       kartaO('Kandelabr 70x100');
       oferta('Kandelabr ozdobny');

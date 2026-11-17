@@ -54,7 +54,7 @@ describe('wystawienie korekty', () => {
   });
 
   // ⚠️ 201 to PRZYJECIE ZLECENIA, nie dokument — zmierzone pustym cialem na zywym koncie
-  // (notatka 2026-08-14-oms-zwroty-pomiar.md). Ten test pilnuje, ze klient NIE zmysla numeru.
+  // Ten test pilnuje, ze klient NIE zmysla numeru.
   it('idzie na zasob ASYNCHRONICZNY i oddaje referencje zadania, NIE numer', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       odpowiedz(201, { invoice_task_reference_number: 'REF-1', processing_code: 100 }),

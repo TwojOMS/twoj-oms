@@ -17,7 +17,7 @@ import { doZrobienia, uwagaDolaczonychAnulowanych } from '../../src/domena/statu
 import { pozycjeDokumentu, sprawdzSumeDokumentu } from '../../src/domena/pozycje-faktury.js';
 import { kwotaOczekiwanaGrosze } from '../../src/domena/suma-pozycji.js';
 
-// PRZ-101.04 — reguły scalania jako czyste funkcje. Zamówienia odczytane tak, jak czyta je karta
+// Reguły scalania jako czyste funkcje. Zamówienia odczytane tak, jak czyta je karta
 // (`pobierzZamowienie`), bo reguły czytają wartości EFEKTYWNE (nakładki ręczne, wysyłka).
 const zmapowane = (id, nad = {}) => ({
   zrodlo_id: id, numer: `S-${id}`,
@@ -57,7 +57,7 @@ describe('powodyOdmowyScalenia', () => {
     expect(powodyOdmowyScalenia([a, b], { glowneId: a.id }).join()).toMatch(/S-2 jest z Allegro/);
   });
 
-  // PRZ-101.08: jedna reguła w repo — `czyKanalAllegro` z rejestrem kanałów `typ: 'allegro'`
+  // Jedna reguła w repo — `czyKanalAllegro` z rejestrem kanałów `typ: 'allegro'`
   // (w aplikacji ustawia go moduł kanałów z OMS_KANALY; tu wprost, jak w kanaly-allegro-prz101-08).
   it('Allegro po typie kanału z konfiguracji (klucz `allegro` bez prefiksu) — odmowa', () => {
     try {
@@ -100,7 +100,7 @@ describe('powodyOdmowyScalenia', () => {
     expect(ostrz.join('\n')).toMatch(/S-2 ma proformę/);
   });
 
-  // Decyzja kierownika 18.10 (ryzyko 5 z raportu): pobranie także w GŁÓWNYM — odmowa.
+  // Pobranie także w GŁÓWNYM — odmowa.
   it('pobranie w GŁÓWNYM — odmowa „Zamówień za pobraniem nie scalamy”', () => {
     const a = { ...zam(1), pobranie: 1 }; const b = zam(2);
     const powody = powodyOdmowyScalenia([a, b], { glowneId: a.id });
@@ -157,7 +157,7 @@ describe('domyślne główne, decyzja', () => {
 });
 
 describe('wysyłka i kwota grupy', () => {
-  // PRZ-101.11: dołączone NIEOPŁACONE — przy opłaconym jego wysyłka wchodzi zawsze (testy niżej).
+  // Dołączone NIEOPŁACONE — przy opłaconym jego wysyłka wchodzi zawsze (testy niżej).
   it('„z zamówienia głównego” — wysyłka głównego; „suma” — suma wysyłek', () => {
     const a = zam(1); const b = zam(2, { koszt_dostawy_brutto: '20.00', kwota_brutto: '120.00', oplacone_at: null });
     expect(wysylkaGrupyGrosze(a, [b], 'glowne')).toBe(1500);
@@ -176,7 +176,7 @@ describe('wysyłka i kwota grupy', () => {
 });
 
 describe('zamowienieGrupy — zestaw pozycji faktury grupy', () => {
-  // PRZ-101.11: „suma” to osobna pozycja wysyłki na każde zamówienie (do 19.10 — jedna zsumowana linia).
+  // „suma” to osobna pozycja wysyłki na każde zamówienie (do 19.10 — jedna zsumowana linia).
   it('„suma”: pozycje obu zamówień + wysyłka każdego osobną linią; bariera przechodzi', () => {
     const a = zam(1); const b = zam(2, { koszt_dostawy_brutto: '20.00', kwota_brutto: '120.00' });
     const g = zamowienieGrupy(jakoGlowne(a, [b], 'suma'), [b]);
@@ -189,9 +189,9 @@ describe('zamowienieGrupy — zestaw pozycji faktury grupy', () => {
     expect(g.pozycje.map((p) => p.z_zamowienia)).toEqual(['S-1', 'S-2']);
   });
 
-  // PRZ-101.11 (uwaga właściciela 19.10): dołączone OPŁACONE — kupujący zapłacił za jego wysyłkę, więc
-  // wchodzi ona na fakturę także przy „z zamówienia głównego”. Do 19.10 ten test żądał jednej
-  // linii Dostawa 15 zł i faktury 215 zł przy wpłatach 235 zł — zachowanie zmienione na prośbę właściciela.
+  // Dołączone OPŁACONE — kupujący zapłacił za jego wysyłkę, więc
+  // wchodzi ona na fakturę także przy „z zamówienia głównego”. Dawniej ten test żądał jednej
+  // linii Dostawa 15 zł i faktury 215 zł przy wpłatach 235 zł.
   it('„z zamówienia głównego”, dołączone opłacone: jego wysyłka osobną pozycją, faktura = wpłaty', () => {
     const a = zam(1); const b = zam(2, { koszt_dostawy_brutto: '20.00', kwota_brutto: '120.00' });
     const g = zamowienieGrupy(jakoGlowne(a, [b], 'glowne'), [b]);
@@ -206,7 +206,7 @@ describe('zamowienieGrupy — zestaw pozycji faktury grupy', () => {
     expect(saldoWplat(g).stan).toBe('pokryte');
   });
 
-  // ——— PRZ-101.11 — wysyłka każdego zamówienia grupy osobną pozycją faktury ———
+  // Wysyłka każdego zamówienia grupy osobną pozycją faktury.
   const b120 = { koszt_dostawy_brutto: '20.00', kwota_brutto: '120.00' };
   const nieoplacone = { ...b120, oplacone_at: null };
 
@@ -294,9 +294,9 @@ describe('zamowienieGrupy — zestaw pozycji faktury grupy', () => {
   });
 });
 
-// ——— Poprawki po recenzji (19.10) — reguły jako czyste funkcje ————————————————————————————
-describe('recenzja W1–W4: reguły domeny', () => {
-  it('W1: wolnoPrzypisac odmawia dołączonemu i głównemu grupy; zwykłe zamówienie — bez zmian', () => {
+// Reguły scalania jako czyste funkcje.
+describe('grupa scalona w innych regułach domeny (przypisanie, okres, pobranie, anulowanie, status)', () => {
+  it('wolnoPrzypisac odmawia dołączonemu i głównemu grupy; zwykłe zamówienie — bez zmian', () => {
     const klient = { klucz: 'k' };
     const a = zam(1); const b = { ...zam(2), scalone_do: a.id, scalone_do_numer: 'S-1' };
     const glowne = jakoGlowne(a, [b], 'suma');
@@ -305,19 +305,19 @@ describe('recenzja W1–W4: reguły domeny', () => {
     expect(wolnoPrzypisac({ zamowienie: a, faktura: null, klient })).toEqual({ wolno: true, powod: null });
   });
 
-  it('W1: okres rozliczeniowy w GŁÓWNYM też blokuje scalenie', () => {
+  it('okres rozliczeniowy w GŁÓWNYM też blokuje scalenie', () => {
     const a = { ...zam(1), okres_rozliczeniowy_id: 3 }; const b = zam(2);
     expect(powodyOdmowyScalenia([a, b], { glowneId: a.id }).join()).toMatch(/S-1 należy do miesięcznego okresu/);
   });
 
-  it('W2: pobranie w grupie — odmowa na głównym i dołączonym; poza grupą null', () => {
+  it('pobranie w grupie — odmowa na głównym i dołączonym; poza grupą null', () => {
     const a = zam(1); const b = { ...zam(2), scalone_do: a.id, scalone_do_numer: 'S-1' };
     expect(powodOdmowyPobraniaGrupy(jakoGlowne(a, [b], 'suma'))).toMatch(/nie wysyłamy za pobraniem/);
     expect(powodOdmowyPobraniaGrupy(b)).toMatch(/scalone z zamówieniem S-1/);
     expect(powodOdmowyPobraniaGrupy(a)).toBeNull();
   });
 
-  it('W2: gotowość nadania odmawia głównemu grupy z pobraniem (stan sprzed poprawki), bez pobrania — gotowe', () => {
+  it('gotowość nadania odmawia głównemu grupy z pobraniem (stan sprzed poprawki), bez pobrania — gotowe', () => {
     const a = zam(1); const b = zam(2);
     const glowne = jakoGlowne(a, [b], 'suma');
     const zPobraniem = { ...glowne, wysylka_reczna_json: JSON.stringify({ metoda: 'dpd', pobranie: 1, kwota_pobrania: '115.00' }) };
@@ -327,7 +327,7 @@ describe('recenzja W1–W4: reguły domeny', () => {
     expect(powodBrakuGotowosciNadania({ ...a, wysylka_reczna_json: zPobraniem.wysylka_reczna_json })).toBeNull();
   });
 
-  it('W3: dołączone anulowane — główne na „Do zrobienia” z powodem, nadanie odmawia', () => {
+  it('dołączone anulowane — główne na „Do zrobienia” z powodem, nadanie odmawia', () => {
     const a = zam(1); const b = zam(2);
     const glowne = { ...jakoGlowne(a, [b], 'suma'), wyslane_at: '2026-10-12T00:00:00Z', dolaczone_anulowane: [] };
     expect(doZrobienia(glowne)).toBe(false);
@@ -337,7 +337,7 @@ describe('recenzja W1–W4: reguły domeny', () => {
     expect(powodBrakuGotowosciNadania({ ...zAnulowanym, wyslane_at: null })).toMatch(/Nie nadasz paczki: dołączone zamówienie S-2 anulowane/);
   });
 
-  it('W3: odczyt niesie dolaczone_anulowane (karta i lista tą samą wartością)', () => {
+  it('odczyt niesie dolaczone_anulowane (karta i lista tą samą wartością)', () => {
     // Baza testów domeny to sam rdzeń — kolumny scaleń dokłada migracja modułu zamówień.
     migracjaScalen.wykonaj(db);
     const a = zam(1); const b = zam(2);
@@ -350,7 +350,7 @@ describe('recenzja W1–W4: reguły domeny', () => {
     expect(pobierzZamowienie(db, b.id).dolaczone_anulowane).toBeUndefined();
   });
 
-  it('W4: status nieodesłany do sklepu w którymkolwiek — odmowa scalenia z powodem', () => {
+  it('status nieodesłany do sklepu w którymkolwiek — odmowa scalenia z powodem', () => {
     const a = zam(1); const b = { ...zam(2), sync_woo_blad: 'sklep nie odpowiada' };
     for (const glowneId of [a.id, b.id]) {
       expect(powodyOdmowyScalenia([a, b], { glowneId }).join()).toMatch(/S-2 ma status nieodesłany do sklepu \(„sklep nie odpowiada”\)/);

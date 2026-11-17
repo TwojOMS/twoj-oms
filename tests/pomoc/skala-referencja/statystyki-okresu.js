@@ -1,4 +1,4 @@
-// Referencja PRZ-094.13 z 9ccdd75, przed optymalizacją.
+// Referencyjna implementacja sprzed optymalizacji do porównania wyników obliczeń.
 import { dzienWarszawa } from '../../../src/domena/format-daty.js';
 import { anulowaneEfektywnie } from '../../../src/domena/status-reczny.js';
 import { czyTestowe } from '../../../src/domena/sprzedaz-okresu.js';

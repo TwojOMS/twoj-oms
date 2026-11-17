@@ -1,4 +1,4 @@
-// PRZ-094.29: katalog, który aplikacja zapisuje, a którego domyślna wartość w kodzie to /data-oms/…,
+// Katalog, który aplikacja zapisuje, a którego domyślna wartość w kodzie to /data-oms/…,
 // musi być w compose klienta ustawiony pod zamontowany wolumen — inaczej zapis idzie do warstwy kontenera
 // (u UID 10001 pada na mkdir w katalogu głównym) albo znika przy odtworzeniu kontenera.
 import { describe, expect, it } from 'vitest';
@@ -24,7 +24,7 @@ function usluga(nazwa) {
   return linie.slice(start, koniec < 0 ? undefined : koniec).join('\n');
 }
 
-describe('katalogi zapisu w compose klienta (PRZ-094.29)', () => {
+describe('katalogi zapisu w compose klienta', () => {
   it('wolumeny zapisywalne w usłudze oms to /opt/oms/data (backups jest :ro)', () => {
     const u = usluga('oms');
     expect(u).toContain('- /opt/oms/data:/opt/oms/data\n');

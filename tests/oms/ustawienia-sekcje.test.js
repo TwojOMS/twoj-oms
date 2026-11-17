@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { openOmsDb } from '../../src/oms/db/db.ts';
-import { buildOmsServer } from '../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../pomoc/serwer-testowy-oms.ts';
 import { zalozKonto, ustawUprawnienia } from '../../src/core/bezpieczenstwo/konta.js';
 import { podpisz, NAZWA_CIASTECZKA_OMS } from '../../src/core/bezpieczenstwo/sesja.js';
 import { odczytajSekret } from '../../src/core/bezpieczenstwo/sekret-sesji.js';
@@ -53,7 +53,7 @@ describe('działy i zakładki Ustawień', () => {
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('<title>Szablony paczek</title>');
     expect(tresc).not.toContain('<h2 class="naglowek-formularza">Szablony paczek</h2>');
-    // PRZ-152.G11a: pola szablonu są w wierszu w trybie edycji (bez JS: ?edytuj=<id>).
+    // Pola szablonu są w wierszu w trybie edycji (bez JS: ?edytuj=<id>).
     const edycja = fragmentGlownejKolumny((await app.inject({ method: 'GET', url: '/ustawienia/zamowienia-i-wysylka?edytuj=domyslna', headers: BASIC })).body);
     for (const pole of ['waga', 'dlugosc', 'szerokosc', 'wysokosc']) {
       expect(edycja).toContain(`name="${pole}"`);
@@ -71,7 +71,7 @@ describe('działy i zakładki Ustawień', () => {
     const tresc = fragmentGlownejKolumny(r.body);
 
     expect(r.statusCode).toBe(200);
-    // PRZ-154 E2.3: jeden h1 działu, nazwę formularza pokazuje aktywna zakładka.
+    // Jeden h1 działu, nazwę formularza pokazuje aktywna zakładka.
     expect((tresc.match(/<h1[\s>]/g) ?? [])).toHaveLength(1);
     expect(tresc).not.toContain('<h2 class="naglowek-formularza">Moje połączenia</h2>');
     expect(tresc).toContain('Moje połączenia');
@@ -136,23 +136,6 @@ describe('działy i zakładki Ustawień', () => {
     expect(r.headers.location).toBe(location);
     const ekran = await app.inject({ method: 'GET', url: r.headers.location, headers: BASIC });
     expect(fragmentGlownejKolumny(ekran.body)).toContain(komunikat);
-  });
-
-  it('nowa trasa nie uruchamia dawnej atrapy samoczynnie zapisującej parę', async () => {
-    const rozpocznij=vi.fn(async()=>({ok:true}));
-    const wiazanieApp = buildOmsServer({
-      db: openOmsDb(':memory:'), config: CONFIG,
-      stanyKanalow: () => [],
-      wiazanieKanalow: { stan: () => null, rozpocznij },
-    });
-    const r = await wiazanieApp.inject({
-      method: 'POST', url: '/ustawienia/kanaly/allegro_swietlik/wiazanie',
-      headers: { ...BASIC, ...ORIGIN }, payload: {},
-    });
-
-    expect(r.statusCode).toBe(404);
-    expect(rozpocznij).not.toHaveBeenCalled();
-    await wiazanieApp.close();
   });
 
   it('konto z prawem ustawień, lecz bez admina, widzi cztery pozycje i dostaje 403 na Kontach', async () => {

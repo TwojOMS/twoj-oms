@@ -5,7 +5,7 @@ import Ajv2020 from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
 import { zalozKluczApi } from '../../../src/core/bezpieczenstwo/klucze-api.js';
 import { ZAKRESY_API } from '../../../src/domena/klucze-api.js';

@@ -81,7 +81,7 @@ describe('Allegro i ERLI', () => {
       { elementy: [zdjecie('plik/lampa'), tekst('<p>Drugi opis</p>')] },
     ] });
   });
-  it('adres zdjęcia z Allegro to JSON, nie HTML — „&amp;” zostaje bez zmian (PRZ-160.04a)', () => {
+  it('adres zdjęcia z Allegro to JSON, nie HTML — „&amp;” zostaje bez zmian', () => {
     const url = 'https://zdjecia.przyklad.invalid/lampa.jpg?w=800&amp;h=600&#38;x=1';
     const wynik = sekcjeAllegroDoSekcji({ sections: [{ items: [{ type: 'IMAGE', url }] }] });
     expect(wynik).toEqual({ sekcje: [{ elementy: [zdjecie(url)] }] });
@@ -173,7 +173,7 @@ describe('adresy zdjęć', () => {
   it.each(['https://polcien.example/x?a=1&amp;b=2', 'http://polcien.example/x', '/lokalne/x', 'lokalne/x', '../x'])('zachowuje dozwolony adres po dekodowaniu: %s', adres => {
     const oczekiwany = opis(zdjecie(adres.replace('&amp;', '&')));
     expect(opisDoSekcji(`<img src="${adres}">`)).toEqual(oczekiwany);
-    // Adres z JSON-u Allegro nie jest HTML-em: zostaje dosłownie (PRZ-160.04a; wcześniej „&amp;” zamieniało się w „&”).
+    // Adres z JSON-u Allegro nie jest HTML-em: zostaje dosłownie (wcześniej „&amp;” zamieniało się w „&”).
     expect(sekcjeAllegroDoSekcji({ sections: [{ items: [{ type: 'IMAGE', url: adres }] }] })).toEqual(opis(zdjecie(adres)));
   });
 });

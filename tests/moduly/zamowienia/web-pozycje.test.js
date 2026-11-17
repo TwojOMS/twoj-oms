@@ -1,15 +1,16 @@
+// Pozycje na karcie zamówienia: edycja, VAT, kwoty i odnośniki do produktów.
 import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import {
   zapiszZamowienie, pobierzZamowienie, dodajPozycjeReczna, zapiszNadpisaniaPozycji,
 } from '../../../src/oms/db/zamowienia.js';
 import { parsujNowaPozycje } from '../../../src/domena/pozycje-reczne.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { zapiszStawkeDomyslna } from '../../../src/moduly/faktury/db/stawka-vat.js';
 
 // ⚠️ `sklepy` NIE JEST TU OZDOBA. Odnosnik do produktu powstaje wylacznie wtedy, gdy trasa
 // zna `baseUrl` kanalu — bez tego KAZDY test „nie ma odnosnika" przechodzilby za darmo,
-// takze na kodzie, ktory odnosniki rozdaje bledom. Zlapane 21.08.2026 przez test graniczny.
+// takze na kodzie, ktory odnosniki rozdaje bledom. Zlapane przez test graniczny.
 const config = {
   auth: { user: 'adam', pass: 'x' },
   sklepy: {
@@ -39,7 +40,7 @@ beforeEach(async () => {
   await app.ready();
 });
 
-// Liczniki AUTOINCREMENT roznych tabel zbiegaja sie w swiezej bazie (przewodnik OMS, 6.3),
+// Liczniki AUTOINCREMENT roznych tabel zbiegaja sie w swiezej bazie,
 // wiec bez wypelniaczy `id` zamowienia rownaloby sie `id` pozycji i pomylka argumentu
 // w trasie przeszlaby niezauwazona.
 function zamowienieZRozjechanymiLicznikami(nad = {}) {
@@ -73,7 +74,7 @@ describe('tabela pozycji na karcie', () => {
     expect(zaWierszem).toContain('212,90 zł');
   });
 
-  // Przebudowa 2026-07-31: kolumna „Lp." znikla z tabeli (numer porzadkowy nie niesie przy
+  // Kolumna „Lp." znikla z tabeli (numer porzadkowy nie niesie przy
   // pakowaniu nic, czego nie widac z kolejnosci wierszy), wiec zostaje sedno testu: wysylka
   // jest PELNOPRAWNYM wierszem z wlasna iloscia 1, a nie wierszem myslnikow.
   it('wiersz wysyłki ma ilość 1, a nie myślniki', async () => {
@@ -170,7 +171,7 @@ describe('dopisywanie pozycji', () => {
   });
 });
 
-// ⚠️ SEDNO ZADANIA W WARSTWIE HTTP: kwota ze sklepu nie rosnie, wiec doplata JEST WIDOCZNA
+// ⚠️ kwota ze sklepu nie rosnie, wiec doplata JEST WIDOCZNA
 // jako niedoplata — panel nie przestaje pokazywac, ze klient jest nam winien pieniadze.
 describe('dopisana pozycja a saldo wpłat', () => {
   it('zamówienie opłacone w sklepie + dopisana pozycja = widoczna NIEDOPŁATA', async () => {
@@ -225,7 +226,7 @@ describe('kwota na liście zamówień', () => {
 });
 
 describe('edycja pozycji', () => {
-  // Przebudowa 2026-07-31: JEDEN odnośnik „Edytuj" otwiera CAŁY panel, a nie osobny
+  // JEDEN odnośnik „Edytuj" otwiera CAŁY panel, a nie osobny
   // formularz przy każdym wierszu. W trybie edycji każda pozycja — sklepowa i ręczna —
   // ma własne pola, i to jest tu sedno.
   it('jedno „Edytuj" otwiera pola przy KAŻDEJ pozycji — sklepowej i ręcznej', async () => {
@@ -400,7 +401,7 @@ describe('„Przywróć ze sklepu" przy pozycji', () => {
     const r = await wyslij(`/zamowienia/${id}/pozycje/${kluczReczna(id)}/przywroc`, {});
     expect(r.statusCode).toBe(400);
     expect(r.body).toMatch(/sklep o niej nie wie/i);
-    // PRZ-152.G2: odmowa wraca jako karta z pozycjami w edycji i paskiem w sekcji pozycji, nie goły tekst.
+    // Odmowa wraca jako karta z pozycjami w edycji i paskiem w sekcji pozycji, nie goły tekst.
     const sekcja = r.body.match(/<section class="panel panel--edycja" id="pozycje">[\s\S]*?<\/section>/)?.[0] ?? '';
     expect(sekcja).toMatch(/<p class="pasek-blokada" id="blad-dane-pozycje">Nie udało się zapisać pozycji: [^<]*sklep o niej nie wie/i);
     expect(sekcja).toContain('/pozycje/zapisz');
@@ -409,7 +410,7 @@ describe('„Przywróć ze sklepu" przy pozycji', () => {
 });
 
 describe('usunięcie pozycji ręcznej', () => {
-  // PRZ-152.G2-03b (plan 3.3): „×” stoi przy każdej pozycji, także sklepowej, i wysyła tabelę z name="usun".
+  // „×” stoi przy każdej pozycji, także sklepowej, i wysyła tabelę z name="usun".
   it('„×" jest przy pozycji sklepowej i przy dopisanej ręcznie (name="usun")', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
     expect((await karta(id, '?edytuj=pozycje')).body).toMatch(/name="usun" value="s[^"]*"/);
@@ -460,7 +461,7 @@ describe('usunięcie pozycji ręcznej', () => {
   });
 });
 
-// Ochrona przed CSRF obowiazuje tak samo, jak wszedzie indziej w panelu (przewodnik 4.11).
+// Ochrona przed CSRF obowiazuje tak samo, jak wszedzie indziej w panelu.
 describe('ochrona przed CSRF', () => {
   it('POST bez nagłówka Origin jest odrzucany', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
@@ -475,7 +476,7 @@ describe('ochrona przed CSRF', () => {
   });
 });
 
-// ⚠️ TA SAMA USTERKA, CO PRZY DARMOWEJ DOSTAWIE (20.08.2026) — druga jej twarz. Formularz
+// ⚠️ TA SAMA USTERKA, CO PRZY DARMOWEJ DOSTAWIE — druga jej twarz. Formularz
 // „Zapisz pozycje" odsyla WSZYSTKIE wiersze, wiec pozycja wyceniona przez sklep na 0 zl
 // (probka, gratis z promocji) niosla `0.00` i bezwarunkowa odmowa parsera wywracala zapis
 // CALEGO zamowienia — razem z pozycjami, ktore operator faktycznie poprawil.
@@ -525,7 +526,7 @@ describe('pozycja ze sklepu za 0 zł nie blokuje zapisu', () => {
 });
 
 // =====================================================================================
-// ODNOSNIK DO PRODUKTU — TEST NA STYKU, bo dokladnie tam peklo (21.08.2026).
+// ODNOSNIK DO PRODUKTU — TEST NA STYKU, bo dokladnie tam peklo.
 //
 // Regula „pozycja z oferty nie dostaje odnosnika" mieszkala w domenie i miala tam swoje
 // testy — a mimo to na produkcji kazda pozycja zamowienia z oferty prowadzila do ukrytego
@@ -583,8 +584,8 @@ describe('odnośnik do produktu na karcie', () => {
   });
 });
 
-// PRZ-105: stawka VAT pozycji ręcznej dopisywanej i edytowanej na karcie.
-describe('karta — stawka VAT pozycji ręcznej (PRZ-105)', () => {
+// Stawka VAT pozycji ręcznej dopisywanej i edytowanej na karcie.
+describe('karta — stawka VAT pozycji ręcznej', () => {
   const stawkaReczna = (id) => db.prepare("SELECT vat FROM pozycje WHERE zamowienie_id = ? AND zrodlo = 'reczna'").get(id)?.vat;
 
   it('„Dodaj pozycję” z vat 8 zapisuje 8; netto przelicza się stawką wiersza', async () => {
@@ -619,11 +620,11 @@ describe('karta — stawka VAT pozycji ręcznej (PRZ-105)', () => {
   });
 });
 
-// PRZ-105: karta — kolumna „VAT”, podsumowanie netto/VAT/brutto, wybór stawki w „Dodaj pozycję” i w edycji.
-describe('karta — kolumna VAT i podsumowanie (PRZ-105)', () => {
+// Karta — kolumna „VAT”, podsumowanie netto/VAT/brutto, wybór stawki w „Dodaj pozycję” i w edycji.
+describe('karta — kolumna VAT i podsumowanie', () => {
   const sekcjaPozycji = (html) => html.slice(html.indexOf('id="pozycje"'), html.indexOf('id="przesylka"'));
 
-  it('tabela ma kolumnę „Stawka VAT” (G13a: po SKU i cenie netto, przed ceną brutto); wiersze pokazują stawkę', async () => {
+  it('tabela ma kolumnę „Stawka VAT” (po SKU i cenie netto, przed ceną brutto); wiersze pokazują stawkę', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
     dodajPozycjeReczna(db, id, parsujNowaPozycje({ nazwa: 'Album', ilosc: '1', cena_brutto: '10.80', vat: '8' }));
     const s = sekcjaPozycji((await karta(id)).body);
@@ -674,9 +675,9 @@ describe('karta — kolumna VAT i podsumowanie (PRZ-105)', () => {
   });
 });
 
-// Recenzja PRZ-105 (P3): stara pozycja ręczna bez stawki (vat NULL = „domyślna w chwili faktury”) nie może dostać
+// Stara pozycja ręczna bez stawki (vat NULL = „domyślna w chwili faktury”) nie może dostać
 // stawki zamrożonej przez samo „Zapisz pozycje” — lista ma opcję „domyślna (X%)” z pustą wartością.
-describe('edycja zbiorcza — pozycja ręczna bez stawki zostaje bez stawki (PRZ-105)', () => {
+describe('edycja zbiorcza — pozycja ręczna bez stawki zostaje bez stawki', () => {
   it('lista ma zaznaczoną „domyślna (23%)” z pustą wartością; zapis zostawia NULL', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
     dodajPozycjeReczna(db, id, { nazwa: 'Stara dopłata', ilosc: 1, cena_brutto: '10.00', brutto_linii: '10.00' });

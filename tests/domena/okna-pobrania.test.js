@@ -55,7 +55,7 @@ describe('okna pobrania', () => {
         .toBeGreaterThanOrEqual(new Date(PODLOGA_KOSZTOW).getTime());
     });
 
-    // ⚠️ D1: kursor „z przyszlosci" (skew zegara, data z KSeF w innej strefie) dawal PUSTA
+    // ⚠️ Kursor „z przyszlosci" (skew zegara, data z KSeF w innej strefie) dawal PUSTA
     // liste okien — czuwacz nie robil NIC, na zawsze, bez ani jednego bledu.
     it('⚠️ kursor z przyszlosci nie daje pustej listy okien', () => {
       const teraz = '2026-06-01T00:00:00.000Z';

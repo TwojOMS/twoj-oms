@@ -1,15 +1,15 @@
-# OMS u klienta — Linux + Docker (PRZ-058). Instrukcja: docs/instalacja-docker.md.
+# OMS u klienta — Linux + Docker. Instrukcja: docs/instalacja-docker.md.
 # Polecenia uruchamiaj z TEGO katalogu (deploy/klient), przez sudo:
 #   sudo docker compose build                      # obraz z paczki, etykieta revision z pliku .env obok
 #   sudo docker compose run --rm instalacja        # jednorazowo: próba/demo bez kluczy integracji
 #   sudo docker compose up -d                      # panel + kopia; wstają same po restarcie maszyny
-# Katalogi na hoście (właściciel UID 10001, tryb 0700) — układ zgodny z planem aktualizatora:
+# Katalogi na hoście (właściciel UID 10001, tryb 0700) — układ aktualizatora:
 #   /opt/oms/config   konfiguracja (oms.env, dane administratora próby) i klucz.env — klucz poświadczeń integracji
 #                     zapisanych w bazie; NIGDY w data/ ani w kopiach, jego kopia ma być w menedżerze haseł
 #   /opt/oms/data     baza oms.sqlite, proformy/, etykiety/
 #   /opt/oms/backups  kopie bazy (oms-RRRR-MM-DD.sqlite), co 7 dni archiwum etykiet i proform, kopie operacji aktualizatora
 #   /opt/oms/releases rozpakowane paczki wydań (kod tylko do odczytu, ten plik jest w jednej z nich)
-#   /opt/oms/kopia-zewnetrzna  katalog z punktem montowania nośnika nosnik/ (PRZ-059; ustawienie w config/kopia.env)
+#   /opt/oms/kopia-zewnetrzna  katalog z punktem montowania nośnika nosnik/ (ustawienie w config/kopia.env)
 # Aktualizacja do nowego wydania: sudo sh /opt/oms/aktualizuj.sh (docs/aktualizacja-klienta-v0.md).
 name: oms
 
@@ -50,13 +50,13 @@ services:
       OMS_PROFORMY_KATALOG: /opt/oms/data/proformy
       OMS_ETYKIETY_KATALOG: /opt/oms/data/etykiety
       OMS_ETYKIETY_DIR: /opt/oms/data/etykiety
-      # PRZ-094.29: klucze reklam z ekranu Ustawienia → Integracje → Meta Ads, Google Analytics 4 albo Google Ads. Domyślny /data-oms/… nie jest tu
+      # Klucze reklam z ekranu Ustawienia → Integracje → Meta Ads, Google Analytics 4 albo Google Ads. Domyślny /data-oms/… nie jest tu
       # zamontowany (zapis padał na mkdir u UID 10001), więc katalog leży w wolumenie danych. Kopia (kopia.mjs) go NIE
       # obejmuje — tylko bazę, etykiety i proformy; klucze nie są szyfrowane; po odtworzeniu reklamy podłącza się ponownie.
       OMS_REKLAMY_SEKRETY_DIR: /opt/oms/data/reklamy-sekrety
-      # PRZ-059: /health alarmuje, gdy najnowsza kopia ma 48 h albo nośnika kopii zewnętrznej nie ma.
+      # /health alarmuje, gdy najnowsza kopia ma 48 h albo nośnika kopii zewnętrznej nie ma.
       OMS_KOPIE_KATALOG: /opt/oms/backups
-      # PRZ-121.06: przycisk „Uruchom OMS ponownie” (Moduł faktur) — kontener wstaje sam (restart: unless-stopped).
+      # Przycisk „Uruchom OMS ponownie” (Moduł faktur) — kontener wstaje sam (restart: unless-stopped).
       OMS_RESTART_Z_PANELU: "tak"
     # Port w sieci lokalnej; zmiana: OMS_PORT_LAN w pliku .env obok. NIE przekierowuj go na routerze
     # do internetu — panel nie ma tu HTTPS.
@@ -73,7 +73,7 @@ services:
         target: /opt/oms/kopia-zewnetrzna
         read_only: true
         # rslave + nośnik montowany w PODKATALOGU nosnik/: podłączenie i odłączenie pendrive'a widać w kontenerze
-        # bez restartu. Montowanie wprost na /opt/oms/kopia-zewnetrzna nie propaguje się (próba na VM 10.10).
+        # bez restartu. Montowanie wprost na /opt/oms/kopia-zewnetrzna nie propaguje się.
         bind: { propagation: rslave, create_host_path: true }
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.status===200?0:1),()=>process.exit(1))"]
@@ -92,7 +92,7 @@ services:
     depends_on:
       oms:
         condition: service_healthy
-    # PRZ-059 (deploy/klient/kopia.mjs): co godzinę sprawdza, czy potrzebna jest kopia — dzienna baza
+    # deploy/klient/kopia.mjs: co godzinę sprawdza, czy potrzebna jest kopia — dzienna baza
     # (VACUUM INTO, integrity_check; po 03:00 UTC albo po 26 h, więc także serwer wyłączany na noc),
     # 14 ostatnich; co 7 dni archiwum etykiet i proform, 2 ostatnie; kopia na nośnik zewnętrzny,
     # gdy config/kopia.env ustawia OMS_KOPIA_ZEWNETRZNA. Ręcznie: sudo sh /opt/oms/aktualizuj.sh compose exec -T kopia node deploy/klient/kopia.mjs teraz

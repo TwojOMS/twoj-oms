@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { zapewnijOkres, pobierzOkres, zamowieniaOkresu } from '../../../src/oms/db/okresy.js';
 import { pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { createFaktura } from '../../../src/moduly/faktury/services/faktura.js';
@@ -9,7 +9,7 @@ import { sprawyKarty } from '../../../src/domena/sprawy-karty.js';
 import { STAN, kluczOkresu } from '../../../src/domena/okres-rozliczeniowy.js';
 import { dopiszKlientaZbiorczego } from './_klient-zbiorczy-pomocniki.js';
 
-// RECENZJA KONCOWA GALEZI `oms-rozliczenie-zbiorcze` (2026-08-03).
+// RECENZJA KONCOWA GALEZI `oms-rozliczenie-zbiorcze`.
 //
 // Ten plik pilnuje JEDNEJ osi, ktorej nie widzialo zadne pojedyncze zadanie planu: zamowienie
 // przypisane do okresu ma DWIE drogi do dokumentu w inFakcie — pojedyncza (z wlasnej karty)
@@ -56,7 +56,7 @@ function dodajZamowienie({ numer, kwota = '100.00', okresId = okres.id, anulowan
     + " VALUES ('reczne', ?, ?, ?, ?, 1, ?, ?, ?, '2026-07-10T10:00:00.000Z')",
   ).run(
     Number(String(numer).replace(/\D/g, '')), numer, kwota, KLIENT.nip,
-    // PRZ-126.P1: komplet danych dla aktywnego formularza poza okresem.
+    // Komplet danych dla aktywnego formularza poza okresem.
     JSON.stringify({ company: KLIENT.nazwa, first_name: 'Jan', last_name: 'Kowalski', address_1: 'Fikcyjna 1', postcode: '00-001', city: 'Miasto Testowe' }),
     okresId, anulowane ? 1 : 0,
   );
@@ -171,7 +171,7 @@ describe('K1 — trasy i karta zamowienia', () => {
     expect(odp.body).toMatch(/faktura za lipiec 2026/);
   });
 
-  it('karta wyszarza przycisk „Wystaw fakturę" dla zamowienia w okresie (PRZ-126.P1)', async () => {
+  it('karta wyszarza przycisk „Wystaw fakturę" dla zamowienia w okresie', async () => {
     const zamId = dodajZamowienie({ numer: 'R/2026/001' });
     const odp = await get(`/zamowienia/${zamId}`);
     // Celujemy w FORMULARZ wystawienia, nie w cale cialo: slowo „faktura" jest na karcie
@@ -272,14 +272,14 @@ describe('W3 — zamowienie w okresie nie zglasza niedoplaty (pieniadze zyja na 
     // Blok salda jest jedynym miejscem, w ktorym karta NAZYWA te pieniadze — asercja
     // o calym ciele lapalaby placeholdery formularza wplaty (ta sama pulapka, co
     // w okresy-trasy.test.js).
-    // PRZ-152.G9a2: pasek `div.saldo` zastąpiły plakietka i cztery liczby — blok to sekcja Płatności do listy ruchów.
+    // Pasek `div.saldo` zastąpiły plakietka i cztery liczby — blok to sekcja Płatności do listy ruchów.
     const blok = odp.body.match(/<section class="panel" id="platnosci">[\s\S]*?<table/)[0];
     expect(blok).not.toMatch(/NIEDOPŁATA/);
     expect(blok).toMatch(/rozliczen/i);
   });
 });
 
-describe('D2 — indeks na zamowienia.okres_rozliczeniowy_id', () => {
+describe('indeks na zamowienia.okres_rozliczeniowy_id', () => {
   it('powstaje przy otwarciu bazy — takze na bazie, ktora kolumne dostala dopiero z `dolozKolumny`', () => {
     // ⚠️ `zamowienia.okres_rozliczeniowy_id` NIE MA w `CREATE TABLE zamowienia` w schema.sql —
     // kolumna dokłada się dopiero w `dolozKolumny` (db.js, DOLOZ). Indeks postawiony
@@ -303,7 +303,7 @@ describe('D2 — indeks na zamowienia.okres_rozliczeniowy_id', () => {
   });
 });
 
-describe('D4 — jeden odczyt zegara przy zakladaniu zamowienia', () => {
+describe('jeden odczyt zegara przy zakladaniu zamowienia', () => {
   const PRAWDZIWY_DATE = Date;
 
   afterEach(() => { vi.unstubAllGlobals(); });

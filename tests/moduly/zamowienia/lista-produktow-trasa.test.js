@@ -5,7 +5,7 @@ import { SUFIT_SPECYFIKACJI_DRUKU } from '../../../src/domena/masowe.js';
 import { PDFTOTEXT, pdfNaTekst } from './_pdf-tekst.js';
 
 // „Lista produktów" — kartka do kompletowania: SAME produkty z iloscia. Zero danych klienta,
-// zero cen i kwot, zero wysylki. Od PRZ-084 (właściciel 15.10) PDF otwierany w karcie (`inline`),
+// zero cen i kwot, zero wysylki. PDF otwierany w karcie (`inline`),
 // a nie strona HTML — z karty dla jednego zamowienia i z listy ZBIORCZO dla zaznaczonych.
 //
 // Fixture celowo niesie wszystko, czego na kartce byc NIE MA: pelne dane klienta z adresem,

@@ -145,7 +145,7 @@ describe('powiazOfertyHurtem — zatwierdzenie wielu par w JEDNEJ transakcji', (
     const a = produkt({ nazwa: 'Pierwsza' });
     const b = produkt({ nazwa: 'Druga' });
 
-    // Karty o tym numerze nie ma — odmawia `wymagajKarty` (karta_id nie ma klucza obcego, PRZ-090).
+    // Karty o tym numerze nie ma — odmawia `wymagajKarty` (karta_id nie ma klucza obcego).
     expect(() => powiazOfertyHurtem(db, [
       { produktId: a, kartaId: kandelabr }, { produktId: b, kartaId: 999999 },
     ], ['allegro_swietlik', 'allegro_polcien2'])).toThrow();

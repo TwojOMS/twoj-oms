@@ -112,7 +112,7 @@ describe('zapis i odczyt zwrotu', () => {
   });
 });
 
-// ⚠️⚠️ I6 (recenzja 2026-08-15): REJESTRACJA ZWROTU NIE MIALA OBRONY PRZED POWTORNYM WYSLANIEM.
+// ⚠️⚠️ I6: REJESTRACJA ZWROTU NIE MIALA OBRONY PRZED POWTORNYM WYSLANIEM.
 // Bariery liczyl `parsujZwrot` POZA transakcja, a `dodajZwrot` wstawial bez zadnego warunku.
 // Back+resubmit, dwuklik i dwie otwarte karty to znane drogi do drugiego dokumentu (opisane
 // wprost przy rezerwacji korekty niżej w tym samym pliku) — przy rejestracji obrony nie bylo.
@@ -140,7 +140,7 @@ describe('dodajZwrot — obrona przed powtornym wyslaniem tego samego formularza
     expect(zwrotyZamowienia(db, id)).toHaveLength(4);
   });
 
-  // ⚠️ KOMUNIKAT NIE MA NAMAWIAC NA NIEPRAWDE (recenzja kontrolna 2026-08-15). Rada „zmień datę
+  // ⚠️ KOMUNIKAT NIE MA NAMAWIAC NA NIEPRAWDE. Rada „zmień datę
   // albo kwotę" prowadzi operatora do zapisania zwrotu, ktorego nie bylo: data zwrotu RZADZI
   // MIESIACEM PODATKOWYM (art. 14 ust. 1m PIT, art. 29a ust. 13 VAT), a kwota idzie wprost do
   // korekty. Prawdziwe dwa zwroty tego samego dnia i za te sama kwote sa nieodroznialne od
@@ -163,7 +163,7 @@ describe('dodajZwrot — obrona przed powtornym wyslaniem tego samego formularza
   });
 });
 
-// ⚠️⚠️ C2 (recenzja 2026-08-15): WYJSCIE Z REZERWACJI, KTORA PRZEPADLA. Do tego dnia zwrot
+// ⚠️⚠️ C2: WYJSCIE Z REZERWACJI, KTORA PRZEPADLA. Do tego dnia zwrot
 // ze zleconą i odrzuconą korektą zostawał NIEROZLICZONY NA ZAWSZE, a jedynym wyjsciem byl
 // reczny UPDATE na produkcyjnej bazie — czyli dokladnie to, przed czym panel ma chronic
 // (przewodnik OMS, 4.9). Wzorem `odblokujFakture` (db/faktury.js).
@@ -237,7 +237,7 @@ describe('zapiszRecznyNumerKorekty — korekta wystawiona poza panelem', () => {
     expect(zwrot(db, id, w.id).korekta_numer).toBeNull();
   });
 
-  // ⚠️⚠️ W3 (recenzja kontrolna 2026-08-15): TEN SAM NUMER KOREKTY NA DWOCH ZWROTACH JEDNEGO
+  // ⚠️⚠️ W3: TEN SAM NUMER KOREKTY NA DWOCH ZWROTACH JEDNEGO
   // ZAMOWIENIA znaczy, ze panel policzyl JEDEN dokument DWA RAZY — oba zwroty melduja sie
   // jako rozliczone i zamowienie schodzi z listy roboczej, choc drugiej korekty nie ma.
   // Bariera stoi w BAZIE (UNIQUE), bo droga reczna omija kazde sito w kodzie.
@@ -276,7 +276,7 @@ describe('zapiszRecznyNumerKorekty — korekta wystawiona poza panelem', () => {
   });
 });
 
-// ⚠️⚠️ K1 + W4 (recenzja kontrolna 2026-08-15). Rezerwacja bronila JEDNEGO WIERSZA, a regula
+// ⚠️⚠️ K1 + W4. Rezerwacja bronila JEDNEGO WIERSZA, a regula
 // „jedna korekta na fakture" liczyla sie POZA transakcja, w usludze. Dwa rownolegle zgloszenia
 // na dwa zwroty tego samego zamowienia oba przeczytalyby „nikt inny nie ma korekty" i oba
 // zarezerwowalyby wlasny wiersz → duplikat u organu. Wzorem `dodajZwrot` wyzej: sprawdzenie

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { obsluzEnter, usunWiersz, dodajWiersz, SELEKTOR_WIERSZA } from '../../src/public/pozycje-wiersze.js';
 
-// PRZ-103: skrypt ekranu „Nowe zamówienie” — plik, który naprawdę jedzie do przeglądarki,
+// Skrypt ekranu „Nowe zamówienie” — plik, który naprawdę jedzie do przeglądarki,
 // na atrapach elementów (repo nie ma biblioteki DOM). Zachowanie na żywej stronie sprawdzone
 // osobno w przeglądarce (lokalne demo).
 
@@ -86,7 +86,7 @@ describe('wiersze pozycji', () => {
     expect(t.wiersze[1].przycisk['aria-label']).toBe('Usuń wiersz 2');
   });
 
-  // PRZ-106: ilość wraca do 1 — tak wygląda nowy wiersz, a wiersz z samą ilością jest pusty.
+  // Ilość wraca do 1 — tak wygląda nowy wiersz, a wiersz z samą ilością jest pusty.
   it('ostatni wiersz nie znika, tylko się czyści — razem z ukrytymi polami i sumą linii; ilość = 1', () => {
     const t = tabela(1);
     usunWiersz(t.wiersze[0]);
@@ -105,8 +105,8 @@ describe('wiersze pozycji', () => {
   });
 });
 
-// PRZ-105: nowy (wyczyszczony) wiersz dostaje stawkę DOMYŚLNĄ formularza, nie stawkę sklonowanego wiersza.
-describe('wyczyscWiersz — lista stawek wraca do domyślnej (PRZ-105)', () => {
+// Nowy (wyczyszczony) wiersz dostaje stawkę DOMYŚLNĄ formularza, nie stawkę sklonowanego wiersza.
+describe('wyczyscWiersz — lista stawek wraca do domyślnej', () => {
   it('select poz_vat = data-vat formularza; inputy czyszczone, ilość 1', async () => {
     const { wyczyscWiersz } = await import('../../src/public/pozycje-wiersze.js');
     const lista = { name: 'poz_vat', value: '5' };
@@ -125,7 +125,7 @@ describe('wyczyscWiersz — lista stawek wraca do domyślnej (PRZ-105)', () => {
   });
 });
 
-// PRZ-152.G2-03a: ta sama tabela na karcie zamówienia — pola bez przedrostka `poz_`, tabela z `data-wiersze-pozycji`,
+// Ta sama tabela na karcie zamówienia — pola bez przedrostka `poz_`, tabela z `data-wiersze-pozycji`,
 // a „×” istniejącej pozycji (`data-usun-pozycje`) zapisuje całą tabelę na serwerze i skrypt go nie rusza.
 describe('wyczyscWiersz — pola karty zamówienia (bez poz_)', () => {
   it('ilość = 1, reszta pusta, lista stawek (name kończy się na „vat”) = data-vat formularza', async () => {
@@ -144,7 +144,7 @@ describe('wyczyscWiersz — pola karty zamówienia (bez poz_)', () => {
   });
 });
 
-describe('podepnij — tabela karty (PRZ-152.G2-03a)', () => {
+describe('podepnij — tabela karty', () => {
   function dokumentKarty() {
     const nazwa = { focus: vi.fn() };
     const nowyWiersz = { querySelector: (s) => (s === 'input[name$="nazwa"]' ? nazwa : null) };

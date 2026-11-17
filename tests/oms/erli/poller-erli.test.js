@@ -4,7 +4,7 @@ import { createPoller } from '../../../src/moduly/kanaly/services/poller.js';
 import { createErliAdapter, stanErliWPamieci, stanErliWBazie } from '../../../src/oms/erli/adapter.js';
 import { createErliClient } from '../../../src/oms/erli/client.js';
 
-// PRZ-157.04 — import ERLI przez wspólny poller na prawdziwej bazie (D1: idempotencja i mark-read po zapisie).
+// Import ERLI przez wspólny poller na prawdziwej bazie (D1: idempotencja i mark-read po zapisie).
 const TERAZ = new Date('2026-11-13T12:00:00Z');
 const zam = (id, zmiany = {}) => ({
   id, status: 'purchased', currency: 'PLN', market: 'pl', totalPrice: 1000,

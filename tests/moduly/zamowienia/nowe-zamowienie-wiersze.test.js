@@ -3,9 +3,9 @@ import { readFileSync } from 'node:fs';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszProduktSklepowy } from '../../../src/oms/db/magazyn.js';
 import { pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
-// PRZ-103 (21.10.2026): ekran „Nowe zamówienie" — wiersze pozycji do dodania i skasowania
+// Ekran „Nowe zamówienie" — wiersze pozycji do dodania i skasowania
 // (bez JavaScriptu przez `formaction`, jak „Pobierz z GUS"; z JavaScriptem bez przeładowania)
 // oraz sprawniejsze „Dodaj z magazynu".
 
@@ -46,7 +46,7 @@ describe('wiersze pozycji — bez JavaScriptu', () => {
     expect(body).toContain('id="pozycje"');
   });
 
-  // Prośba właściciela 21.10: „możliwość zmiany ilości strzałkami” — pole liczbowe jak na karcie (PRZ-074).
+  // Ilość jest polem liczbowym ze strzałkami, jak na karcie.
   it('ilość w wierszu pozycji to pole liczbowe ze strzałkami (całe sztuki od 1), nieobowiązkowe', async () => {
     const pole = (await ekran()).body.match(/<input[^>]*name="poz_ilosc"[^>]*>/)[0];
     expect(pole).toContain('type="number"');
@@ -93,10 +93,8 @@ describe('wiersze pozycji — bez JavaScriptu', () => {
   });
 });
 
-// PRZ-106 — uwagi właściciela z piaskownicy 21.10: „ilość w wierszu — albo ustawiamy 1 jako wartość
-// domyślną albo zostawiamy pole puste. Teraz pole podpowiada "1" i wygląda jakby to już było
-// ustawione.” oraz „dodaj wiersz przenieś pod wiersze, nad RAZEM”.
-describe('PRZ-106: ilość 1 w nowym wierszu i „+ Dodaj wiersz” nad „Razem”', () => {
+// Ilość w wierszu ma wartość domyślną 1; „Dodaj wiersz” stoi pod wierszami, nad „Razem”.
+describe('ilość 1 w nowym wierszu i „+ Dodaj wiersz” nad „Razem”', () => {
   it('pierwsze wejście: ilość to WARTOŚĆ 1, nie podpowiedź', async () => {
     const pole = (await ekran()).body.match(/<input[^>]*name="poz_ilosc"[^>]*>/)[0];
     expect(pole).toContain('value="1"');

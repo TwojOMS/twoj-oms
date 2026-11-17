@@ -6,7 +6,7 @@ import { modulUstawienia } from '../../../src/moduly/ustawienia/modul.ts';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
 import { ekranyRoli } from '../../../src/domena/ekrany.js';
 import { synchronizujRole, listaRol, rolaPoKluczu, kluczeEkranow } from '../../../src/moduly/ustawienia/role.js';
-import { migawkaDostepu, nowyPanel } from '../../pomoc/konta-prz068.js';
+import { migawkaDostepu, nowyPanel } from '../../pomoc/panel-konta-testowe.js';
 
 const teraz = () => new Date('2026-10-14T02:00:00Z');
 const kluczeTestowe = () => { let n = 0; return () => `r-test${String(++n).padStart(4, '0')}`; };
@@ -25,7 +25,7 @@ function bazaPrzedWydaniem() {
 }
 const przejdz = (db, losowyKlucz = kluczeTestowe()) => { wykonajMigracje(db, [modulRdzen, modulUstawienia]); return synchronizujRole(db, { teraz, losowyKlucz }); };
 
-describe('PRZ-068 przejście kont na role w bazie', () => {
+describe('przejście kont na role w bazie', () => {
   it('zbiór (login → ekrany, admin) jest identyczny, poza poszerzeniem administratora', () => {
     const db = bazaPrzedWydaniem();
     const przed = migawkaDostepu(db);

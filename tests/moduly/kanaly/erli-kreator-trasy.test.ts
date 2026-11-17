@@ -14,7 +14,7 @@ import {transportErliPiaskownicy} from '../../../deploy/proba/atrapy/erli.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-// Katalog roboczy w os.tmpdir(), nie na jednej maszynie (CI kopii publicznej 12.11.2026).
+// Katalog roboczy w os.tmpdir(), żeby test działał na różnych maszynach.
 const KATALOG_TESTU=fs.mkdtempSync(path.join(os.tmpdir(),'erli-kreator-trasy-'));
 const root='/ustawienia/integracje/erli',produkcja='https://erli.pl/svc/shop-api',sandbox='https://sandbox.erli.dev/svc/shop-api';
 const sekret='fixture-polcien-klucz-api';
@@ -72,7 +72,7 @@ it('401 po zapisaniu nowego sklepu zachowuje dane i klucz, pokazuje błąd i roz
  const ekran=await f.req('GET',String(r.headers.location).slice(root.length));
  expect(ekran.body).toContain('class="pas-blad" role="alert"');
  expect(ekran.body).toContain('Klucz zapisany, ale połączenie z ERLI nie działa. Sprawdź klucz i środowisko.');
- // PRZ-157.12u: rozwinięty jest krok 2 (błąd połączenia); formularz klucza czeka w zwiniętym kroku 1 z odnośnikiem.
+ // Rozwinięty jest krok 2 (błąd połączenia); formularz klucza czeka w zwiniętym kroku 1 z odnośnikiem.
  expect(ekran.body).toContain('id="erli-klucz"');expect(ekran.body).toContain('id="erli-polaczenie"');
  expect(ekran.body).toMatch(/<details class="erli-krok" id="erli-krok-dane"[^>]*>[\s\S]*?id="erli-klucz"[\s\S]*?<\/details>/);
  expect(ekran.body).toContain('href="#erli-krok-dane"');
@@ -87,7 +87,7 @@ it('wyjątek operacji sprawdz po zapisie nie cofa danych i przekierowuje z kodem
  expect(f.row().nazwa).toBe('Pracownia Półcień');expect(r.body).toContain('Klucz zapisany, ale połączenie');
  expect(r.body).not.toContain('class="pas-potwierdzenie"');
 });
-// PRZ-157.12u: kreator pokazuje zrobione kroki zwinięte i tylko bieżący rozwinięty; przyszłe są wyłącznie w pasku.
+// Kreator pokazuje zrobione kroki zwinięte i tylko bieżący rozwinięty; przyszłe są wyłącznie w pasku.
 it('nowy sklep pokazuje zrobione kroki i bieżący, a pasek wymienia wszystkie kroki',async()=>{
  const f=await setup(false,true),p=await f.szkic(sandbox,'atrapa-polcien');
  const sprawdzSekcje=async(widoczne:string[])=>{

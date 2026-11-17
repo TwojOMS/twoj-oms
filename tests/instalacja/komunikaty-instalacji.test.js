@@ -1,4 +1,4 @@
-// PRZ-093.03: pierwsze minuty obcej firmy. Instalator kończył się ogólnym kodem bez powodu (stary Node,
+// Pierwsze minuty obcej firmy. Instalator kończył się ogólnym kodem bez powodu (stary Node,
 // zajęty port, zawieszony etap) albo gołym JSON-em bez „co dalej”. Te testy pilnują trzech rzeczy:
 // kontroli wersji Node przed czymkolwiek, powodu błędu etapu potomnego bez sekretów i wskazówek po sukcesie.
 import { afterEach, describe, expect, it } from 'vitest';
@@ -102,7 +102,7 @@ describe('powód błędu etapu potomnego', () => {
     expect(sekretyKatalogu(path.join(p, 'brak'))).toEqual([]);
   });
 
-  it('klucz poświadczeń (PRZ-182) też jest na liście wycinanych — z katalogu albo ze wskazanego pliku', () => {
+  it('klucz poświadczeń też jest na liście wycinanych — z katalogu albo ze wskazanego pliku', () => {
     const p = katalog();
     const klucz = Buffer.alloc(32, 7).toString('base64url');
     fs.writeFileSync(path.join(p, 'klucz.env'), `# opis\nOMS_KLUCZ_SEKRETOW=${klucz}\n`);

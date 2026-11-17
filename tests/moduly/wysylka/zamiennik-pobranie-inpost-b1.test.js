@@ -7,7 +7,7 @@ import { createInpostClient } from '../../../src/oms/kurierzy/inpost.js';
 import { createNadanie } from '../../../src/moduly/wysylka/services/nadanie.js';
 import { zapiszUmowePobrania } from '../../../src/moduly/wysylka/db/umowy-pobrania.js';
 
-// PRZ-137.03 (D2, D3): zamiennik za pobraniem (paczka N > 1, zaznaczone „pobranie na tej
+// Zamiennik za pobraniem (paczka N > 1, zaznaczone „pobranie na tej
 // paczce") decyduje się PO KURIERZE, nie po formularzu. Paczkomat z umową firmy wiezie `cod`,
 // bez umowy — odmowa „wymaga umowy" (zamiennik to zawsze pobranie OMS-owe, także przy
 // zamówieniu ze sklepu); WzA — odmowa neutralna, bez założenia, że zostaje DPD.
@@ -56,7 +56,7 @@ function przygotuj({ umowa = false, metoda = 'inpost_paczkomat', shipx = echo } 
   return { nadaj, przesylki, logi, fetchImpl, dpd, allegro_wza, cialo };
 }
 
-describe('B1: zamiennik za pobraniem — po kurierze (PRZ-137.03)', () => {
+describe('zamiennik za pobraniem — po kurierze', () => {
   it('InPost paczka nr 2, umowa wł.: nadana, ShipX dostaje cod = kwota zamówienia, log obiecuje inkaso', async () => {
     const t = przygotuj({ umowa: true });
     await t.nadaj();
@@ -112,7 +112,7 @@ describe('B1: zamiennik za pobraniem — po kurierze (PRZ-137.03)', () => {
     expect(t.logi().some((w) => /zainkasuje/i.test(w.wynik))).toBe(false);
   });
 
-  // Recenzja 137-03: jawne `false` na paczce nr 1 zamówienia za pobraniem nie robi z niej cichej przedpłaty.
+  // Jawne `false` na paczce nr 1 zamówienia za pobraniem nie robi z niej cichej przedpłaty.
   it.each([true, false])('InPost paczka nr 1 z jawnym pobranieNaTejPaczce:false (umowa %s): cod i tak jedzie', async (umowa) => {
     const t = przygotuj({ umowa });
     await t.nadaj({ kolejnosc: 1, pobranieNaTejPaczce: false });
@@ -141,7 +141,7 @@ describe('B1: zamiennik za pobraniem — po kurierze (PRZ-137.03)', () => {
     expect(t.przesylki()).toMatchObject([{ status: 'do_wyjasnienia', kolejnosc: 2 }]);
   });
 
-  // Decyzja właściciela 5: limitu pobrania InPostu NIE wpisujemy na sztywno — gdy ShipX odrzuci
+  // Limitu pobrania InPostu NIE wpisujemy na sztywno — gdy ShipX odrzuci
   // kwotę, operator czyta TEKST InPostu (bez tokenu), a panel niczego nie nadał.
   it('ShipX odrzuca kwotę cod → operator widzi powód od InPostu, bez tokenu', async () => {
     const t = przygotuj({ umowa: true, shipx: () => ({ ok: false, status: 400, dane: {

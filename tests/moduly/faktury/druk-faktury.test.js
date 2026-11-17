@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie, pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import {
   dodajFaktureDoKolejki, fakturyDoWziecia, oznaczBladDrukuFaktury, ostatniaPozycjaDlaFaktury,
   PROG_ZAJECIA_MS,
@@ -54,7 +54,7 @@ const wyslij = (url, payload) => app.inject({ method: 'POST', url, headers: nagl
 describe('przycisk „Drukuj" przy fakturze', () => {
   it('stoi obok „Pobierz PDF", gdy dokument istnieje w inFakcie', async () => {
     zFaktura();
-    // PRZ-126.C05a: bez zgłoszonego komputera z drukarką przycisk jest wyszarzony — tu komputer się zgłosił.
+    // Bez zgłoszonego komputera z drukarką przycisk jest wyszarzony — tu komputer się zgłosił.
     await zgloszenieStanowiska();
     const html = await karta();
     expect(html).toContain(`/zamowienia/${id}/faktura/pdf`);
@@ -288,8 +288,8 @@ describe('stan wydruku na karcie i wyjście z zapętlenia', () => {
   });
 });
 
-// PRZ-126.C05a: komputer z drukarką zgłasza się przy odpytaniu kolejki; karta bez zgłoszenia wyszarza „Drukuj".
-describe('zgłoszenia komputerów z drukarką (PRZ-126.C05a)', () => {
+// Komputer z drukarką zgłasza się przy odpytaniu kolejki; karta bez zgłoszenia wyszarza „Drukuj".
+describe('zgłoszenia komputerów z drukarką', () => {
   const zapisaneZgloszenia = () => {
     const w = db.prepare("SELECT wartosc, zmienione_at FROM ustawienia WHERE klucz = 'druk.faktury.stanowiska'").get();
     return w ? { mapa: JSON.parse(w.wartosc), at: w.zmienione_at } : null;

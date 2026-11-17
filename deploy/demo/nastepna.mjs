@@ -1,4 +1,4 @@
-// PRZ-083: proces potomny panelu demo — następna baza na DEMO_DZIS w katalogu `nastepna/` obok OMS_DB_PATH.
+// Proces potomny panelu demo — następna baza na DEMO_DZIS w katalogu `nastepna/` obok OMS_DB_PATH.
 // Uruchamia go wyłącznie baza.mjs (przygotujWTle). Kod wyjścia 0 = gotowa.json zapisany.
 import fs from 'node:fs';
 import { przygotujNastepna } from './baza.mjs';

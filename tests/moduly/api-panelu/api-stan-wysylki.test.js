@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { pobierzZamowienie, oznaczWyslane, zapiszFaktyStatusu } from '../../../src/oms/db/zamowienia.js';
 import { faktyDlaStatusu } from '../../../src/domena/status-reczny.js';
 

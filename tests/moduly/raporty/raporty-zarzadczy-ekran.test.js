@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { openOmsDb } from '../../pomoc/dane-miesieczne-parytetu.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { openOmsDb } from '../../pomoc/testowe-dane-miesieczne.js';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { ustawGranice, zapiszHistorie } from '../../../src/oms/db/historia-sprzedazy.js';
-import { KANALY } from '../../pomoc/raporty-historyczne-fixture.js';
+import { KANALY } from '../../pomoc/przykladowe-dane-raportow.js';
 import { zapiszDaneMiesiaca } from '../../../src/oms/db/dane-miesieczne.js';
 import { zapiszKoszt } from '../../../src/oms/db/koszty.js';
 
@@ -83,7 +83,7 @@ describe('ekran zarzadczy', () => {
   });
 
   // ⚠️⚠️ ZDANIE STALE — stoi ZAWSZE, nie warunkowo. Pelna ksiegowosc prowadzi biuro rachunkowe
-  // instancji i jego liczby sa wiazace (PRZ-073: bez nazwy biura — ekran widzi kazdy klient).
+  // instancji i jego liczby sa wiazace (bez nazwy biura — ekran widzi kazdy klient).
   it('zdanie „to nie jest wynik ksiegowy" stoi na ekranie ZAWSZE', async () => {
     zapiszDaneMiesiaca(db, '2026-06', { zusRazem: '2821.06' });
     const pelny = await wejdz('/finanse?od=2026-06-01&do=2026-06-30');
@@ -142,7 +142,7 @@ describe('ekran zarzadczy', () => {
     expect(odp.body).toContain('500,00');          // roznica, nazwana
     expect(odp.body).not.toContain('19 500,00');   // NIGDY zsumowane
     // Roznica ma byc NAZWANA, a nie zostawiona czytelnikowi do odjecia w glowie. Po
-    // przebudowie 17.08 nazywa ja pas („Rozjazd…" powyzej 5%, „Różnica…" ponizej) zamiast
+    // przebudowie nazywa ja pas („Rozjazd…" powyzej 5%, „Różnica…" ponizej) zamiast
     // naglowka tabeli — test pilnuje wiec ZNACZENIA, nie tamtego `<th>`.
     expect(tresc(odp)).toMatch(/różnic|rozjazd/i);
     // 5,26% > 5 — ma stac ostrzezenie. ⚠️ Szukamy w TRESCI, nie w calym dokumencie:
@@ -175,7 +175,7 @@ describe('ekran zarzadczy', () => {
     expect(tresc(dwa)).toContain('slupek-wypelnienie');
   });
 
-  // ⚠️⚠️ ZMIERZONE NA PRAWDZIWYM EKRANIE (13.08): `width: 100,0%` jest deklaracja
+  // ⚠️⚠️ ZMIERZONE NA PRAWDZIWYM EKRANIE: `width: 100,0%` jest deklaracja
   // NIEPOPRAWNA — przegladarka wyrzuca ja w calosci, wiec slupek ZNIKA, a liczba obok
   // zostaje i wszystko wyglada poprawnie.
   it('szerokość słupka jest liczbą CSS-a (kropka), nie polskim zapisem', async () => {
@@ -184,10 +184,10 @@ describe('ekran zarzadczy', () => {
     expect(tresc(odp)).not.toMatch(/style="width:[^"]*,/);
   });
 
-  // ⚠️ POLA IDA DO `.pola`, NIGDY DO `.rzad`: tamta klasa nie styluje listy rozwijanej
+  // ⚠️ POLA IDA DO `.zakres-data`, NIGDY DO `.rzad`: tamta klasa nie styluje listy rozwijanej
   // w ogole i zweza pola do 6 rem — pole daty wyglada wtedy jak z innej aplikacji.
   // ⚠️⚠️ POLA DAT MAJA MIEC WLASNE STYLOWANIE, a nie odziedziczone po klasach od czego
-  // innego — i to jest cala tresc tego testu. Do 17.08.2026 pilnowal on obecnosci `.pola`,
+  // innego — i to jest cala tresc tego testu. Wcześniej pilnowal on obecnosci `.pola`,
   // bo tak wygladal wtedy formularz; po przebudowie doslowne trzymanie sie tamtego napisu
   // BYLO SZKODLIWE: `.pola` to `flex-direction: column`, wiec kompaktowy pasek zakresu
   // rozjezdzal sie na trzy wiersze i zjadal gore ekranu — dokladnie to, co przebudowa
@@ -249,8 +249,7 @@ describe('ekran zarzadczy', () => {
   });
 });
 
-// ——— PRZEBUDOWA 17.08.2026 —————————————————————————————————————————————————————————
-// KPI z delta, kaskada zamiast tabeli, kategorie bez kolumny typu, prognoza progu.
+// KPI z deltą, kaskada zamiast tabeli, kategorie bez kolumny typu, prognoza progu.
 describe('przebudowany ekran finansow', () => {
   // Duza sprzedaz w marcu — podstawa podatku rosnie na tyle, ze prognoza roku mija prog.
   const duzaSprzedaz = () => zapiszHistorie(db, {
@@ -291,7 +290,7 @@ describe('przebudowany ekran finansow', () => {
     // ⚠️⚠️ SZUKAMY W SAMYCH KAFLACH, a nie w tresci strony. Zwykłe `toContain('brak
     // porównania')` przechodzilo TAKZE z podmieniona regula delty — bo ta sama fraza stoi
     // w akapicie metodologii („wtedy zamiast liczby stoi «brak porównania»"). Test mierzyl
-    // wiec wlasny opis zamiast zachowania (mutacja `zmiana → 0` przezyla go 17.08.2026).
+    // wiec wlasny opis zamiast zachowania (mutacja `zmiana → 0` przezyla go).
     const delty = [...tresc(odp).matchAll(/<span class="kafel-delta[^"]*">([\s\S]{0,60}?)<\/span>/g)]
       .map((m) => m[1].replace(/\s+/g, ' ').trim());
     expect(delty.length).toBeGreaterThanOrEqual(3);
@@ -321,7 +320,7 @@ describe('przebudowany ekran finansow', () => {
     const t = tresc(await wejdz('/finanse?od=2026-06-01&do=2026-06-30'));
     expect(t).toMatch(/na minusie/i);
     // ⚠️⚠️ KAZDA liczba geometrii kaskady MUSI zostac w torze [0, 100]. Sprawdzanie samego
-    // „width: -" bylo za slabe (mutacja zdejmujaca przyciecie przezyla je 17.08.2026):
+    // „width: -" bylo za slabe (mutacja zdejmujaca przyciecie przezyla je):
     // przy ujemnym wyniku psuje sie najpierw `left`, a szerokosc wychodzi DODATNIA
     // i wieksza od stu — pasek wyjezdza poza tor i miesiac na minusie wyglada jak dobry.
     const liczby = [...t.matchAll(/class="kaskada-czesc[^"]*"\s*style="left: ([-\d.]+)%; width: ([-\d.]+)%"/g)]
@@ -370,13 +369,13 @@ describe('przebudowany ekran finansow', () => {
 });
 
 // ⚠️⚠️ OKABLOWANIE OPCJI `doKonca` — bariera, ktora zyje MIEDZY domena a trasa.
-// 17.08.2026 skroty „ten…" przestaly siegac konca okresu, zeby ekran SPRZEDAZY nie zestawial
+// Skroty „ten…" przestaly siegac konca okresu, zeby ekran SPRZEDAZY nie zestawial
 // 17 dni sierpnia z 31 dniami lipca (pokazywal „↓ 59,8%"). Rachunek zarzadczy ma zostac przy
 // PELNYCH okresach — jego koszty, ZUS i PIT-5 sa miesieczne. Gdyby trasa zapomniala podac
 // opcji, testy samej domeny dalej swiecilyby na zielono, a rachunek zaczalby odmawiac
 // („zakres nie pokrywa sie z pelnymi miesiacami") przy kazdym skrocie „ten…".
 describe('rachunek zarzadczy trzyma sie PELNYCH okresow', () => {
-  // ⚠️ MIESIAC LICZONY Z ZEGARA, nie wpisany na sztywno. Do 17.08.2026 oba testy podawaly
+  // ⚠️ MIESIAC LICZONY Z ZEGARA, nie wpisany na sztywno. Wcześniej oba testy podawaly
   // dekoracyjne `?dzien=2026-08-17` (trasa TEGO PARAMETRU NIE CZYTA) i sprawdzaly zapis
   // „2026-08-01"/„2026-08-31" — przechodzily wylacznie dlatego, ze akurat byl sierpien,
   // a pierwszego wrzesnia zaczelyby padac bez zadnej zmiany w kodzie.
@@ -409,7 +408,7 @@ describe('rachunek zarzadczy trzyma sie PELNYCH okresow', () => {
   });
 });
 
-// ——— STARE ADRESY (sprzed wyprowadzenia Finansow, 17.08.2026) ————————————————————————
+// ——— STARE ADRESY (sprzed wyprowadzenia Finansow) ————————————————————————
 // Zakladki przegladarki i wiki znaja /raporty/zarzadczy i /raporty/dane — maja dalej
 // trafiac we wlasciwy ekran, z zachowanym query stringiem (zapisany skrot laduje na
 // tym samym okresie).
@@ -441,11 +440,8 @@ describe('przekierowania ze starych adresow', () => {
   });
 });
 
-// ——— PASEK FILTROW (21.08.2026, zgloszenie właściciela) ————————————————————————————————
-// Zamiast „Ten miesiac · Poprzedni miesiac · Ten kwartal · Poprzedni kwartal · Ten rok"
-// ma stac „Poprzedni miesiac · Q1 · Q2 · Q3 · Q4 · Ten rok" plus WYBOR MIESIACA i wybor
-// zakresu dat. Powod: przy rachunku zarzadczym wlasciciel wskazuje okres WPROST — zeby
-// zobaczyc Q1 w sierpniu trzeba bylo wpisywac obie daty recznie.
+// PASEK FILTRÓW: „Poprzedni miesiąc · Q1 · Q2 · Q3 · Q4 · Ten rok”, wybór miesiąca
+// i zakresu dat. Okres rachunku zarządczego można wskazać wprost bez ręcznego wpisywania obu dat.
 describe('pasek filtrow rachunku zarzadczego', () => {
   const paskiem = (odp) => tresc(odp).split('<details class="metodologia"')[0];
 
@@ -552,13 +548,12 @@ describe('pasek filtrow rachunku zarzadczego', () => {
   });
 });
 
-// ——— MARGINESY PASKA FILTROW (21.08.2026, zgloszenie właściciela: „nie ma marginesów") ————
+// ——— MARGINESY PASKA FILTROW ————
 // ⚠️ PO CO TO TUTAJ: `.panel--zakres` NIE MA w srodku `.panel-cialo` (jedyna klasa w tym
 // arkuszu, ktora niesie wysciolke panelu) — tresc paska filtrow stala wiec DOKLADNIE na
 // ramce, w odroznieniu od kazdego innego panelu na ekranie. Zmierzone w przegladarce:
 // wysciolka „0px 0px 9.6px", dziecko przy samej krawedzi. Cala suita byla na to slepa, bo
-// rozstrzyga o tym WYLACZNIE arkusz stylow (ta sama choroba, co przy ukladzie karty —
-// tests/oms/karta-uklad-css.test.js).
+// rozstrzyga o tym WYLACZNIE arkusz stylow (podobnie jak przy ukladzie karty).
 describe('pasek filtrów ma wyściółkę, a nie zero', () => {
   const arkusz = async () => readFileSync('src/public/oms-uklad.css', 'utf8');
 

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { dolaczZrodla } from '../../src/domena/kampania.js';
 
-// Doklejenie danych ze zrodel zewnetrznych (Etapy 1-2) do stanu kampanii policzonego
+// Doklejenie danych ze zrodel zewnetrznych do stanu kampanii policzonego
 // z wlasnej bazy. ⚠️ Wejsciem sa WIERSZE LUSTRA (kolumny bazy), a nie odpowiedzi API —
 // domena nie wie, ze Meta i GA4 w ogole istnieja poza tabelami.
 

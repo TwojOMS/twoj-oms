@@ -1,6 +1,6 @@
-// Baza demo publicznego: założenie od zera i — od PRZ-083 — następna baza przygotowana W TLE na najbliższy reset.
-// Do PRZ-083 reset kasował bazę i kończył proces: restart kontenera + bezpiecznik 17,5 s, generator 23,8 s, start 4,7 s —
-// 46 s przerwy (pomiar 15.10, reset 07:00). Teraz generator chodzi w procesie potomnym (nastepna.mjs) do katalogu
+// Baza demo publicznego: założenie od zera i następna baza przygotowana W TLE na najbliższy reset.
+// Restart kontenera z generowaniem bazy powoduje kilkadziesiąt sekund przerwy.
+// Dlatego generator chodzi w procesie potomnym (nastepna.mjs) do katalogu
 // `nastepna/` obok bazy, a o pełnej godzinie cykl (cykl.mjs) zamyka aplikację, woła podmienNaNastepna i składa ją od nowa.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -14,7 +14,7 @@ const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite');
 
 const pliki = (baza) => [baza, `${baza}-wal`, `${baza}-shm`];
 
-// PRZ-083: zespół zmyślonej firmy na ekranie „Użytkownicy i uprawnienia” w podglądzie demo.
+// Zespół zmyślonej firmy na ekranie „Użytkownicy i uprawnienia” w podglądzie demo.
 export const ZESPOL_DEMO = [
   ['anna', 'Anna Wiśniewska', 'sprzedaz'],
   ['marek', 'Marek Zieliński', 'produkcja'],
@@ -44,7 +44,7 @@ export async function zalozBazeDemo({ baza, dzis, env, kontoAdmina }) {
   try {
     const haslo = kontoAdmina.hash ? { hashHasla: kontoAdmina.hash } : { haslo: kontoAdmina.haslo };
     zalozKonto(db, { login: kontoAdmina.login, imie: kontoAdmina.imie, rola: 'administrator', admin: true, ...haslo });
-    // PRZ-083: gość ma też ptaszek Ustawień — ogląda je w podglądzie (src/core/bezpieczenstwo/podglad-demo.js:
+    // Gość ma też ptaszek Ustawień — ogląda je w podglądzie (src/core/bezpieczenstwo/podglad-demo.js:
     // zapis pod /ustawienia od gościa = 403). Finanse dalej poza jego rolą.
     zalozKonto(db, { login: env.OMS_DEMO_LOGIN, imie: 'Gość demo', haslo: env.OMS_DEMO_HASLO, rola: 'sprzedaz',
       ekrany: [...ekranyRoli('sprzedaz'), 'ustawienia'] });
@@ -52,7 +52,7 @@ export async function zalozBazeDemo({ baza, dzis, env, kontoAdmina }) {
     for (const [login, imie, rola] of ZESPOL_DEMO) {
       zalozKonto(db, { login, imie, rola, haslo: randomBytes(24).toString('base64url') });
     }
-    // PRZ-153.E9: jawny klucz API demo, wyłącznie zakresy odczytu (opis w docs/api/README.md).
+    // Jawny klucz API demo, wyłącznie zakresy odczytu (opis w docs/api/README.md).
     zalozKluczDemo(db);
   } finally { db.close(); }
   return wynik;
@@ -98,7 +98,7 @@ export function podmienNaNastepna({ baza, dzis, env }) {
   fs.renameSync(path.join(kat, 'oms.sqlite'), baza);
   for (const [zrodlo, cel] of [['proformy', env.OMS_PROFORMY_KATALOG], ['etykiety', env.OMS_ETYKIETY_KATALOG]]) {
     if (!cel) continue;
-    // Stare pliki idą razem ze starą bazą — do PRZ-083 proformy gości zbierały się tu z godziny na godzinę.
+    // Stare pliki idą razem ze starą bazą — inaczej proformy gości zbierałyby się z godziny na godzinę.
     fs.rmSync(cel, { recursive: true, force: true });
     if (fs.existsSync(path.join(kat, zrodlo))) fs.renameSync(path.join(kat, zrodlo), cel);
     else fs.mkdirSync(cel, { recursive: true });

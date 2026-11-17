@@ -68,7 +68,7 @@ describe('delty', () => {
   });
 });
 
-// ——— UDZIALY FAKTURA / PARAGON (17.08.2026) ——————————————————————————————————————————
+// ——— UDZIALY FAKTURA / PARAGON ——————————————————————————————————————————
 // ⚠️ PROCENTY LICZY DOMENA, NIE WIDOK. Panel trzyma zasade „widok niczego nie liczy"
 // (przewodnik, sekcja 3), a tu chodzi o dwie liczby, ktore maja sie ZGADZAC ze soba
 // (szerokosc paska i napis w srodku) — policzone dwa razy rozjechalyby sie przy pierwszym
@@ -139,7 +139,7 @@ describe('udzialyDokumentow — proporcja faktura/paragon', () => {
   });
 });
 
-// ——— PRZEBIEG SPRZEDAZY: DZIEN PO DNIU I TYDZIEN PO TYGODNIU (17.08.2026) ————————————
+// ——— PRZEBIEG SPRZEDAZY: DZIEN PO DNIU I TYDZIEN PO TYGODNIU ————————————
 // Lista dni/tygodni przychodzi Z ZAKRESU (okresy-raportu.js), nie z danych — okres bez
 // sprzedazy ma miec slupek z zerem, inaczej luka wyglada jak jej brak (wzorzec wgMiesiecy).
 const dzien = (d, brutto) => ({ ...w('SWIETLIK_PL', brutto), dzien: d });
@@ -186,7 +186,7 @@ describe('wgTygodni', () => {
   });
 });
 
-// ——— DELTY KANALOW (17.08.2026) — „co uroslo, co spadlo" bez tabeli rok do roku ————————
+// ——— DELTY KANALOW — „co uroslo, co spadlo" bez tabeli rok do roku ————————
 describe('deltyKanalow', () => {
   const kanal = (k, brutto) => ({ kanal: k, bruttoGrosze: brutto, zamowien: 1, aovGrosze: brutto, udzial: 50 });
 

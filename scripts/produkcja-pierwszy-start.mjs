@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// PRZ-062: pierwszy start PRODUKCJI w kontenerze klienta. Uruchamia go `aktualizuj.sh produkcja`
+// Pierwszy start PRODUKCJI w kontenerze klienta. Uruchamia go `aktualizuj.sh produkcja`
 // (docker exec oms node scripts/produkcja-pierwszy-start.mjs) na świeżej, pustej bazie, gdy OMS już
 // odpowiada na /health. Robi dwie rzeczy, których próba nie przenosi (baza próby zostaje w archiwum):
 //   1. jawne granice raportu sprzedaży dla każdego kanału raportowego (instalacja bez historii) —
@@ -59,7 +59,7 @@ async function main() {
   if (!env.OMS_DB_PATH) throw new Error('PRODUKCJA_BRAK_BAZY');
   if (process.argv.includes('--granice')) {
     // Kanał dopisany po przejściu (instrukcja, sekcja 9): ta sama reguła dnia co przy przejściu —
-    // dzień przed <P>_OD albo wczoraj — zamiast daty liczonej w głowie (recenzja D8 r1, P2-1).
+    // dzień przed <P>_OD albo wczoraj — zamiast daty liczonej w głowie.
     // OMS działa obok i pisze do tej samej bazy: czekamy do 10 s na blokadę zamiast „database is locked”.
     const baza = new DatabaseSync(env.OMS_DB_PATH, { timeout: 10_000 });
     try { process.stdout.write(JSON.stringify({ status: 'granice', ...zalozGranice(baza, env) }) + '\n'); }

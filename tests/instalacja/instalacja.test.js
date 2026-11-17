@@ -16,14 +16,14 @@ function uruchom(plik, args, env = {}) { return spawnSync(process.execPath, [pli
 function kontoIBaza(plik) { const db = new DatabaseSync(plik, { readOnly: true }); try { return { integrity: db.prepare('PRAGMA integrity_check').get().integrity_check, konto: db.prepare("SELECT login, hash_hasla FROM konta WHERE login='administrator-proby'").get() }; } finally { db.close(); } }
 afterEach(() => { for (const p of katalogi.splice(0)) fs.rmSync(p, { recursive: true, force: true }); });
 
-describe('instalacja próby PRZ-050', () => {
+describe('instalacja próby', () => {
   it('odmawia nadpisania konfiguracji lub bazy i nie dziedziczy sekretu procesu', () => {
     const p = katalog();
     fs.writeFileSync(path.join(p, 'cudze-dane.txt'), 'nie ruszaj');
     const odmowa = uruchom(przygotuj, ['--katalog', p, '--port', '39150']);
     expect(odmowa.status).toBe(1);
     expect(fs.readFileSync(path.join(p, 'cudze-dane.txt'), 'utf8')).toBe('nie ruszaj');
-    // PRZ-182: odmowa zapada PRZED utworzeniem klucza — w cudzym katalogu nie powstaje klucz.env.
+    // Odmowa zapada PRZED utworzeniem klucza — w cudzym katalogu nie powstaje klucz.env.
     expect(fs.readdirSync(p)).toEqual(['cudze-dane.txt']);
     const czysty = path.join(p, 'pusty katalog');
     const pierwszy = uruchom(przygotuj, ['--katalog', czysty, '--port', '39150'], { CUDZY_SEKRET_INTEGRACJI: 'nie-wolno-wyniesc' });
@@ -36,7 +36,7 @@ describe('instalacja próby PRZ-050', () => {
     expect(fs.readFileSync(path.join(czysty, 'produkcja.env.example'), 'utf8')).toContain('OMS_SPRZEDAWCA_NIP=\n');
     const produkcja = fs.readFileSync(path.join(czysty, 'produkcja.env.example'), 'utf8');
     for (const klucz of ['OMS_DB_PATH', 'OMS_PROFORMY_KATALOG', 'OMS_ETYKIETY_KATALOG']) expect(produkcja).toContain(klucz + '=\n');
-    // PRZ-093.08: pola adresu firmy jak w szablonie Dockera (deploy/klient/aktualizuj.sh) — puste, opcjonalne.
+    // Pola adresu firmy jak w szablonie Dockera (deploy/klient/aktualizuj.sh) — puste, opcjonalne.
     for (const klucz of ['DPD_NADAWCA_NAZWA', 'DPD_NADAWCA_ULICA', 'DPD_NADAWCA_KOD', 'DPD_NADAWCA_MIASTO']) expect(produkcja).toContain(klucz + '=\n');
     expect(produkcja).toContain('Ustawienia → Firma');
   });
@@ -131,7 +131,7 @@ describe('instalacja próby PRZ-050', () => {
   }, 30_000);
 });
 
-// PRZ-182: klucz poświadczeń integracji powstaje przy pierwszym uruchomieniu instalatora, w osobnym pliku
+// Klucz poświadczeń integracji powstaje przy pierwszym uruchomieniu instalatora, w osobnym pliku
 // klucz.env. Kontrola pustego katalogu idzie PRZED utworzeniem klucza, a jedynym dopuszczalnym „śladem” w katalogu
 // jest prawidłowy plik klucza (przerwane przygotowanie). Wartość klucza nie trafia na ekran ani do proba.env.
 describe('klucz poświadczeń od pierwszego uruchomienia', () => {

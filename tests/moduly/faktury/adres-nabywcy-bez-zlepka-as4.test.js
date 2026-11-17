@@ -1,4 +1,4 @@
-// AS4 (PRZ-122): nabywca bez adresu nigdzie nie daje zlepka „—, — —, PL”. Ekran faktury TwojeFaktury ma własny test (B14f2);
+// AS4: nabywca bez adresu nigdzie nie daje zlepka „—, — —, PL”. Ekran faktury TwojeFaktury ma własny test (B14f2);
 // tu PDF proformy (drugi z kodu, który składa adres nabywcy): puste części znikają, nie zamieniają się w „—”.
 // Dane zmyślone, bez sieci.
 import { describe, it, expect } from 'vitest';

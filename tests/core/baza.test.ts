@@ -93,7 +93,7 @@ describe('migracje', () => {
     } finally { db.close(); }
   });
 
-  // PRZ-130: odcisk „po” migracji jest odciskiem „przed” następnej w tym samym wywołaniu — kontrola ma widzieć
+  // Odcisk „po” migracji jest odciskiem „przed” następnej w tym samym wywołaniu — kontrola ma widzieć
   // obiekty utworzone przez poprzednią migrację, nie stan sprzed całego wywołania.
   it('w jednym wywołaniu kolejna migracja nie usunie kolumny z tabeli założonej przez poprzednią', () => {
     const db = otworzBaze(':memory:');
@@ -121,7 +121,7 @@ describe('migracje', () => {
     } finally { db.close(); }
   });
 
-  // PRZ-130 (recenzja): między COMMIT jednej migracji a BEGIN IMMEDIATE następnej inny proces (np. skrypt
+  // Między COMMIT jednej migracji a BEGIN IMMEDIATE następnej inny proces (np. skrypt
   // z openOmsDb przy wydaniu) może zmienić schemat — zapamiętany odcisk nie może go przesłonić.
   it('zmiana schematu z drugiego połączenia między migracjami nie ukrywa nowego ograniczenia', () => {
     const plik = join(mkdtempSync(join(tmpdir(), 'baza-prz130-')), 'oms.db');
@@ -423,10 +423,10 @@ describe('migracje', () => {
   });
 });
 
-// PRZ-131: odcisk jest zapamiętywany po tekście schematu — na tym samym połączeniu każda zmiana schematu musi dać
+// Odcisk jest zapamiętywany po tekście schematu — na tym samym połączeniu każda zmiana schematu musi dać
 // nowy odcisk, a powrót do poprzedniego schematu — poprzedni.
 describe('pamięć odcisku schematu', () => {
-  // PRZ-173: pojemność pamięci odcisków musi objąć wszystkie stany pełnej budowy — inaczej 0% trafień i bramka ×2.
+  // Pojemność pamięci odcisków musi objąć wszystkie stany pełnej budowy — inaczej 0% trafień i bramka ×2.
   // `PRAGMA table_list` woła tylko liczenie odcisku (src/core/baza.ts), żadna migracja.
   it('druga budowa bazy ze wszystkimi modułami bierze odciski schematu z pamięci', () => {
     const zbuduj = (licznik: { n: number }) => {
@@ -481,7 +481,7 @@ describe('pamięć odcisku schematu', () => {
     } finally { db.close(); }
   });
 
-  // Recenzja PRZ-131: gdyby migracja obeszła nakładkę i podmieniła tekst w sqlite_master przez writable_schema, tekst
+  // Gdyby migracja obeszła nakładkę i podmieniła tekst w sqlite_master przez writable_schema, tekst
   // (klucz pamięci odcisku) wyglądałby jak przed migracją, a schemat połączenia już nie. node:sqlite działa w trybie
   // defensywnym i taki zapis odrzuca — ten test przypina to założenie (gdy przestanie, wrócić do klucza odcisku).
   it('zapis do sqlite_master przez writable_schema jest odrzucony', () => {

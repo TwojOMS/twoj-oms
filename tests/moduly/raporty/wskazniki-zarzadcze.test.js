@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { openOmsDb } from '../../pomoc/dane-miesieczne-parytetu.js';
+import { openOmsDb } from '../../pomoc/testowe-dane-miesieczne.js';
 import { zapiszKoszt } from '../../../src/oms/db/koszty.js';
 import { wskazniki, prowizjaAllegroZaMiesiac } from '../../../src/domena/wskazniki-zarzadcze.js';
 

@@ -8,7 +8,7 @@ import { zapiszZamowienie, pobierzZamowienie } from '../../../src/oms/db/zamowie
 import { rozpocznijPrzesylke, nastepnaKolejnosc, zywePrzesylki } from '../../../src/moduly/wysylka/db/przesylki.js';
 import { createNadanie } from '../../../src/moduly/wysylka/services/nadanie.js';
 import { createDpdClient } from '../../../src/oms/kurierzy/dpd.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { wyliczStatus, doZrobienia } from '../../../src/domena/status.js';
 import { sprawyZamowienia, mozliwaKolejnaPaczka, PROG_ZAWIESZONEGO_NADANIA_MS } from '../../../src/domena/przesylka-stan.js';
 
@@ -38,7 +38,7 @@ const zmapowane = (nad = {}) => ({
   utworzone_at: '2026-07-29T13:19:52', pozycje: [], ...nad,
 });
 
-// Klient DPD na PRAWDZIWYCH fiksturach z Zadania 8, bez ani jednego żądania sieciowego:
+// Klient DPD na PRAWDZIWYCH fiksturach, bez ani jednego żądania sieciowego:
 // `fetchImpl` nigdy nie dotyka dpdservices.dpd.com.pl. Numer listu podmieniamy w fiksturze,
 // żeby dwie paczki tego samego zamówienia miały różne numery — inaczej test nie odróżniłby
 // „druga paczka" od „ta sama paczka policzona dwa razy".
@@ -309,7 +309,7 @@ describe('referencja wysyłana do DPD', () => {
 
 describe('pobranie (COD) jedzie WYŁĄCZNIE na pierwszej paczce', () => {
   const zPobraniem = { metoda_wysylki: 'dpd', pobranie: 1, kwota_pobrania: '212.90' };
-  // ⚠️ ZMIANA Z4 (2026-08-05): przy zamówieniu ZA POBRANIEM formularz paczki nr 1 niesie
+  // ⚠️ Przy zamówieniu ZA POBRANIEM formularz paczki nr 1 niesie
   // teraz pole `kwota_pobrania`, wypełnione dzisiejszą kwotą efektywną — a jego brak jest
   // ODMOWĄ, nie „nadaniem bez pobrania" (paczka pojechałaby jako przedpłacona i nikt by się
   // o tym nie dowiedział). Payloady poniżej odsyłają je tak, jak odesłałaby prawdziwa
@@ -400,7 +400,7 @@ describe('pobierzZamowienie oddaje LISTĘ przesyłek', () => {
 });
 
 describe('status zamówienia z wieloma paczkami', () => {
-  // ⚠️ ZMIANA 2026-07-31: status wyslany wynika z `wyslane_at`, nie z istnienia paczki.
+  // ⚠️ ZMIANA: status wyslany wynika z `wyslane_at`, nie z istnienia paczki.
   const zam = (przesylki, nad = {}) => ({
     anulowane: 0, zwrot_at: null, w_realizacji_at: null, wyslane_at: null, przesylki, faktura: null, ...nad,
   });
@@ -560,7 +560,7 @@ describe('ekran nadania kolejnej paczki', () => {
     expect(r.body).toMatch(/paczk[ai] nr 2/i);
   });
 
-  // Zadanie 5 (plan „ekran nadania", decyzja właściciela 04.08): pole „Komentarz" zostało
+  // Pole „Komentarz" zostało
   // USUNIĘTE z ekranu — zarówno przy pierwszej, jak i przy kolejnej paczce. POST i
   // `nadanie.nadaj()` zostają nietknięte (patrz testy niżej: komentarz przesłany w
   // payloadzie POST-a nadal trafia do logu, mimo że pola na ekranie już nie ma).
@@ -772,7 +772,7 @@ describe('trasy wskazują KONKRETNĄ paczkę', () => {
 });
 
 // =====================================================================================
-// UKRYCIE PACZKI, KTORA ZASTAPILA KOLEJNA (04.09.2026, zgloszenie wlasciciela)
+// UKRYCIE PACZKI, KTORA ZASTAPILA KOLEJNA
 // =====================================================================================
 
 describe('karta zamówienia — ukrywanie paczki zastąpionej przez kolejną', () => {

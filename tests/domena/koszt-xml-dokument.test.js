@@ -206,7 +206,7 @@ describe('dokumentZXml — komplet elementów art. 106e z XML-a FA(3)', () => {
     });
   });
 
-  // ⚠️⚠️ TRZY STANY ZAPŁATY, NIE DWA (poprawka po recenzji 2026-09-03). `Zaplacono` = 2 to
+  // ⚠️⚠️ TRZY STANY ZAPŁATY, NIE DWA. `Zaplacono` = 2 to
   // ZDANIE WYSTAWCY „nie zapłacono"; brak węzła to BRAK ZDANIA. Do tej poprawki oba dawały
   // `false`, więc wizualizacja drukowała księgowej „Nie zapłacono" na dokumencie, który
   // o zapłacie nie mówi nic — czyli WSTAWIAŁA W CUDZY DOKUMENT fakt, którego tam nie ma.

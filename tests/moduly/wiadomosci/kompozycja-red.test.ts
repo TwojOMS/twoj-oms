@@ -2,13 +2,13 @@ import { describe, it, expect, vi } from 'vitest';
 import { tmpdir } from 'node:os';
 import { zbudujOms } from '../../../src/oms/bootstrap.ts';
 
-// PRZ-029 RED: obecna rzeczywista kompozycja bootstrapu (domyślna lista modułów, realna DB SQLite).
+// Obecna rzeczywista kompozycja bootstrapu (domyślna lista modułów, realna DB SQLite).
 const env = { OMS_USER: 'operator', OMS_PASS: 'fixture',
   OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000',
   OMS_PROFORMY_KATALOG: tmpdir(), OMS_ETYKIETY_KATALOG: tmpdir() };
 const headers = { authorization: `Basic ${Buffer.from('operator:fixture').toString('base64')}` };
 
-describe('PRZ-029 rzeczywista kompozycja wiadomości', () => {
+describe('rzeczywista kompozycja wiadomości', () => {
   it('bootstrap obsługuje ekrany wiadomości, klientów i ustawień formułki', async () => {
     const transport = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Sieć zabroniona'));
     let z: Awaited<ReturnType<typeof zbudujOms>> | undefined;

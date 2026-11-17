@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { pozycjeZXml } from '../../src/domena/koszt-xml.js';
 
-// ⚠️ KSZTAŁT XML-a ZMIERZONY NA ŻYWYM API (Zadanie 0, 12.08.2026): `FA (3)`, schema `1-0E`,
+// ⚠️ KSZTAŁT XML-a ZMIERZONY NA ŻYWYM API: `FA (3)`, schema `1-0E`,
 // przestrzeń `http://crd.gov.pl/wzor/2025/06/25/13775/`. Pozycje to `FaWiersz`:
 // `NrWierszaFa`, `P_7` (nazwa), `P_8A` (jednostka), `P_8B` (ilość), `P_9A` (cena netto),
 // `P_11` (wartość netto), `P_12` (stawka VAT). To nie są zgadywanki — tak wygląda dokument

@@ -25,7 +25,7 @@ describe('hasla (scrypt z node:crypto)', () => {
     expect(zahaszuj('jawne-haslo')).not.toContain('jawne-haslo');
   });
 
-  // ⚠️ Regresja po recenzji: zapis z PUSTYM ogonem (`...$<sol>$`) dawal `oczekiwany.length === 0`.
+  // ⚠️ Regresja: zapis z PUSTYM ogonem (`...$<sol>$`) dawal `oczekiwany.length === 0`.
   // `scryptSync(cokolwiek, sol, 0, ...)` NIE rzuca — oddaje bufor zerowej dlugosci — a
   // `timingSafeEqual` na dwoch pustych buforach oddaje `true`. Skutek: KAZDE haslo pasowalo
   // do takiego wiersza. Ten test musi dawac `false` niezaleznie od podanego hasla.
@@ -56,7 +56,7 @@ describe('hasla (scrypt z node:crypto)', () => {
   });
 
   // ⚠️ TRZY KSZTALTY SMIECIA, KTORE ZACHOWUJA SIE POPRAWNIE, ALE NIKT ICH NIE PILNOWAL.
-  // Recenzja zamkniecia obejscia uwierzytelniania przeszla je RECZNIE i potwierdzila, ze
+  // Reczny przeglad zamkniecia obejscia uwierzytelniania potwierdzil, ze
   // kazdy oddaje `false` — ale suita nie miala na nie ani jednej asercji, wiec regresja
   // w ktorymkolwiek przeszlaby na zielono. Klasa bledu jest ta sama, co przy pustym kluczu
   // wyzej: sprawdzone jest to, co ktos akurat wpisal do testu, a nie cala klasa wejsc.

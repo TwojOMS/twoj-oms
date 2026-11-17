@@ -1,4 +1,4 @@
-// PRZ-150.01: w piaskownicy kreator Woo przechodzi na adresie sklepu przykładowego bez sieci; obcy adres dalej
+// W piaskownicy kreator Woo przechodzi na adresie sklepu przykładowego bez sieci; obcy adres dalej
 // zablokowany (C5); poza próbą bez zmian. Transport (fetchImpl) rzuca przy każdym wywołaniu i liczy wywołania.
 import {afterEach,expect,it} from 'vitest';
 import {zbudujAplikacje,type Aplikacja} from '../../../src/core/aplikacja.ts';
@@ -63,7 +63,7 @@ it.each([true,false])('B: zdanie z adresem sklepu przykładowego pod polem adres
  const f=await setup(proba);const r=await f.req('GET','/nowy');
  expect(r.body.includes(`W piaskownicy działa adres sklepu przykładowego: ${PRZYKLADOWY}.`)).toBe(proba);
 });
-it('C: proba + adres spoza sklepów przykładowych — dalej blokada C5 bez próby połączenia',async()=>{
+it('proba + adres spoza sklepów przykładowych — dalej blokada bez próby połączenia',async()=>{
  const f=await setup(true);
  const w=await f.klucze('https://sklep.example.test','ck_dowolny','cs_dowolny');
  expect(w.statusCode).toBe(400);

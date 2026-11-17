@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie, pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { createSyncSklep } from '../../../src/moduly/zamowienia/services/sync-sklep.js';
 import { statusDlaSklepu } from '../../../src/domena/sync-sklep.js';
 import { sprawyKarty } from '../../../src/domena/sprawy-karty.js';
@@ -70,7 +70,7 @@ describe('statusDlaSklepu — kiedy panel ma przestawic zamowienie w sklepie', (
     expect(statusDlaSklepu(z({ wyslane_at: '2026-07-31T10:00:00', sklep: 'pro' }))).toBe('completed');
   });
 
-  // ⚠️ KANAL NIE JEST SKLEPEM (Etap 4, 2026-08-04). Zamowienie z Allegro ma i `sklep`,
+  // ⚠️ KANAL NIE JEST SKLEPEM. Zamowienie z Allegro ma i `sklep`,
   // i `zrodlo_id`, wiec oba dotychczasowe straznik i go przepuszczaly — a mapa nizej mowi
   // `wyslane → completed`, czyli status WooCommerce, ktorego Allegro w ogole nie zna.
   // Skutkiem bylo szukanie klienta Woo pod kluczem kanalu, brak trafienia i `sync_woo_blad`
@@ -270,7 +270,7 @@ describe('trasy karty — odeslanie statusu do sklepu', () => {
   });
 });
 
-// ⚠️ ETAP 2 (2026-08-01): panel obsluguje DWA sklepy naraz. Numery zamowien w obu sklepach
+// ⚠️ ETAP 2: panel obsluguje DWA sklepy naraz. Numery zamowien w obu sklepach
 // sa NIEZALEZNE, wiec `zrodlo_id` 4700 istnieje w kazdym z nich i oznacza CO INNEGO.
 // Wyslanie statusu do niewlasciwego sklepu domknelo by cudze zamowienie — i wyslalo maila
 // „zamowienie zrealizowane" do klienta, ktory na nic nie czeka.
@@ -441,7 +441,7 @@ describe('trasy — zamówienie z Allegro nie wiesza sprawy nie do załatwienia'
 });
 
 // ---------------------------------------------------------------------------------
-// D1 (recenzja Partii 1 Planu B): NAPISY DLA CZLOWIEKA.
+// NAPISY DLA CZLOWIEKA.
 //
 // Regresja z Planu B: log i slad bledu sklejaly zdanie szablonem `w ${gdzie}` / `do ${gdzie}`,
 // a `gdzie` bylo golym rzeczownikiem w mianowniku ('sklep'). Dla Allegro wychodzilo dobrze

@@ -7,7 +7,7 @@ describe('zlotowki', () => {
     expect(zlotowki('590.00')).toBe('590,00 zł');
   });
 
-  // ⚠️⚠️ STRAŻNIK PUSTKI (recenzja 22.08.2026): prywatna kopia tej funkcji w
+  // ⚠️⚠️ STRAŻNIK PUSTKI: prywatna kopia tej funkcji w
   // domain/blok-platnosci.js (usunięta tym przeglądem, przy przeprowadzce tutaj) tej straży
   // NIE MIAŁA — pustą/nieznaną kwotę zamieniała na " zł" zamiast na „—", inaczej niż kopia
   // w domain/potwierdzenie-zamowienia.js. `zlotowki` jest teraz JEDNYM miejscem formatowania

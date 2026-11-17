@@ -34,7 +34,7 @@ async function visible(env, admin) {
     for (const number of ['DEMO-001', 'DEMO-002', 'DEMO-003']) expect.soft(html).toContain(number);
     const counters = [...html.matchAll(/data-status="w_realizacji">(\d+)</g)].map(match => Number(match[1]));
     expect.soft(counters, 'licznik rzeczywistych zamówień w realizacji po zalogowaniu').toEqual([1]);
-    // PRZ-108.04: README każe obejrzeć „trzy zamówienia DEMO”, a zakładka RAPORTY liczyła je jako nieznany sklep
+    // README każe obejrzeć „trzy zamówienia DEMO”, a zakładka RAPORTY liczyła je jako nieznany sklep
     // `demo` i odmawiała (400). Zamówienia z instalatora mają być kanałem, który produkt zna zawsze (ręczne).
     const raport = await fetch(url + '/raporty', { headers: { cookie } });
     const raportHtml = await raport.text();
@@ -63,7 +63,7 @@ describe('samodzielne syntetyczne demo instalacji', () => {
     expect(result.status).toBe(1); expect(result.stderr).toContain('INSTALACJA_DEMO_SCIEZKA_ODMOWA');
     expect(fs.readdirSync(target)).toEqual([]);
   });
-  // PRZ-089: próbna instalacja 16.10 — przy względnym --katalog człowiek widział samo INSTALACJA_DEMO_ODMOWA,
+  // Próbna instalacja 16.10 — przy względnym --katalog człowiek widział samo INSTALACJA_DEMO_ODMOWA,
   // a powód z opcje() („Katalog musi być ścieżką bezwzględną”) ginął w catch.
   it.each([
     [['--katalog', 'dane-demo', '--port', '39384'], /ścieżką bezwzględną/],
@@ -81,7 +81,7 @@ describe('samodzielne syntetyczne demo instalacji', () => {
     const p = path.join(root(), 'demo ze spacją'); const result = cli(p, 39383);
     expect(result.status, result.stderr).toBe(0); expect(result.stdout).toContain('demo-zakonczone');
     expect(result.stdout + result.stderr).not.toContain('foreign-demo-secret');
-    // PRZ-093.03: po sukcesie człowiek dostaje „co dalej” (adres, plik z hasłem, otwarcie, zatrzymanie);
+    // Po sukcesie człowiek dostaje „co dalej” (adres, plik z hasłem, otwarcie, zatrzymanie);
     // ostatnia linia zostaje JSON-em dla maszyn.
     const liniaJson = result.stdout.trim().split(/\r?\n/).at(-1);
     expect(JSON.parse(liniaJson).status).toBe('demo-zakonczone');
@@ -89,7 +89,7 @@ describe('samodzielne syntetyczne demo instalacji', () => {
     expect(result.stdout).toContain(path.join(p, 'administrator-proby.env'));
     expect(result.stdout).toContain(`instalacja-otworz.mjs --katalog "${p}" --port 39383`);
     expect(result.stdout).toContain('Ctrl+C');
-    // PRZ-182: OMS po instalacji startuje z kluczem poświadczeń z klucz.env (ten, który założył instalator);
+    // OMS po instalacji startuje z kluczem poświadczeń z klucz.env (ten, który założył instalator);
     // proba.env klucza nie ma, a na ekran wartość nie trafia.
     const klucz = odczytajEnv(path.join(p, 'klucz.env')).OMS_KLUCZ_SEKRETOW;
     expect(klucz).toMatch(/^[A-Za-z0-9_-]{43}$/);
@@ -108,7 +108,7 @@ describe('samodzielne syntetyczne demo instalacji', () => {
       expect(snapshot.flatMap(r => r.pozycje).every(r => r.sku.startsWith('DEMO-SKU-'))).toBe(true);
     }
     expect(snapshots[1]).toEqual(snapshots[0]); expect(snapshots[2]).toEqual(snapshots[0]);
-    // PRZ-089: daty względem dnia instalacji — ze sztywnym 2026-01-01…03 pierwszy ekran nowicjusza w październiku
+    // Daty względem dnia instalacji — ze sztywnym 2026-01-01…03 pierwszy ekran nowicjusza w październiku
     // pokazywał „286 dni · po terminie o 204 dni rob.” na czerwono.
     for (const r of snapshots[0]) {
       const utworzone = Date.parse(r.utworzone_at);

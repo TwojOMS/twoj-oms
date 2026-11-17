@@ -26,7 +26,7 @@ const surowe = {
 const klientAtrapa = () => ({ pobierzZamowienia: vi.fn(async () => ({ zamowienia: [], stron: 1 })) });
 
 describe('adapter kanału Allegro', () => {
-  // Poller nie ma prawa wiedziec, z kim rozmawia (Etap 4) — wiec adapter Allegro musi miec
+  // Poller nie ma prawa wiedziec, z kim rozmawia — wiec adapter Allegro musi miec
   // DOKLADNIE ten sam zestaw metod, co adapter WooCommerce. Brakujaca metoda konczy sie
   // `kanal.zlozoneZ is not a function` dopiero na produkcji, przy pierwszym zamowieniu.
   it('ma ten sam kontrakt, co adapter WooCommerce', () => {

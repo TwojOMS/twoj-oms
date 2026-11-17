@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { zalozKonto, ustawCzynne, ustawAdmina, ustawUprawnienia, ostatnieLogowania } from '../../../src/core/bezpieczenstwo/konta.js';
 import { sprawdz, podpisz, NAZWA_CIASTECZKA_OMS } from '../../../src/core/bezpieczenstwo/sesja.js';
 import { odczytajSekret } from '../../../src/core/bezpieczenstwo/sekret-sesji.js';
 
-// ⚠️⚠️ W4 (recenzja 2026-09-12): DO TEGO DNIA `tests/oms/logowanie.test.js` chodzil na
+// ⚠️⚠️ W4: DO TEGO DNIA `tests/oms/logowanie.test.js` chodzil na
 // PUSTEJ tabeli kont, czyli wylacznie po galezi `.env` — mutacja usuwajaca `zTabeli.czynne
 // &&` (a wiec wpuszczajaca konto WYLACZONE z dobrym haslem) przechodzila na ZIELONO, bo
 // ani jeden test nie zakladal konta w tabeli. Ten plik pokrywa galaz `zTabeli` osobno.
@@ -32,7 +32,7 @@ describe('logowanie kontem z tabeli', () => {
     });
 
     expect(r.statusCode).toBe(302);
-    // W4: `powrot` dziala po zalogowaniu kontem z tabeli, tak samo jak dla konta z `.env`.
+    // `powrot` dziala po zalogowaniu kontem z tabeli, tak samo jak dla konta z `.env`.
     expect(r.headers.location).toBe('/koszty');
 
     const ciastko = String(r.headers['set-cookie']).match(new RegExp(`${NAZWA_CIASTECZKA_OMS}=([^;]+)`))[1];
@@ -76,7 +76,7 @@ describe('logowanie kontem z tabeli', () => {
     expect(r.statusCode).toBe(401);
     expect(r.headers['set-cookie']).toBeUndefined();
     const [wpis] = ostatnieLogowania(db, 1);
-    // D5: haslo BYLO poprawne (sprawdzone, W2) — jedyny powod odmowy jest „konto wylaczone",
+    // Haslo BYLO poprawne (sprawdzone, W2) — jedyny powod odmowy jest „konto wylaczone",
     // wiec dziennik ma mowic wlasnie to, nie ogolne „zle haslo".
     expect(wpis.wynik).toBe('konto-wylaczone');
     expect(wpis.login).toBe('pako');
@@ -99,7 +99,7 @@ describe('logowanie kontem z tabeli', () => {
     expect(r.body).toContain('Nieprawidłowy login lub hasło');
   });
 
-  // ⚠️⚠️ MUTACJA Z RECENZJI (druga fala 2026-09-12): stara regula w dzienniku pisala
+  // ⚠️⚠️ MUTACJA (druga fala 2026-09-12): stara regula w dzienniku pisala
   // „konto-wylaczone" gdy `zTabeli` istnialo i bylo NIECZYNNE — BEZ SPRAWDZENIA HASLA. Taka
   // regula przechodzila cala suite na zielono, bo test wyzej sprawdza WYLACZNIE galaz
   // z DOBRYM haslem. Tutaj haslo jest ZLE, a konto DODATKOWO wylaczone — dziennik ma mowic
@@ -202,7 +202,7 @@ describe('globalna rotacja sesji', () => {
   });
 });
 
-// ⚠️⚠️ Punkt 5 (druga fala 2026-09-12, decyzja wlasciciela): `/login` ma odrzucac haslo
+// ⚠️⚠️ Punkt 5 (reguła produktu): `/login` ma odrzucac haslo
 // z `.env`, gdy w tabeli jest juz czynny admin — inaczej takie ciasteczko otwiera 9 tras
 // `/api/*` z zapisami, a udane logowanie serwisowe kasuje licznik prob zgadujacego.
 describe('Punkt 5 — /login odrzuca haslo z .env, gdy jest juz czynny admin', () => {
@@ -270,7 +270,7 @@ describe('Punkt 5 — /login odrzuca haslo z .env, gdy jest juz czynny admin', (
   });
 });
 
-// ⚠️⚠️ N4 / mutacja z recenzji (druga fala 2026-09-12): usuniecie `?? ATRAPA_HASLA` w
+// ⚠️⚠️ N4 / mutacja (druga fala 2026-09-12): usuniecie `?? ATRAPA_HASLA` w
 // logowanie.js sprawia, ze dla konta NIEISTNIEJACEGO `zgodneHaslo` dostaje `undefined` zamiast
 // haszu i konczy sie natychmiast, bez scryptu — WRACA dokladnie ten sam kanal czasowy, ktory
 // ATRAPA_HASLA mial zamknac (mozna zgadnac, ktore loginy istnieja, z samego czasu odpowiedzi).

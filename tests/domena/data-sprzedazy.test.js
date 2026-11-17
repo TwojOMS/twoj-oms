@@ -289,7 +289,7 @@ describe('proponowana data sprzedaży — dzień warszawski, nigdy UTC ani lokal
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// INKASO KURIERA NIE JEST PRZEDPŁATĄ (31.08.2026)
+// INKASO KURIERA NIE JEST PRZEDPŁATĄ
 //
 // ⚠️⚠️ POWÓD ISTNIENIA: sklep PRO przy oznaczaniu zamówienia jako zrealizowane zapisuje
 // `date_paid`, a poller czyta to jako WPŁATĘ o źródle `sklep` i metodzie „Za pobraniem".

@@ -6,7 +6,7 @@ import { zbudujOms } from '../../../src/oms/bootstrap.ts';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie, pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
 
-describe('PRZ-024 — zwroty w produkcyjnej kompozycji', () => {
+describe('zwroty w produkcyjnej kompozycji', () => {
   it('domyślny zbudujOms rejestruje POST zwrotu i utrwala zapis oraz log', async () => {
     const katalog = mkdtempSync(join(tmpdir(), 'oms-prz024-kompozycja-'));
     const plik = join(katalog, 'oms.sqlite');

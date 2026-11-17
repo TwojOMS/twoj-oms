@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import {
   dodajPozycjeReczna, pobierzZamowienie, zapiszPozycjeReczna,
 } from '../../../src/oms/db/zamowienia.js';

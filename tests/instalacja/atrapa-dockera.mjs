@@ -1,17 +1,17 @@
-// Atrapa dockera dla testów aktualizatora (PRZ-059). Stan (obrazy, tagi, kontenery) w pliku JSON,
+// Atrapa dockera dla testów aktualizatora. Stan (obrazy, tagi, kontenery) w pliku JSON,
 // więc test sprawdza SKUTKI całej sekwencji, a nie kolejność wywołań. `docker run` naprawdę wykonuje
 // node z kopia.mjs na prawdziwej bazie SQLite (ścieżki kontenera zamienione na ścieżki z -v).
 // Zachowanie „obrazu” wynika z plików w katalogu wydania, z którego go zbudowano:
 //   TEST_ZEPSUTY       — proces pada przy starcie: /health nie odpowiada, RestartCount rośnie
 //   TEST_WISI          — kontener działa bez restartów, ale /health nie odpowiada (zawieszony start)
 //   TEST_MIGRACJA      — przy starcie oms dopisuje addytywną migrację do bazy (jak kandydat z migracją)
-//   TEST_BEZ_WERSJI    — /health bez pola wersja (wydanie sprzed PRZ-059)
+//   TEST_BEZ_WERSJI    — /health bez pola wersja (starsze wydanie)
 //   TEST_INNY_KOD      — /health 200, ale w kontenerze inny kod (wydanie.json z innym commitem, wersja brak)
 //   TEST_BUILD_BLAD    — build kończy się błędem
-//   TEST_SZYFRUJE      — przy starcie oms szyfruje poświadczenia w bazie kluczem z config/klucz.env (PRZ-182)
+//   TEST_SZYFRUJE      — przy starcie oms szyfruje poświadczenia w bazie kluczem z config/klucz.env
 // `docker run` mapuje /app na katalog wydania obrazu, czyta --env-file, `--entrypoint test -f` sprawdza plik.
 // Zmienne: TEST_BAZA (katalog testu), TEST_ZABIJ_PRZY (fragment polecenia → SIGKILL aktualizatora).
-// PRZ-062 (przejście próba → praca): `up oms` czyta config/oms.env jak compose przy tworzeniu kontenera —
+// `up oms` czyta config/oms.env jak compose przy tworzeniu kontenera —
 //   OMS_TRYB=produkcja na pustym data/ zakłada świeżą bazę (jak migracje OMS), linia TEST_NIE_WSTANIE=1
 //   (konfiguracja odrzucona przez OMS) daje pętlę restartów; `exec oms node scripts/produkcja-pierwszy-start.mjs`
 //   zakłada konto w bazie i wypisuje login/hasło (TEST_PIERWSZY_START_BLAD → kod 1); `compose exec -T kopia
@@ -72,7 +72,7 @@ function migruj(obraz) {
   } finally { db.close(); }
 }
 
-// PRZ-182: start wydania z szyfrowaniem poświadczeń — konwersja bazy tym samym kodem co start OMS-u, klucz
+// Start wydania z szyfrowaniem poświadczeń — konwersja bazy tym samym kodem co start OMS-u, klucz
 // z config/klucz.env (compose podaje go jako env_file). Brak albo zły klucz = OMS odmawia startu (pętla restartów).
 function szyfruj() {
   const O = process.env.OMS_KATALOG;
@@ -194,7 +194,7 @@ if (polecenie === 'exec') {
 if (polecenie === 'run') {
   if (process.env.TEST_KOPIA_BLAD && reszta.some(a => a.includes('kopia.mjs'))) wyjdz(1, 'atrapa: kopia nieudana');
   const mapy = [];
-  // PRZ-182: kontener dostaje tylko zmienne z --env-file (jak docker), nie środowisko testu.
+  // Kontener dostaje tylko zmienne z --env-file (jak docker), nie środowisko testu.
   const envKontenera = { PATH: process.env.PATH, ...(process.env.SystemRoot ? { SystemRoot: process.env.SystemRoot } : {}) };
   let entrypoint = null;
   let i = 0;
@@ -215,7 +215,7 @@ if (polecenie === 'run') {
   }
   const obraz = rozwiaz(reszta[i]);
   if (!obraz) wyjdz(1, `Unable to find image ${reszta[i]}`);
-  // Kod obrazu (/app) = katalog wydania, z którego go zbudowano (PRZ-182: narzędzie scripts/sekrety.mjs).
+  // Kod obrazu (/app) = katalog wydania, z którego go zbudowano (narzędzie scripts/sekrety.mjs).
   mapy.push(['/app', stan.obrazy[obraz].korzen]);
   const naHost = p => { const m = mapy.filter(([c]) => p === c || p.startsWith(c + '/')).sort((a, b) => b[0].length - a[0].length)[0]; return m ? m[1] + p.slice(m[0].length) : p; };
   const args = reszta.slice(i + 1).map(naHost);
@@ -225,6 +225,6 @@ if (polecenie === 'run') {
   process.exit(r.status ?? 1);
 }
 if (polecenie === 'builder' || polecenie === 'system') wyjdz(0);
-// Dziennik odmowy startu jak z prawdziwego OMS (próba 10.10 na VM): powody „[moduł] ZMIENNA: …”, potem stos.
+// Dziennik odmowy startu jak z prawdziwego OMS: powody „[moduł] ZMIENNA: …”, potem stos.
 if (polecenie === 'logs') wyjdz(0, ['Error: OMS nie wystartuje — konfiguracja:', '[rdzen] OMS_SPRZEDAWCA_NIP: niepoprawny NIP (atrapa dziennika)', '[faktury] OMS_SPRZEDAWCA_NIP: niepoprawny NIP (atrapa dziennika)', '    at przygotujModuly (file:///app/src/core/aplikacja.ts:29:27)', '    at main (file:///app/src/main.ts:18:27)', '    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)', '', 'Node.js v24.21.0'].join('\n'));
 wyjdz(1, `atrapa: nieznane ${argv.join(' ')}`);

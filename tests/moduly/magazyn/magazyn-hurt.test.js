@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { readFileSync } from './pliki-historyczne.js';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { utworzKarte, zastosujHurtem, kartyPoIdach } from '../../../src/oms/db/magazyn.js';
 import { polecenieZFormularza, zmianyHurtem } from '../../../src/domena/magazyn-hurt.js';
 
 // EDYCJA HURTEM W MAGAZYNIE — ekran, ktory istnieje dla 645 kart bez wymiaru, 965 bez
-// oznaczenia paczkomatu i 152 bez kategorii glownej (zmierzone na produkcji 2026-08-12).
+// oznaczenia paczkomatu i 152 bez kategorii glownej.
 // Bez niego trzeba by otworzyc 645 kart po kolei.
 //
 // ⚠️⚠️ SIEDEM RZECZY, KTORYCH TA SUITA PILNUJE:
@@ -261,7 +261,7 @@ describe('podglad jest OBOWIAZKOWY — para: podglad milczy w bazie, zatwierdzen
 // ————————————————————————————————————————————————————————————————————————————————
 // ⚠️ Zestaw zmian liczony PONOWNIE przy zatwierdzeniu — inaczej odczyt katalogow miedzy
 // podgladem a klknieciem zmienilby zbior po cichu. Formularz przynosi IDENTYFIKATORY
-// i WARTOSCI (decyzja czlowieka), nigdy gotowego „z czego na co".
+// i WARTOSCI, nigdy gotowego „z czego na co".
 describe('zestaw zmian liczony PONOWNIE przy zatwierdzeniu', () => {
   it('karta zmieniony miedzy podgladem a zatwierdzeniem liczy sie ze stanu BIEZACEGO', async () => {
     const id = kartaO('Kandelabr', { szerokosc_mm: 300, wysokosc_mm: 400 });
@@ -500,7 +500,7 @@ describe('paczkomat hurtem — trzy stany, wylacznie recznie', () => {
     expect(wiersz(id).paczkomat).toBe('tak');
   });
 
-  // ⚠️ ZERO WYLICZANIA Z WYMIAROW (decyzja wlasciciela). Ustawienie wymiarow hurtem nie ma
+  // ⚠️ ZERO WYLICZANIA Z WYMIAROW. Ustawienie wymiarow hurtem nie ma
   // prawa dotknac kolumny paczkomatu ani razu.
   it('ustawienie wymiarow nie dotyka paczkomatu', async () => {
     const id = kartaO('Kandelabr', { paczkomat: 'tak' });

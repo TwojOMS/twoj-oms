@@ -91,7 +91,7 @@ describe('aktualnaProforma', () => {
 // przed soba. Migawka kwoty jest przy tym SLUSZNA i nie wolno jej ruszac — brakowalo
 // wylacznie SYGNALU, ze obowiazujacy dokument opiewa juz na co innego.
 describe('rozjazdKwotyProformy', () => {
-  // 164,55 zl w pozycjach, potem doplata 10,00 — scenariusz z recenzji.
+  // 164,55 zl w pozycjach, potem doplata 10,00 — scenariusz.
   const zamowienie = (nad = {}) => ({
     sklep: 'pro',
     kwota_brutto: '164.55',

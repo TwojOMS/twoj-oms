@@ -21,8 +21,8 @@ describe('fmtDzienKrotko', () => {
   });
 });
 
-// Zadanie „strona główna", punkt C: jeden format daty w całym module OMS, z rozróżnieniem
-// dwóch skal czasu — patrz komentarz w src/oms/domain/format-daty.js i przewodnik OMS 4.7/6.
+// Jeden format daty w całym module OMS, z rozróżnieniem
+// dwóch skal czasu — patrz komentarz w src/domena/format-daty.js.
 
 describe('fmtDataCzas — wartość Z OZNACZENIEM STREFY (nasz znacznik, UTC)', () => {
   it('"Z" latem przelicza na czas polski (+2 h)', () => {
@@ -90,7 +90,7 @@ describe('fmtDataCzasKrotko — format krótki, bez sekund', () => {
   });
 });
 
-// PRZ-136.06 (U9): czas odczytu na liście połączeń — „dziś 22:22”, „wczoraj 08:10”, „3 listopada”.
+// Czas odczytu na liście połączeń — „dziś 22:22”, „wczoraj 08:10”, „3 listopada”.
 describe('fmtKiedy — dzień liczony w Warszawie, nie w UTC', () => {
   const teraz = new Date('2026-11-03T21:30:00Z'); // 3.11 22:30 w Warszawie
   it('ten sam dzień → „dziś GG:MM” w czasie polskim', () => {

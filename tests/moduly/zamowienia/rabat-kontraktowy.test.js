@@ -28,7 +28,7 @@ describe('decyzja o rabacie', () => {
     expect(decyzjaRabatu({ rabatZamowienia: 0, stawka: zBazy(40) })).toBe('ustaw');
   });
 
-  // Uzgodnienie czlowieka wygrywa z automatem — decyzja wlasciciela z 23.08.2026.
+  // Uzgodnienie czlowieka wygrywa z automatem.
   it('rabat wpisany ręcznie NIE jest nadpisywany, tylko zgłaszany', () => {
     expect(decyzjaRabatu({ rabatZamowienia: 25, stawka: zBazy(40) })).toBe('ostrzez');
   });

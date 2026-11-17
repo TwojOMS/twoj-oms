@@ -101,14 +101,14 @@ describe('skasujPrzesylkeReczna', () => {
     expect(wiersze()).toHaveLength(1);
   });
 
-  // ⚠️ M-2. DRUGA GRANICA: przesylka odczytana z konta Allegro. Niesie `nadana_recznie = 1`
+  // ⚠️ DRUGA GRANICA: przesylka odczytana z konta Allegro. Niesie `nadana_recznie = 1`
   // z powodu czysto technicznego (bez tego wisialaby przy niej wieczna sprawa „brak
   // etykiety"), wiec sprawdzenie wyzej ja PRZEPUSZCZA — a skutek skasowania nie jest
   // „mylacy", tylko TRWALY: karta pyta Allegro o przesylki wylacznie dopoki zamowienie nie
   // ma `wyslane_at`, wiec po oznaczeniu wysylki numer listu przepada bezpowrotnie. Literowki
   // przy nim byc nie moze — numeru nikt nie przepisywal, przyszedl z API.
   //
-  // ⚠️ ROZPOZNAJE JA `zrodlo_numeru`, A NIE `kurier` (poprawka I-1 recenzji calej galezi) —
+  // ⚠️ ROZPOZNAJE JA `zrodlo_numeru`, A NIE `kurier` —
   // patrz test „literowka we WPISANYM Z REKI numerze" nizej, ktory jedzie z TYM SAMYM
   // kurierem i ma sie skasowac.
   it('NIGDY nie kasuje przesylki z ALLEGRO — numer listu przepadlby bezpowrotnie', () => {
@@ -122,7 +122,7 @@ describe('skasujPrzesylkeReczna', () => {
     expect(wiersze()[0].numer_listu).toBe('AD0LK57DLG0756H4H');
   });
 
-  // ⚠️⚠️ I-1 (recenzja calej galezi). TEN SAM KURIER, INNE ZRODLO NUMERU — i dlatego wynik
+  // ⚠️⚠️ I-1. TEN SAM KURIER, INNE ZRODLO NUMERU — i dlatego wynik
   // musi byc ODWROTNY niz w tescie wyzej.
   //
   // `kurierWpisuRecznego('allegro_*')` (kurierzy/index.js) oddaje 'allegro' takze dla wiersza,

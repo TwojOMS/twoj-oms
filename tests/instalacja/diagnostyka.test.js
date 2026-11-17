@@ -1,4 +1,4 @@
-// PRZ-058: skrypt diagnostyczny klienta (deploy/klient/diagnostyka.sh).
+// Skrypt diagnostyczny klienta (deploy/klient/diagnostyka.sh).
 // Wynik ma się nadawać do odesłania mailem: ŻADNA wartość z /opt/oms/config nie może się w nim
 // znaleźć, nawet gdy pojawi się w dzienniku kontenera albo w odpowiedzi /health.
 // Test wstrzykuje znacznik w każdą wartość konfiguracji, a atrapa dockera wypisuje te wartości
@@ -101,7 +101,7 @@ esac
 
 // Atrapa `mountpoint -q KATALOG`: punkt montowania to wiersz w $TEST_BAZA/zamontowane. Bez niej wynik
 // zależał od hosta — Git Bash nie ma `mountpoint` (gałąź montowania nigdy nie szła), a na Linuksie
-// prawdziwy `mountpoint` odpowiadał za katalog testu (CI ubuntu, 16.10.2026).
+// prawdziwy `mountpoint` odpowiadałby za katalog testu w CI na Ubuntu.
 const ATRAPA_MOUNTPOINT = `#!/bin/sh
 [ "$1" = -q ] && shift
 grep -qxF "$1" "$TEST_BAZA/zamontowane" 2>/dev/null
@@ -116,7 +116,7 @@ function uruchom(k, extra = {}) {
   });
 }
 
-describe('diagnostyka klienta PRZ-058', () => {
+describe('diagnostyka klienta', () => {
   it('zbiera wersję, kontenery, health, dysk, kopię i dziennik — bez żadnej wartości konfiguracji', () => {
     const k = przygotuj();
     const r = uruchom(k);
@@ -147,7 +147,7 @@ describe('diagnostyka klienta PRZ-058', () => {
     expect(r.stdout).toContain(k.wynik.replaceAll('\\', '/'));
   });
 
-  it('PRZ-093: login administrator (produkcyjny plik administrator.env) nie zamienia nazwy pliku w ***, a jego hasło nadal jest maskowane', () => {
+  it('login administrator (produkcyjny plik administrator.env) nie zamienia nazwy pliku w ***, a jego hasło nadal jest maskowane', () => {
     const k = przygotuj();
     const haslo = `Prod-${k.znacznik}-haslo`;
     fs.writeFileSync(path.join(k.oms, 'config/administrator.env'), `login=administrator\nhaslo=${haslo}\n`);
@@ -172,7 +172,7 @@ describe('diagnostyka klienta PRZ-058', () => {
     expect(tekst).not.toContain(k.znacznik);
   });
 
-  it('PRZ-059: alarm kopii starszej niż 48 h (lokalnej i na nośniku), brak nośnika, cel nieustawiony, $ w konfiguracji, aktualizacja w toku', () => {
+  it('alarm kopii starszej niż 48 h (lokalnej i na nośniku), brak nośnika, cel nieustawiony, $ w konfiguracji, aktualizacja w toku', () => {
     const k = przygotuj();
     const stara = path.join(k.oms, 'backups/oms-2026-10-09.sqlite');
     const t49 = new Date(Date.now() - 49 * 3600 * 1000); fs.utimesSync(stara, t49, t49);
@@ -221,7 +221,7 @@ describe('diagnostyka klienta PRZ-058', () => {
     expect(t).not.toContain(k.znacznik);
   });
 
-  it('PRZ-182: klucz.env — właściciel i tryb bez wartości klucza; zły tryb i brak pliku zgłoszone', () => {
+  it('klucz.env — właściciel i tryb bez wartości klucza; zły tryb i brak pliku zgłoszone', () => {
     const k = przygotuj();
     const plikKlucza = path.join(k.oms, 'config/klucz.env');
     const klucz = `${k.znacznik}${randomBytes(16).toString('base64url')}`;

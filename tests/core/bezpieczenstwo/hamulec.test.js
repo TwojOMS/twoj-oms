@@ -70,7 +70,7 @@ describe('hamulec logowania', () => {
   });
 });
 
-// ⚠️⚠️ N1 (druga fala, recenzja 2026-09-12): `zapiszBlokadeRaz` istnieje, zeby logowanie.js
+// ⚠️⚠️ N1: `zapiszBlokadeRaz` istnieje, zeby logowanie.js
 // napisalo do dziennika WYLACZNIE JEDEN wpis „zablokowane" na kare, a nie jeden na kazde
 // zadanie w jej trakcie. Bez tej funkcji pukanie w zapalona kare przez 2 s dawalo (zmierzone
 // na zywym serwerze) 291 wierszy zamiast jednego.

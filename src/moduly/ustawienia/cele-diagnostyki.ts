@@ -30,7 +30,17 @@ export function celeDiagnostyki(usluga: <T>(modul: string, nazwa: string) => T) 
     : zModulu === undefined ? { opis: program.opis, url: program.opis.adres }
     : zModulu ? { opis: program.opis, url: zModulu.baseUrl ?? ADRES_DIAGNOSTYKI_INFAKTU }
     : null;
+  // Kanały z konfiguratora (każdy typ) i sklepy ERLI z pliku podaje moduł kanałów jako gotowe cele, bez kluczy.
+  // Z konfiguracji modułu (`sklepy`, `kanaly`, mapy liczone na żywo) bierzemy WYŁĄCZNIE kanały z pliku: odczyt
+  // kanału z panelu sięga po klucze, a jeden kanał bez kluczy rzucałby wyjątek i zabierał cały ekran.
+  const zKanalow = usluga<() => { cele: unknown[]; zPliku: string[] }>('kanaly', 'celeLacznosci')();
+  const zPliku = new Set(zKanalow.zPliku);
+  const tylkoZPliku = (mapa: Record<string, unknown> | undefined) =>
+    Object.fromEntries(Object.keys(mapa ?? {}).filter((k) => zPliku.has(k)).map((k) => [k, mapa![k]]));
   return celeLacznosci({ ...kanaly,
+    sklepy: tylkoZPliku(kanaly.sklepy),
+    kanaly: tylkoZPliku(kanaly.kanaly),
+    celeKanalow: zKanalow.cele,
     program: celProgramu,
     infakt: program ? null : dokumenty.infakt,
     // Token KSeF z pliku albo z Ustawień → Integracje → KSeF (pytane przy każdym wejściu); adres tylko z pliku.

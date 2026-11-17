@@ -9,7 +9,7 @@ import {
 } from '../../../src/moduly/zdrowie/services/czuwacz-ostrzezen.js';
 import { ODSTEP_CZUWACZA_MS } from '../../../src/oms/bootstrap.ts';
 
-// CZUWACZ OSTRZEŻEŃ (2026-08-29) — osobny zegar godzinowy piszący LUSTRA dla tabelki
+// CZUWACZ OSTRZEŻEŃ — osobny zegar godzinowy piszący LUSTRA dla tabelki
 // ostrzeżeń strony głównej: luki KSeF (przeniesione z czuwacza KSeF — krok terminów nie
 // mieścił się w jego budżecie godzinowym: 54:10 + luki 5:00 + terminy 11:00 > 60:00)
 // oraz faktury po terminie płatności (z pasa długów, fakturyWidok.nieoplacone).
@@ -57,7 +57,7 @@ function zbuduj({
 }
 
 describe('czuwacz ostrzeżeń — lustro luk KSeF', () => {
-  it('PRZ-102.26: luka B2C pojawia się po włączeniu i znika po wyłączeniu bez restartu', async () => {
+  it('luka B2C pojawia się po włączeniu i znika po wyłączeniu bez restartu', async () => {
     const db = openOmsDb(':memory:');
     const { czuwacz } = zbuduj({ db, dokumenty: [dok('b2c', { client_tax_code: '', client_first_name: 'Jan', gross_price: 12300 })] });
     try {

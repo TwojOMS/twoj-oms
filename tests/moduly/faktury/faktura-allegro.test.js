@@ -4,7 +4,7 @@ import { zapiszZamowienie, pobierzZamowienie } from '../../../src/oms/db/zamowie
 import { wolnoWyslacDoAllegro, nazwaPlikuFaktury, statusWeryfikacji } from '../../../src/domena/allegro-faktura.js';
 import { createFakturaAllegro } from '../../../src/moduly/faktury/services/faktura-allegro.js';
 import { MAKS_ROZMIAR_FAKTURY_B } from '../../../src/oms/allegro/client.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
 const PDF = Buffer.concat([Buffer.from('%PDF-1.4'), Buffer.alloc(64)]);
 
@@ -86,7 +86,7 @@ describe('wolnoWyslacDoAllegro', () => {
   });
   it('odmawia bez faktury', () => expect(wolnoWyslacDoAllegro({ sklep: 'allegro_swietlik', chce_fakture: 1 }).wolno).toBe(false));
 
-  // ⚠️⚠️ FURTKA „BEZ NUMERU KSEF" ZNIKNELA 01.09.2026 (decyzja właściciela: „fv ida zawsze z ksef").
+  // ⚠️⚠️ FURTKA „BEZ NUMERU KSEF" ZNIKNELA (reguła produktu: „fv ida zawsze z ksef").
   // Do tego dnia stal tu komplet testow opcji `bezKsef` — zdejmowala DOKLADNIE JEDNA odmowe
   // i otwierala sie po dobie czekania. Zostaje po niej jedno: reguła ma NIE MIEC zadnego
   // wytrychu, i to jest teraz asercja, a nie brak testu.
@@ -100,7 +100,7 @@ describe('wolnoWyslacDoAllegro', () => {
   });
 
   // ---------------------------------------------------------------------------------
-  // ⚠️⚠️ K2 (recenzja Partii 3): `REJECTED` BYL STANEM BEZ WYJSCIA, a karta przeczyla sama
+  // ⚠️⚠️ K2: `REJECTED` BYL STANEM BEZ WYJSCIA, a karta przeczyla sama
   // sobie NA JEDNYM EKRANIE — pasek mowil „Allegro ODRZUCILO plik, kupujacy jej NIE MA,
   // wyslij go jeszcze raz", sekcja faktury obok: „kupujacy ma ja na swoim koncie", a obie
   // trasy odmawialy (400). Niezmiennik 4.9.
@@ -265,7 +265,7 @@ describe('wysłanie faktury do Allegro', () => {
     expect(pobierzZamowienie(db, id).faktura.allegro_invoice_id).toBe('INV-9');
   });
 
-  // ⚠️⚠️ BEZ NUMERU KSEF NIE MA JUZ ZADNEJ DROGI NA SILE (01.09.2026, decyzja właściciela).
+  // ⚠️⚠️ BEZ NUMERU KSEF NIE MA JUZ ZADNEJ DROGI NA SILE.
   // Do tego dnia stala tu furtka `bezKsef` z progiem doby; dzis odmowa jest bezwarunkowa,
   // a wyjsciem jest wyslanie faktury do KSeF z zakladki FAKTURY. Test pilnuje takze tego,
   // ze odmowa pada PRZED pobraniem PDF-u — czyli przed pierwszym bajtem do inFaktu.
@@ -298,7 +298,7 @@ describe('wysłanie faktury do Allegro', () => {
   });
 
   // ---------------------------------------------------------------------------------
-  // ⚠️⚠️ K1 (recenzja Partii 3): DWA RÓWNOLEGŁE ŻĄDANIA DAWAŁY KUPUJĄCEMU DWA DOKUMENTY.
+  // ⚠️⚠️ K1: DWA RÓWNOLEGŁE ŻĄDANIA DAWAŁY KUPUJĄCEMU DWA DOKUMENTY.
   // Zmierzone recenzentem: 2 POST-y, 2 PUT-y z plikiem, oba 302, zero ostrzeżeń, a baza
   // pamiętała tylko DRUGI identyfikator — o pierwszym dokumencie panel nie dowiedziałby się
   // NIGDY, bo `GET .../invoices` oddaje 400.
@@ -403,7 +403,7 @@ describe('wysłanie faktury do Allegro', () => {
   });
 
   // ---------------------------------------------------------------------------------
-  // ⚠️⚠️ W2 (recenzja Partii 3): WALIDACJA PDF-U STALA ZA NIEODWRACALNYM `POST`-em.
+  // ⚠️⚠️ W2: WALIDACJA PDF-U STALA ZA NIEODWRACALNYM `POST`-em.
   // Kontrola `Buffer.isBuffer` / `%PDF` / rozmiar siedziala WYLACZNIE w `wyslijPlikFaktury`,
   // czyli PO `zglosFakture`. Zmierzone: gdy inFakt odda JSON bledu zamiast PDF-u, do Allegro
   // I TAK leci `POST` — spalony jeden z DZIESIECIU slotow, przy zamowieniu kupujacego wisi
@@ -597,7 +597,7 @@ describe('trasa POST /zamowienia/:id/faktura-allegro', () => {
   });
 
   // ---------------------------------------------------------------------------------
-  // ⚠️⚠️ FURTKA „BEZ NUMERU KSEF" ZNIKNELA 01.09.2026 (decyzja właściciela: „fv ida zawsze
+  // ⚠️⚠️ FURTKA „BEZ NUMERU KSEF" ZNIKNELA (reguła produktu: „fv ida zawsze
   // z ksef", a dokument bez numeru wysyla sie recznie z panelu Allegro albo „Wiadomosciami").
   // Do tego dnia stal tu komplet testow trasy `/faktura-allegro-bez-ksef` z progiem doby.
   // Zostaje po nich JEDNA asercja, i jest wazniejsza od tamtych: adresu ma NIE BYC. Trasa

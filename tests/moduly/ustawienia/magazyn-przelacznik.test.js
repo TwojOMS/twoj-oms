@@ -1,8 +1,8 @@
-// PRZ-091: Ustawienia → Magazyn — przełącznik „Włącz stany magazynowe” na prawdziwym serwerze.
+// Ustawienia → Magazyn — przełącznik „Włącz stany magazynowe” na prawdziwym serwerze.
 import { describe, it, expect } from 'vitest';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
 import { przelacznikStanow } from '../../../src/oms/db/stany-magazynowe.js';
-import { nowyPanel, jako, get, post } from '../../pomoc/konta-prz068.js';
+import { nowyPanel, jako, get, post } from '../../pomoc/panel-konta-testowe.js';
 
 function panel() {
   const p = nowyPanel();
@@ -20,7 +20,7 @@ function sekcja(html) {
 }
 const formularz = (html) => /<form id="ust-stany-przelacz"[\s\S]*?<\/form>/u.exec(html)?.[0] ?? '';
 
-describe('PRZ-091 Ustawienia → Magazyn', () => {
+describe('Ustawienia → Magazyn', () => {
   it('podmenu ma „Magazyn”, a ekran domyślnie mówi „Wyłączone” i daje przycisk „Włącz”', async () => {
     const { app, admin } = panel();
     const r = await get(app, '/ustawienia/magazyn', admin);

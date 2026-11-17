@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { odczytajSekret } from '../../../src/core/bezpieczenstwo/sekret-sesji.js';
 import { podpisz, NAZWA_CIASTECZKA_OMS } from '../../../src/core/bezpieczenstwo/sesja.js';
 import { LIMIT_PROB } from '../../../src/core/bezpieczenstwo/hamulec.js';
@@ -187,7 +187,7 @@ describe('N1 — dziennik przy zapalonej karze nie puchnie bez ograniczenia', ()
     // Kara juz trwa (piata proba wyzej ja zapalila) — walimy w nia dziesiecioma dalszymi.
     for (let i = 0; i < 10; i++) await zlaProba();
     const zablokowane = ostatnieLogowania(db, 100).filter((w) => w.wynik === 'zablokowane');
-    // ⚠️ Mutacja z recenzji: usuniecie wpisu w ogole (`if` bez ciala) tez przechodzilo
+    // ⚠️ Mutacja: usuniecie wpisu w ogole (`if` bez ciala) tez przechodzilo
     // starsza suite na zielono — stad `toHaveLength(1)`, nie samo "wieksze niz 0".
     expect(zablokowane).toHaveLength(1);
   });

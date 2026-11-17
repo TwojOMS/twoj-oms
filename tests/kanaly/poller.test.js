@@ -205,7 +205,7 @@ describe('poller', () => {
     });
   });
 
-  // ⚠️⚠️ C-2 (recenzja calej galezi): JEDNO ZAMOWIENIE O ZLYM KSZTALCIE NIE MA PRAWA ZABIC
+  // ⚠️⚠️ C-2: JEDNO ZAMOWIENIE O ZLYM KSZTALCIE NIE MA PRAWA ZABIC
   // KANALU — a do 04.08.2026 zabijalo go NA STALE i PO CICHU.
   //
   // `mapujZamowienieAllegro` rzuca przy nieparsowalnej kwocie zamowienia, przy pobraniu na

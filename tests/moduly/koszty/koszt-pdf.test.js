@@ -57,7 +57,7 @@ const gdyJestPdftotext = PDFTOTEXT ? it : it.skip;
 // literami (patrz test długiej uwagi pod tabelą). `-layout` trzyma kolejność pionową, więc
 // tekst narysowany na wysokości stopki wychodzi w TEJ SAMEJ linii co stopka.
 //
-// ⚠️ DECYZJA WŁAŚCICIELA (03.09.2026) — zdanie „Wizualizacja dokumentu z KSeF — oryginałem
+// ⚠️ DECYZJA WŁAŚCICIELA — zdanie „Wizualizacja dokumentu z KSeF — oryginałem
 // jest plik XML." zostało ZDJĘTE z wydruku (pod tytułem i w stopce). Biuro księgowe pracuje
 // z dokumentami z KSeF na co dzień i samo wie, że to wizualizacje. Testy niżej sprawdzają, że
 // zdanie NIE STOI już na żadnej stronie — patrz uzasadnienie w src/oms/pdf/koszt-pdf.js.
@@ -336,7 +336,7 @@ describe('PDF wizualizacji kosztu — komplet elementów art. 106e', () => {
     expect(tekst).toContain('5252674798-20260605-0100AB-CD');
   });
 
-  // ⚠️ ZNALEZIONE NA WYDRUKU, NIE W TESCIE (03.09.2026). OVH numeruje wiersze wlasnymi
+  // ⚠️ ZNALEZIONE NA WYDRUKU, NIE W TESCIE. OVH numeruje wiersze wlasnymi
   // identyfikatorami (`36228820`); `komorka()` rysuje bez `width`, wiec osmiocyfrowy numer
   // wychodzil z 16-punktowej kolumny „Lp." wprost NA NAZWE TOWARU. Zaden test na strukturze
   // tego nie widzial — obie wartosci byly w PDF-ie, tyle ze jedna na drugiej.
@@ -398,7 +398,7 @@ describe('PDF wizualizacji kosztu — komplet elementów art. 106e', () => {
 
   // ⚠️ `DataWytworzeniaFa` TO ZNACZNIK CZASU SYSTEMU WYSTAWCY, a nie moment przyjęcia
   // dokumentu przez KSeF (ten jest zaszyty w numerze KSeF). Etykieta „Wytworzona w KSeF"
-  // mówiła o cudzym dokumencie coś, czego dokument nie mówi — poprawka po drugiej recenzji.
+  // mówiła o cudzym dokumencie coś, czego dokument nie mówi.
   gdyJestPdftotext('niesie datę wytworzenia dokumentu w SYSTEMIE WYSTAWCY, a nie „w KSeF"', async () => {
     const tekst = tekstZPdf(await zXml(XML_DO_WYDRUKU));
     // ⚠️ ETYKIETA STOI W DWÓCH LINIACH (ma 151,5 pkt przy kolumnie 92) — łamie się ONA,
@@ -424,7 +424,7 @@ describe('PDF wizualizacji kosztu — komplet elementów art. 106e', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POPRAWKI PO RECENZJI (2026-09-03) — każda z nich to zdanie, które kartka mówiła
+// POPRAWKI PO RECENZJI — każda z nich to zdanie, które kartka mówiła
 // księgowej NIEPRAWDĘ albo przemilczała.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -449,7 +449,7 @@ const XML_TYLKO_BRUTTO = '<Faktura><Podmiot1><DaneIdentyfikacyjne><NIP>123456321
   + '<P_7>Piana niskoprężna</P_7><P_8A>szt</P_8A><P_8B>5.0000</P_8B>'
   + '<P_9B>19.99</P_9B><P_11A>99.95</P_11A><P_12>23</P_12></FaWiersz></Fa></Faktura>';
 
-describe('PDF wizualizacji kosztu — poprawki po recenzji', () => {
+describe('PDF wizualizacji kosztu — waluty, płatność i szczegóły wydruku', () => {
   const zXml = (xml, nadpisz = {}) => zbudujKosztPdf({
     wiersz: { ...wiersz, ...nadpisz },
     dokument: dokumentZXml(xml),

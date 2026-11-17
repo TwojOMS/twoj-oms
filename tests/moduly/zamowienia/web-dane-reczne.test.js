@@ -1,3 +1,4 @@
+// Odczyt, edycja i przywracanie danych wysyłki oraz faktury na karcie zamówienia.
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -6,7 +7,7 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie, pobierzZamowienie, zapiszNadpisaniaWysylki, zapiszNadpisaniaFaktury } from '../../../src/oms/db/zamowienia.js';
 import { utworzZamowienieReczne } from '../../../src/oms/db/zamowienia-reczne.js';
 import { createNadanie } from '../../../src/moduly/wysylka/services/nadanie.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { adresOdbiorcy } from '../../../src/domena/adres-odbiorcy.js';
 import { daneFaktury, chceFakture } from '../../../src/domena/dane-faktury.js';
 
@@ -61,16 +62,16 @@ describe('blok „Szczegóły zamówienia" na karcie', () => {
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('Szczegóły zamówienia');
     expect(r.body).toContain('1501');
-    // Zadanie „strona główna", punkt C: data ZE SKLEPU (bez oznaczenia strefy) jest już
+    // Data ZE SKLEPU (bez oznaczenia strefy) jest już
     // czasem lokalnym — fmtDataCzas ją TYLKO przeformatowuje (spacja zamiast „T"), bez
-    // przesunięcia — patrz src/oms/domain/format-daty.js.
+    // przesunięcia — patrz src/domena/format-daty.js.
     expect(r.body).toContain('2026-07-29 13:19:52');
     expect(r.body).not.toContain('2026-07-29T13:19:52');
     expect(r.body).toContain('pro');
     expect(r.body).toContain('Metoda wysyłki');
-    // Od 2026-08-01 metoda pokazuje sie NAZWA ZE SLOWNIKA (domain/wysylka.js), a nie surowa
+    // Metoda pokazuje sie NAZWA ZE SLOWNIKA (domain/wysylka.js), a nie surowa
     // wartoscia kolumny — to jest pole, w ktorym operator sprawdza metode, wiec ma nazywac
-    // rzeczy po imieniu (patrz blad I5 przy odbiorze osobistym).
+    // rzeczy po imieniu.
     const i = r.body.indexOf('<span>Metoda wysyłki</span>');
     expect(r.body.slice(i, r.body.indexOf('</div>', i))).toContain('DPD');
     expect(r.body).toContain('Status płatności');
@@ -78,12 +79,12 @@ describe('blok „Szczegóły zamówienia" na karcie', () => {
 
   it('opłacone zamówienie pokazuje datę wpłaty', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane({ oplacone_at: '2026-07-30T09:00:00' }), {});
-    // PRZ-152.G9a2: data stoi w liście ruchów płatności po ludzku (kiedyRuchu), bez sekund.
+    // Data stoi w liście ruchów płatności po ludzku (kiedyRuchu), bez sekund.
     expect((await karta(id)).body).toMatch(/<td>30\.7 09:00<\/td>/);
   });
 
-  // Zadanie D: uwagi klienta (customer_note) — TYLKO DO ODCZYTU, bo to zapis tego, co
-  // napisal klient, nie notatka operatora. Sprawdzone na produkcji, zamowienie 1267.
+  // Uwagi klienta (customer_note) — TYLKO DO ODCZYTU, bo to zapis tego, co
+  // napisal klient, nie notatka operatora.
   it('zamówienie z uwagami klienta pokazuje je w bloku szczegółów', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane({ uwagi: 'moje uwagi' }), {});
     const r = await karta(id);
@@ -99,14 +100,14 @@ describe('blok „Szczegóły zamówienia" na karcie', () => {
   });
 });
 
-// Zadanie A: „Dane do wysyłki" i „Dane do faktury" w JEDNYM rzędzie, dwóch kolumnach —
+// „Dane do wysyłki" i „Dane do faktury" w JEDNYM rzędzie, dwóch kolumnach —
 // zwykły flex/grid, bez frameworka, zwijające się jedna pod drugą na wąskim ekranie
 // (patrz .kolumny-dane w layout-oms.ejs).
 describe('układ dwóch kolumn na karcie (dane do wysyłki / dane do faktury)', () => {
   it('oba bloki są owinięte wspólnym kontenerem układu', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
     const body = (await karta(id)).body;
-    const start = body.indexOf('class="metryczka"'); // przebudowa 2026-07-31: kontener ma teraz TRZY kolumny i stoi NAD pozycjami
+    const start = body.indexOf('class="metryczka"'); // Kontener ma teraz TRZY kolumny i stoi NAD pozycjami
     expect(start).toBeGreaterThanOrEqual(0);
     const dalej = body.slice(start);
     // Oba nagłówki muszą leżeć WEWNĄTRZ tego samego kontenera — w przeciwnym razie
@@ -116,7 +117,7 @@ describe('układ dwóch kolumn na karcie (dane do wysyłki / dane do faktury)', 
   });
 });
 
-// Zadanie B: karta ma być domyślnie TYLKO DO ODCZYTU, a formularz ma się pojawiać dopiero
+// Karta ma być domyślnie TYLKO DO ODCZYTU, a formularz ma się pojawiać dopiero
 // po kliknięciu „Edytuj" — osobno dla wysyłki, osobno dla faktury, przez parametr adresu
 // (?edytuj=wysylka / ?edytuj=faktura), bez JavaScriptu.
 describe('tryb edycji danych klienta (?edytuj=wysylka / ?edytuj=faktura)', () => {
@@ -197,12 +198,9 @@ describe('tryb edycji danych klienta (?edytuj=wysylka / ?edytuj=faktura)', () =>
   });
 });
 
-// Zadanie „strona główna", punkt D: przełącznik „Klient chce fakturę" wraca na sam
-// POCZĄTEK bloku „Dane do faktury" — to pytanie ROZSTRZYGAJĄCE, czy reszta pól (firma, NIP,
-// adres) ma w ogóle znaczenie, więc ma stać PRZED nimi, nie po. Poprzednia wersja (Zadanie C
-// z poprzedniej iteracji) trzymała go na końcu — właściciel po obejrzeniu panelu zażądał
-// odwrócenia kolejności. Zachowanie przełącznika (ręczne „0" wygrywa ze sklepowym NIP-em)
-// zostaje bez zmian — sprawdza to osobny opis niżej.
+// Przełącznik „Klient chce fakturę” stoi na samym POCZĄTKU bloku „Dane do faktury”.
+// Rozstrzyga, czy reszta pól (firma, NIP, adres) ma znaczenie, więc stoi PRZED nimi.
+// Ręczne „0” wygrywa ze sklepowym NIP-em — sprawdza to osobny opis niżej.
 describe('„Klient chce fakturę" jako PIERWSZA pozycja bloku „Dane do faktury"', () => {
   // ⚠️ Kotwiczymy na SAMYM NAGŁÓWKU (`<h2>Dane do faktury</h2>`), nie na gołej frazie:
   // layout-oms.ejs ma w <style> komentarz CSS, który zawiera dokładnie tekst „Dane do
@@ -234,7 +232,7 @@ describe('„Klient chce fakturę" jako PIERWSZA pozycja bloku „Dane do faktur
   });
 });
 
-// Zadanie Z3d/Z3b (plan „ekran nadania", 04.08): gdy klient NIE chce faktury, reszta
+// Gdy klient NIE chce faktury, reszta
 // bloku (Nazwa, NIP, Adres, E-mail do faktury, „Skopiuj do wysyłki") jest szumem, który
 // operator i tak nigdy nie potrzebuje — zwija się w <details>, WYŁĄCZNIE w trybie odczytu.
 describe('zwijanie sekcji „Dane do faktury", gdy klient nie chce faktury', () => {
@@ -399,7 +397,7 @@ describe('POST /zamowienia/:id/dane/faktura', () => {
 });
 
 describe('POST /zamowienia/:id/dane/przywroc', () => {
-  // PRZ-126.C02 (recenzja): nieudane przywracanie dawalo karte 400 bez slowa komunikatu.
+  // Nieudane przywracanie dawalo karte 400 bez slowa komunikatu.
   it('błąd zapisu przy przywracaniu wraca na kartę z komunikatem', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
     zapiszNadpisaniaWysylki(db, id, { kod: '00-951' });
@@ -430,7 +428,7 @@ describe('POST /zamowienia/:id/dane/przywroc', () => {
     expect((await karta(id)).body).toContain('Przywróć dane ze sklepu');
   });
 
-  // I6 (recenzja calej galezi): formularz zakladania zamowienia recznego (POST
+  // Formularz zakladania zamowienia recznego (POST
   // /zamowienia/nowe) NIE zbiera adresu — wiec adres wpisany pozniej w „Edytuj" zawsze
   // ladowal jako nadpisanie (nie mial z czym sie zrownac) i przycisk byl PRAKTYCZNIE
   // ZAWSZE widoczny. Jedno klikniecie „przywracalo dane ze sklepu", ktorych nie ma —
@@ -476,8 +474,7 @@ describe('panel mówi prawdę o tym, czego edycja NIE naprawia', () => {
     + " VALUES (?, 'dpd', 'nadana', '0000123456789A', 1, '2026-07-30T10:00:00')",
   ).run(id);
 
-  // ⚠️ OSTRZEŻENIE PRZENIESIONE DO TRYBU EDYCJI 07.08.2026 (prośba właściciela: „ten tekst
-  // może pojawiać się po kliknięciu Edytuj. Wcześniej ukryty"). Mówi o SKUTKU POPRAWKI, więc
+  // ⚠️ OSTRZEŻENIE PRZENIESIONE DO TRYBU EDYCJI. Mówi o SKUTKU POPRAWKI, więc
   // ma sens dokładnie wtedy, gdy ktoś tę poprawkę robi; na karcie do odczytu był czerwonym
   // paskiem przy każdym nadanym zamówieniu, czyli przy większości. Treść bez zmian.
   it('przy nadanej paczce ostrzega — ale dopiero w trybie edycji', async () => {

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { stawkaWiersza, przelicz } from '../../src/public/cena-netto.js';
 import { bruttoZNetto, nettoZBruttoDoPokazania } from '../../src/domena/vat.js';
 
-// PRZ-105: przeliczanie netto ↔ brutto w przeglądarce (karta „Dodaj pozycję” i ekran „Nowe zamówienie”) — plik,
+// Przeliczanie netto ↔ brutto w przeglądarce (karta „Dodaj pozycję” i ekran „Nowe zamówienie”) — plik,
 // który naprawdę jedzie do przeglądarki, na atrapach elementów (repo nie ma biblioteki DOM). Stawka z listy
 // w wierszu, bez listy z `data-vat` formularza; `data-wdt="1"` (nabywca z UE) = 0%. Zmiana stawki zostawia
 // BRUTTO (wartość przechowywaną) i przelicza netto — ten sam kierunek, co serwer (brutto wygrywa).
@@ -60,7 +60,7 @@ describe('przelicz — wynik zgodny z serwerem (domain/vat.js)', () => {
     expect(w.netto.value).toBe('113.89');
   });
 
-  // Recenzja PRZ-105 (P2): kolumny stoją netto → stawka → brutto, więc naturalna kolejność to „wpisz netto,
+  // Kolumny stoją netto → stawka → brutto, więc naturalna kolejność to „wpisz netto,
   // wybierz stawkę”. Brutto policzone przez skrypt starą stawką nie może zostać — klient zapłaciłby 123 zł
   // zamiast 108 zł. Zmiana stawki liczy z pola, które operator wpisał OSTATNIO.
   it('netto wpisane ręcznie, potem stawka 8 → brutto 108,00 (liczy z netto)', () => {
@@ -102,7 +102,7 @@ describe('przelicz — wynik zgodny z serwerem (domain/vat.js)', () => {
   });
 });
 
-// PRZ-122.B07c (recenzja): „zw” (zwolnienie, tylko przy TwojeFaktury) liczy się jak 0 — netto = brutto. Wcześniej
+// „zw” (zwolnienie, tylko przy TwojeFaktury) liczy się jak 0 — netto = brutto. Wcześniej
 // `Number('zw')` = NaN i skrypt brał `data-vat` formularza (23): netto 100 wpisywało brutto 123,00.
 describe('stawka „zw” = 0 (netto = brutto)', () => {
   it('„zw” z listy w wierszu wygrywa z data-vat 23', () => {
@@ -124,7 +124,7 @@ describe('stawka „zw” = 0 (netto = brutto)', () => {
   });
 });
 
-// PRZ-152.G2-03a: karta zamówienia — stawka pozycji sklepowej jest tekstem (bez listy), serwer podaje ją w `data-stawka` wiersza.
+// Karta zamówienia — stawka pozycji sklepowej jest tekstem (bez listy), serwer podaje ją w `data-stawka` wiersza.
 describe('data-stawka wiersza (karta zamówienia)', () => {
   it('bez listy: data-stawka wiersza wygrywa z data-vat formularza', () => {
     const w = wiersz();

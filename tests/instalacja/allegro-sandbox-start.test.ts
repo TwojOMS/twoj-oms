@@ -32,7 +32,7 @@ it.each([{...env,OMS_TRYB:'produkcja'},{...env,OMS_DEMO_LOGIN:'demo',OMS_DEMO_HA
  const {przygotujUruchomienieSandbox}=await import('../../deploy/proba/sandbox-uruchomienie.ts');
  expect(()=>przygotujUruchomienieSandbox(e,konfiguracja)).toThrow();
 });
-it('PRZ-148.07: plik profilu Sandbox to jawny profil — allegrosandbox.pl przechodzi, allegro.pl odmawia straż próby przed transportem',async()=>{
+it('plik profilu Sandbox to jawny profil — allegrosandbox.pl przechodzi, allegro.pl odmawia straż próby przed transportem',async()=>{
  const {przygotujUruchomienieSandbox}=await import('../../deploy/proba/sandbox-uruchomienie.ts');
  const {vi}=await import('vitest');
  const ostrzezenia:string[]=[];const warn=vi.spyOn(console,'warn').mockImplementation((...t:unknown[])=>{ostrzezenia.push(t.join(' '));});
@@ -51,7 +51,7 @@ it('PRZ-148.07: plik profilu Sandbox to jawny profil — allegrosandbox.pl przec
   expect(ostrzezenia.filter(t=>t.includes('https://allegro.pl/'))).toEqual([]);
  }finally{warn.mockRestore();}
 });
-it('PRZ-150.03: plik profilu bez `klucz` — profil Sandbox i straż zostają, stałego kanału z pliku nie ma',async()=>{
+it('plik profilu bez `klucz` — profil Sandbox i straż zostają, stałego kanału z pliku nie ma',async()=>{
  const {przygotujUruchomienieSandbox}=await import('../../deploy/proba/sandbox-uruchomienie.ts');
  const calls:string[]=[];
  const plan=przygotujUruchomienieSandbox(env,{srodowisko:'sandbox'},async(u)=>{calls.push(String(u));return Response.json({device_code:'KOD-POLCIEN',user_code:'ABC-123',verification_uri:'https://example.test/skojarz',expires_in:600,interval:5});});

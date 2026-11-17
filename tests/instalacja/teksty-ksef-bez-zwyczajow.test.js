@@ -11,7 +11,7 @@ const PLIKI = [
   'src/moduly/faktury/services/faktura-okresu.js',
   'src/moduly/faktury/db/faktury.js',
 ];
-// PRZ-174 B2 (M12): oprócz trzech dosłownych zwrotów — reguła ogólniejsza: pora dnia i dni tygodnia, „księgowa”,
+// Oprócz trzech dosłownych zwrotów — reguła ogólniejsza: pora dnia i dni tygodnia, „księgowa”,
 // „co tydzień”, „w weekend”. Zmierzone na tych 5 plikach (bez komentarzy): zero trafień na prawdziwych zdaniach.
 // Samego „ręcznie” NIE dodajemy: stoi w uczciwych zdaniach („Sprawdź RĘCZNIE w inFakcie…”, „załóż go tam raz, ręcznie”).
 const ZWYCZAJ = new RegExp([

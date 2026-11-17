@@ -55,7 +55,7 @@ describe('pas ostrzezen', () => {
     expect(kody([w()], { od: '2026-06-01', do: '2026-08-01', kanalGddWHistorii: true })).toContain('gdd');
   });
 
-  // PRZ-073: kanal GDD jest algorytmiczny i ma granice w KAZDEJ instancji (generator demo zaklada
+  // Kanal GDD jest algorytmiczny i ma granice w KAZDEJ instancji (generator demo zaklada
   // ja wszystkim kanalom raportu), ale istnieje tylko tam, gdzie klasyfikacja ma tag GDD.
   // Bez tego warunku demo i klient bez takiego kanalu czytaliby o „kanale GDD" w kazdym raporcie.
   it('⚠️ MILCZY o GDD, gdy instancja nie ma tego kanalu w historii, choc granica istnieje', () => {

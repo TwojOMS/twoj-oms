@@ -1,4 +1,4 @@
-import { potwierdzOdmoweHistorycznegoSchema } from '../../pomoc/baseline-historyczne.js';
+import { potwierdzOdmoweHistorycznegoSchema } from '../../pomoc/sprawdzanie-schematu-bazy.js';
 import { describe, it, expect, vi } from 'vitest';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -62,7 +62,7 @@ describe('faktura — nabywca z kartoteki', () => {
     expect(infakt.wystaw.mock.calls[0][0].client_id).toBe(555);
   });
 
-  // I5. Wpis zalozony BEZ NIP-u to (a) faktura dla firmy bez NIP-u na dokumencie,
+  // Wpis zalozony BEZ NIP-u to (a) faktura dla firmy bez NIP-u na dokumencie,
   // (b) wpis, ktorego `q[nip_eq]` nigdy nie znajdzie — czyli nowy duplikat przy KAZDYM
   // kolejnym zamowieniu tego klienta. Dokladnie ta awaria, ktorej caly trzystopniowy
   // obieg ma zapobiegac, a nikt jej nie sprawdzal.
@@ -120,7 +120,7 @@ describe('faktura — nabywca z kartoteki', () => {
 });
 
 describe('faktura — kwoty', () => {
-  // C3a. `gross_price` pozycji to SUMA LINII, nie cena za sztuke — sprawdzone na prawdziwej
+  // `gross_price` pozycji to SUMA LINII, nie cena za sztuke — sprawdzone na prawdziwej
   // fakturze z konta (quantity=18, unit_net_price=2602, net_price=46829, gross_price=57600).
   // Wysylanie tu ceny jednostkowej PRZY jednoczesnym `quantity` zanizalo dokument
   // *quantity*-krotnie: 61,50 zamiast 123,00 zl.
@@ -139,7 +139,7 @@ describe('faktura — kwoty', () => {
     expect(infakt.wystaw.mock.calls[0][0].services.every((s) => s.tax_symbol === '23')).toBe(true);
   });
 
-  // PRZ-105: stawka domyślna z Ustawień → Firma. Wpis 8 ma pojechać na każdą linię sklepową i dostawę.
+  // Stawka domyślna z Ustawień → Firma. Wpis 8 ma pojechać na każdą linię sklepową i dostawę.
   it('stawka domyślna z Ustawień (8) idzie na pozycje sklepowe i dostawę', async () => {
     const { db, infakt, faktura, id } = zestaw({ kwota_brutto: '139.00', koszt_dostawy_brutto: '16.00' });
     zapiszStawkeDomyslna(db, '8');
@@ -147,7 +147,7 @@ describe('faktura — kwoty', () => {
     expect(infakt.wystaw.mock.calls[0][0].services.map((s) => s.tax_symbol)).toEqual(['8', '8']);
   });
 
-  // C3b. Koszt dostawy jest czescia `total` zamowienia, ale NIE ma go w `line_items` —
+  // Koszt dostawy jest czescia `total` zamowienia, ale NIE ma go w `line_items` —
   // bez osobnej pozycji faktura byla zanizona o wysylke przy kazdym platnym transporcie.
   it('dokłada pozycję dostawy, gdy wysyłka kosztuje', async () => {
     const { infakt, faktura, id } = zestaw({ kwota_brutto: '141.45', koszt_dostawy_brutto: '18.45' });
@@ -724,7 +724,7 @@ describe('faktura — pozycje dopisane i poprawione ręcznie', () => {
   });
 });
 
-// C1. Dokument w KSeF jest NIEODWRACALNY, wiec o tym, czy poleci drugi, musi rozstrzygac
+// Dokument w KSeF jest NIEODWRACALNY, wiec o tym, czy poleci drugi, musi rozstrzygac
 // baza — a nie kolejnosc odczytow w kodzie.
 describe('faktura — jedna faktura na zamówienie', () => {
   it('zapisuje numer i uuid przy zamówieniu', async () => {
@@ -785,7 +785,7 @@ describe('faktura — jedna faktura na zamówienie', () => {
     expect(wystawAtrapa).toHaveBeenCalledTimes(2);
   });
 
-  // I3. Nieudana proba bez sladu w logu byla najgorszym z mozliwych stanow: przycisk
+  // Nieudana proba bez sladu w logu byla najgorszym z mozliwych stanow: przycisk
   // zostawal, historia byla pusta, a dokument mogl juz istniec.
   it('każda awaria zostawia wpis w logu zamówienia', async () => {
     const wystawAtrapa = vi.fn().mockRejectedValue(new Error('inFakt nieosiągalny: fetch failed'));
@@ -887,7 +887,7 @@ describe('faktura — awaria PRZED wystawieniem nie blokuje zamówienia', () => 
 });
 
 describe('faktura — odmowy przed dotknięciem inFaktu', () => {
-  // C2. Faktura do anulowanego zamowienia trafia do KSeF i wymaga korekty, czyli drugiego
+  // Faktura do anulowanego zamowienia trafia do KSeF i wymaga korekty, czyli drugiego
   // dokumentu i wizyty w ksiegowosci. Odmowa jest TWARDA, bo karta w przegladarce pokazuje
   // stan sprzed sekund — klient moze anulowac dokladnie wtedy, gdy operator ma ja otwarta.
   it('zamówienie ANULOWANE → odmowa i inFakt nietknięty', async () => {
@@ -904,7 +904,7 @@ describe('faktura — odmowy przed dotknięciem inFaktu', () => {
     expect(infakt.wystaw).not.toHaveBeenCalled();
   });
 
-  // PRZ-126.F02: opcja firmy „faktura także bez prośby klienta” czytana z bazy przy KAŻDYM wystawieniu.
+  // Opcja firmy „faktura także bez prośby klienta” czytana z bazy przy KAŻDYM wystawieniu.
   it('bez żądania i opcja wyłączona (brak wpisu i „nie”) → ta sama odmowa operatora, program i tabela faktur nietknięte', async () => {
     for (const wpis of [null, 'nie']) {
       const { infakt, db, faktura, id } = zestaw({ chce_fakture: 0, nip: null });
@@ -965,7 +965,7 @@ describe('faktura — odmowy przed dotknięciem inFaktu', () => {
   });
 });
 
-// ⚠️ USTERKA ZGLOSZONA PRZEZ WLASCICIELA (06.08.2026): faktura wystawiona z panelu jako
+// ⚠️ USTERKA ZGLOSZONA PRZEZ WLASCICIELA: faktura wystawiona z panelu jako
 // „zaplacona" ma w inFakcie status „nieoplacona". Odczyt 60 ostatnich faktur z zywego konta:
 // nasze dokumenty maja `paid_price: 15800`, `left_to_pay: 0` (czyli DOKUMENT DLA KLIENTA
 // jest poprawny i drukuje „Zaplacono"), ale `paid_date: null` i `status: 'sent'`. Faktura

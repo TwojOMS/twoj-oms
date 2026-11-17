@@ -1,4 +1,4 @@
-// PRZ-160.04a (E1.04 cz. 1) — dwa odczyty kategorii w kliencie Allegro i pamięć podręczna `kanaly_kategorie`
+// Dwa odczyty kategorii w kliencie Allegro i pamięć podręczna `kanaly_kategorie`
 // (jeden wiersz na kategorię i połączenie). Prawdziwy klient na wstrzykniętym `fetch`, baza w pamięci z migracjami.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createAllegroClient } from '../../../src/oms/allegro/client.js';
@@ -117,7 +117,7 @@ describe('pamięć podręczna kategorii (kanaly_kategorie)', () => {
   });
 });
 
-// PRZ-160.E3.05 — opis v2 w pamięci podręcznej, odświeżanie, konto opisu środowiska i wyszukiwarka słownika.
+// Opis v2 w pamięci podręcznej, odświeżanie, konto opisu środowiska i wyszukiwarka słownika.
 const P9 = JSON.parse(readFileSync(new URL('../../fixtures/allegro/e3-pomiar-p9-kategoria.json', import.meta.url), 'utf8'));
 const KATEGORIE_P9 = Object.fromEntries(P9.sciezka.map(k => [k.id, k]));
 const kontoP9 = () => kontoAllegro({ parametry: () => ok(structuredClone(P9.parametry)),

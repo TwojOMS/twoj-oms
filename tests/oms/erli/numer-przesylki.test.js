@@ -14,7 +14,7 @@ import { ponowZalegleNotatki } from '../../../src/moduly/wysylka/services/notatk
 import { sprawyKarty } from '../../../src/domena/sprawy-karty.js';
 import { rozpocznijPrzesylke, zakonczPrzesylke } from '../../../src/moduly/wysylka/db/przesylki.js';
 import { przekazNumerKanalu } from '../../../src/moduly/wysylka/services/numer-kanalu.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
 let db, id, nadanie, fetchImpl, klient, numer, kurier;
 let typ, tracking, kanal, httpBlad;

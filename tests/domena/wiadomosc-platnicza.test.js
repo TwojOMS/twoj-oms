@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { modelWiadomosci, jakoTekstWiadomosci, TEMAT_MAILA } from '../pomoc/platnicza-parytetu.js';
-import { renderWiadomoscHtml } from '../pomoc/wiadomosc-html-parytetu.js';
+import { modelWiadomosci, jakoTekstWiadomosci, TEMAT_MAILA } from '../pomoc/testowa-wiadomosc-platnicza.js';
+import { renderWiadomoscHtml } from '../pomoc/testowy-html-wiadomosci.js';
 import { stanPlatnosci, STAN_PLATNOSCI } from '../../src/domena/blok-platnosci.js';
 
 const zam = (nad = {}) => ({
@@ -33,8 +33,7 @@ describe('temat maila', () => {
       .toBe('Przypomnienie o płatności — zamówienie nr R/2026/015');
   });
 
-  // ⚠️ ŁATKA `.replace('  ', ' ')` ZASTĄPIONA NORMALIZACJĄ (sprzątanie po recenzji całości
-  // gałęzi, 22.08.2026). Stara wersja stała w DWÓCH kopiach i była wadliwa tak samo w obu:
+  // ⚠️ ŁATKA `.replace('  ', ' ')` ZASTĄPIONA NORMALIZACJĄ. Stara wersja stała w DWÓCH kopiach i była wadliwa tak samo w obu:
   // `String.replace` z NAPISEM podmienia wyłącznie PIERWSZE wystąpienie, więc temat z dwiema
   // dziurami naraz dalej wychodził z podwójnym odstępem — tyle że w drugim miejscu. Odstępu
   // na końcu nie obcinała nigdy.
@@ -60,7 +59,7 @@ describe('model wiadomości', () => {
     expect(m.sprzedawca).toBe('Swietlik.example.test');
   });
 
-  // ⚠️⚠️ BŁĄD Z RECENZJI (22.08.2026): zdanie o załączonej proformie zależało od TEMATU
+  // ⚠️⚠️ BŁĄD: zdanie o załączonej proformie zależało od TEMATU
   // (`temat_id === 'przypomnienie'`) i od tego, czy jest PODANY `dokument` — a nie od tego,
   // co NAPRAWDĘ jedzie w załączniku. `dokument` przy przypomnieniu bywa numerem FAKTURY
   // (bo to on jedzie do tytułu przelewu), więc stare zdanie nazywało fakturę proformą.
@@ -85,7 +84,7 @@ describe('model wiadomości', () => {
   // ⚠️ Faktura do zamówienia opłaconego NIE ŻĄDA pieniędzy — blok znika, a zamiast niego
   // stoi podziękowanie. Prośba o zapłatę czegoś, co klient zapłacił, to telefon reklamacyjny.
   //
-  // ⚠️⚠️ FIKSTURA MUSI BYĆ NAPRAWDĘ „POKRYTE" (recenzja 22.08.2026), nie „jakikolwiek brak
+  // ⚠️⚠️ FIKSTURA MUSI BYĆ NAPRAWDĘ „POKRYTE", nie „jakikolwiek brak
   // bloku" — `platnosc === null` ma CZTERY różne powody i tylko jeden z nich to podziękowanie.
   // Asercja na `stanPlatnosci` obok treści dowodzi, że ten test broni WŁAŚCIWEGO powodu,
   // a nie zdaje egzamin przypadkiem, bo fikstura akurat trafiła w inny z czterech.
@@ -97,7 +96,7 @@ describe('model wiadomości', () => {
     expect(m.zamkniecie).toContain('Zamówienie jest opłacone');
   });
 
-  // ⚠️⚠️ BŁĄD Z RECENZJI (22.08.2026): `platnosc === null` ma CZTERY różne powody, a przed tą
+  // ⚠️⚠️ BŁĄD: `platnosc === null` ma CZTERY różne powody, a przed tą
   // poprawką `zamkniecie` czytało tylko `Boolean(platnosc)` — więc FAKTURA DO ZAMÓWIENIA ZA
   // POBRANIEM mówiła klientowi „Zamówienie jest opłacone", zanim kurier cokolwiek zainkasował.
   it('faktura przy pobraniu NIE mówi "opłacone" — mówi o kurierze', () => {
@@ -123,7 +122,7 @@ describe('model wiadomości', () => {
     expect(m.zamkniecie).toContain('dokumencie');
   });
 
-  // ⚠️⚠️ ZDANIE SPAROWANE Z FAKTEM (sprzątanie po recenzji całości gałęzi, 22.08.2026) — ta
+  // ⚠️⚠️ ZDANIE SPAROWANE Z FAKTEM — ta
   // sama klasa błędu, którą naprawiliśmy przy `zdanieDokumentu`. Przy braku rachunku
   // przypomnienie BEZ proformy nie ma w kopercie NICZEGO, a mimo to odsyłało klienta „na
   // dokument w załączniku". Mail zapowiadający dokument, którego nie ma, jest gorszy niż mail
@@ -141,7 +140,7 @@ describe('model wiadomości', () => {
   });
 
   // ⚠️⚠️ CZWARTY Z CZTERECH POWODÓW, DOPISANY PO WERYFIKACJI MUTACYJNEJ ZADANIA 10
-  // (22.08.2026, scripts/mutacje-wiadomosci.mjs). `stanPlatnosci` miał już test na stan
+  // `stanPlatnosci` miał już test na stan
   // „błąd wyceny" (tests/oms/wiadomosci-domena.test.js), ale nic nie sprawdzało, CO
   // `zamkniecie` w tym stanie mówi klientowi — a to jest funkcja, którą naprawdę czyta mail.
   // Bez tego strażnika błąd wyceny cicho spada do zdania „Po zaksięgowaniu wpłaty…" (przy
@@ -165,7 +164,7 @@ describe('model wiadomości', () => {
     expect(m.zamkniecie).toContain('dokumencie');
   });
 
-  // ⚠️ NIEZNANY TEMAT RZUCA, NIE UDAJE PRZYPOMNIENIA (recenzja 22.08.2026). Fallback
+  // ⚠️ NIEZNANY TEMAT RZUCA, NIE UDAJE PRZYPOMNIENIA. Fallback
   // `WIODACE[temat_id] ?? WIODACE.przypomnienie` po cichu wysyłałby treść przypomnienia pod
   // tematem, którego nikt nie wybrał — literówka w wywołaniu (np. `temat_id: 'faktóra'`)
   // nie dałaby żadnego sygnału, tylko klienta z mailem podpisanym niewłaściwie.
@@ -217,7 +216,7 @@ describe('renderer HTML', () => {
     expect(html).toContain('Tytuł przelewu');
   });
 
-  // ⚠️ FIKSTURA MUSI BYĆ NAPRAWDĘ „POKRYTE" (recenzja 22.08.2026, ta sama uwaga co w
+  // ⚠️ FIKSTURA MUSI BYĆ NAPRAWDĘ „POKRYTE"
   // wiadomosc-platnicza.test.js) — patrz asercja na `stanPlatnosci` obok treści.
   it('bez bloku płatności nie ma sekcji przelewu', () => {
     const z = zam({ platnosci: [{ data: '2026-08-22', kwota: '990.00' }] });
@@ -242,7 +241,7 @@ describe('renderer HTML', () => {
 
   // ⚠️ Numer rachunku klient PRZEPISUJE do banku — w czcionce proporcjonalnej cyfry zlewają
   // się w jeden ciąg (ta sama reguła i to samo uzasadnienie, co przy numerze konta w treściach
-  // wyceny — src/mail/mail-html.js, `liniaPudelka`/`RE_NUMER_KONTA`; recenzja 22.08.2026).
+  // wyceny — src/mail/mail-html.js, `liniaPudelka`/`RE_NUMER_KONTA`).
   it('numer rachunku stoi w czcionce o stałej szerokości', () => {
     const html = renderWiadomoscHtml(model());
     const komorkaRachunku = html.slice(html.indexOf('>Rachunek<'), html.indexOf('>Rachunek<') + 400);
@@ -271,7 +270,7 @@ describe('spójność renderera HTML i wersji tekstowej', () => {
     expect(html).toContain(m.platnosc.tytul);
     expect(tekst).toContain(m.platnosc.termin);
     expect(html).toContain(m.platnosc.termin);
-    // ⚠️ RACHUNEK I ODBIORCA DOŁOŻONE (recenzja 22.08.2026) — to jedyne dwa pola bloku
+    // ⚠️ RACHUNEK I ODBIORCA DOŁOŻONE — to jedyne dwa pola bloku
     // przelewu, których rozjazd między HTML-em a tekstem wysyłałby pieniądze pod zły adres,
     // a strażnik ich dotąd nie pilnował.
     expect(tekst).toContain(m.platnosc.rachunek);

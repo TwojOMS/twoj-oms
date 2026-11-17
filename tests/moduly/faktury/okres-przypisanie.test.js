@@ -8,7 +8,7 @@ import { STAN } from '../../../src/domena/okres-rozliczeniowy.js';
 import { parsujNoweZamowienie } from '../../../src/domena/nowe-zamowienie.js';
 import { utworzZamowienieReczne } from '../../../src/oms/db/zamowienia-reczne.js';
 import { pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { dopiszKlientaZbiorczego } from './_klient-zbiorczy-pomocniki.js';
 
 const CONFIG = {};
@@ -25,7 +25,7 @@ function bazaZKlientem(sciezka) {
 // ma uzyc, ale policzone NIEZALEZNIE OD IMPLEMENTACJI. Wczesniejsza wersja tych testow
 // brala `new Date().getUTCMonth() + 1`, czyli sprawdzala kod tym samym bledem, ktory mial
 // wykryc: przez pierwsze godziny kazdego pierwszego dnia miesiaca (UTC jest o 1–2 h za
-// Polska) oba wyliczenia mylily sie zgodnie i test przechodzil (recenzja 2026-08-01).
+// Polska) oba wyliczenia mylily sie zgodnie i test przechodzil.
 function terazWarszawa() {
   const czesci = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Warsaw', year: 'numeric', month: '2-digit',
@@ -37,7 +37,7 @@ function terazWarszawa() {
 describe('przypiszDoOkresu', () => {
   // 20:00Z to 22:00 czasu polskiego 31 lipca — lipiec bez watpliwosci. Pierwsza wersja brala
   // 22:00Z, czyli w Polsce juz 1 sierpnia 00:00, i „potwierdzala" lipiec tylko dlatego,
-  // ze kod tez liczyl w UTC (recenzja 2026-08-01).
+  // ze kod tez liczyl w UTC.
   it('drop klienta zbiorczego dostaje okres z daty zlozenia', () => {
     const db = bazaZKlientem();
     const id = przypiszDoOkresu({

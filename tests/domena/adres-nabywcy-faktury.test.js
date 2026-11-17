@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { brakiAdresuNabywcy, zdanieBrakuAdresu } from '../../src/domena/adres-nabywcy-faktury.js';
 
-// PRZ-126.PT5 (decyzja 8): adres nabywcy wymagany na każdej fakturze (art. 106e ust. 1 pkt 3),
+// Adres nabywcy wymagany na każdej fakturze (art. 106e ust. 1 pkt 3),
 // kod pocztowy tylko dla Polski. Dane zmyślone.
 const pelny = { ulica: 'Lampowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL' };
 
@@ -50,7 +50,7 @@ describe('zdanie braku adresu', () => {
   });
 });
 
-// Recenzja PT5: brak adresu mówi OSTATNI — po stanie faktury w hurcie, po anulowaniu i okresie na karcie.
+// Brak adresu mówi OSTATNI — po stanie faktury w hurcie, po anulowaniu i okresie na karcie.
 describe('kolejność powodu „brak adresu”', () => {
   const bezAdresu = { id: 1, numer: 'PT5-K', anulowane: 0, chce_fakture: 1, kwota_brutto: '123.00',
     pozycje: [{ nazwa: 'Lampa', ilosc: 1, cena_brutto: '123.00', brutto_linii: '123.00' }],

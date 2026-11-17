@@ -57,10 +57,25 @@ zgłasza zmienne czytane w kodzie, których tam brakuje.
 
 Testy leżą zwykle lustrzanie (wyjątki znajdzie `rg -l nazwaFunkcji tests`): `src/moduly/zwroty/...` → `tests/moduly/zwroty/`, `src/domena/vat.js` → `tests/domena/vat*.test.js`.
 
+| katalog w `src` | gdzie są testy |
+|---|---|
+| `src/domena/` | `tests/domena/` |
+| `src/oms/` (baza, KSeF, kurierzy, integracje, usługi) | `tests/oms/`, `tests/instalacja/` (instalator, aktualizator), `tests/konfiguracja*` |
+| `src/integracje/` | `tests/integracje/` |
+| `src/core/` | `tests/core/` (także strażniki repozytorium) |
+| `src/public/` | `tests/public/` |
+| `src/zdjecia-publiczne/` | `tests/zdjecia-publiczne/` |
+| `src/moduly/<moduł>/` | `tests/moduly/<moduł>/` |
+| `src/moduly/kanaly/` | `tests/moduly/kanaly/`, `tests/kanaly/` i pliki `tests/moduly/kanaly-*.test.ts` |
+| `src/moduly/lista.ts` | pliki w korzeniu `tests/moduly/` |
+
+Pomocniki leżą w `tests/pomoc/`, dane w `tests/dane/` i `tests/fixtures/` (to nie są testy).
+
 ```bash
 rg -l "nazwaFunkcji" tests         # testy używające funkcji
 npx vitest run tests/moduly/zwroty # uruchom jeden moduł
 npx vitest run -t "fragment nazwy testu"
+npm run test:zwiazane -- src/sciezka/pliku.js  # testy importujące plik (dla szeroko używanych: setki)
 ```
 
 ## Zanim zmienisz zachowanie

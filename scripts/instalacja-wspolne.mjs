@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// PRZ-093.03: kontrola wersji Node na samym początku każdego skryptu instalacji. Na Node 20 (apt w Debianie 13
+// Kontrola wersji Node na samym początku każdego skryptu instalacji. Na Node 20 (apt w Debianie 13
 // i Ubuntu 24.04) instalacja kończyła się samym INSTALACJA_DEMO_PROBA_ODMOWA — etap próby nie mógł wczytać
 // node:sqlite ani plików .ts. Ten plik importuje wyłącznie moduły obecne w każdym Node z obsługą ESM, a skrypty
 // instalacji importują go statycznie PRZED czymkolwiek nowszym (resztę doczytują dynamicznie), więc komunikat
@@ -39,7 +39,7 @@ export const PLIKI_INSTALACJI = Object.freeze({
   klucz: 'klucz.env',
 });
 
-// PRZ-182: klucz poświadczeń integracji (zmienna OMS_KLUCZ_SEKRETOW) żyje w osobnym pliku klucz.env — nigdy
+// Klucz poświadczeń integracji (zmienna OMS_KLUCZ_SEKRETOW) żyje w osobnym pliku klucz.env — nigdy
 // w proba.env/oms.env. Ścieżkę pliku podaje OMS_KLUCZ_SEKRETOW_PLIK (Docker: /opt/oms/config/klucz.env, poza
 // katalogiem danych), a bez niej plik leży w katalogu instalacji obok bazy (próba na własnym komputerze).
 // Instalator przekazuje etapom potomnym wyłącznie tę jedną zmienną; każdy etap czyta klucz z pliku.
@@ -126,7 +126,7 @@ export function opcje(argv) {
     }
     wynik[klucz] = wartosc;
   }
-  // Prefiks INSTALACJA_ przepuszcza powód przez catch każdego instalatora (PRZ-089: przy względnej ścieżce
+  // Prefiks INSTALACJA_ przepuszcza powód przez catch każdego instalatora (przy względnej ścieżce
   // człowiek widział samo INSTALACJA_DEMO_ODMOWA). Treść bez sekretów — tylko to, co człowiek sam wpisał.
   if (!wynik['--katalog'] || !wynik['--port']) throw new Error('INSTALACJA_OPCJE_ODMOWA: Użycie: --katalog ABS --port PORT');
   if (!path.isAbsolute(wynik['--katalog'])) {
@@ -156,7 +156,7 @@ export function istnieje(plik) {
   return fs.existsSync(plik);
 }
 
-// Powód porażki dla człowieka (PRZ-093.03). Sekretów nie wolno przenieść na ekran: linia z sekretem znika
+// Powód porażki dla człowieka. Sekretów nie wolno przenieść na ekran: linia z sekretem znika
 // w całości, a reszta przechodzi przez maskowanie na wypadek sekretu w środku cudzego komunikatu.
 const LIMIT_POWODU = 400;
 const LINIA_Z_HASLEM = /(haslo|hasło|pass(word)?|secret|token)\s*[=:]/i;
@@ -178,7 +178,7 @@ export function powodPotomka(wynik, { limitMs, sekrety = [] } = {}) {
   return wynik.signal ? `etap przerwany sygnałem ${wynik.signal}` : `kod wyjścia ${wynik.status}, bez komunikatu`;
 }
 
-// Hasła, które etapy zapisują w katalogu instalacji, i klucz poświadczeń (PRZ-182) — do odfiltrowania z tego,
+// Hasła, które etapy zapisują w katalogu instalacji, i klucz poświadczeń — do odfiltrowania z tego,
 // co trafia na ekran. Klucz czytany bez walidacji: wycinamy każdą wartość, jaka stoi w pliku.
 export function sekretyKatalogu(katalog, plikKlucza = sciezkaKlucza(katalog)) {
   const sekrety = [];
@@ -188,7 +188,7 @@ export function sekretyKatalogu(katalog, plikKlucza = sciezkaKlucza(katalog)) {
   return sekrety;
 }
 
-// „Co dalej” po sukcesie (PRZ-093.03): ścieżka pliku z hasłem, nigdy samo hasło. Linie idą PRZED wierszem JSON —
+// „Co dalej” po sukcesie: ścieżka pliku z hasłem, nigdy samo hasło. Linie idą PRZED wierszem JSON —
 // ten zostaje ostatni (instrukcja Dockera: „Kończy się wierszem z "status":…”).
 export const ZAPISZ_KLUCZ = 'Zapisz zawartość tego pliku w menedżerze haseł. Bez niego kopia bazy nie odda podłączonych integracji.';
 

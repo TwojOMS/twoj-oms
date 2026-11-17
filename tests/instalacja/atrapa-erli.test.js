@@ -18,10 +18,10 @@ const paczka = orderId => ({ orderId, dimensions: { width: 100, height: 100, len
 const adres = () => ({ firstName: 'Ada', lastName: 'Przykładowa', street: 'Zmyślona', buildingNumber: '1',
   city: 'Warszawa', zip: '00-001', country: 'pl', pickupType: 'point', pointCode: 'PC001', phoneNumber: '500100200', email: 'ada@polcien.example' });
 
-describe('PRZ-157.03a — atrapa ERLI', () => {
+describe('atrapa ERLI', () => {
   it('demo ma płatność PayU, katalog lamp, paczkomat i daty względne od resetu', async () => {
     const o = opcje(); const a = createAtrapaErli(o);
-    // PRZ-158: daty są rozłożone w czasie; scenariusze identyfikuje numer, nie pozycja w sortowaniu dat.
+    // Daty są rozłożone w czasie; scenariusze identyfikuje numer, nie pozycja w sortowaniu dat.
     const z = (await a.szukajZamowien()).sort((a, b) => a.id.localeCompare(b.id));
     expect(z[0].payment).toMatchObject({ status: 'COMPLETED' });
     expect(z[5].payment).toMatchObject({ status: 'PENDING' });
@@ -34,10 +34,10 @@ describe('PRZ-157.03a — atrapa ERLI', () => {
     expect(z[0].purchasedAt).toBe('2026-11-11T08:00:00.000Z');
     expect((await createAtrapaErli({ ...o, kanal: 'reset', teraz: () => new Date('2026-11-12T10:00:00Z') }).pobierzZamowienie('PC-ERLI-0001')).purchasedAt).toBe('2026-11-12T08:00:00.000Z');
   });
-  it('kanał demo (demoZmiany) nie ma nieznanej metody dostawy — Adam 12.11: „w demo nie może takiego być”', async () => {
+  it('kanał demo (demoZmiany) nie ma nieznanej metody dostawy', async () => {
     const demo = await createAtrapaErli({ ...opcje(), demoZmiany: true }).szukajZamowien();
     expect(demo).toHaveLength(31);
-    // PRZ-160.demo (właściciel 14.11): świeży koszyk z 5 różnymi produktami u góry listy.
+    // Świeży koszyk z 5 różnymi produktami u góry listy.
     const duzy = demo.find(z => z.id === 'PC-ERLI-0017');
     expect(new Set(duzy.items.map(p => p.sku)).size).toBe(5);
     expect(Date.parse(demo[0].purchasedAt) - Date.parse(duzy.purchasedAt)).toBeLessThanOrEqual(6 * 3600000);
@@ -49,7 +49,7 @@ describe('PRZ-157.03a — atrapa ERLI', () => {
     expect(metody(createErliClient()).filter(m => !metody(a).includes(m))).toEqual([]);
     expect(() => createAtrapaErli({ ...o, env: {} })).toThrow('OMS_TRYB=proba');
   });
-  it('PRZ-160.E2.03: produkty z OMS-u — 409 na powtórny POST, batch po externalId, nieznany jako błąd pozycji', async () => {
+  it('produkty z OMS-u — 409 na powtórny POST, batch po externalId, nieznany jako błąd pozycji', async () => {
     const a = createAtrapaErli(opcje());
     await a.utworzProdukt('PC-LAMPA-1', { name: 'Lampa Półcień', price: 6638, stock: 3 });
     await expect(a.utworzProdukt('PC-LAMPA-1', { name: 'Lampa Półcień' })).rejects.toMatchObject({ status: 409 });

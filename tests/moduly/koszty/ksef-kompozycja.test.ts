@@ -21,7 +21,7 @@ const env = { OMS_USER:'operator',OMS_PASS:'fixture',OMS_SPRZEDAWCA_NIP:'1234563
   OMS_RACHUNEK:'34109010140000000000000000',OMS_PROFORMY_KATALOG:tmpdir(),KSEF_TOKEN:'fixture-token' };
 const headers = { authorization:`Basic ${Buffer.from('operator:fixture').toString('base64')}` };
 
-describe('PRZ-025 realna kompozycja KSeF', () => {
+describe('realna kompozycja KSeF', () => {
   it('budżet porównuje z dobą, zachowuje godzinny zegar i odmawia sprzecznego NIP', () => {
     expect(NAJDLUZSZY_PRZEBIEG_KOSZTOW_MS).toBeGreaterThan(ODSTEP_KOSZTOW_MS);
     expect(NAJDLUZSZY_PRZEBIEG_KOSZTOW_MS).toBeLessThan(ODSTEP_OKNA_POBRANIA_MS);

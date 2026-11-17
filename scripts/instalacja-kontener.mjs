@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Pierwsze uruchomienie OMS w kontenerze (PRZ-058): `sudo docker compose run --rm instalacja`.
+// Pierwsze uruchomienie OMS w kontenerze: `sudo docker compose run --rm instalacja`.
 // NIE generuje niczego sam — uruchamia istniejące instalacja-demo.mjs (przygotowanie, próba,
 // pierwszy administrator, trzy zamówienia DEMO) na katalogu danych, a potem przenosi pliki
 // konfiguracji i dane konta do katalogu konfiguracji (/opt/oms/config), skąd czyta je compose.
@@ -46,7 +46,7 @@ function przenies(zrodlo, cel) {
   fs.unlinkSync(zrodlo);
 }
 
-// PRZ-182: tryb 600 jak oms.env. Plik założony przez instalator należy do UID procesu (10001 w obrazie); plik
+// Tryb 600 jak oms.env. Plik założony przez instalator należy do UID procesu (10001 w obrazie); plik
 // przyniesiony z menedżera haseł — gdy należy do nas, poprawiamy tryb, gdy nie — mówimy, co zrobić.
 function trybKlucza(plik) {
   if (process.platform === 'win32') return null;
@@ -66,7 +66,7 @@ async function main() {
   const cele = Object.values(PLIKI_KONFIGURACJI).map(nazwa => path.join(konfiguracja, nazwa));
   if (cele.some(plik => fs.existsSync(plik))) throw Error('INSTALACJA_ODMOWA_NADPISANIA');
   if (fs.readdirSync(dane).length) throw Error('INSTALACJA_ODMOWA_NADPISANIA');
-  // PRZ-182: klucz poświadczeń od razu w katalogu konfiguracji — nigdy w katalogu danych (ten trafia do kopii).
+  // Klucz poświadczeń od razu w katalogu konfiguracji — nigdy w katalogu danych (ten trafia do kopii).
   // Istniejący klucz.env (ponowienie albo odtwarzanie z kluczem z menedżera haseł) nie jest powodem odmowy:
   // jest sprawdzany i używany, nigdy nadpisywany. Zły plik = odmowa, zanim cokolwiek powstanie.
   const plikKlucza = path.join(konfiguracja, PLIK_KLUCZA);
@@ -77,7 +77,7 @@ async function main() {
     cwd: fileURLToPath(new URL('..', import.meta.url)), env: { [ZMIENNA_PLIKU_KLUCZA]: plikKlucza }, encoding: 'utf8', timeout: LIMIT_DEMO_MS,
   });
   if (wynik.status !== 0) {
-    // PRZ-093.03: z demo przechodzą linie „KOD” i „KOD: powód” (dawniej tylko goły kod — powód ginął).
+    // Z demo przechodzą linie „KOD” i „KOD: powód” (dawniej tylko goły kod — powód ginął).
     // Hasła z katalogu danych i klucz odfiltrowane: linia z sekretem nie przechodzi wcale.
     const sekrety = sekretyKatalogu(dane, plikKlucza);
     const kody = String(wynik.stderr ?? '').split(/\r?\n/)

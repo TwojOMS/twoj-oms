@@ -1,11 +1,11 @@
-// PRZ-069, recenzja końcowa Fable 5.1, P3-1: dowód, że `tylkoAdmin` stoi NA TRASACH zaproszeń i resetu,
+// Dowód, że `tylkoAdmin` stoi NA TRASACH zaproszeń i resetu,
 // a nie tylko strażnik globalny. Konto bez flagi `admin`, ale Z ptaszkiem Ustawień, przechodzi strażnika
 // (ekranDlaAdresu('/ustawienia/…') = 'ustawienia') — zatrzymać je może wyłącznie `tylkoAdmin` w trasie.
-// Wzór: role-recenzja-d8.test.js („strażnik admina w /rola”) i web-konta.test.js K2.
+// Wzór: role-konta-uprawnienia.test.js („strażnik admina w /rola”) i web-konta.test.js K2.
 import { describe, it, expect, vi } from 'vitest';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
 import { emailKonta } from '../../../src/moduly/ustawienia/konta-dostep.js';
-import { nowyPanel, jako, post, get } from '../../pomoc/konta-prz068.js';
+import { nowyPanel, jako, post, get } from '../../pomoc/panel-konta-testowe.js';
 
 const ADRES = 'https://panel.example.test';
 const atrapa = () => ({ sendMail: vi.fn(async () => ({ messageId: 'atrapa' })) });
@@ -22,8 +22,8 @@ function panel() {
 }
 const liczbaLinkow = (db) => db.prepare('SELECT count(*) AS n FROM linki_hasla').get().n;
 
-describe('PRZ-069 (P3-4) — uwaga o źródle adresu pod linkiem „Pokaż link”', () => {
-  const UWAGA = 'Adres wzięty z Twojej przeglądarki. Jeśli pracownik otwiera panel pod innym adresem, wpisz go w Ustawienia → Integracje → Poczta wychodząca.'; // PRZ-094.10: adres wpisuje się też na ekranie
+describe('uwaga o źródle adresu pod linkiem „Pokaż link”', () => {
+  const UWAGA = 'Adres wzięty z Twojej przeglądarki. Jeśli pracownik otwiera panel pod innym adresem, wpisz go w Ustawienia → Integracje → Poczta wychodząca.'; // Adres wpisuje się też na ekranie
   const zaloz = (env) => {
     const p = nowyPanel({ env });
     zalozKonto(p.db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
@@ -58,7 +58,7 @@ describe('PRZ-069 (P3-4) — uwaga o źródle adresu pod linkiem „Pokaż link�
   });
 });
 
-describe('PRZ-069 (P3-1) — trasy zaproszeń i resetu: konto z ptaszkiem Ustawień, ale bez admina, dostaje 403', () => {
+describe('trasy zaproszeń i resetu: konto z ptaszkiem Ustawień, ale bez admina, dostaje 403', () => {
   it('sanity: to konto naprawdę przechodzi strażnika globalnego (inaczej dowód byłby pusty)', async () => {
     const { db, app, ktos } = panel();
     expect(kontoPoLoginie(db, 'ewa')).toMatchObject({ admin: false });

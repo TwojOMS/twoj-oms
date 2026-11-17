@@ -1,4 +1,4 @@
-// PRZ-100: wersja w adresach /public/*.css|js. Bez niej przeglądarka za Cloudflare (demo: max-age=14400) trzymała
+// Wersja w adresach /public/*.css|js. Bez niej przeglądarka za Cloudflare (demo: max-age=14400) trzymała
 // po wydaniu stary oms-design.css do 4 h — menu Ustawień na demo było białe mimo poprawki 2d7555a.
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { wersjaZasobow, adresZasobu } from '../../src/core/web/wersja-zasobow.js';
-import { nowyPanel, jako, get } from '../pomoc/konta-prz068.js';
+import { nowyPanel, jako, get } from '../pomoc/panel-konta-testowe.js';
 import { zalozKonto } from '../../src/core/bezpieczenstwo/konta.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -18,7 +18,7 @@ function katalog(pliki) {
   return k;
 }
 
-describe('PRZ-100 wersjaZasobow', () => {
+describe('wersjaZasobow', () => {
   it('ta sama treść → ta sama wersja (10 znaków hex); zmiana jednego bajtu CSS albo JS → inna', () => {
     const a = wersjaZasobow(katalog({ 'a.css': 'body{}', 'b.js': 'x()' }));
     expect(a).toMatch(/^[0-9a-f]{10}$/);
@@ -31,7 +31,7 @@ describe('PRZ-100 wersjaZasobow', () => {
   });
 });
 
-describe('PRZ-100 adresZasobu', () => {
+describe('adresZasobu', () => {
   it('istniejący plik → /public/<nazwa>?v=<wersja>; nieznana nazwa → błąd (literówka wychodzi w testach widoków)', () => {
     const k = katalog({ 'oms-design.css': 'body{}' });
     const zasob = adresZasobu(k);
@@ -41,7 +41,7 @@ describe('PRZ-100 adresZasobu', () => {
   });
 });
 
-describe('PRZ-100 widoki i serwer', () => {
+describe('widoki i serwer', () => {
   it('żaden widok nie ma gołego adresu /public/*.css|js — tylko zasob(…)', () => {
     const gole = [];
     const przejdz = (k) => {

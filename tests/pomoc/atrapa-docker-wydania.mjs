@@ -1,4 +1,4 @@
-// Atrapa docker/docker-compose dla testów runnera wydania OMS (PRZ-042b).
+// Atrapa docker/docker-compose dla testów runnera wydania OMS.
 // Wykonuje NAPRAWDĘ skrypty, które runner uruchamia w kontenerze narzędziowym
 // (git clone paczki, manifest źródeł), tylko z mapowaniem wolumenów na katalogi
 // hosta. Obrazy, tagi i kontenery żyją w pliku stanu TEST_STATE.

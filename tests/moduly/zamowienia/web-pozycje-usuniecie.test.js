@@ -3,7 +3,7 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie, pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { dodajZwrot } from '../../../src/oms/db/zwroty.js';
 import { kwotaOczekiwanaGrosze } from '../../../src/domena/suma-pozycji.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
 const headers = { authorization: 'Basic ' + Buffer.from('operator:x').toString('base64'), origin: 'http://localhost' };
 const linia = (zrodlo_id, nazwa = 'Pracownia Półcień') => ({ zrodlo_id, nazwa, sku: 'DEMO', ilosc: 1,

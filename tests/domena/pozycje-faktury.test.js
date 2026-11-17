@@ -68,9 +68,9 @@ describe('sprawdzSumeDokumentu', () => {
   });
 });
 
-// PRZ-105: stawka PER POZYCJA (decyzja właściciela 21.10 — idzie na fakturę inFakt i proformę). Pozycja ręczna niesie
+// Stawka PER POZYCJA. Pozycja ręczna niesie
 // własną (`vat`), pozycja ze sklepu/Allegro i dostawa dostają domyślną z Ustawień, NIP z UE wymusza 0 na wszystkim.
-describe('pozycjeDokumentu — stawka per pozycja (PRZ-105)', () => {
+describe('pozycjeDokumentu — stawka per pozycja', () => {
   const mieszane = (nad = {}) => zamowienie({
     kwota_brutto: '231.00',
     koszt_dostawy_brutto: '0.00',

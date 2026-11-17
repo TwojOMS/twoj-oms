@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { podsumowanieWierszami } from '../../src/domena/podsumowanie-wierszami.js';
 import { podsumowanieVat } from '../../src/domena/podsumowanie-vat.js';
 
-// PRZ-105: podsumowanie netto / VAT / brutto pod pozycjami MA DAĆ TE SAME LICZBY CO FAKTURA.
+// Podsumowanie netto / VAT / brutto pod pozycjami MA DAĆ TE SAME LICZBY CO FAKTURA.
 // Zmierzone 21.10.2026 na 400 fakturach inFaktu (968 linii): netto linii = round(brutto × 100 / (100 + stawka)),
 // netto dokumentu = suma netto linii (270/270 faktur wielopozycyjnych), VAT = brutto − netto.
 describe('podsumowanieWierszami', () => {

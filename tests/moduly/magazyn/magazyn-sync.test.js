@@ -272,7 +272,7 @@ describe('odswiezMagazyn — rozmiar', () => {
   // roznia sie WYLACZNIE cena (79/99/119 zl) i nie niosa ZADNEGO atrybutu rozmiaru.
   // Podstawienie tam nazwy rodzica daloby TRZEM roznym rozmiarom ten sam wymiar — a to
   // ten wymiar idzie do sklepu, na etykiete i do wyliczenia gabarytu. Brak jest tu
-  // JEDYNA uczciwa odpowiedzia (Zadanie 8 pomija takie warianty po `rozmiar_tekst`).
+  // JEDYNA uczciwa odpowiedzia (Import pomija takie warianty po `rozmiar_tekst`).
   it('wariant BEZ atrybutu rozmiaru nie pożycza nazwy rodzica — zostaje pusty', async () => {
     const db = openOmsDb(':memory:');
     const sklepy = {
@@ -324,7 +324,7 @@ describe('odswiezMagazyn — kategoria główna ze sklepu', () => {
     expect(jeden(db).kategoria_glowna_zrodla).toBe('Modern Organic');
   });
 
-  // ⚠️ SUROWY IDENTYFIKATOR W KOLUMNIE NAZWY jest gorszy niz brak: Zadanie 8 przepisuje
+  // ⚠️ SUROWY IDENTYFIKATOR W KOLUMNIE NAZWY jest gorszy niz brak: Import przepisuje
   // te wartosc do `karty.kategoria_glowna`, a z niej korzysta generator SKU.
   it('identyfikator spoza kategorii produktu daje brak, a nie surowy numer', async () => {
     const db = openOmsDb(':memory:');
@@ -388,7 +388,7 @@ describe('odswiezMagazyn — cena ze sklepu', () => {
   // ⚠️ Kwota tak duza, ze przestaje byc DOKLADNA, jest bledem, a nie zaokragleniem: powyzej
   // 2^53 grosz przestaje istniec, a wynik i tak wpadlby do kolumny pieniedzy. Straznik
   // `Number.isSafeInteger` byl do tej pory w calej suicie nieprzypiety — zlapala to dopiero
-  // weryfikacja mutacyjna Zadania 7 (mutacja E1 przezyla).
+  // weryfikacja mutacyjna (mutacja E1 przezyla).
   it('kwota poza zakresem dokładnych liczb całkowitych wywala kanał', async () => {
     const db = openOmsDb(':memory:');
     const sklepy = { pro: sklepAtrapa([prosty({ id: 900, price: '99999999999999999999.99' })]) };
@@ -1094,7 +1094,7 @@ describe('odswiezMagazyn — ślad w logu', () => {
 });
 
 // ============================================================================
-// ATRYBUTY WARIANTU (2026-08-11)
+// ATRYBUTY WARIANTU
 // ============================================================================
 //
 // ⚠️⚠️ ZRODLEM SA `attributes` Z ODPOWIEDZI WOOCOMMERCE, NIGDY PERMALINK. Wariant niesie
@@ -1159,9 +1159,7 @@ describe('odswiezMagazyn — atrybuty wariantu', () => {
   });
 });
 
-// ============================================================================
-// PRZ-160 E3.10 (D19): OFERTA Z OMS-U PO „ODCZYTAJ KATALOGI"
-// ============================================================================
+// OFERTA Z OMS-U PO „ODCZYTAJ KATALOGI”
 
 describe('odswiezMagazyn — oferta Allegro z rejestru OMS (E3.10)', () => {
   const KANAL_A = 'allegro_polcien2';

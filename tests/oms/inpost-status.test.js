@@ -87,7 +87,7 @@ describe('createInpostClient.statusPrzesylki — kontrakt wspólny z DPD', () =>
     expect((await c.statusPrzesylki(NUMER)).opis).toBe(opis);
   });
 
-  // ⚠️ MUTACJA 3. InPost dolozy kiedys stan, ktorego dzis nie ma w slowniku. Taki stan NIE
+  // ⚠️ InPost dolozy kiedys stan, ktorego dzis nie ma w slowniku. Taki stan NIE
   // MOZE ani zniknac (karta pokazywalaby wtedy „zdarzenie bez opisu" i nikt by sie nie
   // dowiedzial, ze cos sie stalo), ani udawac innego — bo „Odebrana przez klienta" przy
   // paczce, ktora wlasnie poszla na zwrot, to klamstwo, na ktorym operator oprze decyzje.

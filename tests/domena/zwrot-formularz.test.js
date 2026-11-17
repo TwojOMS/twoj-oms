@@ -151,7 +151,7 @@ describe('zwrot kosztu dostawy', () => {
     expect(f(z).dostawa.uwaga).toContain('drugi raz nie wraca');
   });
 
-  // ⚠️⚠️ DROBIAZG M1 (recenzja kontrolna 2026-08-15): EKRAN I BARIERA ROZJECHALY SIE PRZY
+  // ⚠️⚠️ DROBIAZG M1: EKRAN I BARIERA ROZJECHALY SIE PRZY
   // CZESCIOWYM ZWROCIE DOSTAWY. Ekran pytal „czy zwrocono COKOLWIEK z dostawy" i pisal
   // „Koszt dostawy wrócił już przy wcześniejszym zwrocie — drugi raz nie wraca", a bariera
   // w `parsujZwrot` liczy RESZTE i slusznie pozwala oddac brakujace 10,00 zl z 19,00 zl
@@ -290,7 +290,7 @@ describe('suma kwot przy pozycjach (liczy SERWER, nie operator)', () => {
   });
 });
 
-// ⚠️⚠️⚠️ WADA KRYTYCZNA Z RECENZJI 2026-08-15: KWOTA NIE PODAZALA ZA ILOSCIA.
+// ⚠️⚠️⚠️ WADA KRYTYCZNA: KWOTA NIE PODAZALA ZA ILOSCIA.
 //
 // Krok 1 wypelnial kwote wartoscia CALEJ pozostalej linii. Operator zmieniał „Wraca (szt.)",
 // kwoty nie ruszal (bo i po co — stoi tam wiarygodna liczba, a pod tabela zdanie, ktore do
@@ -332,7 +332,7 @@ describe('krok 2: kwota PODAZA ZA ILOSCIA', () => {
     // Kwota laczna liczy sie z PRZELICZONYCH pozycji — inaczej krok 2 pokazywalby jedna sume,
     // a zapis niosl druga i bariera spojnosci odbilaby zapis, ktorego operator nie wpisywal.
     expect(cialo.kwota).toBe('33.33');
-    // ⚠️ I1 (recenzja kontrolna): przeliczenie NIE JEST CICHE — patrz osobny describe nizej.
+    // ⚠️ Przeliczenie NIE JEST CICHE — patrz osobny describe nizej.
     expect(ostrzezenia).toHaveLength(1);
   });
 
@@ -391,7 +391,7 @@ describe('krok 2: kwota PODAZA ZA ILOSCIA', () => {
       .toBe(10000);
   });
 
-  // ⚠️⚠️ CZLOWIEK WYGRYWA (decyzja wlasciciela: „kwotę przepisujesz z Allegro i to ONA jest
+  // ⚠️⚠️ CZLOWIEK WYGRYWA (Reguła produktu: „kwotę przepisujesz z Allegro i to ONA jest
   // prawdą") — ale krok 2 MA TO POKAZAC. Ostrzezenie, nie odmowa.
   it('kwota zmieniona RECZNIE wygrywa z przeliczeniem', () => {
     const { cialo } = przygotujKrok2(zam(), cialoKroku1({
@@ -416,7 +416,7 @@ describe('krok 2: kwota PODAZA ZA ILOSCIA', () => {
     expect(ostrzezenia[0]).toContain('33.33');
   });
 
-  // Sytuacja Z RECENZJI, slowo w slowo: „wraca 1 z 3 szt., a wpisana kwota 100,00 zł to
+  // Sytuacja, slowo w slowo: „wraca 1 z 3 szt., a wpisana kwota 100,00 zł to
   // wartość całej linii; panel policzyłby 33,33 zł". Po „Wstecz — popraw" pole niesie juz
   // przeliczone 33,33 zl, wiec wpisanie tam z powrotem 100,00 zl jest DECYZJA CZLOWIEKA —
   // i ma zostac, ale nie po cichu.
@@ -482,7 +482,7 @@ describe('krok 2: kwota PODAZA ZA ILOSCIA', () => {
   });
 });
 
-// ⚠️⚠️ WADA WAZNA I1 (recenzja kontrolna 2026-08-15): PANEL PRZELICZAL PO CICHU KWOTE, KTORA
+// ⚠️⚠️ WADA WAZNA I1: PANEL PRZELICZAL PO CICHU KWOTE, KTORA
 // OPERATOR ZOSTAWIL SWIADOMIE.
 //
 // Rozpoznanie „operator kwoty nie dotknal" to porownanie `propozycja === wpisana` — i da sie
@@ -592,7 +592,7 @@ describe('propozycja kwoty jako fakt przenoszony na krok 2', () => {
   });
 });
 
-// ⚠️⚠️ WADA WAZNA Z RECENZJI 2026-08-15: PROPOZYCJA BYWALA ODBIJANA PRZEZ WLASNA BARIERE PANELU.
+// ⚠️⚠️ WADA WAZNA: PROPOZYCJA BYWALA ODBIJANA PRZEZ WLASNA BARIERE PANELU.
 //
 // Propozycja sumuje wartosci linii plus dostawe, a bariera mierzy `kwotaOczekiwanaGrosze`. Gdy
 // linie i dostawa NIE SUMUJA SIE do kwoty zamowienia (stan, dla ktorego panel ma osobna odmowe
@@ -601,7 +601,7 @@ describe('propozycja kwoty jako fakt przenoszony na krok 2', () => {
 // dostawal odmowe za liczby, ktorych nie wpisal, i nie mial jak zgadnac, ktora pozycje sciac
 // o 90 groszy.
 describe('ostrzezenie, gdy propozycja przekracza „Zostalo do zwrotu"', () => {
-  // Dokladnie stan zmierzony w recenzji: 198,00 + 100,90 + dostawa 19,00 przy kwocie
+  // Dokladnie stan zmierzony: 198,00 + 100,90 + dostawa 19,00 przy kwocie
   // zamowienia 317,00 zl.
   const zamNiespojne = (nad = {}) => zam({
     kwota_brutto: '317.00',
@@ -639,7 +639,7 @@ describe('ostrzezenie, gdy propozycja przekracza „Zostalo do zwrotu"', () => {
     expect(f(zam({ pozycje: [] })).ostrzezenieSumy).toBeNull();
   });
 
-  // ⚠️⚠️ DROBIAZG M2 (recenzja kontrolna 2026-08-15): ZDANIE MIALO ZASZYTA DIAGNOZE I BYWALO
+  // ⚠️⚠️ DROBIAZG M2: ZDANIE MIALO ZASZYTA DIAGNOZE I BYWALO
   // NIEPRAWDZIWE. Komunikat orzekal „To zamówienie nie sumuje się samo ze sobą" TAKZE wtedy,
   // gdy zamowienie sumuje sie doskonale, a rozjazd zrobil WCZESNIEJSZY ZWROT: Allegro oddalo
   // za pozycje 248,00 zl przy wartosci 198,00 zl (gest), wiec zostaje 69,00 zl, a podpowiedzi
@@ -683,7 +683,7 @@ describe('ostrzezenie, gdy propozycja przekracza „Zostalo do zwrotu"', () => {
   });
 });
 
-// ⚠️⚠️ PODLOGA ZERA (drobiazg 1 z recenzji). Allegro potrafi oddac WIECEJ, niz warta byla linia
+// ⚠️⚠️ PODLOGA ZERA. Allegro potrafi oddac WIECEJ, niz warta byla linia
 // — po takim zwrocie kafel pokazywal „Zostało do zwrotu −11,00 zł", a pole kwoty `−50.00`.
 // Liczba ujemna w polu kwoty zwrotu nie znaczy nic, czego panel umialby zapisac (`parsujZwrot`
 // odmawia kwocie ujemnej), wiec ekran nie ma jej proponowac.
@@ -717,7 +717,7 @@ describe('podloga zera', () => {
   });
 });
 
-// ⚠️⚠️ DROBIAZG I2 (recenzja kontrolna 2026-08-15): STRAZNIK STAL ZA PLECAMI ODCZYTU CENY.
+// ⚠️⚠️ DROBIAZG I2: STRAZNIK STAL ZA PLECAMI ODCZYTU CENY.
 // `kwotaZaSztukiGrosze` wolala `wartoscPozycjiGrosze(p)` PRZED sprawdzeniem `sztuki <= 0`, wiec
 // pozycja bez ceny rzucala nawet wtedy, gdy odpowiedz i tak brzmiala „zero". Warstwa domenowa
 // ma NIGDY nie rzucac tam, gdzie umie odpowiedziec — a `parsujZwrot` i tak odmowi takiemu

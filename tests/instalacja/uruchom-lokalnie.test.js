@@ -1,4 +1,4 @@
-// PRZ-093: OMS lokalnie na laptopie wykonawcy (skill .claude/skills/run-oms) — scripts/uruchom-lokalnie.mjs
+// OMS lokalnie na laptopie wykonawcy (skill .claude/skills/run-oms) — scripts/uruchom-lokalnie.mjs
 // start → panel z atrapami na 127.0.0.1:<port>, świeża baza demo w katalogu tymczasowym, konto lokalne;
 // stop → proces zabity, port wolny, katalog skasowany. Test woła skrypt tak jak agent: osobnym procesem.
 import { afterAll, describe, expect, it } from 'vitest';
@@ -63,7 +63,7 @@ describe('scripts/uruchom-lokalnie.mjs — OMS na laptopie wykonawcy', () => {
     // Baza i logi WYŁĄCZNIE w katalogu tymczasowym — nic w kopii roboczej repo.
     expect(fs.existsSync(path.join(katalog, 'oms.sqlite'))).toBe(true);
     expect(path.resolve(w.log).startsWith(path.resolve(katalog))).toBe(true);
-    // PRZ-182: klucz poświadczeń z pliku klucz.env w katalogu próby (trwały, nie losowany w pamięci); nie na ekranie.
+    // Klucz poświadczeń z pliku klucz.env w katalogu próby (trwały, nie losowany w pamięci); nie na ekranie.
     const klucz = /^OMS_KLUCZ_SEKRETOW=([A-Za-z0-9_-]{43})$/m.exec(fs.readFileSync(path.join(katalog, 'klucz.env'), 'utf8'))?.[1];
     expect(klucz).toBeTruthy();
     expect(start.stdout + start.stderr).not.toContain(klucz);

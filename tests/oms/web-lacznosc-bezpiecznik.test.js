@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../src/oms/db/db.ts';
 import { zapiszStanWeryfikacji } from '../../src/oms/db/stan-weryfikacji.js';
-import { buildOmsServer } from '../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../pomoc/serwer-testowy-oms.ts';
 
 // NIC PO CICHU. Bezpiecznik, ktory w milczeniu przestaje pytac, jest gorszy od bledu —
 // dlatego jego stan musi byc widoczny na ekranie lacznosci.

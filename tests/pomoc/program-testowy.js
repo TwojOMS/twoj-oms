@@ -1,4 +1,4 @@
-// PRZ-118 — program fakturowy TESTOWY („Testownik”): drugi wykonawca kontraktu ProgramFakturowy obok inFaktu.
+// Program fakturowy TESTOWY („Testownik”): drugi wykonawca kontraktu ProgramFakturowy obok inFaktu.
 // Służy testom usług, które mają działać na KAŻDYM programie, nie tylko na inFakcie (opis.id ≠ 'infakt',
 // nazwa w czterech przypadkach różna od inFaktu — komunikat z zaszytym „inFakt” od razu wychodzi na wierzch).
 //

@@ -1,12 +1,12 @@
-// PRZ-153.E5.3b — POST /api/v1/produkty i PATCH /api/v1/produkty/:id (zakres produkty:zapis).
+// POST /api/v1/produkty i PATCH /api/v1/produkty/:id (zakres produkty:zapis).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
 import { zalozKluczApi } from '../../../src/core/bezpieczenstwo/klucze-api.js';
 import { utworzKarte } from '../../../src/oms/db/magazyn.js';
 import { etagKarty, kartaDoApi } from '../../../src/moduly/api/trasy/produkty-odczyt.js';
-import { jako } from '../../pomoc/konta-prz068.js';
+import { jako } from '../../pomoc/panel-konta-testowe.js';
 
 const STARA_DATA = '2026-01-01T00:00:00.000Z';
 const STAN = { trwa: false, zaczety_at: null, skonczony_at: null, postep: null, kanaly: [], blad: null };

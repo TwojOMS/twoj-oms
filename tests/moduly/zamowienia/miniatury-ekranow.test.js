@@ -6,7 +6,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createNadanie } from '../../../src/moduly/wysylka/services/nadanie.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
 // ================================================================================
 // CZTERY EKRANY, JEDNA DROGA DO MINIATURY

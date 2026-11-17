@@ -3,7 +3,7 @@ import {
   stanKampanii, dolaczZrodla, dolaczZamowieniaZReklam, alertyKampanii, faleKampanii,
 } from '../../src/domena/kampania.js';
 
-// Drugi licznik kampanii (2026-08-27): zamowienia z utm_campaign w atrybucji — takze
+// Drugi licznik kampanii: zamowienia z utm_campaign w atrybucji — takze
 // (przede wszystkim) BEZ kodu rabatowego. Kod mierzy cala promocje (rozdaje go tez baner
 // na stronie), utm mierzy wylacznie klikniecia w reklame; tych liczb sie nie sumuje.
 // Do tego alerty kontrolne i dwie miary przy zrodlach: pokrycie pomiaru GA4 i prognoza
@@ -107,7 +107,7 @@ describe('dolaczZamowieniaZReklam — zasięg i anulowane', () => {
     expect(w.dni.find((d) => d.dzien === '2026-08-26').zReklam).toBe(0);
   });
 
-  // ——— KWOTY DNIA (wykres „pieniadze dzien po dniu", 2026-08-27) ————————————————————
+  // ——— KWOTY DNIA (wykres „pieniadze dzien po dniu") ————————————————————
 
   it('dzień niesie kwotę zamówień bez kodu — zamówienie z kodem NIE wchodzi do tego kawałka', () => {
     const w = dolaczZamowieniaZReklam(stanBazowy(), {
@@ -287,7 +287,7 @@ describe('dolaczZrodla — prognoza wydatku', () => {
   });
 });
 
-// ——— ETAPY KAMPANII (prowadnice wykresu pieniedzy, 2026-08-28) ——————————————————————
+// ——— ETAPY KAMPANII (prowadnice wykresu pieniedzy) ——————————————————————
 
 describe('faleKampanii — etapy z wiersza kampanii', () => {
   const kamp = (fale_json) => ({ ...KAMPANIA, fale_json });

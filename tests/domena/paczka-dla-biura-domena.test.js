@@ -33,7 +33,7 @@ describe('sprzedaz', () => {
     const p = zlozPaczke({ miesiac: '2026-08', faktury: [f({ ksef_number: null })], korekty: [], koszty: [], kwarantanna: 0 });
     expect(p.sprzedaz[0].uwagi).toContain('bez KSeF');
   });
-  // PRZ-126.C06: dokument, który wszedł do paczki podglądem (TwojeFaktury, bez numeru KSeF), mówi to w wierszu.
+  // Dokument, który wszedł do paczki podglądem (TwojeFaktury, bez numeru KSeF), mówi to w wierszu.
   it('bez numeru KSeF ze znacznikiem podglądu — uwaga „bez numeru KSeF — w paczce podgląd”, kwoty w sumach', () => {
     const p = zlozPaczke({ miesiac: '2026-08', faktury: [f({ ksef_number: null, bezNumeruKsef: true })], korekty: [], koszty: [], kwarantanna: 0 });
     expect(p.sprzedaz[0].uwagi).toEqual(['bez numeru KSeF — w paczce podgląd']);
@@ -53,7 +53,7 @@ describe('sprzedaz', () => {
     expect(k2.uwagi).toContain('korekta do faktury id 99');
   });
   // ⚠️ Encja korekty inFaktu NIESIE numer faktury pierwotnej w `corrected_invoice_number`
-  // (sprawdzone na zywym koncie 2026-08-14, patrz services/korekta.js) — i to jest zrodlo
+  // (sprawdzone na zywym koncie, patrz services/korekta.js) — i to jest zrodlo
   // PIERWSZE, bo dziala takze dla korekty do faktury spoza tej paczki, gdzie mapa po id nic
   // nie wie. `parent_id` bywa wtedy nieprzydatne albo wskazuje poza miesiac.
   it('korekta bierze numer pierwotnej z corrected_invoice_number, nawet gdy parent_id wskazuje poza paczke', () => {

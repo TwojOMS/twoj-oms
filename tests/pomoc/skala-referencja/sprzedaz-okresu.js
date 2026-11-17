@@ -1,4 +1,4 @@
-// Referencja PRZ-094.13 z 9ccdd75, przed optymalizacją.
+// Referencyjna implementacja sprzed optymalizacji do porównania wyników obliczeń.
 import { historiaWOknie, granice } from '../../../src/oms/db/historia-sprzedazy.js';
 import { kanalHistoryczny, kanalOms, wymagajKlasyfikacji } from '../../../src/domena/kanaly-raportowe.js';
 import { anulowaneEfektywnie } from '../../../src/domena/status-reczny.js';

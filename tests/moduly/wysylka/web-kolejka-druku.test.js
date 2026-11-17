@@ -10,7 +10,7 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { rozpocznijPrzesylke, zakonczPrzesylke } from '../../../src/moduly/wysylka/db/przesylki.js';
 import { dodajDoKolejki, oznaczWydrukowano, porzucPozycje } from '../../../src/moduly/wysylka/db/kolejka-druku.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
 const config = { auth: { user: 'adam', pass: 'x' } };
 // Dokladnie taki naglowek, jaki wysyla czuwacz: Basic Auth + Origin wskazujacy na panel

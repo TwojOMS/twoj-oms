@@ -24,7 +24,7 @@ describe('filtryZZapytania — czytanie adresu', () => {
       fraza: 'szpulka',
       kanal: 'pro',
       kategoria: 'Aplikacje',
-      marka: 'Półcień', // PRZ-160.P3b.02
+      marka: 'Półcień',
       brak: 'sku',
       paczkomat: 'nieoznaczone',
       cenaOd: '10',
@@ -33,7 +33,7 @@ describe('filtryZZapytania — czytanie adresu', () => {
       fraza: 'szpulka',
       kanal: 'pro',
       kategoria: 'Aplikacje',
-      marka: 'Półcień', // PRZ-160.P3b.02
+      marka: 'Półcień',
       brak: 'sku',
       paczkomat: 'nieoznaczone',
       // Ceny w GROSZACH — kolumna `produkty_sklepowe.cena_gr` jest INTEGER-em w groszach,
@@ -75,7 +75,7 @@ describe('filtryZZapytania — czytanie adresu', () => {
 
   it('nazwa z lancucha prototypow nie przechodzi przez zadna z bialych list', () => {
     // ⚠️ `LISTA[x] ?? domyslne` oddaje funkcje z `Object.prototype` — realna pieciusetka
-    // zlapana przy Zadaniu 4 na `?sort=constructor`. Filtry czytaja z tego samego adresu.
+    // zlapana na `?sort=constructor`. Filtry czytaja z tego samego adresu.
     for (const zly of ['constructor', 'toString', 'hasOwnProperty', '__proto__', 'valueOf']) {
       expect(filtryZZapytania({ kanal: zly }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).kanal).toBe(null);
       expect(filtryZZapytania({ brak: zly }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).brak).toBe(null);
@@ -108,8 +108,8 @@ describe('filtryZZapytania — czytanie adresu', () => {
   });
 });
 
-// ⚠️⚠️ MINA Z ZADANIA 4. Warstwa zapytan zna sześć braków: sku, wymiary,
-// kategoria, paczkomat, zdjecie, opis. Plan Zadania 10 proponowal `brak ∈ sku|wymiary|allegro` — wartosci
+// ⚠️⚠️ FILTR BRAKÓW. Warstwa zapytan zna sześć braków: sku, wymiary,
+// kategoria, paczkomat, zdjecie, opis. Nieobsługiwana wartość `brak ∈ sku|wymiary|allegro` — wartosci
 // `allegro` w `db/magazyn.js` NIE MA i nieznana wartosc leci tam w `1 = 0`. Pozycja
 // „bez oferty na Allegro" wystawiona w interfejsie oddawalaby wiec PUSTA LISTE przy kazdym
 // klknieciu, co wyglada jak „nie ma takich kart", a nie jak funkcja, ktorej nie napisano.
@@ -216,8 +216,8 @@ describe('slowniki filtrow zgadzaja sie z warstwa zapytan', () => {
 
   it('pozycja SPOZA slownika oddaje pusto — i wlasnie dlatego slownik musi sie zgadzac', () => {
     katalog();
-    // Straznik milczy (wyzej) i straznik alarmuje (tutaj). `allegro` z planu Zadania 10 jest
-    // wlasnie taka wartoscia — dlatego nie ma go w BRAKI_MAGAZYNU.
+    // Strażnik milczy wyżej i alarmuje tutaj. `allegro` jest wartością
+    // tego drugiego rodzaju — dlatego nie ma go w BRAKI_MAGAZYNU.
     expect(BRAKI_MAGAZYNU).not.toContain('allegro');
     expect(kartyZKanalami(db, { filtry: { brak: 'allegro' } })).toEqual([]);
     expect(filtryZZapytania({ brak: 'allegro' }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).brak).toBe(null);
@@ -255,7 +255,7 @@ describe('slowniki filtrow zgadzaja sie z warstwa zapytan', () => {
       expect(kartyZKanalami(db, { filtry: { paczkomat: stan } }).map((w) => w.nazwa), stan)
         .toEqual(oczekiwane[stan]);
     }
-    // ⚠️ Plan Zadania 10 proponowal `paczkomat ∈ tak|nie|brak`. Baza zna `nieoznaczone`,
+    // ⚠️ Nieobsługiwana wartość `paczkomat ∈ tak|nie|brak`. Baza zna `nieoznaczone`,
     // a `brak` leci u niej w `1 = 0` — pusty ekran zamiast trzeciego stanu.
     expect(PACZKOMAT_DO_FILTRA).not.toContain('brak');
     expect(kartyZKanalami(db, { filtry: { paczkomat: 'brak' } })).toEqual([]);
@@ -422,7 +422,7 @@ describe('adresMagazynu — filtry przezywaja klikniecie w naglowek sortujacy', 
     expect(a).toBe(b);
   });
 
-  // ——— TRYB KOLUMN TABELI (przebudowa 2026-08-25, Zadanie 5) ———————————————————————
+  // ——— TRYB KOLUMN TABELI ———————————————————————
   //
   // ⚠️ TRYB JEDZIE ADRESEM, bo panel nie ma JavaScriptu — przelacznik kolumn to zwykly
   // odnosnik, wiec musi sie skladac TAM, GDZIE KAZDY inny odnosnik ekranu (niezmiennik

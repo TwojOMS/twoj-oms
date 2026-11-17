@@ -345,7 +345,7 @@ describe('wierszePozycji — SKU zaślepki', () => {
     expect(w.sku).toBe('psm-zam-placeholder');
   });
 
-  // Zgłoszenie właściciela 2026-08-21: „psm-zam-placeholder — trzeba się tego pozbyć,
+  // Zgłoszenie: „psm-zam-placeholder — trzeba się tego pozbyć,
   // wyświetla się w mailach oraz na karcie zamówienia". To identyfikator UKRYTEGO produktu
   // technicznego, którym wtyczka wstawia każdą pozycję z oferty — dla czytającego kartę nie
   // znaczy nic, a stoi pod nazwą KAŻDEJ pozycji takiego zamówienia.

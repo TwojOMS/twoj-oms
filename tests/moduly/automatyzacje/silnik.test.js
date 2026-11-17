@@ -1,7 +1,5 @@
-// PRZ-108.07 (zmiana B planu automatyzacji, właściciel 21.10): silnik reguł na SZTUCZNYM zdarzeniu `test_zdarzenie`
-// (zamówienie z `wyslane_at` po granicy id) i SZTUCZNEJ akcji z licznikiem. Prawdziwe zdarzenia i mail to zmiana C1 —
-// w B rejestry są puste, więc ten plik jest jedynym miejscem, w którym silnik cokolwiek wykonuje.
-// Numery w opisach = numery testów z planu (sekcja 8, „B. Testy najpierw”).
+// Silnik reguł na sztucznym zdarzeniu `test_zdarzenie` (zamówienie z `wyslane_at` po granicy id)
+// i sztucznej akcji z licznikiem. Rejestr testu jest wstrzyknięty niezależnie od zdarzeń i akcji modułów.
 import { describe, it, expect, afterEach } from 'vitest';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -235,7 +233,7 @@ describe('6. rezerwacja i restart', () => {
     expect(e.akcja.wywolania).toHaveLength(1);
     expect(stany(e.db)).toEqual(['niepewne']);
   });
-  // Recenzja 07, runda 2 (R2-1): jednorazowy wyjątek w pierwszym `poStarcie` (np. zablokowana baza) nie może
+  // Jednorazowy wyjątek w pierwszym `poStarcie` (np. zablokowana baza) nie może
   // zostawić `w_toku` do następnego restartu — kolejny przebieg próbuje jeszcze raz.
   it('wyjątek w poStarcie przy pierwszym przebiegu → następny przebieg ponawia, w_toku → niepewne', async () => {
     const e = srodowisko();
@@ -527,7 +525,7 @@ describe('16. warunek w chwili wykonania, nie wykrycia', () => {
     await e.s.przebieg();
     expect(stany(e.db)).toEqual(['wyslane']);
   });
-  it('domyślnie (B, bez sprawdzacza z C1) warunek inny niż kanał jest NIESPEŁNIONY — nigdy mail „na ślepo”', async () => {
+  it('domyślnie (bez sprawdzacza) warunek inny niż kanał jest NIESPEŁNIONY — nigdy mail „na ślepo”', async () => {
     const e = srodowisko();
     wlacz(e, regula(e, { warunki: { kanaly: ['sklep'], kanalyZnane: ['sklep'], statusy: ['wyslane'] } }));
     zamowienie(e.db, { wyslane: iso(T0 + MIN) });

@@ -1,8 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { METODY_WZA, wolnoNadacZOms } from '../../src/domena/allegro-wysylka.js';
 
-// Identyfikatory zmierzone 10.08.2026 na zywym koncie (`GET /shipment-management/delivery-services`),
-// notatka docs/superpowers/notatki/2026-08-10-allegro-wysylka-rozpoznanie.md.
+// Identyfikatory usług dostawy z `GET /shipment-management/delivery-services`.
 const DPD = '03f26351-f683-4db2-8895-f2c599280e3c'; // owner: ALLEGRO
 const DPD_POBRANIE = '13f26351-26fb-48d4-b5dd-f2c599280e3c'; // owner: ALLEGRO
 const PACZKOMAT_INPOST = '2488f7b7-5d1c-4d65-b85c-4cbcf253fd93'; // owner: CLIENT
@@ -37,7 +36,7 @@ describe('co wolno nadac z OMS-u przez Wysylam z Allegro', () => {
     expect(w.powod).toBeTruthy();
   });
 
-  // ⚠️ Allegro NIE PODBIJA `updatedAt` przy zmianach (zmierzone 05.08.2026), wiec kopia
+  // ⚠️ Allegro NIE PODBIJA `updatedAt` przy zmianach (zmierzone), wiec kopia
   // lokalna bywa nieswieza z definicji. Brak zywego odczytu = decyzja na danych sprzed doby.
   it.each([
     ['bez pola', {}],
@@ -63,7 +62,7 @@ describe('co wolno nadac z OMS-u przez Wysylam z Allegro', () => {
     expect(wolnoNadacZOms(null, { deliveryMethodIdZywy: DPD }).wolno).toBe(false);
   });
 
-  // ⚠️ 11.08.2026 (Zadanie 6): pobranie WESZLO, wiec odmowa z Partii 1 znika. Ta funkcja
+  // ⚠️ pobranie WESZLO, wiec dawna odmowa znika. Ta funkcja
   // przestaje o pobraniu rozstrzygac, ale MUSI je NAZWAC — cala regula pieniedzy
   // (`pobranieDoWysylki`) wisi na tej fladze, a jej brak znaczylby paczke pobraniowa
   // wyslana jak przedplacona.
@@ -78,7 +77,7 @@ describe('co wolno nadac z OMS-u przez Wysylam z Allegro', () => {
   });
 
   // ⚠️ WYLICZENIE JAWNE, a nie „ile wpisow" — kazde dolozenie uslugi ma wymagac SWIADOMEJ
-  // zmiany tego testu. Osiem pozycji doszlo 18.09.2026; identyfikatory pochodza z pomiaru
+  // zmiany tego testu. Identyfikatory pochodza z pomiaru
   // (`delivery.method.id` surowych zamowien × `GET /shipment-management/delivery-services`),
   // nie z dopasowania po nazwie — w katalogu „Allegro Kurier DPD" daje CZTERY trafienia.
   it('mapa zawiera DOKLADNIE uslugi o owner=ALLEGRO — i ani jednej InPostowej', () => {
@@ -93,7 +92,7 @@ describe('co wolno nadac z OMS-u przez Wysylam z Allegro', () => {
       '0fe5b4af-9f09-443d-9d49-62331a20b5b2', // Allegro Automat DHL BOX 24/7 (AD)
       '0560b75e-88c3-4b79-bcf7-62331a20b5b2', // Allegro Odbiór w Punkcie DHL (AD)
       '0b257488-c85d-4507-b967-9b45ffbfa2e8', // Allegro One Box, DPD
-      '16af1169-db74-4e94-a16d-f2c599280e3c', // Allegro Odbiór w Punkcie DPD Pickup pobranie (AD) — PRZ-124, zam. #1508
+      '16af1169-db74-4e94-a16d-f2c599280e3c', // Allegro Odbiór w Punkcie DPD Pickup pobranie (AD)
     ].sort());
     expect(METODY_WZA[PACZKOMAT_INPOST]).toBeUndefined();
     expect(METODY_WZA[KURIER24_INPOST]).toBeUndefined();

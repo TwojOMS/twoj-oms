@@ -1,4 +1,4 @@
-import { potwierdzOdmoweHistorycznegoSchema } from '../../pomoc/baseline-historyczne.js';
+import { potwierdzOdmoweHistorycznegoSchema } from '../../pomoc/sprawdzanie-schematu-bazy.js';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -114,7 +114,7 @@ describe('adresOdbiorcy — nadpisania ręczne', () => {
     expect(adresOdbiorcy(pobierzZamowienie(db, id)).phone).toBeNull();
   });
 
-  // ⚠️ ZMIENIONE 2026-08-05. Dawniej ta funkcja podstawiała pod `company` nadpisane
+  // ⚠️ ZMIENIONE. Dawniej ta funkcja podstawiała pod `company` nadpisane
   // nazwisko (DPD wymaga niepustego <company>) — i przez to pole „Firma" na karcie
   // pokazywało nazwisko przy każdym zamówieniu od osoby prywatnej. Fallback zjechał na
   // granicę kuriera; że poprawione nazwisko dalej trafia na etykietę W OBU polach, pilnuje

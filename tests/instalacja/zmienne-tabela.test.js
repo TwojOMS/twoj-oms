@@ -126,7 +126,7 @@ describe('tabela zmiennych dla instalatora', () => {
     expect(bez).toContain('| wymagana, gdy modulWeb | zbudujOms: :memory: |');
   });
 
-  // Wzorce wzięte ze strażnika tests/core/straznik-danych-firmy-prz060.test.ts (nazwy firmy, marek, jej
+  // Wzorce wzięte ze strażnika tests/core/straznik-danych-firmy.test.ts (nazwy firmy, marek, jej
   // infrastruktury); do nich imiona właściciela i nazwy narzędzi jego sieci. Prawdziwych danych tu nie wpisujemy.
 
 // Jawne nazwy pozostają poza repo; kształt wzorca i SHA-256 zachowują kontrolę paczki.
@@ -144,7 +144,7 @@ const zawieraNazwe = (tresc, wzorce = SKROTY_NAZW) => porownajNazwe(tresc, wzorc
     /\bNAS\b/, /synology/i, /monitoring/i, /192\.168\./,
     /c:[\\/]+users[\\/]+adam/i, /produkcj\w*\s+(?:właściciela|właściciela|firmy)/i,
   ];
-  // Dziennik decyzji i przeglądów (decyzja, sourceReviewCommit) zostaje w manifeście; manifest nie jedzie do klienta.
+  // Dziennik decyzji i przeglądów zostaje w manifeście; manifest nie jedzie do klienta.
   const POLA_DZIENNIKA = new Set(['decyzja', 'sourceReviewCommit']);
   const teksty = (wartosc, sciezka = []) => {
     if (typeof wartosc === 'string') return [[sciezka.join('.'), wartosc]];

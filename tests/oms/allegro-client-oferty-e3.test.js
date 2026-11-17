@@ -1,4 +1,4 @@
-// PRZ-160.E3.03 — klient Allegro: zapis i słowniki ofert. Kształty żądań i odpowiedzi na przykładach
+// Klient Allegro: zapis i słowniki ofert. Kształty żądań i odpowiedzi na przykładach
 // z dokumentacji (tests/fixtures/allegro/e3-dok-*.json); żadnej sieci — tylko szpieg `fetchImpl`.
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -117,7 +117,7 @@ describe('stanOperacji', () => {
 });
 
 describe('ofertyPoSygnaturze', () => {
-  // E3.08a (po recenzji): dawniej klient sam odfiltrowywał niefiltrowaną listę. Pętla ofert decyduje na tym wyniku
+  // Pętla ofert decyduje na tym wyniku
   // o ponownym POST (D31), więc lista niefiltrowana albo wielostronicowa to „nie wiadomo” (błąd), nie zero.
   it('pyta z external.id; filtr zignorowany (obce sygnatury) → błąd „nie wiadomo”, nie odfiltrowana lista', async () => {
     const { k, wolania } = klient(odp({ cialo: OFERTA.listaFiltrZignorowany }));
@@ -352,7 +352,7 @@ describe('słowniki konta i opłaty', () => {
     expect(JSON.parse(wolania[0].opcje.body)).toEqual({ offer: { publication: {}, parameters: [], ...OFERTA.zadanie } });
   });
 
-  it('PRZ-160.E3.31: podgladOplat bez publication/parameters dosyła puste (sandbox: bez nich 422)', async () => {
+  it('podgladOplat bez publication/parameters dosyła puste (sandbox: bez nich 422)', async () => {
     const { k, wolania } = klient(odp({ cialo: SL.podgladOplat }));
     const oferta = { category: { id: '257' }, sellingMode: { format: 'BUY_NOW', price: { amount: '49.00', currency: 'PLN' } } };
     await k.podgladOplat(oferta);

@@ -3,14 +3,14 @@ import {
 } from 'vitest';
 
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import {
   dopiszKlienta, klientPoNip, wgrajUmowyZbiorczeZKonfiguracji,
 } from '../../../src/oms/db/klienci.js';
 import { znormalizujKlienta } from '../../../src/domena/klient-staly.js';
 import { dopiszKlientaZbiorczego } from '../faktury/_klient-zbiorczy-pomocniki.js';
 
-// WARUNKI UMOWY ZBIORCZEJ NA KARCIE KLIENTA (24.08.2026) — przeniesienie z `.env`.
+// WARUNKI UMOWY ZBIORCZEJ NA KARCIE KLIENTA — przeniesienie z `.env`.
 //
 // Do tej daty klucz, nazwa, NIP, rabat, prog i dwie oplaty stały w JEDNYM ciagu
 // `OMS_KLIENCI_ZBIORCZY`, a cztery z tych siedmiu pol RÓWNOLEGLE w tabeli `klienci`.
@@ -163,7 +163,7 @@ describe('formularz karty klienta — warunki umowy', () => {
   // 0 zl (nie pobieramy) — jedno i drugie wyglada w bazie poprawnie i kosztuje pieniadze.
   //
   // ⚠️⚠️ ASERCJA CELUJE W ZDANIE TEGO STRAZNIKA, A NIE W SAMA NAZWE POLA — i to jest
-  // poprawka po mutacji (24.08.2026). Wzorzec `/próg darmowej dostawy/` przechodzil TAKZE
+  // poprawka po mutacji. Wzorzec `/próg darmowej dostawy/` przechodzil TAKZE
   // po wylaczeniu strazy: pustke lapal wtedy `grosze()` i rzucal „Brak kwoty: próg darmowej
   // dostawy. Faktury nie da się wystawić bez ceny." — nazwa pola sie zgadzala, wiec test byl
   // zielony, mimo ze chroniony warunek nie istnial. Roznica nie jest kosmetyczna: tamto

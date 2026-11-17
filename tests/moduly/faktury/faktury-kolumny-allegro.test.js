@@ -1,4 +1,4 @@
-import { potwierdzOdmoweHistorycznegoSchema } from '../../pomoc/baseline-historyczne.js';
+import { potwierdzOdmoweHistorycznegoSchema } from '../../pomoc/sprawdzanie-schematu-bazy.js';
 import { describe, it, expect } from 'vitest';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { rozpocznijFakture, fakturaSkasowanaWInfakcie } from '../../../src/moduly/faktury/db/faktury.js';
 
-// Pięć kolumn łańcucha KSeF → Allegro (Plan B, Zadanie 5). ŻADNA z nich nie jest
+// Pięć kolumn łańcucha KSeF → Allegro. ŻADNA z nich nie jest
 // `ksef_status`: tamta kolumna trzyma już dwie różne rzeczy pod jedną nazwą (wewnętrzny
 // stan panelu ORAZ `ksef_data` z inFaktu), a dodatkowo `fakturaSkasowanaWInfakcie`
 // ODMAWIA kasowania, gdy jest niepusta — wpisanie tam numeru KSeF zmieniłoby tę odmowę
@@ -121,7 +121,7 @@ describe('kolumny faktury dla łańcucha KSeF → Allegro', () => {
     trzecia.close();
   });
 
-  // ⚠️ SEDNO ROZDZIAŁU KOLUMN — i jego GRANICA (recenzja Partii 2, K3).
+  // ⚠️ SEDNO ROZDZIAŁU KOLUMN — i jego GRANICA.
   //
   // Rozdział kolumn zostaje: numer KSeF czytany przez czuwacza siada w `ksef_numer`, a
   // `ksef_status` (trzymająca DWIE różne rzeczy pod jedną nazwą) pozostaje nietknięta.
@@ -133,7 +133,7 @@ describe('kolumny faktury dla łańcucha KSeF → Allegro', () => {
   // odmowa MUSI go widzieć. Bez tego panel wiedziałby, że dokument jest w KSeF, i dalej
   // oferował jego skasowanie: po odnotowaniu „skasowałem" zamówienie zwalnia się do
   // ponownego wystawienia i do KSeF jedzie DRUGI dokument. Nieodwracalne.
-  // ⚠️ KOLUMNA `ksef_odczyt` (recenzja Partii 2, K1+W6) — dokladana TA SAMA droga, co piatka
+  // ⚠️ KOLUMNA `ksef_odczyt` — dokladana TA SAMA droga, co piatka
   // wyzej, i z tego samego powodu: baza produkcyjna powstala przed nia, a `CREATE TABLE IF NOT
   // EXISTS` jej nie ruszy. Bez migracji czuwacz wywalalby sie na „no such column" co godzine,
   // w tle, a widac by to bylo wylacznie w logu kontenera.

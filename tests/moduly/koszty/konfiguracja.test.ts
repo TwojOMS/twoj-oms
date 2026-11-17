@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { wczytajKoszty } from '../../../src/moduly/koszty/modul.ts';
 
 const env = {OMS_SPRZEDAWCA_NIP:'1200001192',OMS_RACHUNEK:'34109010140000000000000000'};
-describe('PRZ-025 konfiguracja KSeF: sekcja cała albo nic', () => {
+describe('konfiguracja KSeF: sekcja cała albo nic', () => {
   it.each([
     ['KSEF_API','https://ksef-test.mf.gov.pl/api/v2'],
     ['KSEF_NIP','1200001192'],
@@ -22,7 +22,7 @@ describe('PRZ-025 konfiguracja KSeF: sekcja cała albo nic', () => {
     expect(() => wczytajKoszty({...env,KSEF_TOKEN:'fixture',KSEF_NIP:'PL 123-456-32-18'}))
       .toThrow(/KSEF_NIP/);
   });
-  // PRZ-108.10: NIP można wpisać w panelu, ale token Z PLIKU nadal wymaga NIP-u W PLIKU (kontekst firmy dla tokenu
+  // NIP można wpisać w panelu, ale token Z PLIKU nadal wymaga NIP-u W PLIKU (kontekst firmy dla tokenu
   // z pliku i porównanie z KSEF_NIP przy starcie); bez tokenu w pliku brak NIP-u nie zatrzymuje startu.
   it('KSEF_TOKEN w pliku bez OMS_SPRZEDAWCA_NIP w pliku odmawia startu; bez tokenu — start z nipSprzedawcy null', () => {
     expect(() => wczytajKoszty({ KSEF_TOKEN: 'fixture' })).toThrow(/KSEF_TOKEN w pliku konfiguracji wymaga OMS_SPRZEDAWCA_NIP/);

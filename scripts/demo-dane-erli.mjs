@@ -79,7 +79,7 @@ export async function uzupelnijDemoErli({ db, kanal, env, teraz, log }) {
     if (surowe.sellerStatus === 'inProgress') {
       db.prepare('UPDATE zamowienia SET w_realizacji_at=COALESCE(w_realizacji_at,?) WHERE id=?').run(poZakupie(3), z.id);
     }
-    // PRZ-160.demo (właściciel 13.11): „nowe” tylko z dziś. Opłacone zamówienie ERLI sprzed dzisiejszego dnia, którego
+    // „nowe” tylko z dziś. Opłacone zamówienie ERLI sprzed dzisiejszego dnia, którego
     // sprzedawca nie ruszył (`created`), idzie w realizację, a starsze niż 3 dni jest już wysłane — jak w pętli generatora.
     // Nieopłacone (`pending`) zostaje nowe: bez wpłaty pracownia go nie rusza.
     const wiekH = (terazMs - Date.parse(z.utworzone_at)) / 3600000;
@@ -113,7 +113,7 @@ export async function uzupelnijDemoErli({ db, kanal, env, teraz, log }) {
           .run(z.id, kurier, numer, z.wyslane_at ?? poZakupie(8), poZakupie(32), new Date(teraz()).toISOString());
       }
     }
-    // PRZ-160.demo: więcej faktur ERLI — także osoba prywatna (0003) i paczka wysłana (0014); od 14.11 też starsze
+    // Więcej faktur ERLI — także osoba prywatna (0003) i paczka wysłana (0014); również starsze
     // zamówienia 0018–0029 (ok. 30% ERLI z fakturą, jak w innych kanałach demo).
     if (!['PC-ERLI-0002', 'PC-ERLI-0003', 'PC-ERLI-0005', 'PC-ERLI-0013', 'PC-ERLI-0014',
       'PC-ERLI-0018', 'PC-ERLI-0021', 'PC-ERLI-0025', 'PC-ERLI-0029'].includes(z.numer)) continue;

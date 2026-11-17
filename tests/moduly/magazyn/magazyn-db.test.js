@@ -472,7 +472,7 @@ describe('kartyZKanalami — jeden wiersz, ceny z kanałów', () => {
     expect(kartyZKanalami(db, { filtry: { kategoria: 'Boho' } }).map((x) => x.nazwa)).toEqual(['Dobry']);
   });
 
-  // ⚠️ ROZSTRZYGNIĘCIE (Zadanie 4, wątpliwość 1): filtr kategorii ma być NADZBIOREM —
+  // ⚠️ ROZSTRZYGNIĘCIE: filtr kategorii ma być NADZBIOREM —
   // dopasowanie po kategoriach produktów w lustrze ALBO po `karty.kategoria_glowna`.
   // Karta, któremu właściciel ręcznie ustawił kategorię główną hurtem, ale który (jeszcze)
   // nie ma powiązanego produktu w lustrze — albo którego jedyny produkt zniknął ze sklepu,

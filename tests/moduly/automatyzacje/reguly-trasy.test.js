@@ -1,13 +1,12 @@
-// PRZ-108.07 (zmiana B planu automatyzacji, właściciel 21.10): ekran reguł — lista, kreator (krok 1 i 2), zapis, włącz /
-// wyłącz, zaległe, dziennik reguły. Prawdziwy serwer i moduły. Dwa światy:
-//  • rejestr zdarzeń PUSTY (tak wychodzi B na produkcję) — kreator istnieje, ale nie da się utworzyć reguły; lista
-//    wygląda jak po zmianie A;
-//  • rejestr z SZTUCZNYM zdarzeniem i akcją wstrzykniętymi przez `nadpisania` — pełna ścieżka ekranu.
+// Ekran reguł — lista, kreator (krok 1 i 2), zapis, włącz / wyłącz, zaległe, dziennik reguły.
+// Prawdziwy serwer i moduły. Dwa warianty rejestru:
+//  • pusty — kreator istnieje, ale nie da się utworzyć reguły; lista nie pokazuje reguł;
+//  • sztuczne zdarzenie i akcja wstrzyknięte przez `nadpisania` — pełna ścieżka ekranu.
 import { describe, it, expect, afterEach } from 'vitest';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
 import { ekranyRoli } from '../../../src/domena/ekrany.js';
-import { nowyPanel, jako, get, post, POLLER, CONFIG } from '../../pomoc/konta-prz068.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { nowyPanel, jako, get, post, POLLER, CONFIG } from '../../pomoc/panel-konta-testowe.js';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { utworzRegule, wlaczRegule, wczytajRegule } from '../../../src/moduly/automatyzacje/db/reguly.js';
 
@@ -26,7 +25,7 @@ const otwarte = [];
 afterEach(async () => { for (const p of otwarte.splice(0)) { await p.app.close(); p.db.close(); } });
 
 function panel({ rejestr = true, poczta = false, demo = null } = {}) {
-  // PRZ-108.08: od C1 moduł ma prawdziwe zdarzenia i akcję — świat „rejestr pusty” podaje puste listy jawnie.
+  // Od C1 moduł ma prawdziwe zdarzenia i akcję — świat „rejestr pusty” podaje puste listy jawnie.
   const nadpisania = rejestr ? { 'automatyzacje.zdarzenia': [ZDARZENIE], 'automatyzacje.akcje': [AKCJA],
     'automatyzacje.pocztaGotowa': () => poczta } : { 'automatyzacje.zdarzenia': [], 'automatyzacje.akcje': [] };
   const p = demo
@@ -197,7 +196,7 @@ describe('13. włączanie, wyłączanie, usuwanie, zaległe', () => {
   });
   it('włączenie z pocztą → granica i historia; wyłączenie → historia; dziennik pokazuje obie zmiany', async () => {
     const p = panel({ poczta: true });
-    zSzablonemWlasnym(p.db); // PRZ-108.08: reguła z usuniętym szablonem nie da się włączyć (409)
+    zSzablonemWlasnym(p.db); // Reguła z usuniętym szablonem nie da się włączyć (409)
     const id = zapiszWprost(p.db);
     const r = await post(p.app, `${EKRAN}/${id}/wlacz`, p.admin, {});
     expect(r.statusCode).toBe(303);

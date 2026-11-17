@@ -9,7 +9,7 @@ const klientAtrapa = (slad) => ({
 });
 
 describe('sesja KSeF', () => {
-  // PRZ-102.22 (recenzja, WAŻNE 1): para tokenów należy do tokenu KSeF, którym ją wydano. Para innego tokenu
+  // Para tokenów należy do tokenu KSeF, którym ją wydano. Para innego tokenu
   // (albo z czasu przed odciskiem) = brak pary; odświeżenie nie dopisuje access tokena do cudzej pary.
   it('para o innym odcisku tokenu (albo bez odcisku) to brak pary — pełne logowanie; ten sam odcisk ją używa', async () => {
     const db = openOmsDb(); const slad = []; const teraz = () => new Date('2026-08-12T18:00:00Z');

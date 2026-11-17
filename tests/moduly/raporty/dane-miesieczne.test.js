@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { openOmsDb } from '../../pomoc/dane-miesieczne-parytetu.js';
+import { openOmsDb } from '../../pomoc/testowe-dane-miesieczne.js';
 import {
   zapiszDaneMiesiaca, daneMiesiaca, daneOkresu, rozjazdZus, wgrajDaneStartowe,
   miesiaceZDanymi,
-} from '../../pomoc/dane-miesieczne-parytetu.js';
+} from '../../pomoc/testowe-dane-miesieczne.js';
 
 let db;
 beforeEach(() => { db = openOmsDb(':memory:'); });

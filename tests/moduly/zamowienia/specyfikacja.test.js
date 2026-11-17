@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { daneSpecyfikacji } from '../../pomoc/specyfikacja-parytetu.js';
+import { daneSpecyfikacji } from '../../pomoc/testowa-specyfikacja-przesylki.js';
 import { zl, kwotaOczekiwanaGrosze } from '../../../src/domena/suma-pozycji.js';
 
 // Dane „Specyfikacji zamowienia" — kartki wkladanej do kazdej paczki. Ten modul TYLKO
@@ -49,7 +49,7 @@ describe('dane specyfikacji zamowienia', () => {
     expect(d.pozycje[0].symbol).toBe('');
   });
 
-  // ⚠️ SKU ZASLEPKI NIE JEST SYMBOLEM WZORU (21.08.2026). `psm-zam-placeholder` to ukryty
+  // ⚠️ SKU ZASLEPKI NIE JEST SYMBOLEM WZORU. `psm-zam-placeholder` to ukryty
   // produkt techniczny wtyczki panelu indywidualnego — na kartce do paczki, ktora czyta
   // KLIENT, stalby przy kazdej pozycji zamowienia z oferty i nie znaczyl nic.
   it('SKU zaslepki daje pusty symbol, tak samo jak brak SKU', () => {
@@ -121,7 +121,7 @@ describe('dane specyfikacji zamowienia', () => {
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // SPOSOB DOSTAWY — NAZWA DLA CZLOWIEKA (recenzja 12.08.2026).
+  // SPOSOB DOSTAWY — NAZWA DLA CZLOWIEKA.
   //
   // ⚠️ Do tego dnia szlo tu wprost `z.metoda_wysylki`, czyli na kartke DO KLIENTA trafialy
   // napisy `dpd`, `inpost_paczkomat`, `odbior_osobisty`, a w najgorszym razie „Sposób
@@ -170,7 +170,7 @@ describe('dane specyfikacji zamowienia', () => {
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // PLATNOSC ZE STANEM (recenzja 12.08.2026). Spec wymienial „metode platnosci ZE STANEM",
+  // PLATNOSC ZE STANEM. Spec wymienial „metode platnosci ZE STANEM",
   // a dokument drukowal sama metode: klient dostawal w paczce „Płatność: Za pobraniem" bez
   // ani jednego slowa o tym, czy pieniadze juz wplynely, czy odbierze je kurier.
   //
@@ -286,8 +286,8 @@ describe('informacja o dokumencie sprzedazy', () => {
   });
 });
 
-// PRZ-126.F02: faktura wystawiona bez prośby klienta (opcja firmy) — kartka nie może mówić „paragon”.
-describe('informacja o dokumencie sprzedazy — faktura bez zadania (PRZ-126)', () => {
+// Faktura wystawiona bez prośby klienta (opcja firmy) — kartka nie może mówić „paragon”.
+describe('informacja o dokumencie sprzedazy — faktura bez zadania', () => {
   it('bez zadania, z wystawiona faktura: bez znacznika paragonu, faktura wybrana', () => {
     const d = daneSpecyfikacji(zam({ chce_fakture: 0, faktura: { numer: 'FV/7/10/2026' } }), { sprzedawca: SPRZEDAWCA });
     expect(d.paragon).toBe(false);
@@ -326,7 +326,7 @@ describe('uwagi klienta', () => {
 // `zamowienia.uwagi` niesie DWIE rozne rzeczy: slowa klienta (`customer_note`,
 // `messageToSeller`) oraz slad, ktory panel indywidualny wpisuje KAZDEMU zamowieniu
 // zalozonemu z karty — razem z wewnetrznym odnosnikiem do niej. Pomiar na produkcji
-// (25.08.2026): z pieciu ostatnich zamowien z niepustymi uwagami CZTERY mialy wlasnie
+// Z pieciu ostatnich zamowien z niepustymi uwagami CZTERY mialy wlasnie
 // ten znacznik. Bez filtra kazda taka paczka wyjechalaby z kartka „Uwagi klienta:
 // Zamówienie indywidualne — karta e218b78e-… https://…".
 describe('znacznik techniczny panelu nie jest uwagami klienta', () => {
@@ -349,6 +349,13 @@ describe('znacznik techniczny panelu nie jest uwagami klienta', () => {
   // napisze „zamówienie indywidualne", ma dojechac na kartke nietkniete.
   it('zdanie klienta zawierające podobne słowa NIE jest odsiewane', () => {
     const uwagaKlienta = 'Czy to zamówienie indywidualne da się spakować na prezent?';
+    const d = daneSpecyfikacji(zam({ uwagi: uwagaKlienta }), { sprzedawca: SPRZEDAWCA });
+    expect(d.uwagiKlienta).toBe(uwagaKlienta);
+  });
+
+  // Dosłowny znacznik panelu w środku zdania to nadal słowa klienta — odsiewa tylko początek uwag.
+  it('znacznik panelu w środku zdania klienta NIE jest odsiewany', () => {
+    const uwagaKlienta = 'Dopisek: Zamówienie indywidualne — karta prezentowa, proszę bez cennika.';
     const d = daneSpecyfikacji(zam({ uwagi: uwagaKlienta }), { sprzedawca: SPRZEDAWCA });
     expect(d.uwagiKlienta).toBe(uwagaKlienta);
   });

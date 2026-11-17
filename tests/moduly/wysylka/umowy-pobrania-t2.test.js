@@ -1,4 +1,4 @@
-// PRZ-135.T2.01 — odczyt i zapis ustawienia „umowa na pobranie” (tabela `ustawienia`, bez migracji).
+// Odczyt i zapis ustawienia „umowa na pobranie” (tabela `ustawienia`, bez migracji).
 import { describe, it, expect } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { umowyPobraniaFirmy, zapiszUmowePobrania } from '../../../src/moduly/wysylka/db/umowy-pobrania.js';

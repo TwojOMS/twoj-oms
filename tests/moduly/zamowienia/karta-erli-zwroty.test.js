@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { nowyPanel, jako, get } from '../../pomoc/konta-prz068.js';
+import { nowyPanel, jako, get } from '../../pomoc/panel-konta-testowe.js';
 import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
 import { createErliAdapter, stanErliWPamieci } from '../../../src/oms/erli/adapter.js';
 import { createPoller } from '../../../src/moduly/kanaly/services/poller.js';

@@ -4,7 +4,7 @@ import { writeFileSync, mkdtempSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path, { join } from 'node:path';
 import { PDFDocument } from 'pdf-lib';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import {
   zapiszKoszt, zapiszRecznyKoszt, zapiszOdrzuconyKoszt,
@@ -149,7 +149,7 @@ describe('zestawienie kosztów — usługa', () => {
     expect(t).toContain('Brak faktur dopisanych ręcznie w tym miesiącu.');
   });
 
-  // Recenzja PRZ-086 (P3): tytuł części ręcznej nie może zostać sam na dole strony — tytuł,
+  // Tytuł części ręcznej nie może zostać sam na dole strony — tytuł,
   // opis i pierwszy wiersz mają stać na tej samej kartce, przy KAŻDEJ długości części KSeF.
   gdyJestPdftotext('tytuł części ręcznej nigdy nie zostaje sam na dole strony', async () => {
     const osierocone = [];

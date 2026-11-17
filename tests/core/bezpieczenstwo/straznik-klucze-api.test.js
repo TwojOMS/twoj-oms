@@ -1,8 +1,8 @@
-// PRZ-153.E1.2b — wejście kluczem API do /api/v1 przez strażnika rdzenia (plan docs/plany/PRZ-153-api-v1.md, E1.2).
+// Wejście kluczem API do /api/v1 przez strażnika rdzenia.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import http from 'node:http';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { zalozKonto, ustawCzynne } from '../../../src/core/bezpieczenstwo/konta.js';
 import { podpisz, NAZWA_CIASTECZKA_OMS } from '../../../src/core/bezpieczenstwo/sesja.js';
 import { odczytajSekret } from '../../../src/core/bezpieczenstwo/sekret-sesji.js';
@@ -118,7 +118,7 @@ describe('strażnik: klucz API na /api/v1', () => {
     expect(r.json()).toEqual({ kod: expect.any(String), powod: expect.any(String) });
   });
 
-  // Kolejki druku (/kolejka-druku*) otwiera od E4.1 klucz z zakresem `druk` — pilnuje tego straznik-druk-klucz.test.js.
+  // Kolejki druku (/kolejka-druku*) otwiera klucz z zakresem `druk` — pilnuje tego straznik-druk-klucz.test.js.
   it('ważny klucz nie otwiera ekranów OMS ani starego /api bez v1', async () => {
     const { klucz: k } = klucz({ zakresy: ['zamowienia:odczyt', 'zamowienia:zapis', 'druk', 'produkty:odczyt'] });
     // Istniejące zamówienie: stary adres panelu odpowiedziałby 200, gdyby strażnik wpuścił klucz poza /api/v1.
@@ -200,7 +200,7 @@ describe('strażnik: klucz API na /api/v1', () => {
   });
 });
 
-// Poprawka po recenzji PRZ-153.04: router (find-my-way) dekoduje %XX w ścieżce przed dopasowaniem trasy,
+// Router (find-my-way) dekoduje %XX w ścieżce przed dopasowaniem trasy,
 // więc `/api/v%31/ja` trafia do trasy /api/v1/ja. Strażnik musi uznać taki adres za API (tylko klucz).
 describe('strażnik: zakodowana ścieżka /api/v1 (surowe HTTP)', () => {
   let adres;

@@ -1,9 +1,9 @@
 import { it, expect } from 'vitest';
 import { zalozKonto, kontoPoLoginie } from '../../../src/core/bezpieczenstwo/konta.js';
-import { nowyPanel, jako, get, post } from '../../pomoc/konta-prz068.js';
+import { nowyPanel, jako, get, post } from '../../pomoc/panel-konta-testowe.js';
 import { ukryteTypyKonta } from '../../../src/oms/db/powiadomienia.js';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
 it('własne Powiadomienia są dostępne Sprzedaży i nie przyjmują obcego ID konta', async () => {
   const { app, db } = nowyPanel();

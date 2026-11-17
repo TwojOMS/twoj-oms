@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from 'node:util';
 import { afterEach, describe, expect, it } from 'vitest';
-import { nowyPanel, jako, get, post, BASIC } from '../../pomoc/konta-prz068.js';
+import { nowyPanel, jako, get, post, BASIC } from '../../pomoc/panel-konta-testowe.js';
 import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
 import { ZAKRESY_API } from '../../../src/domena/klucze-api.js';
 

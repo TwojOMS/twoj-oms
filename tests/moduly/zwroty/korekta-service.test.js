@@ -48,7 +48,7 @@ beforeEach(() => {
 });
 
 describe('wystawienie korekty', () => {
-  it('wysyła POST korekty z notes Zwrot towaru i symbolem other (PRZ-147.05)', async () => {
+  it('wysyła POST korekty z notes Zwrot towaru i symbolem other', async () => {
     const fetchImpl = vi.fn().mockImplementation(async (_url, opcje) => ({
       ok: true,
       status: opcje.method === 'POST' ? 201 : 200,
@@ -80,7 +80,7 @@ describe('wystawienie korekty', () => {
     expect(Object.fromEntries(Object.entries(payload).filter(([k]) => k.startsWith('client_')))).toEqual(oczekiwane);
   });
 
-  it('pobierzFakture → null: odmowa dla operatora, nie TypeError, bez rezerwacji (PRZ-147.01)', async () => {
+  it('pobierzFakture → null: odmowa dla operatora, nie TypeError, bez rezerwacji', async () => {
     const infakt = { pobierzFakture: vi.fn().mockResolvedValue(null), wystawKorekte: vi.fn() };
     const err = await createKorekta({ db, infakt }).wystaw(id, zwrotId).catch((e) => e);
     expect(err.dlaOperatora).toBeTruthy();
@@ -142,14 +142,14 @@ describe('wystawienie korekty', () => {
     expect(infakt.wystawKorekte).not.toHaveBeenCalled();
   });
 
-  // I7: „Powod" z formularza to NOTATKA OPERATORA, a `correction_reason` to tresc dokumentu
+  // „Powod" z formularza to NOTATKA OPERATORA, a `correction_reason` to tresc dokumentu
   // widocznego u nabywcy i u organu. „Klientka sie rozmyslila, oddane blikiem" na korekcie
   // jest wyciekiem, ktorego nie da sie cofnac — na dokument idzie stala, neutralna tresc.
   it('na dokument idzie NEUTRALNA tresc, notatka operatora zostaje w panelu', async () => {
     const notatka = 'klientka się rozmyśliła, oddane blikiem 0501234567';
     // Pierwszy zwrot z `beforeEach` musi zniknac, inaczej odbije sie od bariery „jedna
     // korekta na fakture" (nizej) zamiast dojsc do inFaktu.
-    // ⚠️ KASUJEMY GO PRZED DOPISANIEM NOWEGO (poprawka I6, 2026-08-15): zwrot ponizej ma te
+    // ⚠️ KASUJEMY GO PRZED DOPISANIEM NOWEGO: zwrot ponizej ma te
     // sama date, kwote i te same pozycje, co tamten — rozni sie WYLACZNIE notatka, ktora
     // tozsamosci zwrotu nie tworzy. `dodajZwrot` odmawia teraz takiego dubletu jako powtornego
     // wyslania formularza, wiec kolejnosc tych dwoch linii przestala byc obojetna.
@@ -173,7 +173,7 @@ describe('wystawienie korekty', () => {
 });
 
 /**
- * C1a: DRUGA KOREKTA DO TEJ SAMEJ FAKTURY.
+ * DRUGA KOREKTA DO TEJ SAMEJ FAKTURY.
  *
  * Specyfikacja dopuszcza wiele zwrotow do jednego zamowienia wprost, a `pobierzFakture`
  * czyta zawsze FAKTURE PIERWOTNA — wiec dla drugiego zwrotu czesciowego panel zlozylby
@@ -226,7 +226,7 @@ describe('druga korekta do TEJ SAMEJ faktury', () => {
 });
 
 /**
- * C1b: DOCZYTANIE NUMERU NIE MA PRAWA PRZYKLEIC CUDZEGO DOKUMENTU.
+ * DOCZYTANIE NUMERU NIE MA PRAWA PRZYKLEIC CUDZEGO DOKUMENTU.
  *
  * Dopasowanie po samym `corrected_invoice_number` oddawalo TEN SAM numer obu zwrotom do
  * jednej faktury — a `zwrotRozliczony` uznawal wtedy oba za rozliczone i zamowienie schodzilo
@@ -239,7 +239,7 @@ describe('doczytanie numeru korekty — cudzy dokument', () => {
     invoice_date: '2026-08-14',
   };
   let drugi;
-  // ⚠️ KOLEJNOSC FIKSTURY JEST ISTOTNA (poprawka po K1/W4, 2026-08-15). Stan „jeden zwrot ma
+  // ⚠️ KOLEJNOSC FIKSTURY JEST ISTOTNA. Stan „jeden zwrot ma
   // korekte, drugi ma zlecona" jest w produkcji osiagalny WYLACZNIE w tej kolejnosci: najpierw
   // zlecenie dla B (wtedy nikt jeszcze korekty nie ma), potem numer dla A wpisany RECZNIE —
   // bo reczny numer odnotowuje dokument powstaly POZA panelem i jest droga ZALECANA przy
@@ -317,7 +317,7 @@ describe('doczytanie numeru korekty — cudzy dokument', () => {
 });
 
 /**
- * ⚠️⚠️ W3 (recenzja kontrolna 2026-08-15): RESZTKA PO C1 — DOCZYTANIE DALEJ POTRAFILO
+ * ⚠️⚠️ W3: RESZTKA PO C1 — DOCZYTANIE DALEJ POTRAFILO
  * PRZYKLEIC CUDZY DOKUMENT.
  *
  * Zmierzone: zwrot A ma WISZACA rezerwacje po zerwanym polaczeniu; czlowiek wystawia korekte
@@ -362,7 +362,7 @@ describe('W3: doczytanie NIE ZGADUJE, gdy otwartych spraw korekty jest wiecej ni
 });
 
 /**
- * ⚠️⚠️ K1 (recenzja kontrolna 2026-08-15): RECZNIE WPISANY NUMER NIE BLOKOWAL WYSTAWIENIA.
+ * ⚠️⚠️ K1: RECZNIE WPISANY NUMER NIE BLOKOWAL WYSTAWIENIA.
  *
  * Bariera „jedna korekta na fakture" patrzyla wylacznie na INNE zwroty (`x.id !== w.id`), a
  * „Korektę wystawiłem ręcznie" NIE USTAWIA rezerwacji — dla TEGO SAMEGO zwrotu nie bylo wiec

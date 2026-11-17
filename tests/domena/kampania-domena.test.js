@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { wybierzKampanie, stanKampanii, agregatKuponow } from '../../src/domena/kampania.js';
 
-// Zakladka /kampania (WRZESIEN30, 2026-08-25). Domena dostaje zamowienia PO zLinii
+// Zakladka /kampania (WRZESIEN30). Domena dostaje zamowienia PO zLinii
 // (anulowane juz efektywne, oplacone_at juz z listy wplat) i NIE liczy zadnej reguly
 // statusu ani platnosci drugi raz — sklada wylacznie kafle, dni i tabele.
 
@@ -183,7 +183,7 @@ describe('stanKampanii — dni i faza', () => {
   });
 });
 
-// ⚠️ TE ASERCJE POWSTALY PO WERYFIKACJI MUTACYJNEJ (Etap 3). Test WIDOKU sprawdzal
+// ⚠️ TE ASERCJE POWSTALY PO WERYFIKACJI MUTACYJNEJ. Test WIDOKU sprawdzal
 // obecnosc napisu „Nie wiadomo (sprzed atrybucji)" na stronie — a ten sam napis stoi
 // w TABELI ZAMOWIEN, wiec przechodzil takze wtedy, gdy rozbicie wg zrodel doliczalo
 // zamowienia bez atrybucji do „Bezpośrednich". Zestawienie mowilo wtedy nieprawde

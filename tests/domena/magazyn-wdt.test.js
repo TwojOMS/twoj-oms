@@ -1,19 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import { cenaWdtGrosze } from '../../src/domena/wdt.js';
-import { pozycjaZProduktu } from '../pomoc/cenniki-historyczne-fixture.js';
+import { pozycjaZProduktu } from '../pomoc/przykladowe-cenniki-sklepow.js';
 import { przeliczenieRabatu, czyPozycjaPanelu } from '../../src/domena/rabat.js';
 
-// CENY WDT PRZY WSTAWIANIU Z MAGAZYNU (zgłoszenie właściciela 26.08 wieczór: „jak dodaję
-// produkty do nowego zamówienia dla klienta zagranicznego, pojawia się cena z rabatem brutto").
-// Reguła cenowa z wiki: cena sklepowa brutto − rabat → ÷1,23 = kwota na dokumencie WDT.
-// Dzielenie idzie NA POZIOMIE CENY JEDNOSTKOWEJ — dokładnie jak w Apilo (faktura WDT z 06.2026):
+// CENY WDT PRZY WSTAWIANIU Z MAGAZYNU.
+// Cena sklepowa brutto − rabat → podzielenie przez stawkę domyślną = kwota na dokumencie WDT.
+// Dzielenie idzie NA POZIOMIE CENY JEDNOSTKOWEJ; przykłady dla stawki 23%:
 // klosz 10cm 39,90 → 50% → 19,95 → 16,22; Kopuła 70x100 108,90 → 54,45 → 44,27.
 
 describe('cenaWdtGrosze', () => {
   it('zdejmuje 23% z ceny brutto — wektory z prawdziwej faktury Apilo', () => {
     expect(cenaWdtGrosze(1995)).toBe(1622); // klosz 10cm: 19,95 → 16,22
     expect(cenaWdtGrosze(5445)).toBe(4427); // Kopuła 70x100: 54,45 → 44,27
-    expect(cenaWdtGrosze(4950)).toBe(4024); // przykład z wiki: 49,50 → 40,24
+    expect(cenaWdtGrosze(4950)).toBe(4024); // 49,50 → 40,24
     expect(cenaWdtGrosze(1900)).toBe(1545); // kurier DPD: 19,00 → 15,45
   });
 
@@ -22,9 +21,9 @@ describe('cenaWdtGrosze', () => {
   });
 });
 
-// PRZ-105 (decyzja właściciela 21.10): cena z magazynu przy WDT dzieli się przez stawkę DOMYŚLNĄ z Ustawień,
+// Cena z magazynu przy WDT dzieli się przez stawkę DOMYŚLNĄ z Ustawień,
 // nie przez stałe 1,23 — sklep obcej instalacji z domyślną 8 ma w cenie 8%, nie 23%.
-describe('cena WDT przy stawce domyślnej innej niż 23 (PRZ-105)', () => {
+describe('cena WDT przy stawce domyślnej innej niż 23', () => {
   const produkt = {
     kanal: 'pro', produkt_id: '77', wariant_id: '', nazwa: 'Album lamp', sku_sklepu: 'PC-ALB-001', cena_gr: 10800,
   };

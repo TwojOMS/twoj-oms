@@ -3,16 +3,16 @@ import { menuStron, nawigacjaDla, STRONY } from '../../src/domena/menu-stron.js'
 
 // ⚠️ JEDNA LISTA STRON DLA CALEGO PANELU. Do 17.08.2026 wejscia na te ekrany istnialy
 // wylacznie jako ikony w prawym gornym rogu — bez podpisow i bez zaznaczenia, gdzie sie
-// jest. Boczne menu je nazywa; ikony ZOSTAJA (decyzja właściciela), bo na waskim ekranie kolumna
+// jest. Boczne menu je nazywa; ikony ZOSTAJA, bo na waskim ekranie kolumna
 // schodzi pod tresc i wtedy sa jedynym wejsciem.
 
 describe('menuStron', () => {
   it('oddaje wszystkie strony panelu, w stalej kolejnosci', () => {
-    // ⚠️ Zadanie 8 (2026-09-12): „Wiadomości" dolaczyla tutaj, bo STRONY wylicza sie teraz
+    // ⚠️ „Wiadomości" dolaczyla tutaj, bo STRONY wylicza sie teraz
     // z EKRANY (domain/ekrany.js) — jedynej listy dzielonej takze ze straznikiem i paskiem
     // ikon. Do tego dnia menu i pasek mialy DWIE ROZNE listy i byly rozjechane: menu mialo
     // „Stali klienci" bez „Wiadomosci", pasek odwrotnie.
-    // ⚠️ „Statystyki" dolaczyla 13.09.2026 (Zadanie 8, zakladka wysylki i platnosci) —
+    // ⚠️ „Statystyki" dolaczyla 13.09.2026 —
     // zaraz po „Raporty", tak samo jak w EKRANY.
     expect(menuStron('/koszty').map((p) => p.etykieta)).toEqual([
       'Zamówienia', 'Przesyłki', 'Okresy rozliczeniowe', 'Faktury', 'Koszty', 'Raporty', 'Statystyki', 'Reklamy', 'Finanse', 'Magazyn', 'Klienci B2B', 'Wiadomości', 'Ustawienia',
@@ -37,7 +37,7 @@ describe('menuStron', () => {
   it('podstrona zaznacza swoja sekcje', () => {
     const aktywne = (s) => menuStron(s).filter((p) => p.aktywna).map((p) => p.etykieta);
     // ⚠️ Od 17.08.2026 rachunek zarzadczy i dane miesiaca mieszkaja pod /finanse
-    // (decyzja właściciela przy przebudowie raportow) — podstrona danych swieci „Finanse".
+    // — podstrona danych swieci „Finanse".
     expect(aktywne('/finanse/dane')).toEqual(['Finanse']);
     expect(aktywne('/finanse/dane/2026-07')).toEqual(['Finanse']);
     expect(aktywne('/okresy/7')).toEqual(['Okresy rozliczeniowe']);
@@ -73,7 +73,7 @@ describe('menuStron', () => {
     for (const p of menuStron('/')) expect(p.href).toMatch(/^\//);
   });
 
-  // ⚠️ BEZ LICZNIKOW (decyzja właściciela 17.08.2026). Menu nazywa strony, nie mierzy ich.
+  // ⚠️ BEZ LICZNIKOW. Menu nazywa strony, nie mierzy ich.
   it('pozycje menu NIE niosa licznikow', () => {
     for (const p of menuStron('/')) expect(p).not.toHaveProperty('liczba');
   });

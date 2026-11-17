@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie, pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { indeksListy } from '../../../src/oms/db/indeks-listy.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { createSyncSklep } from '../../../src/moduly/zamowienia/services/sync-sklep.js';
 import { createFaktura } from '../../../src/moduly/faktury/services/faktura.js';
 import { podzielDoFaktury } from '../../../src/domena/masowe.js';
@@ -10,7 +10,7 @@ import { czyWolnoWystawic } from '../../../src/domena/proforma-stan.js';
 import { PDFTOTEXT, pdfNaTekst } from './_pdf-tekst.js';
 import { dodajWplateReczna } from '../../../src/oms/db/platnosci.js';
 
-// PRZ-101.04 — scalanie zamówień: trasy, baza, lista, faktura grupy, przeniesienie „wysłane”.
+// Scalanie zamówień: trasy, baza, lista, faktura grupy, przeniesienie „wysłane”.
 const config = { auth: { user: 'adam', pass: 'x' } };
 const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64'), origin: 'http://localhost' };
 const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) };
@@ -76,7 +76,7 @@ describe('ekran scalania i wykonanie', () => {
     const r = await post('/zamowienia/masowe/scal-podglad', { id: [String(b), String(a)] });
     expect(r.statusCode).toBe(200);
     expect(r.body).toMatch(new RegExp(`value="${a}" id="glowne-${a}" checked`));
-    // PRZ-101.11: S-2 jest opłacone — jego wysyłka wchodzi także przy „z głównego” (do 19.10: 15.00 zł).
+    // S-2 jest opłacone — jego wysyłka wchodzi także przy „z głównego”.
     expect(r.body).toContain('z zamówienia głównego — <b>35.00 zł</b>');
     expect(r.body).toContain('suma wysyłek — <b>35.00 zł</b>');
     expect(r.body).toContain('Na fakturę wejdzie wysyłka S-1 15.00 zł, S-2 20.00 zł — każda osobną pozycją; faktura 235.00 zł.');
@@ -85,7 +85,7 @@ describe('ekran scalania i wykonanie', () => {
     expect(kolumna(b, 'scalone_do')).toBeNull();
   });
 
-  it('PRZ-101.11 podgląd: dołączone nieopłacone — zdanie mówi, że jego wysyłka wypada przy „z głównego”', async () => {
+  it('podgląd: dołączone nieopłacone — zdanie mówi, że jego wysyłka wypada przy „z głównego”', async () => {
     const a = zam(1); const b = zam(2, { koszt_dostawy_brutto: '20.00', kwota_brutto: '120.00', oplacone_at: null });
     const r = await post('/zamowienia/masowe/scal-podglad', { id: [String(a), String(b)] });
     expect(r.body).toContain('z zamówienia głównego — <b>15.00 zł</b>');
@@ -180,9 +180,8 @@ describe('lista, liczniki, wyszukiwanie, karta', () => {
     expect(pozycje).toContain('z zamówienia S-2');
     expect(pozycje).toContain('35.00');
     expect(pozycje).toContain('235.00');
-    // PRZ-101.11 (właściciel 19.10: „obie wpłaty powinny pojawić się na liście wpłat”): lista wpłat
+    // Lista wpłat
     // pokazuje wpłaty CAŁEJ grupy, przy dołączonej dopisek „zam. S-2”; saldo liczone z grupy.
-    // Do 19.10 saldo było tylko głównego („Wpłacono 115.00 zł z 115.00 zł”) + osobne zdanie z sumą.
     const platnosci = kg.body.slice(kg.body.indexOf('id="platnosci"'), kg.body.indexOf('class="wplata-szybka"'));
     // G9a2: kwota i wpłacono są osobnymi liczbami z polskim separatorem.
     expect(platnosci).toMatch(/Kwota[\s\S]*235,00 zł[\s\S]*Wpłacono[\s\S]*235,00 zł/);
@@ -197,7 +196,7 @@ describe('lista, liczniki, wyszukiwanie, karta', () => {
     expect(wiersze[1]).toContain('zam. S-2');
   });
 
-  it('PRZ-101.11: wpłata dopisana na karcie głównego trafia do głównego; saldo grupy ją widzi', async () => {
+  it('wpłata dopisana na karcie głównego trafia do głównego; saldo grupy ją widzi', async () => {
     const a = zam(1); const b = zam(2, { koszt_dostawy_brutto: '20.00', kwota_brutto: '120.00', oplacone_at: null });
     await scal(a, b, 'suma');
     const przed = (await get(`/zamowienia/${a}`)).body;
@@ -212,7 +211,7 @@ describe('lista, liczniki, wyszukiwanie, karta', () => {
     expect(po.slice(po.indexOf('id="platnosci"'))).toMatch(/Kwota[\s\S]*235,00 zł[\s\S]*Wpłacono[\s\S]*235,00 zł/);
   });
 
-  it('PRZ-101.11: ręczna wpłata dołączonego — „Usuń” na karcie głównego kasuje ją z dołączonego', async () => {
+  it('ręczna wpłata dołączonego — „Usuń” na karcie głównego kasuje ją z dołączonego', async () => {
     const a = zam(1); const b = zam(2, { oplacone_at: null });
     dodajWplateReczna(db, b, { kwota: '115.00', data: '2026-10-11T00:00:00', metoda: 'przelew', uwaga: null });
     await scal(a, b, 'suma');
@@ -233,7 +232,7 @@ describe('lista, liczniki, wyszukiwanie, karta', () => {
     expect(pozycje).not.toContain('Lampa 2');
   });
 
-  // PRZ-101.11 (właściciel 19.10: „zmień tekst DECYZJA CZŁOWIEKA, brzmi bardzo AI”) — wpis czyta się jak zdanie.
+  // Wpis czyta się jak zdanie.
   it('wpisy w historii: scalenie i rozdzielenie zdaniem „Ręcznie (kto): …”, u dołączonego bez podwójnego dwukropka', async () => {
     const a = zam(1); const b = zam(2);
     await scal(a, b, 'suma');
@@ -272,7 +271,7 @@ describe('lista, liczniki, wyszukiwanie, karta', () => {
 
 describe('wydruki głównego obejmują pozycje całej grupy', () => {
   const lampa2 = /Lampa\s+2/;
-  // Specyfikacja wymaga sprzedawcy (config.nadawca) — dane fikcyjne. PRZ-108.10: i NIP-u (config.proforma.nip) —
+  // Specyfikacja wymaga sprzedawcy (config.nadawca) i NIP-u (config.proforma.nip) — dane fikcyjne;
   // bez NIP-u specyfikacja odmawia zamiast wyjść bez NIP-u sprzedawcy.
   beforeEach(async () => {
     await zbuduj({ config: { ...config, proforma: { nip: '1234563218' },
@@ -332,14 +331,13 @@ describe('jedna faktura grupy', () => {
     const r = await post(`/zamowienia/${a}/faktura`, {});
     expect(r.statusCode, r.body).toBe(302);
     const services = infakt.wystaw.mock.calls[0][0].services;
-    // PRZ-101.11: wysyłka każdego zamówienia osobną pozycją (do 19.10 — jedna linia „Dostawa” 35 zł).
+    // Wysyłka każdego zamówienia osobną pozycją.
     expect(services.map((s) => [s.name, s.gross_price])).toEqual([
       ['Lampa 1', 10000], ['Lampa 2', 10000], ['Dostawa', 1500], ['Dostawa — zamówienie S-2', 2000],
     ]);
   });
 
-  // PRZ-101.11 (właściciel 19.10): kupujący zapłacił za dwie wysyłki — druga wchodzi osobną pozycją, faktura = wpłaty.
-  // Do 19.10 ten test żądał faktury 215 zł przy wpłatach 235 zł.
+  // Kupujący zapłacił za dwie wysyłki — druga wchodzi osobną pozycją, faktura = wpłaty.
   it('„z zamówienia głównego”, oba opłacone (115 + 120 zł): faktura 235 zł z dwiema pozycjami wysyłki', async () => {
     const a = zam(1); const b = zam(2, { koszt_dostawy_brutto: '20.00', kwota_brutto: '120.00' });
     await scal(a, b, 'glowne');
@@ -454,7 +452,7 @@ describe('status, nadanie i przeniesienie „wysłane”', () => {
   });
 });
 
-// ——— Poprawki po recenzji (PRZ-101.04, 19.10) ————————————————————————————————————————————
+
 describe('W2: pobranie na zamówieniu scalonym — odmowa', () => {
   it('karta: pobranie na głównym grupy — 400, nadpisanie niezapisane; to samo na dołączonym', async () => {
     const a = zam(1); const b = zam(2);
@@ -566,7 +564,7 @@ describe('W4: sync_woo_blad i scalanie', () => {
   });
 });
 
-// Scalenie gałęzi pętli (PRZ-101.02 statusy własne): przypisanie statusu własnego DOŁĄCZONEGO kasujemy
+// Przypisanie statusu własnego DOŁĄCZONEGO kasujemy
 // przy scaleniu — dołączone nie ma wiersza na liście, jego stan niesie główne; ręczna zmiana (także na
 // status własny) dalej odmawia. Główne zachowuje swój status własny.
 describe('statusy własne a scalanie', () => {
@@ -585,7 +583,7 @@ describe('statusy własne a scalanie', () => {
   });
 });
 
-// ——— N1 (ponowna recenzja): „Odłącz anulowane” — wyjście dla głównego z anulowanym dołączonym ———
+// ——— „Odłącz anulowane” — wyjście dla głównego z anulowanym dołączonym ———
 describe('N1: Odłącz anulowane', () => {
   const anuluj = (id) => zapiszZamowienie(db, 'sklep_a', zmapowane(id, { anulowane: 1, status_woo: 'cancelled' }), {});
   const scal3 = async (a, b, c) => {
@@ -650,7 +648,7 @@ describe('N1: Odłącz anulowane', () => {
     const f = await post(`/zamowienia/${a}/faktura`, {});
     expect(f.statusCode, f.body).toBe(302);
     const services = infakt.wystaw.mock.calls[0][0].services;
-    // PRZ-101.11: wysyłki osobnymi pozycjami (do 19.10 — jedna linia „Dostawa” 30 zł).
+    // Wysyłki osobnymi pozycjami.
     expect(services.map((s) => [s.name, s.gross_price])).toEqual([
       ['Lampa 1', 10000], ['Lampa 3', 10000], ['Dostawa', 1500], ['Dostawa — zamówienie S-3', 1500],
     ]);

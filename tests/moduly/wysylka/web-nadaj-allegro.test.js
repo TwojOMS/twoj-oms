@@ -7,13 +7,11 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { createNadanie } from '../../../src/moduly/wysylka/services/nadanie.js';
 import { createDpdClient } from '../../../src/oms/kurierzy/dpd.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
-// ZGŁOSZENIE WŁAŚCICIELA 2026-08-07, dwa zamówienia na produkcji:
-//   1120 — allegrowe, pierwsza paczka pojechała etykietą z Allegro (a OMS o niej NIE WIE),
-//          trzeba dosłać brakujący produkt WŁASNYM DPD albo paczkomatem;
-//   1126 — allegrowe do paczkomatu; ekran nadania pokazywał formularz DPD z wymiarami
-//          110×75×1 cm i BEZ wyboru gabarytu.
+// Dosyłka do zamówienia Allegro: pierwsza paczka może mieć etykietę spoza OMS-u,
+// a brakujący produkt trzeba wysłać własnym DPD albo paczkomatem.
+// Paczkomat wymaga formularza gabarytu zamiast wymiarów 110×75×1 cm.
 //
 // Wspólna przyczyna: `wybierzKuriera` zna tylko `dpd` i `inpost_paczkomat`, a metody
 // allegrowe nie mają wpisu w `DLA_METODY` — i to jest CELOWA bariera przed drugą, płatną
@@ -79,7 +77,7 @@ const post = async (serwer, url, payload) => {
   return serwer.inject({ method: 'POST', url, headers: naglowek, payload });
 };
 
-// ⚠️⚠️ 19.09.2026: EKRAN WYBORU ZSZEDL Z PRZEPLYWU (decyzja właściciela). Odkad metody allegrowe
+// ⚠️⚠️ EKRAN WYBORU ZSZEDL Z PRZEPLYWU. Odkad metody allegrowe
 // maja droge domyslna przez „Wysylam z Allegro", `GET /nadaj` prowadzi prosto na formularz,
 // a ten ekran staje tylko w dwoch przypadkach: gdy panel NIE MA czego zaproponowac (usluga
 // nieznana slownikowi) albo gdy czlowiek poprosi o niego jawnie (`?wybor=1`, furtka na dosylke).
@@ -121,7 +119,7 @@ describe('ekran wyboru kuriera dla zamówienia z Allegro', () => {
     expect(r.body).toContain('name="waga"');
   });
 
-  // ⚠️ PIENIĄDZE: bez ustawienia „mam umowę na pobranie w InPoście” (PRZ-135 T2, domyślnie wyłączone)
+  // ⚠️ PIENIĄDZE: bez ustawienia „mam umowę na pobranie w InPoście” (domyślnie wyłączone)
   // paczkomat za pobraniem pojechałby bez inkasa — zostaje sam DPD, a podpowiedź prowadzi do ustawienia.
   it('przy pobraniu na paczce nr 1 zostaje sam DPD, z podanym powodem', async () => {
     const { serwer, id } = zServerem({ nad: { pobranie: 1, kwota_pobrania: '220.89' } });
@@ -170,7 +168,7 @@ describe('formularz nadania po wskazaniu kuriera', () => {
     expect(r.body).toMatch(/Nie umiem nadać/);
   });
 
-  // ⚠️⚠️ ODWRÓCONE 2026-09-01 NA PROŚBĘ WŁAŚCICIELA. Do tego dnia pole stało PUSTE, bo panel nie
+  // ⚠️⚠️ Dawniej pole stało PUSTE, bo panel nie
   // wie, czy pierwsza paczka nie pojechała już z pobraniem (numery listów z Allegro
   // dociągają się tylko dopóki `wyslane_at` jest puste). Ta niewiedza NIE ZNIKŁA — zniknęło
   // wyłącznie przepisywanie kwoty z karty do pola ręką przy każdej allegrowej paczce.
@@ -179,7 +177,7 @@ describe('formularz nadania po wskazaniu kuriera', () => {
   // który przechodzi każda allegrowa paczka, mówi wprost „brak paczki w panelu nie znaczy,
   // że żadna nie pojechała" (test wyżej w tym pliku), (2) paczka nr 2 i dalsze pola kwoty
   // nie dostają w ogóle — mają czerwony pas „TA PACZKA JEDZIE BEZ POBRANIA"
-  // (tests/oms/kwota-pobrania-nadania.test.js, „pole ISTNIEJE wyłącznie przy paczce nr 1").
+  // (tests/moduly/wysylka/kwota-pobrania-nadania.test.js, „pole ISTNIEJE wyłącznie przy paczce nr 1").
   it('kwota pobrania JEST podstawiona także przy zamówieniu z Allegro', async () => {
     const { serwer, id } = zServerem({ nad: { pobranie: 1, kwota_pobrania: '220.89' } });
     const r = await get(serwer, `/zamowienia/${id}/nadaj?kurier=dpd`);
@@ -187,7 +185,7 @@ describe('formularz nadania po wskazaniu kuriera', () => {
     expect(r.body).not.toMatch(/nie jest podstawiona celowo/i);
   });
 
-  // ——— „NADAJ I DRUKUJ" (zgłoszenie właściciela 2026-09-01: „teraz nie działa") ———————————————
+  // ——— „NADAJ I DRUKUJ” ———
   it('WzA pokazuje oba przyciski i wyjaśnia wybór niezmiennego formatu', async () => {
     const { serwer, id } = zServerem({ wza: { pobierzMetodeDostawy: async () => ONE_COURIER } });
     const r = await get(serwer, `/zamowienia/${id}/nadaj?kurier=wza`);
@@ -211,7 +209,7 @@ describe('formularz nadania po wskazaniu kuriera', () => {
 describe('POST /nadaj — bariera przeżywa żądanie z ręki', () => {
   // ⚠️ NAJWAŻNIEJSZY TEST W PLIKU. Ekran nie jest barierą — barierą jest domena.
   //
-  // ⚠️ 11.08.2026 ZMIENIŁ SIĘ SKUTEK BRAKU WSKAZANIA, ale nie sens tego testu. Dotąd brak
+  // ⚠️ ZMIENIŁ SIĘ SKUTEK BRAKU WSKAZANIA, ale nie sens tego testu. Dotąd brak
   // wskazania był odmową; dziś prowadzi do „Wysyłam z Allegro". Tym, czego pilnujemy, jest
   // rzecz niezmieniona: **żądanie z ręki NIE MA prawa nadać allegrowej paczki NASZĄ umową
   // DPD**. Ten serwer nie ma podpiętego `allegro_wza` (jak panel bez kanału Allegro), więc
@@ -298,7 +296,7 @@ describe('POST /nadaj — wybór formatu etykiety WzA', () => {
     expect(db.prepare('SELECT COUNT(*) c FROM kolejka_druku WHERE przesylka_id = ?').get(przesylka.id).c).toBe(1);
     const karta = await get(serwer, `/zamowienia/${id}`);
     expect(karta.body).toContain(`/przesylki/${przesylka.id}/drukuj`);
-    // PRZ-152.G16b: bez PDF nie ma linku do etykiety PDF, jest „Pobierz ZPL” (właściciel 05.11).
+    // Bez PDF nie ma linku do etykiety PDF, jest „Pobierz ZPL”.
     expect(karta.body).not.toContain(`/przesylki/${przesylka.id}/etykieta"`);
     expect(karta.body).toContain(`/przesylki/${przesylka.id}/etykieta-zpl">Pobierz ZPL</a>`);
   });
@@ -368,7 +366,7 @@ describe('POST /nadaj — wybór formatu etykiety WzA', () => {
 // POST (`parsujPaczkeInpost` vs `parsujPaczke`) nie było niczym trzymane od strony kanału
 // Allegro: podmiana `metodaUzyta` na `z.metoda_wysylki` przechodziła cały pakiet, a znaczyła
 // paczkę wysłaną do InPostu z WYMIARAMI 110×75×1 cm zamiast gabarytu — czyli przesyłkę,
-// która nie mieści się w ŻADNEJ skrytce automatu (zmierzone 01.08.2026: gabaryt A to
+// która nie mieści się w ŻADNEJ skrytce automatu (gabaryt A to
 // 38×64×8 cm). Kosztem byłaby prawdziwa, opłacona przesyłka nie do doręczenia.
 const NUMER_INPOST = '520000123456789012345678';
 const wynikInpost = () => ({
@@ -439,10 +437,10 @@ describe('POST /nadaj — paczkomat z Allegro dociera do kuriera poprawnie', () 
 // dowiaduje się, że i tak nie tędy droga. Bez tego testu mutacja kasująca sprawdzenie
 // wskazania w trasie przechodziła cały pakiet (usługa i tak odmawia, ale JUŻ PO parserach).
 describe('POST /nadaj — o braku kuriera panel mówi PIERWSZY', () => {
-  // ⚠️ 11.08.2026: dla `allegro_dpd` brak wskazania NIE JEST już odmową, więc kolejność
+  // ⚠️ Dla `allegro_dpd` brak wskazania NIE JEST już odmową, więc kolejność
   // „najpierw kurier, potem waga" nie ma tam czego porównywać.
   //
-  // ⚠️⚠️ 18.09.2026: to samo stało się z `allegro_punkt`, `allegro_kurier` i `allegro_inne` —
+  // ⚠️⚠️ To samo stało się z `allegro_punkt`, `allegro_kurier` i `allegro_inne` —
   // wszystkie trzy dostały drogę domyślną („Wysyłam z Allegro") razem z ośmioma usługami
   // w `METODY_WZA`. Reguła kolejności odmów NIE ZNIKŁA, tylko przeniosła się na jedyny
   // przypadek, w którym dziś obowiązuje: metodę allegrową, której słownik jeszcze nie zna.
@@ -453,6 +451,6 @@ describe('POST /nadaj — o braku kuriera panel mówi PIERWSZY', () => {
     const r = await post(serwer, `/zamowienia/${id}/nadaj`, { ...PACZKA, waga: 'osiem kilo' });
     expect(r.statusCode).toBe(400);
     expect(r.body).toMatch(/wskaż kuriera/i);
-    expect(r.body).not.toMatch(/\bwag[ęi]/i); // \b: układ strony ma w CSS „--uwagi-klienta-tlo” (PRZ-152 G1)
+    expect(r.body).not.toMatch(/\bwag[ęi]/i); // \b: układ strony ma w CSS „--uwagi-klienta-tlo”
   });
 });

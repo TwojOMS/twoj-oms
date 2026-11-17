@@ -2,7 +2,7 @@
 // (faktury-hurtem-widok.test.js). Wyniesione tu, żeby obie kopie budowania serwera testowego
 // nie rozjechały się przy pierwszej zmianie kształtu wstrzykiwanych usług — druga kopia
 // zaczęłaby testować nieistniejący panel.
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { dodajWplateReczna } from '../../../src/oms/db/platnosci.js';
@@ -12,7 +12,7 @@ export const AUTH = { authorization: `Basic ${Buffer.from('t:h').toString('base6
 // (ta sama para naglowkow, co w pozostalych testach tras).
 export const POST = { ...AUTH, origin: 'http://localhost', 'content-type': 'application/x-www-form-urlencoded' };
 
-// Adres sprzedawcy uzywany domyslnie przez `serwer()` (Zadanie 8, specyfikacja zamowienia).
+// Adres sprzedawcy uzywany domyslnie przez `serwer()`.
 // TE SAME wartosci, co w tests/oms/proforma.test.js (NADAWCA) i w domyslnym BDO z config.js
 // (OMS_SPRZEDAWCA_BDO) — zeby testy tras hurtu mogly sprawdzic, ze sklad sprzedawcy
 // (config.nadawca + config.proforma.nip/bdo) naprawde dociera na dokument PRZEZ TRASE, a nie
@@ -39,7 +39,7 @@ export const BDO = '000123456';
  * utworzone_at DESC): test kolejnosci stron w PDF-ie hurtem musi miec czym rozroznic
  * zamowienia, wiec podaje ten parametr wprost, zamiast liczyc na zegar.
  */
-// ⚠️ DOMYSLNA POZYCJA SUMUJACA SIE DO `kwota_brutto` — od 12.08.2026 (recenzja). Do tego
+// ⚠️ DOMYSLNA POZYCJA SUMUJACA SIE DO `kwota_brutto` — od 12.08.2026. Do tego
 // dnia domyslne bylo `pozycje: []` przy kwocie '100.00', czyli zamowienie ARYTMETYCZNIE
 // NIEMOZLIWE: `sprawdzSumeDokumentu` odmowilaby mu faktury zawsze. Wszystkie testy tras
 // hurtu chodzily po takich wierszach — a odkad podglad ma wlasna bariere arytmetyczna

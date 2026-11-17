@@ -101,7 +101,7 @@ describe('sledzeniePrzesylki', () => {
     });
   });
 
-  // PRZ-135.03: podwykonawcę WzA wyznacza pole rejestru `sledzenieWza` — dziś tylko DPD. Paczka WzA jadąca
+  // Podwykonawcę WzA wyznacza pole rejestru `sledzenieWza` — dziś tylko DPD. Paczka WzA jadąca
   // InPostem NIE idzie do naszego ShipX, choć klient InPost jest w mapie.
   it('WzA z carrierem INPOST pyta Allegro, nie naszego klienta InPost', () => {
     const surowa = JSON.stringify({
@@ -202,7 +202,7 @@ describe('sledzeniePrzesylki', () => {
   });
 });
 
-// KANAL ALLEGRO (25.08.2026) — paczki nadane POZA panelem: Allegro Punkt, Allegro One,
+// KANAL ALLEGRO — paczki nadane POZA panelem: Allegro Punkt, Allegro One,
 // oraz ogon `allegro_dpd` sprzed 11.08. Do tego dnia `kurier = 'allegro'` nie mial klienta
 // w mapie i kazda taka paczka byla slepa na zawsze.
 //

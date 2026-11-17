@@ -155,7 +155,7 @@ describe('parsowanie formularza wpłaty', () => {
   });
 });
 
-// ——— DATA I DOMYŚLNA KWOTA WPŁATY (2026-08-07) ————————————————————————————————————
+// ——— DATA I DOMYŚLNA KWOTA WPŁATY ————————————————————————————————————
 //
 // Prośba właściciela: „przy ręcznym dodawaniu płatności powinny być dwa pola, jedno z datą,
 // drugie z kwotą […] domyślnie powinna być ustawiona data dzisiejsza i cała kwota, bo tak

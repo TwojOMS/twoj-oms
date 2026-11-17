@@ -26,7 +26,7 @@ describe('sciezka w archiwum kosztow', () => {
       .toContain('_FV-1-2026.xml');
   });
 
-  // ⚠️⚠️ DATA ZE ZNACZNIKIEM CZASU (recenzja calej galezi, W3). Galaz JAWNIE zaklada, ze
+  // ⚠️⚠️ DATA ZE ZNACZNIKIEM CZASU. Galaz JAWNIE zaklada, ze
   // `data_wystawienia` moze niesc godzine (`PO_KONCU_DNIA` w db/koszty.js istnieje wylacznie
   // po to). Surowa data w nazwie pliku dawala „2026-06-30T22:30:00Z_ALLEGRO...xml" —
   // a dwukropek jest na SMB i na Windowsie znakiem nielegalnym: zapis padal, byl polykany
@@ -133,7 +133,7 @@ describe('zarchiwizuj', () => {
     expect(poNieudanymZapisie.sciezka_xml).toBeNull();
   });
 
-  // ⚠️ PDF WIZUALIZACJI POWSTAJE OBOK XML-a (Zadanie 12) — ta sama nazwa pliku, inne
+  // ⚠️ PDF WIZUALIZACJI POWSTAJE OBOK XML-a — ta sama nazwa pliku, inne
   // rozszerzenie. KSeF oddaje wylacznie XML, wiec kartka do obejrzenia jest jedynym sposobem,
   // zeby ktokolwiek zobaczyl pozycje cudzej faktury bez czytania znacznikow.
   it('rysuje PDF wizualizacji obok XML-a: ta sama nazwa, inne rozszerzenie', async () => {
@@ -189,7 +189,7 @@ describe('zarchiwizuj', () => {
   });
 
   // ⚠️⚠️ PONAWIA SIE SAMO POBRANIE XML-a, A NIE CALA FUNKCJA — I TO JEST WARUNEK POPRAWNOSCI,
-  // A NIE UKLAD KODU (recenzja Task 16).
+  // A NIE UKLAD KODU.
   //
   // `sesja.accessToken()` (ksef/sesja.js) robi PELNE logowanie do KSeF najwyzej RAZ, bo
   // `/auth/token/redeem` jest jednorazowe: drugie podejscie z tym samym challenge odbija sie

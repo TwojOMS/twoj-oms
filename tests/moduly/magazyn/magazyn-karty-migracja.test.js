@@ -1,4 +1,4 @@
-// PRZ-090 — migracja rdzenia nr 4: karty produktów zamiast wzorów, migracja wyłącznie addytywna.
+// Migracja rdzenia nr 4: karty produktów zamiast wzorów, migracja wyłącznie addytywna.
 import { describe, it, expect } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -10,7 +10,7 @@ import { modulRdzen } from '../../../src/moduly/rdzen/modul.ts';
 const AT = '2026-08-11T19:03:48.074Z';
 const ZMIANA = '2026-08-12T09:00:00.000Z';
 
-/** Baza w stanie sprzed PRZ-090: rdzeń z migracjami 1–3 i dane w `wzory`. */
+/** Baza przed migracją kart produktów: rdzeń z migracjami 1–3 i dane w `wzory`. */
 function bazaSprzedMigracji(sciezka) {
   const db = otworzBaze(sciezka);
   wykonajMigracje(db, [{ ...modulRdzen, migracje: modulRdzen.migracje.filter((m) => m.numer <= 3) }]);
@@ -26,7 +26,7 @@ function bazaSprzedMigracji(sciezka) {
   db.close();
 }
 
-describe('migracja kart produktów (PRZ-090)', () => {
+describe('migracja kart produktów', () => {
   it('świeża baza ma karty_produktow, karta_id, wymiary 3D, wagę i indeks na karta_id', () => {
     const db = openOmsDb(':memory:');
     const kolumny = (t) => db.prepare(`PRAGMA table_info(${t})`).all().map((k) => k.name);

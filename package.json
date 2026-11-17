@@ -9,6 +9,7 @@
   "scripts": {
     "start": "node src/oms.js",
     "test": "vitest run",
+    "test:zwiazane": "vitest related --run",
     "typy": "tsc -p tsconfig.json",
     "sprawdz": "npm run typy && node scripts/straznik-migracji.mjs && node scripts/straznik-konfiguracji.mjs && node scripts/straznik-kanalow.mjs && node scripts/straznik-kurierow.mjs && node scripts/straznik-sekretow.mjs && npm test"
   },

@@ -1,12 +1,12 @@
-// PRZ-160 E4.00b — test bliźniaczy Zasady 1 (D14): przy wyłączonych stanach pętle ofert ERLI i Allegro wysyłają
-// do kanału DOKŁADNIE te same żądania, co na bazie sprzed etapu 4 (nagranie w `tests/fixtures/e4-blizniak-*.json`).
+// Test bliźniaczy: przy wyłączonych stanach pętle ofert ERLI i Allegro wysyłają
+// do kanału DOKŁADNIE te same żądania, co przed obsługą stanów (nagranie w `tests/fixtures/e4-blizniak-*.json`).
 //
 // Jedna funkcja przygotowania na kanał (`przygotujErli`, `przygotujAllegro`) z parametrem `wariant`:
 //   'i'   — brak wierszy przełącznika stanów (`magazyn_przelaczenia` puste),
-//   'ii'  — włącz → (ruchy magazynowe) → wyłącz, bez `stany_zatwierdzenia` (historia sprzed E4),
-//   'iii' — DO DOPISANIA po migracji E4.01 (tabela `stany_zatwierdzenia`): włącz → zatwierdź (wiersz
-//           `stany_zatwierdzenia` dla bieżącego przełączenia, przez repozytorium z E4.01) → wyłącz. Dopisać gałąź
-//           w `przygotujPrzelacznik` poniżej i 'iii' do `it.each` w e4-blizniak-prz160e4.test.js; nagranie to samo.
+//   'ii'  — włącz → (ruchy magazynowe) → wyłącz, bez `stany_zatwierdzenia`,
+//   'iii' — DO DOPISANIA: włącz → zatwierdź (wiersz
+//           `stany_zatwierdzenia` dla bieżącego przełączenia) → wyłącz. Dopisać gałąź
+//           w `przygotujPrzelacznik` poniżej i 'iii' do `it.each` w tests/moduly/magazyn/wylaczone-stany-kanalow.test.js; nagranie to samo.
 //
 // Zegar stały (przesuwany ręcznie), znak instalacji z `losuj: () => 0`, UUID z atrapy `node:crypto` w teście
 // i dodatkowo zastąpione w nagraniu kolejnymi `<uuid-N>` (UUID spoza żądań nie przesuwa numeracji).
@@ -92,7 +92,7 @@ function przygotujPrzelacznik(db, wariant, kartyIds, czas) {
 const KONTO_ERLI = 'erli-polcien';
 export const KART_ERLI = 120;
 
-/** Serwer ERLI w pamięci (kontrakt jak w petla-ofert-prz160e2.test.js) — tylko odpowiada, nagrywa nagrywarka. */
+/** Serwer ERLI w pamięci (kontrakt jak w petla-ofert.test.js) — tylko odpowiada, nagrywa nagrywarka. */
 function serwerErli(nagr) {
   const produkty = new Map();
   const odp = (status, body) => new Response(body === undefined ? null : JSON.stringify(body), { status });
@@ -225,7 +225,7 @@ export async function przygotujErli({ wariant }) {
 const BEZPIECZENSTWO = JSON.stringify({ typ: 'TEXT', tekst: 'Nie zostawiaj włączonej lampy bez nadzoru.' });
 export const KART_ALLEGRO = 14;
 
-/** Karta z kategorią z mapy, regułami, marką, GPSR konta i 2 zdjęciami (jak petla-ofert-allegro-prz160e3.test.js). */
+/** Karta z kategorią z mapy, regułami, marką, GPSR konta i 2 zdjęciami (jak petla-ofert-allegro.test.js). */
 export function kartaAllegro(db, konto, n, czas) {
   const at = iso(czas);
   const id = utworzKarte(db, { nazwa: `Lampa stołowa Gliwka ${n} z kloszem`, cena_gr: 5900 + n * 100, stawka_vat: '23',

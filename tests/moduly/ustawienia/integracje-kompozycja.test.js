@@ -5,7 +5,7 @@ const env={OMS_SPRZEDAWCA_NIP:'1234563218',OMS_RACHUNEK:'34109010140000000000000
   OMS_USER:'operator',OMS_PASS:'test',OMS_PROFORMY_KATALOG:tmpdir(),OMS_ETYKIETY_KATALOG:tmpdir()};
 const headers={authorization:'Basic '+Buffer.from('operator:test').toString('base64'),origin:'http://localhost'};
 afterEach(()=>vi.unstubAllGlobals());
-describe('PRZ-030 renderer i istniejąca trasa PRZ-020',()=>{
+describe('renderer i istniejąca trasa',()=>{
   it('rozpoczęcie Device Flow pokazuje zgodę, bez automatycznego zapisu pary',async()=>{
     const api=vi.fn(async input=>{
       const url=new URL(String(input));

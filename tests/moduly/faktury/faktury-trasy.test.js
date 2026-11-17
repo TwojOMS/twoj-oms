@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszWiersz, odnotujUdanyPrzebiegArchiwum } from '../../../src/moduly/faktury/db/archiwum-sprzedazy.js';
 import { PREFIKS_BLEDU_ARCHIWUM } from '../../../src/moduly/faktury/trasy/faktury.js';
@@ -32,7 +32,7 @@ const serwer = (opcje) => serwerZBaza(opcje).app;
 const AUTH = { authorization: `Basic ${Buffer.from('t:h').toString('base64')}` };
 const AUTH_POST = { ...AUTH, origin: 'http://localhost', 'content-type': 'application/x-www-form-urlencoded' };
 
-// PRZ-078: forma prawna nabywcy skrócona w OBU tabelach, pełna nazwa w `title`. Bez tego
+// Forma prawna nabywcy skrócona w OBU tabelach, pełna nazwa w `title`. Bez tego
 // testu widok mógłby przestać wołać skrocFormePrawna, a zielony zostałby tylko test domeny.
 describe('GET /faktury — nabywca ze skróconą formą prawną', () => {
   it('skraca w tabeli faktur i nieopłaconych, pełną nazwę zostawia w podpowiedzi', async () => {
@@ -121,7 +121,7 @@ describe('GET /faktury', () => {
     expect(r.body).toContain('1378.50');
   });
 
-  // C07a: wybór do pobierania obejmuje też dokumenty pomijane przez podgląd KSeF.
+  // Wybór do pobierania obejmuje też dokumenty pomijane przez podgląd KSeF.
   it('checkbox stoi przy dokumencie z numerem KSeF i bez numeru', async () => {
     const app = serwer({ dokumenty: [
       { uuid: 'zKsef', number: '1/08/2026', rodzaj: 'vat', stanKsef: 'jest', ksef_number: 'X', client_tax_code: '1234563218', kwotaZl: '1.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
@@ -132,7 +132,7 @@ describe('GET /faktury', () => {
     expect(r.body).toContain('value="zKsef"');
   });
 
-  // C07a: wybór do pobierania obejmuje też dokumenty pomijane przez podgląd KSeF.
+  // Wybór do pobierania obejmuje też dokumenty pomijane przez podgląd KSeF.
   it('checkbox stoi także przy korekcie bez numeru KSeF', async () => {
     const app = serwer({ dokumenty: [
       { uuid: 'korekta', number: '1/KOR/07/2026', rodzaj: 'korekta', stanKsef: 'brak', ksef_number: null, kwotaZl: '-138.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
@@ -142,7 +142,7 @@ describe('GET /faktury', () => {
     expect(r.body).toContain('value="korekta"');
   });
 
-  // C07a: wybór do pobierania obejmuje też dokumenty pomijane przez podgląd KSeF.
+  // Wybór do pobierania obejmuje też dokumenty pomijane przez podgląd KSeF.
   it('checkbox stoi przy fakturze konsumenckiej i firmowej', async () => {
     const app = serwer({ dokumenty: [
       { uuid: 'konsument', number: '30/06/2026', rodzaj: 'vat', stanKsef: 'brak', ksef_number: null, client_tax_code: null, client_first_name: 'Jan', client_last_name: 'Kowalski', kwotaZl: '138.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
@@ -158,7 +158,7 @@ describe('GET /faktury', () => {
     expect(r.body).toContain('>konsumencka</span>');
   });
 
-  // PRZ-174 B2 (M10b): podpowiedź przy znaczniku „konsumencka” mówi, czy panel wysyła taki dokument do KSeF.
+  // Podpowiedź przy znaczniku „konsumencka” mówi, czy panel wysyła taki dokument do KSeF.
   describe('podpowiedź przy znaczniku „konsumencka”', () => {
     const konsument = { uuid: 'konsument', number: '30/06/2026', rodzaj: 'vat', stanKsef: 'brak', ksef_number: null, client_tax_code: null, client_first_name: 'Jan', client_last_name: 'Kowalski', kwotaZl: '138.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' };
     const podpowiedz = async (wlaczone) => {
@@ -195,7 +195,7 @@ describe('GET /faktury', () => {
     expect(r.body).not.toContain('>konsumencka</span>');
   });
 
-  // C07a: wybór do pobierania obejmuje też dokumenty pomijane przez podgląd KSeF.
+  // Wybór do pobierania obejmuje też dokumenty pomijane przez podgląd KSeF.
   it('„zaznacz wszystkie" zaznacza także fakturę konsumencką', async () => {
     const app = serwer({ dokumenty: [
       { uuid: 'konsument', number: '30/06/2026', rodzaj: 'vat', stanKsef: 'brak', ksef_number: null, client_tax_code: '', kwotaZl: '138.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
@@ -206,7 +206,7 @@ describe('GET /faktury', () => {
     expect(r.body).toMatch(/value="konsument"\s+checked/);
   });
 
-  // C07a: wybór do pobierania obejmuje też dokumenty pomijane przez podgląd KSeF.
+  // Wybór do pobierania obejmuje też dokumenty pomijane przez podgląd KSeF.
   it('dokument, którego wysyłkę panel już zlecił, ma pole wyboru i pustą komórkę KSeF', async () => {
     const app = serwer({ dokumenty: [
       { uuid: 'czeka', number: '3/08/2026', rodzaj: 'vat', stanKsef: 'wyslana_czeka', plakietka: 'czeka na numer', ksef_number: null, ksefZleconaAt: '2026-08-06T14:00:00.000Z', client_tax_code: '1234563218', kwotaZl: '1.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
@@ -219,7 +219,7 @@ describe('GET /faktury', () => {
     expect(r.body).not.toMatch(/w KSeF<\/span>/);
   });
 
-  // C07a: wybór do pobierania obejmuje też dokumenty pomijane przez podgląd KSeF.
+  // Wybór do pobierania obejmuje też dokumenty pomijane przez podgląd KSeF.
   it('„zaznacz wszystkie" zaznacza także dokument czekający na numer KSeF', async () => {
     const app = serwer({ dokumenty: [
       { uuid: 'czeka', number: '3/08/2026', rodzaj: 'vat', stanKsef: 'wyslana_czeka', plakietka: 'czeka na numer', ksef_number: null, ksefZleconaAt: '2026-08-06T14:00:00.000Z', client_tax_code: '1234563218', kwotaZl: '1.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
@@ -230,7 +230,7 @@ describe('GET /faktury', () => {
     expect(r.body).toMatch(/value="czeka"\s+checked/);
   });
 
-  // ⚠️ Ekran podgladu (Zadanie 9) przelicza zbior PONOWNIE z na nowo pobranej listy, wiec
+  // ⚠️ Ekran podgladu przelicza zbior PONOWNIE z na nowo pobranej listy, wiec
   // bez tych dwoch pol nie ma jak odtworzyc, na ktora liste operator patrzyl.
   it('formularz wysyłki niesie miesiąc i pole daty, z którego zaznaczano', async () => {
     const app = serwer({ dokumenty: [
@@ -257,7 +257,7 @@ describe('GET /faktury', () => {
     expect(r.body).toContain('przykladowa');
   });
 
-  // ⚠️ Recenzja II Zadania 7 (Finding 1): odkąd `dokumenty` i `nieoplacone` maja WLASNE
+  // ⚠️ Odkąd `dokumenty` i `nieoplacone` maja WLASNE
   // wyniki (patrz testy nizej), samo `dokumenty` rzucajace juz nie zabiera prawdziwej, pustej
   // odpowiedzi `nieoplacone` — a legalne zero NIE JEST tu klamstwem. Ten test wiec rzuca
   // W OBU zapytaniach naraz: to jedyny scenariusz, w ktorym cala strona wciaz ma zwrocic 200
@@ -282,7 +282,7 @@ describe('GET /faktury', () => {
     expect(r.body).toMatch(/nie wiadomo/);
   });
 
-  // ⚠️ Finding 2 (recenzja Zadania 7): `proformy()` czyta LOKALNA baze SQLite, nie inFakt —
+  // ⚠️ `proformy()` czyta LOKALNA baze SQLite, nie inFakt —
   // inny system, inna awaria. Cały sens tej zakładki to DEGRADACJA: awaria bazy proform nie
   // ma prawa zabrać ze sobą pasów, które akurat działają (nieopłacone, faktury z inFaktu).
   it('awaria proform (lokalna baza) nie kładzie reszty ekranu, a nie 500', async () => {
@@ -309,7 +309,7 @@ describe('GET /faktury', () => {
     expect(r.body).toMatch(/Nie wiadomo — baza panelu nie odpowiedziała/);
   });
 
-  // ⚠️ Finding 1 (recenzja II Zadania 7): `dokumenty` i `nieoplacone` to DWA NIEZALEZNE
+  // ⚠️ `dokumenty` i `nieoplacone` to DWA NIEZALEZNE
   // zapytania do inFaktu. Zanim ta poprawka trafila do route'a, stały pod jednym wspólnym
   // `Promise.all`/`catch`, wiec porazka JEDNEGO z nich gasila CALA zakladke — takze pas, ktory
   // akurat dzialal. Te trzy testy pilnuja, ze kazdy pas dostaje wlasny wynik.
@@ -389,7 +389,7 @@ describe('GET /faktury', () => {
     expect(r.body).not.toMatch(/pozostało do zapłaty 0,00/);
   });
 
-  // ⚠️ Finding 3 (recenzja Zadania 7): trasa przyjmuje KAZDY skladniowo poprawny „RRRR-MM",
+  // ⚠️ Trasa przyjmuje KAZDY skladniowo poprawny „RRRR-MM",
   // a lista wyboru oferuje wylacznie 13 ostatnich miesiecy — bez tej poprawki tabela
   // pokazywalaby 2020-01, a select dalej wskazywalby pierwszy z oferowanych miesiecy.
   it('miesiąc spoza 13 oferowanych i tak trafia do listy wyboru (ekran nie przeczy sam sobie)', async () => {
@@ -423,26 +423,25 @@ describe('GET /faktury', () => {
     expect(r.body).toContain('href="/faktury"');
   });
 
-  // ⚠️ Finding 5 (recenzja Zadania 7): asercja o kolejności `.btn` / `.btn--groza` w arkuszu
-  // PRZENIESIONA do tests/oms/layout-przyciski.test.js — reguła żyje we wspólnym
+  // ⚠️ Reguła kolejności `.btn` / `.btn--groza` żyje we wspólnym
   // layout-oms.ejs i pilnuje TRZECH ekranów (faktury, masowe-nadaj, masowe-wynik), nie
   // tylko tej zakładki. Zostawiona tutaj wskazywałaby na złą trasę, gdyby ktoś zepsuł ją,
   // zmieniając wyłącznie ekrany akcji masowych.
 
-  // ⚠️⚠️ POPRAWKA PO RECENZJI (28.08.2026): do tego miejsca ŻADEN test nie renderował
+  // ⚠️⚠️ Do tego miejsca ŻADEN test nie renderował
   // faktury.ejs i nie sprawdzał treści kolumny „Płatność" — cała suita kończyła się na
   // usłudze (services/faktury-widok.js, domain/lista-faktur.js). Gdyby ktoś kiedyś podmienił
   // warunek gałęzi z powrotem na arytmetykę `Number(d.pozostaloZl) > 0` (dokładnie ta usterka,
-  // którą naprawiono 28.08 — patrz komentarz przy tej kolumnie w faktury.ejs), cała suita
+  // patrz komentarz przy tej kolumnie w faktury.ejs), cała suita
   // przeszłaby na zielono, bo usługa dalej liczyłaby `stanZaplaty` poprawnie. Cztery testy
   // niżej, po jednym na gałąź widoku, renderują TĘ SAMĄ trasę co reszta pliku i dopasowują
   // się do CAŁEGO znacznika komórki (klasa + treść), nie do gołego słowa — „zapłacona" i
   // „pozostało" wychodzą też gdzie indziej na stronie (nagłówek pasa długów, akapit
   // wyjaśnienia), więc luźne `toContain` łapałoby przypadkowe wystąpienie.
   it('kolumna „Płatność": faktura opłacona w inFakcie pokazuje „zapłacona", mimo niezerowego pozostaloZl', async () => {
-    // Odtwarza żywy przypadek 51/08/2026: inFakt ma `status: paid` i `left_to_pay: 99000`
-    // naraz. To jest sedno poprawki z 28.08 — gdyby widok wrócił do liczenia z kwoty zamiast
-    // z `stanZaplaty`, ten dokument świeciłby na czerwono mimo że jest opłacony.
+    // Dokument z `status: paid` i `left_to_pay: 99000` naraz: stan zapłaty rozstrzyga status.
+    // Gdyby widok wrócił do liczenia z kwoty zamiast z `stanZaplaty`,
+    // ten dokument świeciłby na czerwono mimo że jest opłacony.
     const app = serwer({ dokumenty: [{
       uuid: 'u51', number: '51/08/2026', rodzaj: 'vat', invoice_date: '2026-08-26', sale_date: '2026-08-26',
       client_company_name: 'Firma Opłacona', kwotaZl: '990.00', pozostaloZl: '990.00',
@@ -500,7 +499,7 @@ describe('GET /faktury', () => {
   });
 });
 
-// Pas archiwum PDF-ow na NAS-ie (spec 2026-09-02). Ekran mowi, KIEDY archiwum ostatnio
+// Pas archiwum PDF-ow na NAS-ie. Ekran mowi, KIEDY archiwum ostatnio
 // zadzialalo i ILE dokumentow ma u siebie, a przycisk wymusza przebieg poza pora nocna.
 describe('archiwum sprzedazy na /faktury', () => {
   // ⚠️ BEZ INFAKT_ARCHIWUM PRZYCISKU NIE MA — i to jest stan POPRAWNY, nie usterka. Przycisk
@@ -668,7 +667,7 @@ describe('archiwum sprzedazy na /faktury', () => {
   });
 
   // ⚠️ PASEK MA SWIECIC WLASCIWYM KOLOREM. Widok liczy klase z `komunikatZly`, ktory trasa
-  // wylicza z `PREFIKS_BLEDU_ARCHIWUM` (Finding recenzji — dopasowanie przedrostka nie ma
+  // wylicza z `PREFIKS_BLEDU_ARCHIWUM` (dopasowanie przedrostka nie ma
   // prawa zyc w dwoch miejscach naraz). Te dwa testy pilnuja calego lancucha: adres →
   // `komunikatZly` → klasa paska.
   //
@@ -741,7 +740,7 @@ describe('archiwum sprzedazy na /faktury', () => {
   });
 });
 
-// ——— PACZKA DLA BIURA RACHUNKOWEGO (spec 2026-09-02, Czesc D) ——————————————————————
+// ——— PACZKA DLA BIURA RACHUNKOWEGO ——————————————————————
 //
 // ⚠️ TRASA SYNCHRONICZNA i taka ma zostac: nic nie laduje na dysku, przegladarka dostaje
 // bajty wprost. Cala robota (skad wziac PDF-y, w jakiej kolejnosci je zszyc, kiedy odmowic)
@@ -789,8 +788,7 @@ describe('GET /faktury/paczka', () => {
     expect(wolania).toEqual([['2026-08', 'sprzedaz'], ['2026-08', 'koszty']]);
   });
 
-  // ⚠️⚠️ BRAK CZESCI ODMAWIA, a nie wraca do domyslnej (decyzja wlasciciela 2026-09-02
-  // wieczorem: paczka to DWA pliki). Plik sprzedazowy i kosztowy wygladaja identycznie,
+  // ⚠️⚠️ BRAK CZESCI ODMAWIA, a nie wraca do domyslnej. Plik sprzedazowy i kosztowy wygladaja identycznie,
   // dopoki sie ich nie otworzy — „niech bedzie sprzedaz" oddawaloby ksiegowej cichaczem
   // nie ten rejestr, o ktory prosila. To ta sama zasada, co przy miesiacu.
   it('brak albo nieznana czesc = 400 zdaniem wymieniajacym oba pliki', async () => {
@@ -836,7 +834,7 @@ describe('GET /faktury/paczka', () => {
 
   // Odnośnik niesie miesiąc, NA KTÓRY OPERATOR PATRZY — inaczej pobrałby zestawienie za
   // miesiąc bieżący, mimo że tabela obok pokazuje inny. Paczki z dokumentami nie mogą wrócić
-  // bocznym przyciskiem: właściciel zostawił na tym ekranie tylko samą listę przychodów.
+  // bocznym przyciskiem: ten ekran pokazuje tylko samą listę przychodów.
   it('jedyny odnośnik PDF na /faktury prowadzi do zestawienia przychodów wybranego miesiąca', async () => {
     const { app } = serwerZBaza({ paczkaDlaBiura: { zbudujZestawieniePrzychodow: async () => ({}) } });
     const r = await app.inject({ method: 'GET', url: '/faktury?miesiac=2026-07', headers: AUTH });
@@ -846,7 +844,7 @@ describe('GET /faktury/paczka', () => {
     expect(r.body).not.toContain('Paczka dla biura — koszty (PDF)');
   });
 
-  // ⚠️⚠️ JEDNA PACZKA NARAZ (recenzja calej galezi). Trasa jest SYNCHRONICZNA i potrafi chodzic
+  // ⚠️⚠️ JEDNA PACZKA NARAZ. Trasa jest SYNCHRONICZNA i potrafi chodzic
   // do minuty (do ~90 pobran z inFaktu), a przegladarka przez ten czas nic nie pokazuje — wiec
   // drugie klikniecie w przycisk jest zachowaniem NORMALNYM, nie bledem operatora. Bez tej
   // blokady dwa przebiegi ciagnelyby rownolegle te same dokumenty z inFaktu i scalaly je

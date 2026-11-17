@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { podlaczStrefe, sprawdzPlik, MAKS_BAJTOW } from '../../src/public/logo-przeciaganie.js';
 
-// PRZ-108.03b: przeciąganie pliku w sekcji Logo (Ustawienia → Firma). Plik, który naprawdę jedzie do przeglądarki,
+// Przeciąganie pliku w sekcji Logo (Ustawienia → Firma). Plik, który naprawdę jedzie do przeglądarki,
 // na atrapach elementów (repo nie ma biblioteki DOM). Zasada: upuszczony plik trafia do TEGO SAMEGO
 // <input type="file" name="logo"> (przez DataTransfer), więc formularz wysyła go jak plik wybrany z dysku;
 // serwer i tak sprawdza typ i rozmiar — przeglądarka tylko mówi o błędzie od razu.

@@ -36,7 +36,7 @@ function probe(mode: 'worker' | 'baza' | 'cleanup-error', check: (data: any, wor
   if (mode === 'baza') {
     // Wabik: druga zmienna wskazuje inny katalog. os.tmpdir() bez TMPDIR czyta na Windows TEMP przed TMP,
     // a na Linuksie TMP przed TEMP (dokumentacja Node) — wabik idzie zawsze do tej, która przegrywa.
-    // Na sztywno TMP=wabik dawało na CI ubuntu katalog przebiegu pod wabikiem (16.10.2026).
+    // Na sztywno TMP=wabik dawało na CI ubuntu katalog przebiegu pod wabikiem.
     const [wygrywa, przegrywa] = process.platform === 'win32' ? ['TEMP', 'TMP'] : ['TMP', 'TEMP'];
     delete childEnv.TMPDIR;
     childEnv[wygrywa] = base;

@@ -1,7 +1,7 @@
-// PRZ-091 — ekrany stanów magazynowych w zakładce Magazyn: lista, karta, ruch ręczny, import, pozycje bez karty.
+// Ekrany stanów magazynowych w zakładce Magazyn: lista, karta, ruch ręczny, import, pozycje bez karty.
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { utworzKarte, zapiszProduktSklepowy, powiazProdukt } from '../../../src/oms/db/magazyn.js';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { przelaczStany, stanKarty } from '../../../src/oms/db/stany-magazynowe.js';
@@ -33,7 +33,7 @@ const zamowienieAllegro = (ilosc, at = '2026-10-17T09:00:00.000Z') => zapiszZamo
     produkt_id: null, oferta_id: '9000000001' }],
 }, {});
 
-describe('stany wyłączone (domyślnie) — ekrany jak przed PRZ-091', () => {
+describe('stany wyłączone (domyślnie) — ekrany bez zmian względem wersji bez stanów', () => {
   it('lista bez kolumny „Na stanie” i bez paska stanów, karta bez sekcji stanu', async () => {
     const lista = (await get('/magazyn')).body;
     expect(naglowekTabeli(lista)).toContain('Kategoria');

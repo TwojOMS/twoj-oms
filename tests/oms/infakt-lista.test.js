@@ -54,7 +54,7 @@ describe('listaFaktur', () => {
     expect(await c.listaFaktur({ od: '2026-06-01', do: '2026-06-30' })).toEqual([]);
   });
 
-  // Krok luk KSeF w czuwaczu (2026-08-29) ma WŁASNY, ciaśniejszy budżet czasu niż ekran —
+  // Krok luk KSeF w czuwaczu ma WŁASNY, ciaśniejszy budżet czasu niż ekran —
   // sufit per wywołanie pozwala mu odmówić wcześniej, zanim przebieg godzinowy się rozjedzie.
   // Ta sama zasada, co przy sufcie globalnym: cicha część wyniku wygląda jak komplet.
   it('sufit stron per wywołanie zawęża odmowę, nie luzuje jej', async () => {

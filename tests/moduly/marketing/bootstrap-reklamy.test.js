@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { zbudujOms, uruchomZegary } from '../../pomoc/bootstrap-parytetu.ts';
+import { zbudujOms, uruchomZegary } from '../../pomoc/budowa-oms-testowa.ts';
 import { zapiszPolaczenie, dni } from '../../../src/oms/db/reklamy.js';
 
 const env = (nad = {}) => ({

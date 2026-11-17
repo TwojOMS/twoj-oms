@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { skrocFormePrawna } from '../../src/domena/forma-prawna.js';
 
-// PRZ-078: nazwa nabywcy z inFaktu bywa pełną formą prawną wielkimi literami, a jej najdłuższe
+// Nazwa nabywcy z inFaktu bywa pełną formą prawną wielkimi literami, a jej najdłuższe
 // słowo („ODPOWIEDZIALNOŚCIĄ") nie łamie się — kolumna „Nabywca" rozpychała tabelę faktur.
 describe('skrocFormePrawna', () => {
   it('skraca spółkę z o.o. wielkimi literami', () => {

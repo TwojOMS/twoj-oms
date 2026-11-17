@@ -12,7 +12,7 @@ export const ZMIENNE_PANEL = Object.freeze({
   INFAKT_API_KEY: 'Integracje → inFakt',
   FAKTUROWNIA_API_TOKEN: 'Integracje → Fakturownia',
   FAKTUROWNIA_DOMENA: 'Integracje → Fakturownia',
-  // PRZ-121.02: wybór modułu faktur — zapisuje tylko administrator; plik wygrywa; zmiana po ponownym uruchomieniu.
+  // Wybór modułu faktur — zapisuje tylko administrator; plik wygrywa; zmiana po ponownym uruchomieniu.
   OMS_PROGRAM_FAKTUROWY: 'Faktury i podatki → Program do faktur (tylko administrator; plik wygrywa; po ponownym uruchomieniu)',
   GUS_KLUCZ: 'Integracje → GUS',
   KSEF_TOKEN: 'Integracje → KSeF',
@@ -31,10 +31,10 @@ export const ZMIENNE_PANEL = Object.freeze({
   DPD_NADAWCA_KRAJ: 'Firma',
   DPD_NADAWCA_TELEFON: 'Firma',
   DPD_NADAWCA_EMAIL: 'Firma',
-  // PRZ-102.20: rachunek i bank — zapisuje tylko administrator (domena/rachunek-firmy.js).
+  // Rachunek i bank — zapisuje tylko administrator (domena/rachunek-firmy.js).
   OMS_RACHUNEK: 'Firma (tylko administrator)',
   OMS_BANK: 'Firma (tylko administrator)',
-  // PRZ-108.10: NIP i BDO — zapisuje tylko administrator, każde pole osobno (domena/nip-bdo-firmy.js).
+  // NIP i BDO — zapisuje tylko administrator, każde pole osobno (domena/nip-bdo-firmy.js).
   OMS_SPRZEDAWCA_NIP: 'Firma (tylko administrator)',
   OMS_SPRZEDAWCA_BDO: 'Firma (tylko administrator)',
   SMTP_HOST: 'Integracje → Poczta wychodząca',

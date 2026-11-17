@@ -1,5 +1,5 @@
-// PRZ-076 — kontrakt atrap piaskownicy z prawdziwymi klientami (decyzja właściciela 14.10: atrapa na poziomie metod
-// + test kontraktu). Rozjazd atrapy z klientem ma łamać ten test, a nie wychodzić dopiero w piaskownicy:
+// Kontrakt atrap piaskownicy z prawdziwymi klientami: atrapa na poziomie metod
+// i test kontraktu. Rozjazd atrapy z klientem ma łamać ten test, a nie wychodzić dopiero w piaskownicy:
 //   1) atrapy mają KAŻDĄ metodę prawdziwych klientów — nowa metoda w kliencie bez atrapy = czerwony test;
 //   2) prawdziwy klient inFaktu karmiony przez fetchImpl surowymi encjami atrapy oddaje to samo co atrapa;
 //   3) encje atrapy mają pola, które czytają widok listy i reguły domeny.
@@ -51,7 +51,7 @@ const DZIS = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Warsaw' 
 const metody = (o) => Object.keys(o).filter((k) => typeof o[k] === 'function').sort();
 const ciche = () => {};
 
-describe('PRZ-119.04 — kontrakt Fakturowni bez sieci', () => {
+describe('kontrakt Fakturowni bez sieci', () => {
   const opcje = { env: { OMS_TRYB: 'proba' }, token: 'demo', log: ciche, teraz: () => new Date('2026-11-12T12:00:00Z') };
   const bazy = [];
   const nowaBaza = () => { const db = new DatabaseSync(':memory:'); bazy.push(db); return db; };
@@ -154,7 +154,7 @@ describe('PRZ-119.04 — kontrakt Fakturowni bez sieci', () => {
     expect(zaplata).toEqual({ ...odpowiedzZaplaty, id: dokument.id });
     expect(await klient.pobierzFakture(dokument.id)).toMatchObject({ status: 'paid', paid: dokument.price_gross,
       paid_date: '2026-11-12', gov_status: null });
-    // PRZ-119.05: data zapłaty z zamówienia (PUT paid_date po change_status) — atrapa ją zapisuje.
+    // Data zapłaty z zamówienia (PUT paid_date po change_status) — atrapa ją zapisuje.
     const zData = await a.oznaczZaplacona(dokument.id, { paidDate: '2026-11-10' });
     expect(zData).toMatchObject({ id: dokument.id, paid_date: '2026-11-10' });
     expect(await klient.oznaczZaplacona(dokument.id, { paidDate: '2026-11-10' })).toEqual(zData);
@@ -207,7 +207,7 @@ describe('PRZ-119.04 — kontrakt Fakturowni bez sieci', () => {
   });
 });
 
-describe('PRZ-152.G1 — nadanie WzA atrapy', () => {
+describe('nadanie WzA atrapy', () => {
   it('reset demo usuwa stan przesyłek atrapy', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wza-reset-'));
     const baza = path.join(dir, 'oms.sqlite');
@@ -307,7 +307,7 @@ describe('komplet metod', () => {
     expect(ODMOWY_WOO.filter((m) => !prawdziwy.includes(m))).toEqual([]);
   });
 
-  // PRZ-160.P3b.01: kategorie produktów sklepu — kształt `GET /products/categories` (nazwa z encjami HTML, count).
+  // Kategorie produktów sklepu — kształt `GET /products/categories` (nazwa z encjami HTML, count).
   it('atrapa Woo oddaje kategorie produktów: te z katalogu z liczbą produktów, nazwę z encją i pustą', async () => {
     const lista = await createAtrapaWoo({ db, kanal: 'polcien', env: ENV_DEMO, log: ciche }).pobierzKategorieProduktow();
     const zKatalogu = new Set(katalogWoo('polcien').produkty.flatMap((p) => p.categories.map((k) => k.id)));
@@ -318,8 +318,8 @@ describe('komplet metod', () => {
     expect(lista.some((k) => k.count === 0)).toBe(true);
   });
 
-  // PRZ-160.E3.15: wystawianie ofert działa w piaskownicy na atrapie — żadna metoda E3 nie jest już odmową.
-  it('E3.15: ODMOWY_ALLEGRO nie zawiera metod E3; atrapa ma je wszystkie, demo ma mapę, marki i 4 oferty', async () => {
+  // Wystawianie ofert działa w piaskownicy na atrapie — żadna metoda E3 nie jest już odmową.
+  it('ODMOWY_ALLEGRO nie zawiera metod ofert; atrapa ma je wszystkie, demo ma mapę, marki i 4 oferty', async () => {
     const prawdziwy = metody(createAllegroClient({ ustawienia: { api: 'https://x.invalid', userAgent: 'a/1 (+https://x.invalid)' },
       tokeny: { waznyToken: async () => 't' }, fetchImpl: async () => { throw new Error('sieć'); } }));
     expect(METODY_OFERT_ALLEGRO).toHaveLength(21); // E4.19: +komendaPublikacji
@@ -355,7 +355,7 @@ describe('komplet metod', () => {
     expect(ODMOWY_ALLEGRO.filter((m) => !prawdziwy.includes(m))).toEqual([]);
   });
 
-  // PRZ-160.04a: pełny odczyt oferty i kategorii w piaskownicy — kształt jak `GET /sale/product-offers/{id}` (P8).
+  // Pełny odczyt oferty i kategorii w piaskownicy — kształt jak `GET /sale/product-offers/{id}`.
   it('atrapa Allegro oddaje ofertę, kategorię i parametry w pełnym kształcie; obce id = 404', async () => {
     const allegro = createAtrapaAllegro({ db, kanal: 'allegro', env: ENV_DEMO, log: ciche });
     const [pierwsza] = await allegro.pobierzOferty();
@@ -366,7 +366,7 @@ describe('komplet metod', () => {
     const w = trescOfertyAllegro(oferta, kategoria);
     expect(w.pola).toEqual({ nazwa: pierwsza.name, ean: expect.stringMatching(/^\d{13}$/), cena_gr: expect.any(Number), stawka_vat: '23' });
     expect(poprawnyEan(w.pola.ean)).toBe(true);
-    // PRZ-160.08: demo ma 2–3 zdjęcia na ofertę; pierwsze = zdjęcie główne.
+    // Demo ma 2–3 zdjęcia na ofertę; pierwsze = zdjęcie główne.
     expect(w.zdjecia[0]).toBe(pierwsza.primaryImage.url);
     expect(w.zdjecia.length).toBeGreaterThanOrEqual(2);
     expect(w.zdjecia.length).toBeLessThanOrEqual(3);
@@ -381,7 +381,7 @@ describe('komplet metod', () => {
     }
   });
 
-  // PRZ-092: kurier DPD z Ustawień w piaskownicy.
+  // Kurier DPD z Ustawień w piaskownicy.
   it('atrapa DPD ma każdą metodę createDpdClient; nadanie odmawia 400, sprawdzenie nie wychodzi do sieci', async () => {
     const opcje = { url: 'https://x.invalid', login: 'l', haslo: 'h', fid: '1', infoUrl: '', channel: '',
       nadawca: { nazwa: 'N', ulica: 'U 1', kod: '00-001', miasto: 'M' }, fetchImpl: async () => { throw new Error('sieć'); } };
@@ -400,7 +400,7 @@ describe('komplet metod', () => {
     expect(() => createAtrapaDpd({ env: {} })).toThrow('OMS_TRYB=proba');
   });
 
-  // PRZ-093.09: kurier InPost z Ustawień w piaskownicy.
+  // Kurier InPost z Ustawień w piaskownicy.
   it('atrapa InPost ma każdą metodę createInpostClient; nadanie odmawia 400, sprawdzenie nie wychodzi do sieci', async () => {
     const opcje = { url: 'https://x.invalid', token: 't', organizacja: 1,
       nadawca: { nazwa: 'N', ulica: 'U 1', kod: '00-001', miasto: 'M' }, fetchImpl: async () => { throw new Error('sieć'); } };
@@ -420,7 +420,7 @@ describe('komplet metod', () => {
     expect(() => createAtrapaInpost({ env: {} })).toThrow('OMS_TRYB=proba');
   });
 
-  // PRZ-102.11: klucz GUS z Ustawień w piaskownicy — „Sprawdź połączenie” na atrapie, pobranie firmy odmawia jak w demo.
+  // Klucz GUS z Ustawień w piaskownicy — „Sprawdź połączenie” na atrapie, pobranie firmy odmawia jak w demo.
   it('atrapa GUS ma każdą metodę createGusClient i pośrednika z Ustawień; sprawdzenie nie wychodzi do sieci', async () => {
     const prawdziwy = metody(createGusClient({ klucz: 'k', url: 'https://x.invalid' }, { fetchImpl: async () => { throw new Error('sieć'); } }))
       .filter((m) => !m.startsWith('_')); // `_sesja` to podgląd stanu dla testów klienta, nie metoda usługi
@@ -433,7 +433,7 @@ describe('komplet metod', () => {
     expect(() => createAtrapaGus({ env: {} })).toThrow('OMS_TRYB=proba');
   });
 
-  // PRZ-102.22: token KSeF (faktury kosztowe) z Ustawień w piaskownicy — logowanie i lista faktur bez sieci, PDF odmawia.
+  // Token KSeF (faktury kosztowe) z Ustawień w piaskownicy — logowanie i lista faktur bez sieci, PDF odmawia.
   it('atrapa KSeF i odmowa piaskownicy mają każdą metodę createKsefClient; logowanie i lista nie wychodzą do sieci', async () => {
     const prawdziwy = metody(createKsefClient({ token: 't', nip: '1234563218', fetchImpl: async () => { throw new Error('sieć'); } }));
     const atrapa = createAtrapaKsef({ env: ENV_DEMO, token: 'zmyslony' });
@@ -452,7 +452,7 @@ describe('komplet metod', () => {
     expect(() => koszty.konfiguracja({ ...ENV_DEMO, OMS_TRYB: 'produkcja' })).toThrow('atrapaKsef');
   });
 
-  // PRZ-094.04: poczta z Ustawień w piaskownicy — atrapa poczty zastępuje i mailer z pliku, i pośrednika z ekranu.
+  // Poczta z Ustawień w piaskownicy — atrapa poczty zastępuje i mailer z pliku, i pośrednika z ekranu.
   it('atrapa poczty ma każdą metodę createMailer i pośrednika poczty z Ustawień; wysyłka nie wychodzi do sieci', async () => {
     const poczta = { smtp: { host: 'smtp.example.invalid', port: 465, user: 'u@example.invalid', pass: 'p' }, mailFrom: 'u@example.invalid' };
     const prawdziwy = metody(createMailer({ ...poczta, transportFactory: () => ({ sendMail: async () => { throw new Error('sieć'); } }) }));
@@ -520,7 +520,7 @@ describe('kształty inFaktu: prawdziwy klient na encjach atrapy oddaje to samo',
       .toEqual(Object.keys(await prawdziwy.wystawKorekte({})).sort());
     expect(Object.keys(await infakt.oznaczZaplacona(w.uuid)).sort()).toEqual(Object.keys(await prawdziwy.oznaczZaplacona(w.uuid)).sort());
     expect(Object.keys(await infakt.wyslijDokumentDoKsef(w.uuid)).sort()).toEqual(Object.keys(await prawdziwy.wyslijDokumentDoKsef(w.uuid)).sort());
-    // Pułapka z 10.08.2026 odtworzona wiernie: zapłata zmienia status, `left_to_pay` zostaje.
+    // Pułapka odtworzona wiernie: zapłata zmienia status, `left_to_pay` zostaje.
     const po = await infakt.pobierzFakture(w.uuid);
     expect([po.status, po.left_to_pay]).toEqual(['paid', 12300]);
   });
@@ -542,17 +542,17 @@ describe('kształty inFaktu: prawdziwy klient na encjach atrapy oddaje to samo',
     for (const d of [...await infakt.listaFaktur({}), ...await infakt.listaKorekt({})]) {
       expect(POLA.filter((p) => !Object.hasOwn(d, p)), d.number).toEqual([]);
       expect(Number.isInteger(d.gross_price), d.number).toBe(true);
-      // Kolumna „Nabywca” (faktury.ejs): firma albo imię i nazwisko — pusta była błędem atrapy (14.10).
+      // Kolumna „Nabywca” (faktury.ejs): firma albo imię i nazwisko — pusta wartość byłaby błędem atrapy.
       expect(d.client_company_name || [d.client_first_name, d.client_last_name].filter(Boolean).join(' '), d.number).toBeTruthy();
     }
   });
 });
 
-// PRZ-108.09 (zmiana C2 planu automatyzacji): atrapy DPD i InPost oddają realistyczny przebieg paczki — zarejestrowana →
+// Atrapy DPD i InPost oddają realistyczny przebieg paczki — zarejestrowana →
 // odebrana przez kuriera (10 min po nadaniu) → w drodze → doręczona — liczony od `utworzona_at` paczki w bazie piaskownicy.
 // Bez tego „Kurier odebrał paczkę” byłoby w piaskownicy martwe (statusPrzesylki() → null). Kształt odpowiedzi atrapy =
 // to, co prawdziwy klient wyczytuje z surowej odpowiedzi kuriera zbudowanej przez atrapę (SOAP DPD, JSON ShipX).
-describe('przebieg przesyłki w atrapach DPD i InPost (PRZ-108.09)', () => {
+describe('przebieg przesyłki w atrapach DPD i InPost', () => {
   const MIN = 60_000;
   const T0 = Date.parse('2026-10-21T10:00:00.000Z');
   const opcjeDpd = { url: 'https://x.invalid', login: 'l', haslo: 'h', fid: '1', infoUrl: 'https://x.invalid/info', channel: 'k',
@@ -629,8 +629,8 @@ describe('przebieg przesyłki w atrapach DPD i InPost (PRZ-108.09)', () => {
   });
 });
 
-// PRZ-160.E3.15 — atrapa ofert Allegro: surowy serwer HTTP w kształtach z pomiaru, za nim PRAWDZIWY klient Allegro.
-describe('PRZ-160.E3.15 — atrapa ofert Allegro', () => {
+// Atrapa ofert Allegro: surowy serwer HTTP w kształtach z pomiaru, za nim PRAWDZIWY klient Allegro.
+describe('atrapa ofert Allegro', () => {
   const T0 = new Date('2026-11-14T10:00:00.000Z');
   const bazy = [];
   afterAll(() => bazy.forEach((b) => b.close()));

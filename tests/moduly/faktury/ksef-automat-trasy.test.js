@@ -1,10 +1,10 @@
-// PRZ-102.12 — ekran automatu wysyłki do KSeF (Ustawienia → Integracje → inFakt), wynik ostatniego przebiegu
+// Ekran automatu wysyłki do KSeF (Ustawienia → Integracje → inFakt), wynik ostatniego przebiegu
 // i wiersz na stronie głównej. Prawdziwy serwer i prawdziwe moduły, konta z rolami; inFakt niepodłączony
 // (ekran ma wtedy powiedzieć, że automat nic nie wyśle) — żadne żądanie nie wychodzi z procesu.
 import ejs from 'ejs';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
-import { nowyPanel, jako, get, post } from '../../pomoc/konta-prz068.js';
+import { nowyPanel, jako, get, post } from '../../pomoc/panel-konta-testowe.js';
 import { modulRdzen } from '../../../src/moduly/rdzen/modul.ts';
 import { modulWeb } from '../../../src/core/web/modul.ts';
 import { modulKanaly } from '../../../src/moduly/kanaly/modul.ts';
@@ -32,7 +32,7 @@ function panel() {
 
 afterEach(() => { vi.useRealTimers(); });
 
-it('PRZ-102.26: ustawienie B2C domyślnie wyłączone, zapis firmowy i 403 bez prawa do Ustawień', async () => {
+it('ustawienie B2C domyślnie wyłączone, zapis firmowy i 403 bez prawa do Ustawień', async () => {
   const p = panel();
   const url = `${ADRES}/ksef-konsumenckie`;
   try {
@@ -52,11 +52,11 @@ it('PRZ-102.26: ustawienie B2C domyślnie wyłączone, zapis firmowy i 403 bez p
   } finally { await p.app.close(); p.db.close(); }
 });
 
-// PRZ-108.06: formularz automatu (przełącznik, godzina, złe wejścia, „jutro o 20:00”) przeniesiony na ekran
+// Formularz automatu (przełącznik, godzina, złe wejścia, „jutro o 20:00”) przeniesiony na ekran
 // Ustawienia → Automatyzacje — jego testy są w tests/moduly/automatyzacje/ekran-ksef.test.js (tam też stary adres
 // zapisu i kafel stanu na ekranie inFaktu). Zmiana zachowania: zapis tylko dla admina (dawniej każde konto z „ustawienia”).
 
-describe('PRZ-102.12 wynik ostatniego przebiegu', () => {
+describe('wynik ostatniego przebiegu', () => {
   const wynik = {
     dzien: '2026-10-20', startAt: '2026-10-20T18:01:00.000Z', koniecAt: '2026-10-20T18:01:05.000Z', stan: 'blad',
     wyslane: [{ uuid: 'A', numer: 'A/10/2026' }], niepewne: [{ uuid: 'B', numer: 'B/10/2026' }], pominiete: [],
@@ -77,7 +77,7 @@ describe('PRZ-102.12 wynik ostatniego przebiegu', () => {
     expect(r.body).toContain('automat KSeF');
   });
 
-  // Poprawka po drugiej recenzji: przerwany/trwający przebieg z pustymi listami nie jest „nic do wysłania”.
+  // Przerwany/trwający przebieg z pustymi listami nie jest „nic do wysłania”.
   it.each([
     ['przerwany', { uuid: 'A', numer: 'A/10/2026' }, 'sprawdź w inFakcie'],
     ['trwa', { uuid: 'A', numer: 'A/10/2026' }, 'Przebieg trwa — odśwież za chwilę'],
@@ -114,7 +114,7 @@ describe('PRZ-102.12 wynik ostatniego przebiegu', () => {
     expect(wczytajAutomatKsef(p.db).wstrzymane).toEqual([]);
   });
 
-  // PRZ-123 C09ca: przy wpisie „odrzucona” / „nie-wyslano” (TwojeFaktury) zdjęcie wpisu niczego nie wysyła — ta wersja
+  // Przy wpisie „odrzucona” / „nie-wyslano” (TwojeFaktury) zdjęcie wpisu niczego nie wysyła — ta wersja
   // nie wraca do kolejki automatu — więc „Zwolnij” nie ma, a trasa odmawia.
   const wstrzymaj = (p, wpisy) => p.db.prepare('INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)')
     .run('ksef.automat.wstrzymane', JSON.stringify(wpisy), '2026-10-27T10:15:00.000Z');
@@ -122,7 +122,7 @@ describe('PRZ-102.12 wynik ostatniego przebiegu', () => {
   const NIE_DOSZLA = { uuid: 'N', numer: 'N/10/2026', dzien: '2026-10-27', powod: 'kod 401', kod: 'nie-wyslano', wersja: 1 };
   const formularzZwolnij = (body, uuid) => new RegExp(`action="/faktury/ksef/automat/zwolnij"[^>]*>\\s*<input type="hidden" name="uuid" value="${uuid}"`, 'u').test(body);
 
-  it('C09ca: wpis „odrzucona” i „nie-wyslano” — bez formularza „Zwolnij”, ze zdaniem, co zrobić; wpis bez kodu — z formularzem', async () => {
+  it('wpis „odrzucona” i „nie-wyslano” — bez formularza „Zwolnij”, ze zdaniem, co zrobić; wpis bez kodu — z formularzem', async () => {
     const p = panel();
     wstrzymaj(p, [ODRZUCONA, NIE_DOSZLA, { uuid: 'B', numer: 'B/10/2026', dzien: '2026-10-20', powod: 'inFakt odrzucił (422)' }]);
     const r = await get(p.app, '/faktury/ksef/automat', p.ewa);
@@ -171,7 +171,7 @@ describe('PRZ-102.12 wynik ostatniego przebiegu', () => {
     expect(html).not.toMatch(/wymaga(ją)? człowieka/u);
   });
 
-  it('C09ca: POST „Zwolnij” przy wpisie „nie-wyslano” / „odrzucona” → 409 po polsku, wpis zostaje; bez kodu — jak dotąd', async () => {
+  it('POST „Zwolnij” przy wpisie „nie-wyslano” / „odrzucona” → 409 po polsku, wpis zostaje; bez kodu — jak dotąd', async () => {
     const p = panel();
     wstrzymaj(p, [ODRZUCONA, NIE_DOSZLA, { uuid: 'B', numer: 'B/10/2026', dzien: '2026-10-20', powod: 'inFakt odrzucił (422)' }]);
     for (const uuid of ['N', 'R']) {
@@ -185,7 +185,7 @@ describe('PRZ-102.12 wynik ostatniego przebiegu', () => {
     expect(wczytajAutomatKsef(p.db).wstrzymane.map((w) => w.uuid)).toEqual(['R', 'N']);
   });
 
-  // PRZ-123 ZDROWIE-RECZNIE (poprawka po recenzji): w trybie „ręcznie” automat niczego nie wysyła, więc ekran automatu
+  // W trybie „ręcznie” automat niczego nie wysyła, więc ekran automatu
   // i odmowa „Zwolnij” przy wpisie „odrzucona” nie mogą obiecywać, że poprawioną wersję „automat wyśle sam”.
   it('ZDROWIE-RECZNIE: tryb „ręcznie” + wpis „odrzucona” — ekran i 409 każą wysłać poprawioną wersję ręcznie', async () => {
     const p = panel();

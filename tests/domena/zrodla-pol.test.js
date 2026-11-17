@@ -5,7 +5,7 @@ import {
   polePuste, importMozeZapisac, POLA_ZASTANE, POLA_DODATNIE,
 } from '../../src/domena/zrodla-pol.js';
 
-// PRZ-160 E1.01 — reguła ochrony pól karty przed importem treści z kanału.
+// Reguła ochrony pól karty przed importem treści z kanału.
 // Import pisze pole TYLKO, gdy kolumna jest pusta albo pole ma wiersz źródła z reczne = 0.
 // Niepusta kolumna BEZ wiersza źródła (edycja hurtem, nadanie SKU, nowa karta, stare wydanie) jest chroniona.
 

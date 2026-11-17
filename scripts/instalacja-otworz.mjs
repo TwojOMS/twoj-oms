@@ -2,7 +2,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import { PLIKI_INSTALACJI, envEtapu, odczytajEnv, opcje, oczyscPowod, sciezkaKlucza, sekretyKatalogu, zapewnijKlucz } from './instalacja-wspolne.mjs';
-// Dynamicznie, PO kontroli wersji z instalacja-wspolne.mjs (PRZ-093.03) — statyczny import .ts wywraca stary Node bez słowa.
+// Dynamicznie, PO kontroli wersji z instalacja-wspolne.mjs — statyczny import .ts wywraca stary Node bez słowa.
 const { uruchomOms } = await import('../src/main.ts');
 let sekrety = [];
 async function main() {
@@ -18,7 +18,7 @@ async function main() {
     || path.resolve(proba.OMS_ETYKIETY_KATALOG ?? '') !== path.join(katalog, 'etykiety')) {
     throw new Error('INSTALACJA_NIEZGODNY_KATALOG');
   }
-  // PRZ-182: katalog próby sprzed szyfrowania nie ma pliku klucza — `klucz-zapewnij` tworzy go tylko wtedy, gdy
+  // Katalog próby sprzed szyfrowania nie ma pliku klucza — `klucz-zapewnij` tworzy go tylko wtedy, gdy
   // baza nie ma szyfrogramów; istniejący plik jest wyłącznie sprawdzany (pusty albo ucięty = odmowa).
   await zapewnijKlucz(plikKlucza, path.join(katalog, PLIKI_INSTALACJI.baza));
   const env = await envEtapu(katalog);
@@ -34,7 +34,7 @@ async function main() {
   process.once('SIGINT', stop);
   process.once('SIGTERM', stop);
 }
-// PRZ-093.03: kod zostaje, dochodzi powód (zajęty port, brak pliku próby, niezgodny katalog).
+// Kod zostaje, dochodzi powód (zajęty port, brak pliku próby, niezgodny katalog).
 main().catch((e) => {
   console.error(`INSTALACJA_OTWARCIE_ODMOWA: ${oczyscPowod(e instanceof Error ? e.message : e, sekrety)}`);
   process.exitCode = 1;

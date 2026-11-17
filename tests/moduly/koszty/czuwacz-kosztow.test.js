@@ -308,7 +308,7 @@ describe('czuwacz kosztow — trujacy dokument', () => {
   });
 });
 
-// ⚠️⚠️ KWARANTANNA MA MIEĆ WEJŚCIE, WYJŚCIE I WIDOCZNOŚĆ DŁUŻSZĄ NIŻ JEDNA NOC (recenzja, W1+W4).
+// ⚠️⚠️ KWARANTANNA MA MIEĆ WEJŚCIE, WYJŚCIE I WIDOCZNOŚĆ DŁUŻSZĄ NIŻ JEDNA NOC.
 //
 // Pierwsza wersja liczyła oba te fakty z licznika BIEŻĄCEGO przebiegu — a `zapiszKursor`
 // gasi `ostatni_blad` przy każdym udanym przebiegu. Skutek zmierzony sondą: dokument
@@ -385,7 +385,7 @@ describe('czuwacz kosztow — kwarantanna widoczna i opuszczalna', () => {
   });
 });
 
-// ⚠️⚠️ OKNO NIE MA PRAWA ODDAĆ SWOJEGO STANU OKNU NASTĘPNEMU (recenzja, W2+W3).
+// ⚠️⚠️ OKNO NIE MA PRAWA ODDAĆ SWOJEGO STANU OKNU NASTĘPNEMU.
 //
 // `ostatniaData` była wspólna dla WSZYSTKICH okien, więc pusta strona z `isTruncated` w oknie N
 // dostawała datę z okna N-1 i strażnik `!ostatniaData` — napisany dokładnie na ten przypadek —
@@ -523,7 +523,7 @@ describe('czuwacz kosztow — granice okien', () => {
   });
 });
 
-// ⚠️⚠️ UDANY PRZEBIEG JEST FAKTEM NIEZALEZNYM OD TEGO, CZY KURSOR SIE RUSZYL (recenzja, W1).
+// ⚠️⚠️ UDANY PRZEBIEG JEST FAKTEM NIEZALEZNYM OD TEGO, CZY KURSOR SIE RUSZYL.
 //
 // `zapiszKursor` byl JEDYNYM zapisem `ostatnie_udane_at` i jedynym miejscem kasujacym
 // `ostatni_blad` — a wolany byl tylko wtedy, gdy przebieg cokolwiek przeczytal. Skutek:
@@ -561,7 +561,7 @@ describe('czuwacz kosztow — udany przebieg bez dokumentow', () => {
   });
 });
 
-// ⚠️⚠️ OKNO PRZYROSTOWE ZACHODZI NA POPRZEDNIE (recenzja calej galezi, K1).
+// ⚠️⚠️ OKNO PRZYROSTOWE ZACHODZI NA POPRZEDNIE.
 //
 // Kursor to maksimum `permanentStorageDate` dokumentow, KTORE WROCILY Z ZAPYTANIA — a nie
 // „wszystkiego, co KSeF juz zapisal". Dokument zapisany przed ta chwila, lecz widoczny dopiero
@@ -618,7 +618,7 @@ describe('czuwacz kosztow — zapas okna przyrostowego', () => {
     expect(db.prepare('SELECT COUNT(*) c FROM koszty').get().c).toBe(2);
   });
 
-  // ⚠️ D1: kursor z przyszlosci (skew zegara albo data z KSeF w innej strefie) dawal PUSTA
+  // ⚠️ Kursor z przyszlosci (skew zegara albo data z KSeF w innej strefie) dawal PUSTA
   // liste okien — czuwacz nie robil NIC, na zawsze, bez ani jednego bledu.
   it('⚠️ kursor z przyszlosci nie zatrzymuje pobierania i zostawia slad', async () => {
     const db = openOmsDb();
@@ -853,7 +853,7 @@ describe('czuwacz kosztow — archiwum XML', () => {
     expect(stanKosztow(db).kursor).toBe('2026-06-05T10:00:00.000Z');
   });
 
-  // ⚠️⚠️ HTTP 429 TO PROSBA O PRZERWE, NIE AWARIA ZRODLA (zmierzone na produkcji 2026-09-02).
+  // ⚠️⚠️ HTTP 429 TO PROSBA O PRZERWE, NIE AWARIA ZRODLA.
   //
   // Przebieg pobral 16 XML-i w ~20 s, a potem KSeF odbijal kazde zadanie zdaniem „Przekroczono
   // limit 16 zadan na minute. Sprobuj ponownie po 54 sekundach". Licznik `bledyZRzedu` — pisany

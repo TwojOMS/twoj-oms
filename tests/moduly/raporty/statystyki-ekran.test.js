@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { openOmsDb } from '../../pomoc/dane-miesieczne-parytetu.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { openOmsDb } from '../../pomoc/testowe-dane-miesieczne.js';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
 const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64') };
 const config = { auth: { user: 'adam', pass: 'x' }, klienciZbiorczy: [] };
@@ -22,7 +22,7 @@ const wstaw = (d = {}) => {
     VALUES (@sklep,@zrodlo_id,@numer,@metoda_wysylki,@metoda_wysylki_nazwa,@pobranie,@b2b,
             @indywidualne,@metoda_platnosci,@kwota_brutto,@klient_json,@oplacone_at,
             @wyslane_at,@anulowane,@utworzone_at)`).run(w);
-  // ⚠️ WPŁATA NA LIŚCIE, NIE TYLKO KOLUMNA — dopisane 13.09.2026 przy poprawce krytycznej.
+  // ⚠️ WPŁATA NA LIŚCIE, NIE TYLKO KOLUMNA.
   // Zakładka czyta teraz `oplacone_at` EFEKTYWNE (wyliczone z tabeli `platnosci`, tak samo
   // jak lista zamówień), a nie surową kolumnę. Poller naprawdę dopisuje taki wiersz przy
   // każdej synchronizacji (`zsynchronizujWplateSklepu` w db/platnosci.js), więc fikstura
@@ -60,8 +60,7 @@ describe('ekran /statystyki', () => {
 
   // ⚠️⚠️ UKŁAD SEKCJI TO KONWENCJA DOMU, KTÓREJ NIC NIE PILNOWAŁO. Pierwsza wersja ekranu
   // wstawiała `h2` i tabelę wprost w `section.panel` — a ta klasa ma w layoucie
-  // `padding: 0`, więc nagłówki i wiersze tabeli dotykały ramki panelu (zgłoszone przez
-  // właściciela 13.09.2026: „w polach nie ma marginesów"). Suita była wtedy w pełni zielona:
+  // `padding: 0`, więc nagłówki i wiersze tabeli dotykały ramki panelu (bez marginesów). Suita była wtedy w pełni zielona:
   // ekran odpowiadał 200 i niósł wszystkie liczby. Padding daje `div.panel-cialo`,
   // a kapitaliki nagłówka `div.panel-glowa` — i to jest jedyne miejsce, w którym da się
   // to sprawdzić bez przeglądarki.
@@ -98,7 +97,7 @@ describe('ekran /statystyki', () => {
     expect(odp.body).toContain('50,0%');
   });
 
-  // ⚠️⚠️ DZIURA Z RECENZJI (task-8): widok podmieniony na literał w każdym z tych trzech
+  // ⚠️⚠️ DZIURA: widok podmieniony na literał w każdym z tych trzech
   // wyrażeń (`termin.wylaczenia.niewyslane/przedWplata/bezStartu`) przechodził całą suitę
   // na zielono — nic nie dowodziło, że reguła policzona w domenie (statystyki-wysylki.js)
   // DOJEŻDŻA na ekran. Trzy RÓŻNE, niezerowe liczby (1/2/3) są celowe: gdyby widok pomylił
@@ -131,7 +130,7 @@ describe('ekran /statystyki', () => {
     expect(odp.body).toContain('<td>BLIK</td>');
   });
 
-  // ⚠️⚠️ DZIURA Z RECENZJI (task-8): widok podmieniony na literał w `platnosci.allegroBezInformacji`
+  // ⚠️⚠️ DZIURA: widok podmieniony na literał w `platnosci.allegroBezInformacji`
   // przechodził całą suitę na zielono — licznik zamówień Allegro POZA procentami nie miał
   // żadnego strażnika. Liczba 4 jest CELOWA: przy tym zestawie danych żadna inna liczba na
   // ekranie nie wynosi 4 (zamówień jest 5, mianownik płatności bez Allegro to 1), więc gdyby
@@ -206,7 +205,7 @@ describe('ekran /statystyki', () => {
   });
 
   // ⚠️ Zakres sprzed 3.07.2026 nie ma danych o wysyłce w ŻADNYM źródle — historia
-  // (10 878 wierszy) niesie tylko dzień, kwotę i status.
+  // (kilkanaście tysięcy wierszy) niesie tylko dzień, kwotę i status.
   it('zakres sprzed uruchomienia OMS-u dostaje pasek zastrzeżenia', async () => {
     wstaw();
     const odp = await wejdz('/statystyki?od=2026-01-01&do=2026-08-31');
@@ -224,13 +223,13 @@ describe('ekran /statystyki', () => {
     expect(odp.statusCode).toBe(200);
   });
 
-  // ⚠️ ODSTĘPSTWO OD BRIEFU (task-8, opisane w raporcie): regex z briefu zakładał `class`
+  // ⚠️ REGEX NAWIGACJI: prosty wzorzec zakładał `class`
   // i `href` w JEDNYM znaczniku (`[^>]*` nie przechodzi przez `>`). Boczne menu
   // (layout-oms.ejs) znaczy aktywną pozycję klasą na `<li>`, a adres stoi w `<a>` DZIECKA —
   // dokładnie tak samo, jak sprawdza ustalona konwencja w `kolumna-boczna.test.js`
-  // (`class="aktywna"[\s\S]{0,120}<etykieta>`). Wzorzec z briefu nie znalazłby dopasowania
+  // (`class="aktywna"[\s\S]{0,120}<etykieta>`). Taki wzorzec nie znalazłby dopasowania
   // na ŻADNYM ekranie panelu, nie tylko na tym.
-  // PRZ-167 (właściciel 15.11): analizy wróciły z górnego paska do menu bocznego jako pozycja „Analityka” z podmenu —
+  // analizy wróciły z górnego paska do menu bocznego jako pozycja „Analityka” z podmenu —
   // tam ma się świecić „Statystyki”; paska „Analizy i finanse” ani zakładek nad treścią już nie ma.
   it('podmenu „Analityka” w menu bocznym zaznacza STATYSTYKI na tym ekranie', async () => {
     const odp = await wejdz(SIERPIEN);

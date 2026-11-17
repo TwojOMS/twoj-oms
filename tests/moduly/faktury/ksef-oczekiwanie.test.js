@@ -6,7 +6,7 @@ import {
 } from '../../../src/domena/ksef-oczekiwanie.js';
 import { zajmijWysylkeKsef } from '../../../src/moduly/faktury/db/wysylki-ksef.js';
 
-// „Faktura czekająca na KSeF" ma JEDNĄ definicję (recenzja Partii 2, W4+W5). Do 06.08.2026
+// „Faktura czekająca na KSeF" ma JEDNĄ definicję. Do 06.08.2026
 // były dwie: czuwacz pytał o faktury z numerem dokumentu i UUID-em, a pasek spraw zapalał
 // blokadę przy każdej fakturze „wystawionej" — czyli TAKŻE przy wierszu bez numeru, o który
 // czuwacz nigdy nie zapyta. Taki wiersz po dobie meldował „Faktura  czeka na KSeF od …",
@@ -75,7 +75,7 @@ describe('czekaNaKsef — jedna definicja dla czuwacza i dla paska spraw', () =>
     db.close();
   });
 
-  // ⚠️ W4. inFakt potrafi oddać sukces BEZ pola `number` (widok ma na to osobny przypadek).
+  // ⚠️ InFakt potrafi oddać sukces BEZ pola `number` (widok ma na to osobny przypadek).
   // Taki wiersz jest „wystawiony", ale czuwacz NIGDY o niego nie zapyta — a pasek pokazywał
   // przy nim blokadę z pustym numerem.
   it('wiersz bez numeru dokumentu NIE czeka — czuwacz o niego nie zapyta', () => {
@@ -90,7 +90,7 @@ describe('czekaNaKsef — jedna definicja dla czuwacza i dla paska spraw', () =>
     db.close();
   });
 
-  // ⚠️ W5. Anulowane zamówienie ma już SWOJĄ blokadę („anulowane po wystawieniu faktury").
+  // ⚠️ Anulowane zamówienie ma już SWOJĄ blokadę („anulowane po wystawieniu faktury").
   // Druga, mówiąca „kupujący jej jeszcze nie ma", jest po prostu nieprawdziwa: nikt nic
   // nie kupił. Czuwacz też nie ma po co o taki dokument pytać.
   it('zamówienie anulowane w sklepie NIE czeka', () => {
@@ -134,7 +134,7 @@ describe('czekaNaKsef — jedna definicja dla czuwacza i dla paska spraw', () =>
     db.close();
   });
 
-  // ⚠️⚠️ DRUGA GAŁĄŹ (06.08.2026). Do tego dnia „czeka na KSeF" znaczyło WYŁĄCZNIE „kanał
+  // ⚠️⚠️ DRUGA GAŁĄŹ. Do tego dnia „czeka na KSeF" znaczyło WYŁĄCZNIE „kanał
   // Allegro", bo tylko tam numer miał komu służyć. Od chwili, gdy panel sam wysyła dokumenty
   // do KSeF, faktura SKLEPOWA też czeka — na numer, po który nikt inny nie pójdzie.
   it('faktura sklepowa, której wysyłkę do KSeF zlecił PANEL — czeka', () => {
@@ -173,11 +173,11 @@ describe('czekaNaKsef — jedna definicja dla czuwacza i dla paska spraw', () =>
   });
 });
 
-// PRZ-126.F03: „faktura do każdego zamówienia". Panel może wystawić fakturę także wtedy, gdy klient
+// „faktura do każdego zamówienia". Panel może wystawić fakturę także wtedy, gdy klient
 // o nią nie prosił — a dokument, który panel wysłał do KSeF, MUSI dostać numer, inaczej zakładka
 // „FAKTURY" pokazuje „brak KSeF" na zawsze. Żądanie (`chce_fakture = 1`) zostaje WYŁĄCZNIE w gałęzi
 // Allegro: tam numer służy do wysyłki na Allegro, która i tak jest tylko na żądanie kupującego.
-describe('PRZ-126.F03 — gałąź „zlecił panel" nie pyta o żądanie faktury', () => {
+describe('gałąź „zlecił panel" nie pyta o żądanie faktury', () => {
   const czeka = (db, id) => czekaNaKsef(pobierzZamowienie(db, id));
   const zSqla = (db) => db.prepare(`
     SELECT f.zamowienie_id, z.sklep, ${KOLUMNA_ZLECONA_Z_PANELU_SQL}
@@ -281,7 +281,7 @@ describe('warunek SQL i predykat domeny odpowiadają IDENTYCZNIE', () => {
       { zamowienie: { sklep: 'swietlik', anulowane: 1 }, wyslanaZPanelu: true },
       { zamowienie: { sklep: 'swietlik', chce_fakture: 0 }, wyslanaZPanelu: true },
       { zamowienie: { sklep: 'swietlik' }, faktura: { numer: null }, wyslanaZPanelu: true },
-      // PRZ-126.F03: bez żądania faktury — gałąź Allegro dalej go wymaga, gałąź panelu już nie.
+      // Bez żądania faktury — gałąź Allegro dalej go wymaga, gałąź panelu już nie.
       { zamowienie: { sklep: 'allegro_polcien', chce_fakture: 0 }, wyslanaZPanelu: true },
       { zamowienie: { sklep: 'ALLEGRO_POLCIEN', chce_fakture: 0 } },
       { zamowienie: { sklep: 'ALLEGRO_POLCIEN', chce_fakture: 0 }, wyslanaZPanelu: true },

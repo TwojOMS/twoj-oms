@@ -2,9 +2,9 @@ import { describe, it, expect, vi } from 'vitest';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { zbudujOms, uruchomZegary } from '../../pomoc/bootstrap-parytetu.ts';
+import { zbudujOms, uruchomZegary } from '../../pomoc/budowa-oms-testowa.ts';
 
-// OKABLOWANIE ZRODEL KAMPANII (Etapy 1-2, 2026-08-25).
+// OKABLOWANIE ZRODEL KAMPANII.
 //
 // ⚠️ TO JEST TEST NA DOKLADNIE TE KLASE AWARII, KTORA W TYM REPO ZDARZYLA SIE JUZ TRZY RAZY:
 // klient zbudowany i NIEWPIETY (albo czuwacz zbudowany i NIEURUCHOMIONY) wyglada z zewnatrz

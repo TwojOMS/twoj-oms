@@ -4,7 +4,7 @@ import { createMailer } from '../../../src/core/poczta/smtp.js';
 const smtp = { host: 'h', port: 465, user: 'u', pass: 'secret' };
 
 describe('mailer', () => {
-  it('PRZ-109.07: zachowuje wyłącznie kod, bez response i oryginalnej treści nodemailera', async () => {
+  it('zachowuje wyłącznie kod, bez response i oryginalnej treści nodemailera', async () => {
     const oryginal = Object.assign(new Error('535 sklep-login@przyklad.invalid'), {
       code: 'EAUTH', response: '535 5.7.8 sklep-login@przyklad.invalid', command: 'AUTH PLAIN',
     });

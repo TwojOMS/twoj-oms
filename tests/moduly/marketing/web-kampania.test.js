@@ -2,10 +2,10 @@ import { fmtKiedy } from '../../../src/domena/format-daty.js';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { zapiszPolaczenie, zapiszDni, zapiszTransakcje, zapiszStan, zapiszMetaKampanie } from '../../../src/oms/db/reklamy.js';
 
-// Zakladka /kampania (Etap 0). Jawna neutralna fixture testowa tworzy kampanię promo-test.
+// Zakladka /kampania. Jawna neutralna fixture testowa tworzy kampanię promo-test.
 //
 // ⚠️ Kazde zadanie idzie z `?dzien=` — bez tego trasa liczy od prawdziwego zegara
 // i te testy zaczelyby padac 8 września, w dniu, w ktorym kampania sie skonczy.
@@ -184,7 +184,7 @@ describe('bieżący ekran Reklamy', () => {
     expect(r.body).toContain(`Ostatni udany pobór: ${fmtKiedy('2026-09-23T09:00:00Z')}`);
     expect(r.body).not.toContain('ukryta-referencja');
     const suma = await pobierzReklamy('/kampania?widok=podsumowanie&dzien=2026-09-23');
-    // PRZ-141.02: data poboru w formacie panelu (fmtKiedy), nie surowy znacznik.
+    // Data poboru w formacie panelu (fmtKiedy), nie surowy znacznik.
     expect(suma.body).toContain(`Ostatni udany pobór GA4: ${fmtKiedy('2026-09-23T09:00:00Z')}`);
     expect(suma.body).not.toMatch(/Ostatni udany pobór GA4: \d{4}-\d{2}-\d{2}/);
     expect(suma.body).toContain('Ostatni udany pobór Meta: jeszcze nie było');
@@ -258,7 +258,7 @@ describe('wejście do zakładki', () => {
   });
 });
 
-// ——— SEKCJE ZRODEL ZEWNETRZNYCH (Etapy 1-2) ————————————————————————————————————————
+// ——— SEKCJE ZRODEL ZEWNETRZNYCH ————————————————————————————————————————
 //
 // ⚠️ TRZY STANY, KTORE W BAZIE WYGLADAJA IDENTYCZNIE (brak wierszy): zrodlo niepodlaczone,
 // awaria pobierania, jeszcze nie pobrano. Ekran ma nazwac KTORY — inaczej operator
@@ -353,7 +353,7 @@ describe('sekcja Ruch w sklepie (GA4)', () => {
     expect(body).toContain('/promocja-test');
   });
 
-  // Zmierzony rozjazd dziesieciokrotny (20.08.2026) — ekran ma o nim mowic sam.
+  // Ekran ma informować o dziesięciokrotnej rozbieżności wydatków.
   it('ostrzega, że kliknięć Mety i sesji GA4 nie porównuje się wprost', async () => {
     wstawGa4('2026-08-24', 28, 5, 3);
     const body = await zKonfiguracja({ ga4: { sciezkaKlucza: '/data-oms/sa.json' } });
@@ -361,10 +361,8 @@ describe('sekcja Ruch w sklepie (GA4)', () => {
   });
 });
 
-// ——— LEJEK REKLAMY (v2.1, 2026-08-28) — w miejsce dawnego wykresu uzyc+wydatku ————————
-// Zgloszenie właściciela: dwa wykresy pokazywaly wydatek i mylily sie ze soba. Ten pokazuje
-// teraz MASZYNE (wyswietlenia → klikniecia w link → zamowienia kampanijne), a pieniadze
-// zostaly wylacznie w „Pieniadze dzien po dniu".
+// LEJEK REKLAMY: wyświetlenia → kliknięcia w link → zamówienia kampanijne.
+// Wydatek jest wyłącznie w „Pieniądze dzień po dniu”, żeby wykresy się nie myliły.
 describe('lejek reklamy: od wyświetlenia do zamówienia', () => {
   // ⚠️ ASERCJA PO PELNYM ATRYBUCIE `class="..."`, nie po golej nazwie klasy — gola trafia
   // w arkusz stylow szkieletu, ktory niesie kazda z tych klas (pulapka nr 1, rozdz. 10).
@@ -447,7 +445,7 @@ describe('Odśwież teraz', () => {
   });
 });
 
-// ——— ZAMOWIENIA Z REKLAM (utm) + ALERTY + MIARY (2026-08-27) ————————————————————————
+// ——— ZAMOWIENIA Z REKLAM (utm) + ALERTY + MIARY ————————————————————————
 //
 // Drugi licznik kampanii: zamowienia z utm_campaign w atrybucji, takze bez kodu.
 // Kod mierzy cala promocje (baner tez go rozdaje), utm mierzy klikniecia w reklame.
@@ -503,7 +501,7 @@ describe('układ strony kampanii', () => {
     const r = await pobierz('/kampania?dzien=2026-08-25');
     expect(r.body).toContain('class="strona-kampania"');
     expect(r.body.match(/<!doctype html>/gi) ?? []).toHaveLength(1);
-    // PRZ-071: wspólna rama OMS od PRZ-065 to oms-shell z bocznym menu (dawniej rama-oms + kolumna-boczna).
+    // Wspólna rama OMS to oms-shell z bocznym menu.
     expect(r.body).toContain('class="oms-shell"');
     expect(r.body).toContain('<nav class="oms-menu" aria-label="Główna"');
     expect(r.body).toContain('class="oms-sidebar"');
@@ -526,7 +524,7 @@ describe('układ strony kampanii', () => {
     expect(stylKampanii).not.toMatch(/\n\s+a\s*\{/);
   });
 
-  // ——— v2 „kokpit" (2026-08-28): jedyny dopuszczony skrypt w OMS-ie ————————————————
+  // ——— v2 „kokpit": jedyny dopuszczony skrypt w OMS-ie ————————————————
   // ⚠️ Progresywne wzbogacenie: skrypt dotyczy WYLACZNIE prezentacji, a strona bez JS
   // jest kompletna — suita nie odpala JS, wiec wszystkie pozostale testy tego pilnuja
   // z samej swojej konstrukcji.
@@ -582,7 +580,7 @@ describe('wykres Pieniądze dzień po dniu', () => {
     expect(r.body).not.toContain('Pieniądze dzień po dniu');
   });
 
-  // ——— ETAPY (2026-08-28, jak na makiecie): prowadnice fal z kampanie.fale_json ————
+  // ETAPY: prowadnice fal z kampanie.fale_json.
   it('rysuje prowadnice etapów z kampanii i strefę „przed reklamami"', async () => {
     zapiszZamowienie(db, 'sklep-test', zmapowane(28224), {});
     const r = await pobierz('/kampania?dzien=2026-08-25');

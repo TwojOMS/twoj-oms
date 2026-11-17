@@ -64,7 +64,7 @@ describe('czuwacz przesylek', () => {
     expect(w.sprawdzone).toBe(1);
   });
 
-  // ⚠️ REGRESJA Z PRODUKCJI (31.08.2026). Czuwacz wolal `odswiezStatusKuriera` z ATRAPA
+  // ⚠️ REGRESJA Z PRODUKCJI. Czuwacz wolal `odswiezStatusKuriera` z ATRAPA
   // zamowienia `{ id }` — bez `sklep`. Klient sledzenia kanalu Allegro wybiera KONTO po
   // kanale, wiec dostawal `kanal: null`, nie znajdowal klienta i oddawal `null`. Zapisu
   // nie bylo, bledu nie bylo, znacznik proby ROSL — czyli zegar udawal, ze pyta, przez
@@ -145,7 +145,7 @@ describe('czuwacz przesylek', () => {
     expect(wynik.pobrania).toMatchObject({ kandydatow: 1, zlecone: 0, bledy: 1 });
   });
 
-  // ⚠️ FALSZYWA ZIELEN (recenzja 28.08.2026, D1): test mial tu zamowienie BEZ pobrania
+  // ⚠️ FALSZYWA ZIELEN: test mial tu zamowienie BEZ pobrania
   // i BEZ faktury, wiec „kandydatow: 0" bylo prawda takze po usunieciu straznika `infakt`
   // ze skanu — nie bylo czego zleic niezaleznie od niego. Teraz w bazie lezy PELNY kandydat
   // (pobranie + faktura + doreczona paczka) i cisza znaczy dokladnie to, co ma znaczyc:
@@ -182,7 +182,7 @@ describe('czuwacz przesylek', () => {
 // Okablowanie zegara #4: uruchomZegary rejestruje CZTERY interwaly, a przebieg czuwacza
 // bije puls (ta sama klasa awarii, co `if (false && czuwaczKsef)` — zegar zbudowany
 // i niezarejestrowany wyglada jak spokojna noc).
-import { uruchomZegary } from '../../pomoc/zegary-parytetu.ts';
+import { uruchomZegary } from '../../pomoc/testowe-zegary-oms.ts';
 import { createPuls } from '../../../src/core/puls.js';
 
 describe('zegar #4 w uruchomZegary', () => {
@@ -225,7 +225,7 @@ describe('zegar #4 w uruchomZegary', () => {
     expect(komunikat).toMatch(/1 bez znanej daty zapłaty/);
   });
 
-  // ⚠️⚠️ OBCIECIE PRZEBIEGU MA BYC SLYCHAC (recenzja poprawkowa 28.08.2026, W6). Sufit skanu
+  // ⚠️⚠️ OBCIECIE PRZEBIEGU MA BYC SLYCHAC. Sufit skanu
   // jest bezpieczny (idempotentnosc), ale CICHE obciecie wyglada w logu tak samo jak „nie bylo
   // nic do zrobienia" — a to wlasnie roznica miedzy „nic sie nie dzieje" a „zaleglosc rosnie".
   it('obciecie przebiegu sufitem zostawia WLASNA linie w logu procesu', async () => {

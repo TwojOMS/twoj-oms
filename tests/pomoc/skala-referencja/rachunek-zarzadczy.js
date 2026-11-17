@@ -1,4 +1,4 @@
-// Referencja PRZ-094.13 z 9ccdd75, przed optymalizacją.
+// Referencyjna implementacja sprzed optymalizacji do porównania wyników obliczeń.
 import { sprzedazWOkresie, zwrotyWOkresie } from './sprzedaz-okresu.js';
 import { miesiaceOkresu, nazwaOkresu } from '../../../src/domena/okresy-raportu.js';
 import { podatekNarastajaco } from '../../../src/domena/podatek-skala.js';

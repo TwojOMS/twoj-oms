@@ -16,7 +16,7 @@ function main() {
   try {
     if (args.length === 0) {
       const admini = db.prepare('SELECT login FROM konta WHERE admin = 1 AND czynne = 1 ORDER BY login').all();
-      // PRZ-109.12 (recenzja): lista tylko kont, dla których link da się wydać; pusta lista to odmowa, nie cisza.
+      // Lista tylko kont, dla których link da się wydać; pusta lista to odmowa, nie cisza.
       if (!admini.length) throw new Error('Brak włączonych kont administratora — link nie ma komu wydać.');
       for (const konto of admini) {
         process.stdout.write(`${konto.login}\n`);

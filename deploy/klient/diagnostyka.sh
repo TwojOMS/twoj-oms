@@ -1,5 +1,5 @@
 #!/bin/sh
-# Diagnostyka OMS u klienta (PRZ-058). Uruchom na serwerze OMS:
+# Diagnostyka OMS u klienta. Uruchom na serwerze OMS:
 #   sudo sh /opt/oms/releases/<wydanie>/deploy/klient/diagnostyka.sh
 # Zapisuje JEDEN plik oms-diagnostyka-<czas>.txt w bieżącym katalogu — odeślij go.
 # W pliku nie ma wartości z /opt/oms/config (hasła, klucze, NIP, rachunek): każda wartość
@@ -172,7 +172,7 @@ maskuj_wzorce() {
 
   sekcja "Konfiguracja"
   [ -f "$OMS/config/oms.env" ] || echo "BRAK oms.env w $OMS/config — OMS nie wstanie"
-  # Klucz poświadczeń w bazie (PRZ-182): tylko obecność, właściciel i tryb — wartości nie czytamy.
+  # Klucz poświadczeń w bazie: tylko obecność, właściciel i tryb — wartości nie czytamy.
   if [ -f "$OMS/config/klucz.env" ]; then
     kl_uid=$(stat -c '%u' "$OMS/config/klucz.env" 2>/dev/null || echo '?'); kl_tryb=$(stat -c '%a' "$OMS/config/klucz.env" 2>/dev/null || echo '?')
     if [ "$kl_uid" = 10001 ] && [ "$kl_tryb" = 600 ]; then echo "klucz.env: jest, właściciel 10001, tryb 600"

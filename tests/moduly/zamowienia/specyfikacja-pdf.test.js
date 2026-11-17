@@ -9,7 +9,7 @@ import { zbudujSpecyfikacjePdf, zbudujSpecyfikacjeWieluPdf } from '../../../src/
 
 // Dokument "Specyfikacja zamowienia" - kartka wkladana do KAZDEJ paczki. Przy zamowieniach
 // firmowych zastepuje wydruk faktury (ta i tak dociera przez KSeF), przy indywidualnych idzie
-// obok paragonu z kasy fiskalnej. Ten modul TYLKO RYSUJE dane z Zadania 6
+// obok paragonu z kasy fiskalnej. Ten modul TYLKO RYSUJE dane
 // (domain/specyfikacja.js, funkcja daneSpecyfikacji) — zadnego liczenia kwot tutaj.
 
 // ─────────────────────────────────────────────────────────────────────────────

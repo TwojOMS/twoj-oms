@@ -62,9 +62,9 @@ describe('kluczPozycji', () => {
   });
 });
 
-// PRZ-105: stawka pozycji ręcznej — z pola `vat` (lista 23/8/5/0), pusta = domyślna z Ustawień; netto przelicza
+// Stawka pozycji ręcznej — z pola `vat` (lista 23/8/5/0), pusta = domyślna z Ustawień; netto przelicza
 // się stawką wiersza, a przy nabywcy z UE (wdt) stawką 0. Zapisana zostaje stawka WYBRANA (dokument i tak da 0).
-describe('parsujNowaPozycje — stawka VAT (PRZ-105)', () => {
+describe('parsujNowaPozycje — stawka VAT', () => {
   const baza = { nazwa: 'Album o lampach', ilosc: '1' };
 
   it('netto 100 przy stawce 8 → brutto 108,00, vat 8', () => {
@@ -92,7 +92,7 @@ describe('parsujNowaPozycje — stawka VAT (PRZ-105)', () => {
 describe('parsujNowaPozycje', () => {
   it('przyjmuje nazwę, SKU, ilość i cenę brutto; sumę linii liczy w groszach', () => {
     const p = parsujNowaPozycje({ nazwa: 'Dodatkowy szablon', sku: 'X-1', ilosc: '3', cena_brutto: '61.50' });
-    // PRZ-105: wynik niesie też stawkę — bez pola `vat` domyślną (tu wbudowane 23).
+    // Wynik niesie też stawkę — bez pola `vat` domyślną (tu wbudowane 23).
     expect(p).toEqual({
       nazwa: 'Dodatkowy szablon', sku: 'X-1', ilosc: 3, cena_brutto: '61.50', brutto_linii: '184.50', vat: '23',
     });
@@ -274,9 +274,9 @@ describe('ustawNadpisaniePozycji', () => {
   });
 });
 
-// PRZ-152.G2-01 — usunięcie pozycji sklepowej to ZNACZNIK w mapie poprawek (`{ usunieta: true }`),
-// a nakładka jest jedynym miejscem, które go odfiltrowuje (plan PRZ-152-G2, rozdz. 3.1).
-describe('usunięcie pozycji sklepowej znacznikiem (PRZ-152.G2)', () => {
+// Usunięcie pozycji sklepowej to ZNACZNIK w mapie poprawek (`{ usunieta: true }`),
+// a nakładka jest jedynym miejscem, które go odfiltrowuje.
+describe('usunięcie pozycji sklepowej znacznikiem', () => {
   const trzy = () => [
     zeSklepu({ id: 1, zrodlo_id: 1, nazwa: 'Pierwsza' }),
     zeSklepu({ id: 2, zrodlo_id: 2, nazwa: 'Druga' }),
@@ -294,7 +294,7 @@ describe('usunięcie pozycji sklepowej znacznikiem (PRZ-152.G2)', () => {
   });
 
   // Klucz zapasowy `p<indeks>` liczy się z listy SUROWEJ — liczony po odfiltrowaniu przesunąłby
-  // poprawkę trzeciego wiersza na drugi (mutacja (d) planu).
+// poprawkę trzeciego wiersza na drugi.
   it('klucz zapasowy liczony z indeksu listy surowej, nie wynikowej', () => {
     const bezId = trzy().map((p) => ({ ...p, zrodlo_id: null }));
     const mapa = JSON.stringify({ p1: { usunieta: true }, p2: { ilosc: 5 } });

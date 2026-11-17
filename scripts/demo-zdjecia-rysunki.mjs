@@ -1,4 +1,4 @@
-// PRZ-160.08 — własne sylwetki lamp, bez zależności i materiałów z internetu.
+// Własne sylwetki lamp, bez zależności i materiałów z internetu.
 // Uruchomienie: node scripts/demo-zdjecia-rysunki.mjs [katalog-wynikowy]
 import { deflateSync } from 'node:zlib';
 import { createHash } from 'node:crypto';

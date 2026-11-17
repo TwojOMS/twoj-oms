@@ -101,7 +101,7 @@ describe('rozkladUslug', () => {
   });
 });
 
-// ⚠️⚠️ WADA WAŻNA Z RECENZJI 13.09.2026: rozkład czytał SUROWE kolumny `metoda_wysylki`
+// ⚠️⚠️ WADA WAŻNA: rozkład czytał SUROWE kolumny `metoda_wysylki`
 // i `metoda_wysylki_nazwa`, a kolumna „Dostawa" na liście robi to inaczej — przez
 // `nazwaDostawy` (domain/wysylka.js), która bierze metodę i pobranie z `wysylka_reczna_json`
 // i UNIEWAŻNIA nazwę od Allegro po ręcznej zmianie. Dwa ekrany panelu mówiły o tej samej
@@ -178,7 +178,7 @@ describe('rozkladUslug — metoda EFEKTYWNA, ta sama co w kolumnie „Dostawa"',
 
 // ⚠️⚠️ `udzialProcent` nie miała ani jednego testu bezpośredniego — a gałęzi `null` nie da
 // się dobić przez `rozkladUslug`: przy zerowej sumie mapa kubełków jest pusta, więc
-// `udzialProcent` w ogóle nie zostaje wywołana. Recenzja to wykorzystała: podmiana
+// `udzialProcent` w ogóle nie zostaje wywołana. Mutacja to wykorzystała: podmiana
 // `zCzego ?` na `zCzego || 1` (zero przestaje dawać `null`) przeszła przez CAŁĄ suitę
 // zielono. Dwa kolejne zadania tej gałęzi importują tę funkcję i liczą swoje procenty na
 // niej — cicha regresja tutaj rozeszłaby się po całym ekranie. Stąd strażnik wprost na

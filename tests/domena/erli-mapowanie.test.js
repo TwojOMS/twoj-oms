@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { mapujZamowienieErli, terminWysylkiErli, sprawyErli } from '../../src/domena/erli-mapowanie.js';
 
-// PRZ-157.04 — mapowanie zamówienia ERLI na model panelu. Dane zmyślone („Pracownia Półcień”).
+// Mapowanie zamówienia ERLI na model panelu. Dane zmyślone („Pracownia Półcień”).
 function zamowienie(zmiany = {}) {
   return {
     id: 'PC-ERLI-0001',

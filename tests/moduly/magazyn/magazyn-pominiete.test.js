@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { zapiszProduktSklepowy } from '../../../src/oms/db/magazyn.js';
 import { grupujPominiete } from '../../../src/domena/magazyn-pominiete.js';
 
 // EKRAN „POMINIĘTE".
 //
-// ⚠️⚠️ POWOD GRUPOWANIA (mina z Zadania 8): pominietych jest ~473, z czego 447 to OFERTY
+// ⚠️⚠️ POWOD GRUPOWANIA: pominietych jest ~473, z czego 447 to OFERTY
 // ALLEGRO, ktore kart nie zakladaja CELOWO — a realnej roboty jest ~26. Lista plaska
 // utopilaby te 26 w tamtych 447 i pierwszym odruchem czlowieka byloby „to blad, napraw".
 // Dlatego: grupy, liczby przy grupach, robota NA GORZE, a rzeczy celowe na dole i z wprost
@@ -148,7 +148,7 @@ describe('GET /magazyn/pominiete', () => {
     expect(r.body).toContain('Motyw bez rozmiaru');
     expect(r.body).toContain('Trójnóg podłogowy');
     // ⚠️ TEN SAM KANAL MA SIE NAZYWAC TAK SAMO, CO NA LISCIE. Ekran pokazywal surowy klucz
-    // z lustra, a lista obok — etykiete z `domain/kanaly.js`; czlowiek porownujacy oba
+    // z lustra, a lista obok — etykiete z `src/domena/kanaly.js`; czlowiek porownujacy oba
     // ekrany musial sam zgadnac, czy patrzy na to samo konto.
     expect(r.body).toContain('<td>Allegro Półcień Druga</td>');
     expect(r.body).toContain('<td>swietlik.example.test</td>');
@@ -166,13 +166,8 @@ describe('GET /magazyn/pominiete', () => {
   });
 });
 
-// ---------------------------------------------------------------------------------
-// POWROT NA ZAWEZONY MAGAZYN (4.13d, trzecia partia z 2026-09-10).
-//
-// Ten ekran otwiera sie odnosnikiem Z LISTY MAGAZYNU, na ktorej stoi komplet filtrow,
-// sortowanie i tryb kolumn — a wracal na goly `/magazyn`. Sasiednie ekrany tej zakladki
-// (karta produktu, hurt, SKU, przejecie) adres powrotu maja od Zadania 6.
-// ---------------------------------------------------------------------------------
+// POWRÓT NA ZAWĘŻONY MAGAZYN.
+// Ekran przyjmuje adres powrotu z filtrami, sortowaniem i trybem kolumn listy magazynu.
 describe('powrót na zawężony magazyn z ekranu „pominięte"', () => {
   const ZAWEZENIE = '/magazyn?fraza=kandelabr&brak=sku';
   const ESC = ZAWEZENIE.replace(/&/g, '&amp;');
@@ -183,7 +178,7 @@ describe('powrót na zawężony magazyn z ekranu „pominięte"', () => {
     return m[0];
   };
 
-  // PRZ-160 P3b.03b: odnośnik „Co panel pomija i dlaczego →" zszedł z listy (pominięte pokazuje
+  // Odnośnik „Co panel pomija i dlaczego →" zszedł z listy (pominięte pokazuje
   // ekran importu przy podglądzie kanału). Sam ekran nadal przyjmuje `wroc` — testy niżej.
   it('lista magazynu nie prowadzi już na pominięte', async () => {
     lustro();

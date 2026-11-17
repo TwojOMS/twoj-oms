@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
 const ONE_BOX = '0b9bed2c-0bc1-4e1f-9694-29bb39ebb483';
 const ORLEN = '09164667-daa5-42dc-8087-33d7485790ac';
@@ -84,7 +84,7 @@ describe('gabaryty Allegro na formularzu nadania', () => {
     expect(f).not.toContain('name="wysokosc"');
   });
 
-  // PRZ-152.G11c (zlecenie G11c): automat bez ustawienia „Paczkomaty i automaty” dostaje jego
+  // Automat bez ustawienia „Paczkomaty i automaty” dostaje jego
   // wartość startową S i 1 kg, jak One Box i jak nadanie hurtem — wcześniej pusta waga bez zaznaczenia.
   it.each([
     [ONE_BOX_DPD, 64], [ORLEN, 60], [DHL_BOX, 64], [DHL_POINT, 64], [DPD_AUTOMAT, 59],
@@ -99,7 +99,7 @@ describe('gabaryty Allegro na formularzu nadania', () => {
     expect(f).not.toContain('id="szablon-paczki"');
   });
 
-  // PRZ-125 (zgłoszenie właściciela 28.10, #1508): pusta waga wysyłała formularz i serwer odbijał go
+  // Pusta waga wysyłała formularz i serwer odbijał go
   // gołym tekstem 400 „Waga musi być…” na czarnym ekranie. Pole jest wymagane w przeglądarce.
   it('pole wagi przy gabarycie Allegro jest wymagane — pusta waga nie wyśle formularza', async () => {
     const { serwer, id } = zServerem({ liveId: DPD_AUTOMAT });

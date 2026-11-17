@@ -52,7 +52,7 @@ describe('klient Allegro — utworzenie przesyłki (WYDAJE PIENIĄDZE)', () => {
   // ⚠️ `commandId` JEST KLUCZEM IDEMPOTENCJI ALLEGRO i MUSI przyjsc z rezerwacji w bazie.
   // Wylosowany w kliencie znaczy, ze ponowienie po zerwanym polaczeniu kupuje DRUGI przewoz
   // — dokladnie ta usterka, ktora ma panel Allegro (dwie etykiety do zamowienia #1140,
-  // 10.08.2026) i ktorej OMS mial nie miec.
+  // ) i ktorej OMS mial nie miec.
   it('ODMAWIA bez commandId — nie losuje własnego, nie leci do sieci', async () => {
     const { klient, wolania } = klientZeSzpiegiem();
     await expect(klient.utworzPrzesylke({ input: wejscie() })).rejects.toThrow(/commandId/);
@@ -60,7 +60,7 @@ describe('klient Allegro — utworzenie przesyłki (WYDAJE PIENIĄDZE)', () => {
   });
 
   // ⚠️ Pominiete pole = usluge dobiera ALLEGRO, a nie my. Podpowiedz oddaje je jako `null`
-  // (zmierzone 10.08.2026), wiec przepisanie „co przyszlo" wyslaloby wlasnie brak.
+  // (zmierzone), wiec przepisanie „co przyszlo" wyslaloby wlasnie brak.
   // Zla usluga to utrata Smart u kupujacego i przewoz, ktorego nikt nie zamawial.
   it.each([[undefined], [null], ['']])('ODMAWIA bez deliveryMethodId (%s) — zanim cokolwiek poleci', async (id) => {
     const { klient, wolania } = klientZeSzpiegiem();
@@ -134,7 +134,7 @@ describe('klient Allegro — etykieta', () => {
 describe('biała lista rośnie o cztery metody — świadomie', () => {
   // ⚠️ TRZECIA KOPIA białej listy (obok `allegro-client-zapis.test.js` i
   // `allegro-client-faktura.test.js`) — i to WŁAŚNIE ONA złapała niekompletne scalenie
-  // 11.08.2026. Gałąź magazynu dokładała `pobierzOferty`, gałąź WzA cztery metody
+  // Gałąź magazynu dokładała `pobierzOferty`, gałąź WzA cztery metody
   // nadawania; git zgłosił konflikt w dwóch plikach, ale nie w tym, bo powstał wyłącznie
   // po stronie WzA. Dwa pliki poprawione, suita CZERWONA — dokładnie po to ta lista
   // stoi w trzech miejscach. Kto dopisuje metodę, poprawia WSZYSTKIE TRZY.
@@ -143,23 +143,23 @@ describe('biała lista rośnie o cztery metody — świadomie', () => {
     expect(Object.keys(klient).sort()).toEqual([
       'deklarujZalacznikWiadomosci',
       'pobierzEtykieteWza', 'pobierzFakturyZamowienia',
-      // PRZ-160.04a: kategoria i jej parametry — wyłącznie odczyt (`GET /sale/categories/{id}[/parameters]`).
+      // Kategoria i jej parametry — wyłącznie odczyt (`GET /sale/categories/{id}[/parameters]`).
       'pobierzKategorie', 'pobierzMetodeDostawy', 'pobierzMojeKonto', 'pobierzOferte',
-      // Podjazdy (22.09): trzy odczyty i jedno zlecenie; kontrakt w osobnym teście.
+      // Podjazdy: trzy odczyty i jedno zlecenie; kontrakt w osobnym teście.
       'pobierzOferty', 'pobierzParametryKategorii', 'pobierzPodjazd', 'pobierzPropozycjePodjazdu', 'pobierzPropozycjeWysylki',
-      // ⚠️ `pobierzWatki` i `pobierzWiadomosci` — Centrum wiadomości (spec 2026-08-28),
+      // ⚠️ `pobierzWatki` i `pobierzWiadomosci` — Centrum wiadomości,
       // wyłącznie odczyt (`GET /messaging/threads…`).
-      // `pobierzSprawy` (28.08.2026) tylko CZYTA `GET /sale/issues` — bariera zapisu bez zmian.
+      // `pobierzSprawy` tylko CZYTA `GET /sale/issues` — bariera zapisu bez zmian.
       'pobierzPrzesylkeWza', 'pobierzPrzesylki', 'pobierzSledzenie', 'pobierzSprawy',
       'pobierzStanRealizacji',
       'pobierzWatki', 'pobierzWiadomosci', 'pobierzZamowienia',
       'sprawdzZakresZamowien', 'stanTworzeniaPrzesylki', 'stanZleceniaPodjazdu',
-      // Centrum wiadomosci (spec 2026-08-28): `wyslijWiadomosc` PISZE i jest
+      // Centrum wiadomosci: `wyslijWiadomosc` PISZE i jest
       // NIEODWRACALNE — nie wydaje pieniedzy, ale po drugiej stronie jest czlowiek,
       // ktory dostaje powiadomienie. Bariera zapisu nizej rosnie razem z nia.
       'ustawStatusRealizacji', 'utworzPrzesylke', 'wgrajZalacznikWiadomosci', 'wyslijPlikFaktury',
       'wyslijWiadomosc', 'zglosFakture', 'zlecPodjazd',
-      // PRZ-160.E3.03: wystawianie ofert — zapisy wylicza tests/oms/allegro-client-zapis.test.js.
+      // Wystawianie ofert — zapisy wylicza tests/oms/allegro-client-zapis.test.js.
       'dopasujKategorie', 'edytujOferte', 'komendaCeny', 'komendaIlosci', 'komendaPublikacji', 'ofertyKonta', 'ofertyPoSygnaturze',
       'oplatyOferty', 'pobierzCenniki', 'pobierzGwarancje', 'pobierzOsobyOdpowiedzialne', 'pobierzProducentow',
       'pobierzReklamacje', 'pobierzZwroty', 'podgladOplat', 'stanOperacji', 'szukajProduktow', 'ustawieniaPodatku',

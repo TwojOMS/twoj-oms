@@ -1,5 +1,5 @@
-// PRZ-059: alarm starej kopii w /health (instalacja klienta). Nadzór włącza OMS_KOPIE_KATALOG
-// (compose klienta); bez niego /health jest bajt w bajt taki jak dotąd — produkcja właściciela go nie ustawia.
+// Alarm starej kopii w /health po ustawieniu OMS_KOPIE_KATALOG.
+// Bez tej zmiennej nadzór kopii nie zmienia /health.
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -42,7 +42,7 @@ describe('stanKopii', () => {
     const lok = katalog(); const usb = katalog();
     kopia(lok, 'oms-2026-10-10.sqlite', 9); kopia(usb, 'oms-2026-10-10.sqlite', 9);
     fs.writeFileSync(path.join(usb, ZNACZNIK_NOSNIKA), '');
-    // PRZ-122.B16a: wynik niesie też pola dla panelu (ostatnia, katalogDostepny, zewnetrzna) — /health czyta tylko alarmy i uwagi.
+    // Wynik niesie też pola dla panelu (ostatnia, katalogDostepny, zewnetrzna) — /health czyta tylko alarmy i uwagi.
     expect(stanKopii({ katalog: lok, zewnetrzna: usb, teraz: TERAZ, urzadzenie: osobny(usb) })).toMatchObject({ alarmy: [], uwagi: [], zewnetrznaStan: 'ok' });
     expect(stanKopii({ katalog: lok, zewnetrzna: usb, teraz: TERAZ }).zewnetrznaStan).toBe('ten-sam-dysk');
     // Znacznik jest, ale katalog na tym samym dysku co kopie lokalne: montowanie się nie udało.

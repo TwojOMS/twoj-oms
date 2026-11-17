@@ -61,7 +61,7 @@ describe('numery listów z Allegro', () => {
     expect(wiersze(id)[0].kurier).toBe('allegro');
   });
 
-  // ⚠️⚠️ I-1 (recenzja calej galezi): TO POLE JEST CALA OCHRONA TEGO NUMERU. `kurier` jej nie
+  // ⚠️⚠️ I-1: TO POLE JEST CALA OCHRONA TEGO NUMERU. `kurier` jej nie
   // udzwignie, bo wiersz WPISANY Z REKI przy zamowieniu z Allegro tez ma kuriera 'allegro'
   // (kurierzy/index.js) — a jego kasowanie musi byc DOZWOLONE, bo literowka jest tam mozliwa.
   // Bez `zrodlo_numeru = 'allegro'` odmowa w db/przesylki.js nie ma po czym rozpoznac numeru,
@@ -215,7 +215,7 @@ describe('numery listów z Allegro', () => {
   });
 });
 
-// ——— IDENTYFIKATOR PRZEWOZNIKA (25.08.2026) ————————————————————————————————————————
+// ——— IDENTYFIKATOR PRZEWOZNIKA ————————————————————————————————————————
 // `carrierId` przychodzil w tej samej odpowiedzi od poczatku i byl WYRZUCANY — czytalismy
 // z niej sam `waybill`. Bez niego panel nie mial kogo zapytac o statusy tych paczek, wiec
 // `status_kuriera` zostawal NULL na zawsze, a regula „bez ruchu" liczyla wiek od nadania

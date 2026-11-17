@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 
 import { daneNabywcyNaKarcie } from '../../src/domena/klient-staly.js';
 
-// Czysta reguła scalania „Uaktualnij dane stałego klienta” (PRZ-102.07). Drogę HTTP pokrywa
+// Czysta reguła scalania „Uaktualnij dane stałego klienta”. Drogę HTTP pokrywa
 // tests/moduly/zamowienia/zapamietaj-klienta-umowa.test.js; tutaj gałęzie, do których trasa
 // dziś nie dochodzi (pusty NIP — trasa znajduje istniejącego klienta właśnie po NIP-ie).
 

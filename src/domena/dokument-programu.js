@@ -1,5 +1,5 @@
 // Identyfikator dokumentu w programie fakturowym: JEDYNE miejsce w `src/`, które czyta
-// kolumnę `infakt_uuid` (strażnik: tests/core/straznik-infakt-uuid-prz118.test.js).
+// kolumnę `infakt_uuid` (strażnik: tests/core/straznik-infakt-uuid.test.js).
 //
 // Od migracji rdzen/0008 wiersz `faktury` / `okresy_rozliczeniowe` niesie `program` + `dokument_id`.
 // `infakt_uuid` zostaje ZAPASEM odczytu, nie źródłem: wiersz zapisany przez wcześniejszy obraz aplikacji PO

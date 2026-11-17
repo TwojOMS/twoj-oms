@@ -133,7 +133,7 @@ describe('gaśnięcie zegara', () => {
 });
 
 describe('odporność na śmieciowe daty', () => {
-  // FIX blokujący z recenzji gałęzi: „śmieciowa" (niepusta, ale niesparsowalna) data w
+  // FIX blokujący gałęzi: „śmieciowa" (niepusta, ale niesparsowalna) data w
   // `oplacone_at`/`utworzone_at` ma dać zegar bez opisu, NIGDY wyjątek — jeden uszkodzony
   // wiersz nie ma prawa położyć całej listy ani akcji masowych (patrz guard w domenie
   // zaraz po `dzienStartu`).

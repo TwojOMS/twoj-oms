@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../src/oms/db/db.ts';
-import { buildOmsServer } from '../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../pomoc/serwer-testowy-oms.ts';
 import { wczytajUstawienia } from '../../src/oms/db/ustawienia.js';
 import { DOSTAWY } from '../../src/domena/nowe-zamowienie.js';
 
@@ -32,7 +32,7 @@ const sekcja = (body, id) => {
 
 describe('ekran ustawień — domyślna paczka', () => {
   it('pokazuje dzisiejsze wartości panelu na bazie bez ani jednego ustawienia', async () => {
-    // PRZ-152.G11a: pola domyślnego szablonu są w wierszu w trybie edycji (bez JS: ?edytuj=<id>).
+    // Pola domyślnego szablonu są w wierszu w trybie edycji (bez JS: ?edytuj=<id>).
     const s = sekcja((await get('?edytuj=domyslna')).body, 'ust-paczka');
 
     expect(s, 'brak sekcji domyślnej paczki').not.toBeNull();

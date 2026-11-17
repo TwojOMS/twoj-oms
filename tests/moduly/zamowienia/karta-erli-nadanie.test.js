@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { nowyPanel, jako, get } from '../../pomoc/konta-prz068.js';
+import { nowyPanel, jako, get } from '../../pomoc/panel-konta-testowe.js';
 import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { mapujZamowienieErli } from '../../../src/domena/erli-mapowanie.js';

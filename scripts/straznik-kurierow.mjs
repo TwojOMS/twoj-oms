@@ -36,7 +36,7 @@ export const listaDozwolonych = {
   'src/oms/kurierzy/index.js': { liczba: 4, powod: 'komentarze historyczne o metodzie domyślnej' },
 };
 
-// PRZ-134 i równoległe przeniesienie konfiguratora w PRZ-135.07b.
+
 const dozwoloneKatalogi = { 'src/moduly/kanaly/': 'kod modułu kanałów' };
 const rejestr = 'src/domena/moduly-kurierow.ts';
 // Jak strażnik kanałów, skanujemy również komentarze i tekst szablonów.

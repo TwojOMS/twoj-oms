@@ -11,7 +11,7 @@ import { zbudujOms } from '../../../src/oms/bootstrap.ts';
 import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
 import { ROZMIAR_STRONY } from '../../../src/moduly/zamowienia/lista.js';
 import { adresZFiltrami, bezpiecznyPowrotNaListe, parsujFiltry } from '../../../src/domena/filtry-listy.js';
-import { KANALY_TESTOWE } from '../../prz051/pomoc.js';
+import { KANALY_TESTOWE } from './lista/testowe-dane-listy.js';
 
 let a; let cookie; let katalog;
 const ids = (html) => [...html.matchAll(/name="id" value="(\d+)"/g)].map((m) => Number(m[1]));

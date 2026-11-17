@@ -1,5 +1,5 @@
-// PRZ-153.E4.1 — kolejki druku przyjmują klucz API z zakresem `druk` obok hasła serwisowego
-// (plan docs/plany/PRZ-153-api-v1.md, „E4 — Druk na kluczu `druk`”). Dane zmyślone.
+// Kolejki druku przyjmują klucz API z zakresem `druk` obok hasła serwisowego
+// Dane zmyślone.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import http from 'node:http';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
@@ -12,7 +12,7 @@ import { dodajDoKolejki } from '../../../src/moduly/wysylka/db/kolejka-druku.js'
 import { zapiszProforme } from '../../../src/moduly/faktury/db/proformy.js';
 import { createProforma } from '../../../src/moduly/faktury/services/proforma.js';
 import { dodajProformeDoKolejki } from '../../../src/moduly/faktury/db/kolejka-druku-proform.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
 import { podpisz, NAZWA_CIASTECZKA_OMS } from '../../../src/core/bezpieczenstwo/sesja.js';
 import { odczytajSekret } from '../../../src/core/bezpieczenstwo/sekret-sesji.js';

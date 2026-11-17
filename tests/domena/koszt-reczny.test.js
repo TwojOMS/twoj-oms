@@ -8,7 +8,7 @@ import {
 // TYM SAMYM kształtem i oba oddają kwoty jako NAPISY z dwoma miejscami po przecinku, bo
 // kolumny są TEXT-em, a arytmetyka pieniędzy idzie przez `grosze()` (niezmiennik 4.5).
 //
-// ⚠️⚠️ FORMULARZ MA TRZY POLA: firma, data, kwota (13.08.2026, prośba właściciela). Wszystko
+// ⚠️⚠️ FORMULARZ MA TRZY POLA: firma, data, kwota. Wszystko
 // pozostałe niesie DEFINICJA FIRMY ze słownika (db/firmy-reczne.js) — drugi argument.
 const FIRMA = {
   nazwa: 'Facebook (Meta)',

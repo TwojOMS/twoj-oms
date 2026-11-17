@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { znormalizujKomentarz, MAX_ZNAKOW } from '../../../src/domena/komentarz-wewnetrzny.js';
-import { daneSpecyfikacji } from '../../pomoc/specyfikacja-parytetu.js';
+import { daneSpecyfikacji } from '../../pomoc/testowa-specyfikacja-przesylki.js';
 import { pozycjeDokumentu } from '../../../src/domena/pozycje-faktury.js';
 
 describe('znormalizujKomentarz', () => {

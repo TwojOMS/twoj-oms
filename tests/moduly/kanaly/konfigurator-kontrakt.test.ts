@@ -48,7 +48,7 @@ it('polaZFormularza przycina tylko pola kroku, adresAkcji rozwija klucz', async 
   expect(() => adresAkcji(opis.konfigurator, mapowanie!, 'polcien')).toThrow();
 });
 
-// Złoty szkielet kroków z tabeli 3.3 planu PRZ-132 — opierają się na nim 07a, 07b i 11 (recenzja K04).
+// Wspólny kontrakt szkieletu kroków konfiguratora kanałów.
 const szkielet = (opis: OpisKanalu) => opis.konfigurator.kroki.map(k => [
   k.numer, k.id, k.tytul, k.widok ?? `${k.formularz!.akcja} → ${k.formularz!.przycisk}`,
   ...(k.formularz?.pola ?? []).map(p => [p.id, p.rodzaj, !!p.wymagane, p.domyslna ?? null, p.opcje?.map(o => (o as { wartosc?: string }).wartosc ?? o) ?? null]),

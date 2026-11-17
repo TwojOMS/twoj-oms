@@ -12,7 +12,7 @@ import { createNadanie } from '../../../src/moduly/wysylka/services/nadanie.js';
 import { rozpocznijPrzesylke, oznaczTworzonaUKuriera, pobierzPrzesylke } from '../../../src/moduly/wysylka/db/przesylki.js';
 import { stanPrzesylki, sprawyPrzesylki } from '../../../src/domena/przesylka-stan.js';
 
-// PRZ-157.08 — kurier „Przesyłki Erli”. ⚠️ Zero sieci: klient ERLI to atrapa `vi.fn`
+// Kurier „Przesyłki Erli”. ⚠️ Zero sieci: klient ERLI to atrapa `vi.fn`
 // albo atrapa z deploy/proba (fetch w pamięci). Dane zmyślone (Pracownia Półcień).
 
 const ODBIORCA = { firstName: 'Ada', lastName: 'Przykładowa', street: 'Zmyślona', buildingNumber: '1',
@@ -39,7 +39,7 @@ function klientErli({ istniejace = [], odpowiedz = [paczkaZErli()] } = {}) {
 }
 const kurier = (erli, punkt = () => null) => createErliPrzesylkiClient({ erliDla: () => erli, punktNadaniaDla: punkt });
 
-describe('PRZ-157.08 — nadanie przez POST /shipping/parcels/', () => {
+describe('nadanie przez POST /shipping/parcels/', () => {
   it('wysyła orderId, typeId z zamówienia, punkt nadania i wymiary gabarytu w mm/g; wynik czeka na etykietę', async () => {
     const erli = klientErli();
     const wynik = await kurier(erli, () => 7).nadaj({ zamowienie: zamowienie(), paczka: { waga: 1.2, gabaryt: 'B' }, kolejnosc: 1 });
@@ -76,7 +76,7 @@ describe('PRZ-157.08 — nadanie przez POST /shipping/parcels/', () => {
   });
 });
 
-describe('PRZ-157.08 — sprawdzenie: etykieta dopiero, gdy są i waybills[], i numer', () => {
+describe('sprawdzenie: etykieta dopiero, gdy są i waybills[], i numer', () => {
   it.each([
     ['jest trackingNumber, brak waybills', { trackingNumber: 'PC000000000000000000000041' }],
     ['są waybills, brak trackingNumber', { shipping: { typeId: 'erliPaczkomat', receiver: ODBIORCA, waybills: ['https://x.example/e.pdf'] } }],
@@ -88,7 +88,7 @@ describe('PRZ-157.08 — sprawdzenie: etykieta dopiero, gdy są i waybills[], i 
   });
 });
 
-describe('PRZ-157.08 — pobranie i druga paczka', () => {
+describe('pobranie i druga paczka', () => {
   const cod = () => zamowienie(surowe({ id: 'PC-ERLI-0002', delivery: { typeId: 'erliKurier24InPost10kg', cod: true } }));
 
   it('pobranie: kwota z zamówienia przechodzi, żądanie nie niesie własnej kwoty', async () => {
@@ -101,7 +101,7 @@ describe('PRZ-157.08 — pobranie i druga paczka', () => {
     ['inna kwota niż zamówienie', { zamowienie: 'cod', kwotaPobrania: '100.00', pobranieNaTejPaczce: true }, /pobiera kwotę z zamówienia \(212\.90 zł\)/],
     ['pobranie przy zamówieniu opłaconym', { zamowienie: 'zwykle', kwotaPobrania: '212.90', pobranieNaTejPaczce: true }, /zamówienie w ERLI nie jest za pobraniem/],
     ['pobranie na drugiej paczce', { zamowienie: 'cod', kwotaPobrania: '212.90', pobranieNaTejPaczce: true, kolejnosc: 2 }, /tylko na pierwszej paczce/],
-    // Poprawki po recenzji: pobranie sprawdzane w obie strony i waluta (D3 — zamówienie spoza PLN ręcznie).
+    // Pobranie sprawdzane w obie strony i waluta (D3 — zamówienie spoza PLN ręcznie).
     ['COD w ERLI, OMS bez pobrania', { zamowienie: 'cod', kwotaPobrania: null, pobranieNaTejPaczce: false }, /za pobraniem w ERLI.*bez pobrania/],
     ['COD w ERLI, OMS bez kwoty pobrania', { zamowienie: 'cod', kwotaPobrania: null, pobranieNaTejPaczce: true }, /za pobraniem w ERLI.*bez pobrania/],
     ['zamówienie w EUR bez pobrania', { zamowienie: 'eur', kwotaPobrania: null, pobranieNaTejPaczce: false }, /walucie EUR/],
@@ -142,7 +142,7 @@ describe('PRZ-157.08 — pobranie i druga paczka', () => {
   });
 });
 
-describe('PRZ-157.08 — etykieta asynchroniczna (atrapa ERLI)', () => {
+describe('etykieta asynchroniczna (atrapa ERLI)', () => {
   const bazy = [];
   afterEach(() => { for (const db of bazy.splice(0)) db.close(); });
 

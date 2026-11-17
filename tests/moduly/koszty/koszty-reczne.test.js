@@ -19,7 +19,7 @@ const zKsef = (n = {}) => ({
 
 // Dokument WPISANY RĘKĄ — Facebook, Google, Anthropic, paragon. W KSeF go nie ma i nie będzie.
 //
-// ⚠️ TRZY POLA (13.08.2026): firma, data, kwota. Definicja firmy przychodzi ze słownika
+// ⚠️ TRZY POLA: firma, data, kwota. Definicja firmy przychodzi ze słownika
 // (db/firmy-reczne.js) i to ona niesie nazwę sprzedawcy, kategorię i typ.
 const GOOGLE = {
   nazwa: 'Google', sprzedawca: 'Google Ireland Limited', kategoria: 'Reklama', typ: 'zmienny',
@@ -181,7 +181,7 @@ describe('⚠️ czuwacz KSeF nie tyka wierszy recznych', () => {
 // NIP-em. Kategoria musi więc dać się przypiąć WPROST DO DOKUMENTU, a rozstrzygnięcie „która
 // wygrywa" siedzi w JEDNYM miejscu (domain/lista-kosztow.js), a nie w dwóch obok siebie.
 describe('kategoria przypieta wprost do dokumentu', () => {
-  // ⚠️ KATEGORIA PRZYCHODZI ZE SŁOWNIKA FIRM, a nie z formularza (13.08.2026) — operator jej
+  // ⚠️ KATEGORIA PRZYCHODZI ZE SŁOWNIKA FIRM, a nie z formularza — operator jej
   // nie wpisuje, bo za pozycją listy „Firma" stoi już kategoria i typ.
   it('dokument bez NIP-u dostaje kategorię i wchodzi do rozbicia', () => {
     const db = openOmsDb();

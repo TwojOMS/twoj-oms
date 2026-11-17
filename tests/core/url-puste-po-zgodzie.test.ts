@@ -111,7 +111,7 @@ it('pełny bootstrap przekazuje pusty URL do rzeczywistych fabryk jako default a
   const k = vi.spyOn(ksef, 'createKsefClient').mockImplementation((o: any) => realKsef({ ...o, http }));
   vi.spyOn(allegro, 'createAllegroClient').mockImplementation((o: any) => realAllegro({ ...o, http, tokeny: { ...o.tokeny, waznyToken: async () => 'fixture' } }));
   const t = vi.spyOn(tokeny, 'createTokeny').mockImplementation((o: any) => realTokeny({ ...o, http }));
-  // PRZ-135.04b: moduł wysyłki bierze klienta z FABRYKI_KURIEROW (stała referencja), więc szpieg siedzi tam.
+  // Moduł wysyłki bierze klienta z FABRYKI_KURIEROW (stała referencja), więc szpieg siedzi tam.
   const ip = vi.spyOn(fabryki.FABRYKI_KURIEROW, 'inpost').mockImplementation((o: any) => realInpost({ ...o, http }));
   const dpd = vi.spyOn(fabryki.FABRYKI_KURIEROW, 'dpd');
   const a = await zbudujOms({ env: { ...seller, ...sender, ...rynek, OMS_TRYB: 'produkcja', OMS_USER: 'fixture', OMS_PASS: 'fixture', OMS_KANALY: JSON.stringify(defs),

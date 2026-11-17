@@ -5,7 +5,7 @@ import {
 import { STAWKA_VAT } from '../../src/domena/vat.js';
 import { rodzajKorekty, polaWdtKorekty } from '../../src/domena/wdt.js';
 
-describe('PRZ-148 korekta WDT', () => {
+describe('korekta WDT', () => {
   it.each([
     ['DE123456789', [{ tax_symbol: '0' }, { tax_symbol: ' 0 ' }], {}, 'wdt'],
     ['DE123456789', [{ tax_symbol: '0' }, { tax_symbol: '23' }], {}, 'niezgodna'],

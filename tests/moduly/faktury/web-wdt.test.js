@@ -2,10 +2,10 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie, pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { zapiszProduktSklepowy } from '../../../src/oms/db/magazyn.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { opisKlienta } from '../../../src/domena/klient-staly.js';
 
-// KARTA I TRASY WDT — harness jak w tests/oms/web-zamowienie.test.js. Konfiguracja niesie
+// KARTA I TRASY WDT — harness jak w tests/moduly/zamowienia/web-zamowienie.test.js. Konfiguracja niesie
 // nadawcę (adres sprzedawcy dla dokumentu wywozu) i NIP z config.proforma.
 const config = {
   auth: { user: 'adam', pass: 'x' },
@@ -49,7 +49,7 @@ describe('karta zamówienia WDT', () => {
   });
 
   // Formularz „Dodaj pozycję" renderuje się w trybie edycji pozycji — tam podpowiedź netto MUSI liczyć
-  // stawką DOKUMENTU: przy WDT netto = brutto. PRZ-105: zmiana nośnika — data-vat to teraz stawka DOMYŚLNA
+  // stawką DOKUMENTU: przy WDT netto = brutto. Atrybut data-vat to teraz stawka DOMYŚLNA
   // (zaznaczona w liście stawek), a WDT jedzie osobno jako data-wdt="1" (public/cena-netto.js liczy wtedy 0%).
   it('edycja pozycji zamówienia WDT niesie data-wdt="1"', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(2601), {});
@@ -91,9 +91,9 @@ describe('GET /zamowienia/:id/potwierdzenie-wywozu.pdf', () => {
   });
 });
 
-// CENY Z MAGAZYNU DLA KLIENTA WDT (zgłoszenie właściciela 26.08 wieczór): wstawka ma od
+// CENY Z MAGAZYNU DLA KLIENTA WDT: wstawka ma od
 // razu robić rabat → ÷1,23, a nie zostawiać operatorowi dzielenia 19 pozycji z ręki.
-// Kałamarz 30x45: cennik 108,90 → rabat 50% → 54,45 → ÷1,23 → 44,27 (wektor z faktury Apilo).
+// Kałamarz 30x45: cennik 108,90 → rabat 50% → 54,45 → ÷1,23 → 44,27.
 describe('ceny z magazynu przy WDT', () => {
   const produkt = (nad = {}) => ({
     kanal: 'pro', produkt_id: '28040', wariant_id: '', nazwa: 'Lampa stołowa Kałamarz',

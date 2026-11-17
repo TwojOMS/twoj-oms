@@ -1,13 +1,13 @@
 import {describe,it,expect} from 'vitest';
 import {normalizujAdresSklepu} from '../../../src/moduly/kanaly/adres-sklepu.ts';
 describe('adres Woo',()=>{
- it('C6: normalizuje brak schematu, HTTP i końcowy ukośnik w obu trybach',()=>{
+ it('normalizuje brak schematu, HTTP i końcowy ukośnik w obu trybach',()=>{
   // Wyłącznie dane wejściowe zgłoszenia C6; test nie wykonuje połączeń.
   for(const tryb of ['produkcja','proba'])for(const [wejscie,wynik] of [
    ['www.sklep-polcien.test','https://www.sklep-polcien.test'],['sklep-polcien.test/','https://sklep-polcien.test'],['http://sklep-polcien.test','https://sklep-polcien.test'],
   ])expect(normalizujAdresSklepu(wejscie,tryb)).toBe(wynik);
  });
- // PRZ-150.01: jeden ukośnik po schemacie to literówka, nie host „http” — wynik jak dla http:// i https://.
+ // Jeden ukośnik po schemacie to literówka, nie host „http” — wynik jak dla http:// i https://.
  it.each(['http:/sklep.pl','https:/sklep.pl','HTTP:/sklep.pl','HTTPS:/sklep.pl/','  http:/sklep.pl  '])('naprawia jeden ukośnik po schemacie: %s',adres=>{
   for(const tryb of ['produkcja','proba'])expect(normalizujAdresSklepu(adres,tryb)).toBe('https://sklep.pl');
  });

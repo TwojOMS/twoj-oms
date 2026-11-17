@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { openOmsDb } from '../../pomoc/dane-miesieczne-parytetu.js';
+import { openOmsDb } from '../../pomoc/testowe-dane-miesieczne.js';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { dodajZwrot } from '../../../src/oms/db/zwroty.js';
 import { ustawGranice } from '../../../src/oms/db/historia-sprzedazy.js';
-import { sprzedazWOkresie, zwrotyWOkresie } from '../../pomoc/raporty-parytetu.js';
+import { sprzedazWOkresie, zwrotyWOkresie } from '../../pomoc/testowe-reguly-raportow.js';
 import { agreguj } from '../../../src/domena/agregacja-sprzedazy.js';
-import { rachunekOkresu, PODLOGA_ZWROTOW } from '../../pomoc/raporty-parytetu.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { rachunekOkresu, PODLOGA_ZWROTOW } from '../../pomoc/testowe-reguly-raportow.js';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
 // ⚠️ sklep 'pro' → kanalOms (domain/kanaly-raportowe.js, mapa SKLEPY) mapuje na 'SWIETLIK_PRO',
 // NIE na 'PRO'. Brief mówił 'PRO' — to nazwa, której w kodzie nie ma; poprawione po sprawdzeniu

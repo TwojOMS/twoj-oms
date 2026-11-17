@@ -91,7 +91,7 @@ describe('ikonaPrzesylki', () => {
     expect(ikona.href).toBe('https://tracktrace.dpd.com.pl/parcelDetails?typ=1&p1=1000000000001U');
   });
 
-  // PRZ-152.G7: paczka WzA (`kurier = allegro_wza`) nie mówi kodem, kto wiezie — link z tej samej
+  // Paczka WzA (`kurier = allegro_wza`) nie mówi kodem, kto wiezie — link z tej samej
   // funkcji co karta i zakładka Przesyłki (metoda zamówienia → DPD), nie z samego kodu kuriera.
   it('paczka WzA jadąca DPD → link DPD jak na karcie (linkSledzeniaPaczki)', () => {
     const ikona = ikonaPrzesylki({ id: 1, metoda_wysylki: 'allegro_dpd', przesylki: [{ numer_listu: 'AD0001112223', kurier: 'allegro_wza' }] });
@@ -131,7 +131,7 @@ describe('ikonaPrzesylki', () => {
     expect(ikona.zewnetrzny).toBe(false);
   });
 
-  // Paczkomat ma od Zadania 9 wlasny wzorzec sledzenia, wiec ikona prowadzi na strone
+  // Paczkomat ma od dawna wlasny wzorzec sledzenia, wiec ikona prowadzi na strone
   // InPostu — tak samo, jak przy DPD.
   it('paczkomat → link do śledzenia InPostu, w nowej karcie', () => {
     const ikona = ikonaPrzesylki({ id: 8, przesylki: [{ numer_listu: '520000123456789012345678', kurier: 'inpost' }] });
@@ -141,7 +141,7 @@ describe('ikonaPrzesylki', () => {
 
   // Kurier, dla ktorego nie znamy wzorca sledzenia (linkSledzeniaPaczki oddaje null), spada
   // na karte zamowienia — i wtedy nowa karta byłaby błędem, mimo ze paczka jest jedna.
-  // ⚠️ Przykladem byl tu 'inpost', dopoki nie dostal wlasnego wzorca (Zadanie 9). Regula
+  // ⚠️ Przykladem byl tu 'inpost', dopoki nie dostal wlasnego wzorca. Regula
   // sie nie zmienila, zmienil sie kurier, na ktorym ja sprawdzamy.
   it('nieznany kurier → link do karty i BEZ nowej karty', () => {
     const ikona = ikonaPrzesylki({ id: 7, przesylki: [{ numer_listu: 'X1', kurier: 'gls' }] });
@@ -150,12 +150,12 @@ describe('ikonaPrzesylki', () => {
   });
 
   // ⚠️⚠️ TU WIDAC, CO NAPRAWDE KOSZTUJE WZORZEC SLEDZENIA — i dlatego kurier 'allegro' go
-  // NIE MA (recenzja Zadania 9). Bez wzorca ikona paczki z Allegro prowadzi do KARTY
+  // NIE MA. Bez wzorca ikona paczki z Allegro prowadzi do KARTY
   // ZAMOWIENIA: link, ktory na pewno dziala, w tej samej zakladce. Wzorzec — dopoki adres
   // nie jest zmierzony w przegladarce, a sciezka `moje-allegro/zakupy/…` jest po stronie
   // KUPUJACEGO, nie sprzedajacego — zamienilby go na adres niesprawdzony, otwierany w NOWEJ
   // zakladce, czyli na regres: operator traci pewny link i traci liste spod reki.
-  // Dopisanie wzorca zaczerwieni ten test razem z bramka w tests/domena/przewoznik-przesylki-prz067.test.js.
+  // Dopisanie wzorca zaczerwieni ten test razem z bramka w tests/domena/przewoznik-przesylki.test.js.
   it('paczka z Allegro → link do karty zamówienia, bez nowej karty (adres śledzenia niezmierzony)', () => {
     const ikona = ikonaPrzesylki({ id: 91, przesylki: [{ numer_listu: 'AD0LK57DLG0756H4H', kurier: 'allegro' }] });
     expect(ikona.stan).toBe('nadana');
@@ -218,7 +218,7 @@ describe('ikonaFaktury', () => {
   });
 });
 
-// ⚠️ K1 (recenzja Partii 1 Planu B). Ślad po nieudanym odesłaniu statusu CAŁEGO zamówienia
+// ⚠️ Ślad po nieudanym odesłaniu statusu CAŁEGO zamówienia
 // trzyma je od tej pory na liście roboczej (domain/status.js → doZrobienia), więc musi mieć
 // na tej liście WIDOCZNY powód — inaczej zamówienie wraca i nie wiadomo po co. Odznakę liczy
 // domena, tak samo jak sprawy przesyłki (sprawyZamowienia): widok niczego nie zgaduje.

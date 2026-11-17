@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { zarezerwujNumerWdt } from '../../../src/moduly/faktury/db/wdt-numery.js';
-import { createFaktura } from '../../pomoc/faktura-parytetu.js';
+import { createFaktura } from '../../pomoc/fabryka-faktury-testowej.js';
 
 // GAŁĄŹ WDT USŁUGI FAKTURY. Fixture i atrapy — wzorem tests/oms/faktura.test.js;
 // nabywca unijny = Alfatrend (prawdziwy klient, dane z kartoteki inFaktu id 10000001).

@@ -1,4 +1,4 @@
-import { potwierdzOdmoweHistorycznegoSchema } from '../pomoc/baseline-historyczne.js';
+import { potwierdzOdmoweHistorycznegoSchema } from '../pomoc/sprawdzanie-schematu-bazy.js';
 import { describe, it, expect } from 'vitest';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -52,8 +52,8 @@ describe('tokeny kanału Allegro', () => {
     zapiszTokeny(db, 'allegro_swietlik', {
       accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
     });
-    // PRZ-171 C: poprzedni błąd ma zgasnąć po zapisie nowej pary (dawniej pilnował tego test
-    // usuniętego dokończenia wiązania; `zapiszTokeny` woła też żywa aktywacja kanału).
+    // Poprzedni błąd ma zgasnąć po zapisie nowej pary;
+    // `zapiszTokeny` woła też aktywacja kanału.
     zapiszBladTokenu(db, 'allegro_swietlik', 'Odświeżenie tokenu odrzucone (HTTP 400).');
     expect(wczytajTokeny(db, 'allegro_swietlik').ostatni_blad).toMatch(/400/);
     const fetchImpl = async () => ({
@@ -704,7 +704,7 @@ describe('klucz tabeli tokenów nie przyjmuje NULL-a', () => {
 // w tej bazie nie rusza.
 describe('tabela tokenow w bazie JUZ ISTNIEJACEJ', () => {
   it('powstaje przy otwarciu starej bazy i nie tyka danych, ktore juz w niej leza', () => {
-    // Wyjątek zatwierdzony przez właściciela 2026-09-30: odmowa niezgodnego baseline + prawidłowe reopen.
+    // Odmowa niezgodnego schematu bazowego oraz prawidłowe ponowne otwarcie.
     potwierdzOdmoweHistorycznegoSchema(["DROP TABLE tokeny_kanalu"], ['tokeny_kanalu']);
     const plik = join(mkdtempSync(join(tmpdir(), 'oms-tokeny-')), 'oms.sqlite');
     const pierwsza = openOmsDb(plik);

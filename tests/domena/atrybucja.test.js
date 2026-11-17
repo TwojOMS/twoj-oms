@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { atrybucjaZeSurowych, atrybucjaZWiersza, opisAtrybucji } from '../../src/domena/atrybucja.js';
 
-// Skad przyszlo zamowienie — WooCommerce Order Attribution (Etap 3 kampanii, 2026-08-25).
+// Skad przyszlo zamowienie — WooCommerce Order Attribution.
 // Ksztalt pol odwzorowany z PRAWDZIWYCH zamowien produkcyjnych (odczyt 25.08): #28224
 // (kupon wrzesien30, typein/(direct), wejscie na karte produktu, iPhone) i #28029
 // (referral z m.facebook.com).

@@ -48,7 +48,7 @@ describe('umowaZbiorcza', () => {
       oplata_obslugi_gr: null, oplata_kurierska_gr: null })).not.toThrow();
   });
 
-  // ⚠️ PRZ-180: umowa okresu NIE NIESIE rabatu — nie było czytelnika, a pole przepuszczało 300%.
+  // ⚠️ umowa okresu NIE NIESIE rabatu — nie było czytelnika, a pole przepuszczało 300%.
   // Zły rabat w wierszu nie wywraca okresu (lista okresów mapuje wszystkich klientów naraz).
   it.each([[300], [-5], [7.5], [null]])('rabat %s w wierszu nie trafia do umowy i jej nie wywraca', (rabat) => {
     const umowa = umowaZbiorcza({ ...WIERSZ, rabat_procent: rabat });
@@ -58,13 +58,13 @@ describe('umowaZbiorcza', () => {
 
 });
 
-describe('parsujKlientowZbiorczych — granica rabatu (PRZ-180)', () => {
+describe('parsujKlientowZbiorczych — granica rabatu', () => {
   const wpis = (rabat) => ({ OMS_KLIENCI_ZBIORCZY: `przykladowa:Pracownia Przykładowa sp. z o.o.:1234500011:${rabat}:500:4:19` });
 
   it('przyjmuje rabat równy RABAT_MAX', () => {
     expect(parsujKlientowZbiorczych(wpis(RABAT_MAX))[0].rabatProcent).toBe(RABAT_MAX);
   });
-  // Parser woła dziś tylko migracja jednorazowa, której nic w `src` nie uruchamia (decyzja D06) —
+  // Parser woła dziś tylko migracja jednorazowa, której nic w `src` nie uruchamia —
   // stąd „odmawia wpisu”, nie „wywraca start”.
   it.each([[RABAT_MAX + 1], [300], ['7.5']])('odmawia wpisu z rabatem %s procent zamiast przyjąć cenę ujemną', (rabat) => {
     expect(() => parsujKlientowZbiorczych(wpis(rabat))).toThrow(/rabat/i);

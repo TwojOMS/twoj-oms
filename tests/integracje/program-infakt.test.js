@@ -1,5 +1,5 @@
-// PRZ-118.02 — adapter inFaktu za kontraktem ProgramFakturowy (src/integracje/programy/infakt.ts).
-// Pilnuje trzech rzeczy, na których stoją zmiany 05–09:
+// Adapter inFaktu za kontraktem ProgramFakturowy (src/integracje/programy/infakt.ts).
+// Pilnuje trzech rzeczy:
 //   1) każdy z czterech obiektów „inFakt” (prawdziwy klient, atrapa piaskownicy, pośrednik z Ustawień, odmowa próby)
 //      po owinięciu jest pełnym programem i ma tę samą listę metod;
 //   2) zdolność jest obecna ⇔ owijany obiekt ma metodę (mocki w testach bez `oznaczZaplacona` = program bez zdolności);
@@ -24,7 +24,7 @@ const METODY_PROGRAMU = [
   'iluMaNumer', 'listaFaktur', 'listaKorekt', 'listaNieoplaconych', 'oznaczZaplacona', 'pobierzFakture', 'pobierzKorekte', 'pobierzPdf',
   'pobierzPdfKorekty', 'przygotujNabywce', 'sprawdzPolaczenie', 'statusKorekty', 'wyslijDokumentDoKsef', 'wystaw', 'wystawKorekte',
 ];
-// metoda klienta ↔ zdolność, którą jej obecność daje (plan PRZ-118, „Kontrakt — 14 metod klienta”)
+// Metoda klienta ↔ zdolność, którą jej obecność daje.
 const ZDOLNOSC_METODY = {
   listaNieoplaconych: 'nieoplacone', oznaczZaplacona: 'oznaczZaplacona', wyslijDokumentDoKsef: 'wyslijDoKsef', iluMaNumer: 'numeracjaWlasna',
 };
@@ -37,7 +37,7 @@ const posrednik = () => infaktZUstawien({ wczytaj: () => null, fabryka: () => { 
 const mock = (bez = []) => Object.fromEntries(METODY_INFAKTU.filter((m) => !bez.includes(m)).map((m) => [m, vi.fn(async () => null)]));
 
 describe('owinięty inFakt przechodzi kontrakt', () => {
-  it('PRZ-147: pośrednik udostępnia statusKorekty i adapter przekazuje wynik', async () => {
+  it('pośrednik udostępnia statusKorekty i adapter przekazuje wynik', async () => {
     const klient = mock();
     klient.statusKorekty.mockResolvedValue({ stan: 'wystawiona', uuid: 'kor-test', bledy: [] });
     const p = programInfakt(klient);
@@ -45,7 +45,7 @@ describe('owinięty inFakt przechodzi kontrakt', () => {
     expect(klient.statusKorekty).toHaveBeenCalledWith('REF-TEST');
     expect(typeof posrednik().statusKorekty).toBe('function');
   });
-  it('(1) prawdziwy klient: przechodzi sprawdzProgramFakturowy, zdolności — wszystkie cztery', () => {
+  it('prawdziwy klient: przechodzi sprawdzProgramFakturowy, zdolności — wszystkie cztery', () => {
     const p = programInfakt(klientPrawdziwy());
     expect(sprawdzProgramFakturowy(p)).toBe(p);
     expect([...p.opis.zdolnosci].sort()).toEqual(WSZYSTKIE_ZDOLNOSCI);
@@ -81,7 +81,7 @@ describe('owinięty inFakt przechodzi kontrakt', () => {
     expect(opis.id).toBe('infakt');
   });
 
-  it('(2) atrapa piaskownicy, pośrednik z Ustawień i odmowa próby — każdy owinięty przechodzi z czterema zdolnościami', () => {
+  it('atrapa piaskownicy, pośrednik z Ustawień i odmowa próby — każdy owinięty przechodzi z czterema zdolnościami', () => {
     for (const obiekt of [atrapa(), posrednik(), odmowaInfaktuWProbie()]) {
       const p = programInfakt(obiekt);
       expect(sprawdzProgramFakturowy(p)).toBe(p);
@@ -102,7 +102,7 @@ describe('owinięty inFakt przechodzi kontrakt', () => {
 });
 
 describe('zdolność obecna ⇔ metoda istnieje', () => {
-  it('(3) atrapa bez wyslijDokumentDoKsef → program bez zdolności wyslijDoKsef i bez metody; kontrakt przechodzi', () => {
+  it('atrapa bez wyslijDokumentDoKsef → program bez zdolności wyslijDoKsef i bez metody; kontrakt przechodzi', () => {
     const p = programInfakt(mock(['wyslijDokumentDoKsef']));
     expect(p.opis.zdolnosci).not.toContain('wyslijDoKsef');
     expect(p).not.toHaveProperty('wyslijDokumentDoKsef');
@@ -110,7 +110,7 @@ describe('zdolność obecna ⇔ metoda istnieje', () => {
     expect(sprawdzProgramFakturowy(p)).toBe(p);
   });
 
-  it('(3) to samo dla każdej z czterech metod opcjonalnych — pozostałe zdolności zostają', () => {
+  it('to samo dla każdej z czterech metod opcjonalnych — pozostałe zdolności zostają', () => {
     for (const [metoda, zdolnosc] of Object.entries(ZDOLNOSC_METODY)) {
       const p = programInfakt(mock([metoda]));
       expect(p).not.toHaveProperty(metoda);
@@ -144,7 +144,7 @@ describe('zdolność obecna ⇔ metoda istnieje', () => {
   });
 });
 
-describe('(9) przygotujNabywce — wpis kartoteki jak services/faktura.js', () => {
+describe('przygotujNabywce — wpis kartoteki jak services/faktura.js', () => {
   const firma = {
     firma: 'Pracownia Półcień', nip: '1234563218', ulica: 'Lampowa 3', kod: '00-950', miasto: 'Warszawa', kraj: 'PL',
     email: 'biuro@polcien.invalid',
@@ -247,7 +247,7 @@ describe('(9) przygotujNabywce — wpis kartoteki jak services/faktura.js', () =
   });
 });
 
-describe('(11) adapter przezroczysty — argumenty, wynik, błąd', () => {
+describe('adapter przezroczysty — argumenty, wynik, błąd', () => {
   it('te same argumenty (tożsamość) i ten sam wynik: Buffer z PDF, tablica z listy', async () => {
     const k = mock();
     const pdf = Buffer.from('%PDF-1.4 lampa');

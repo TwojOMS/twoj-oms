@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { zalozKonto, kontoPoLoginie } from '../../../src/core/bezpieczenstwo/konta.js';
 import { listaRol, rolaPoKluczu, dodajRole, przypiszRole, kluczeEkranow, odciskMacierzy } from '../../../src/moduly/ustawienia/role.js';
-import { nowyPanel, jako, get, post } from '../../pomoc/konta-prz068.js';
+import { nowyPanel, jako, get, post } from '../../pomoc/panel-konta-testowe.js';
 
 const teraz = () => new Date('2026-10-14T02:00:00Z');
 function panel() {
@@ -23,7 +23,7 @@ function bezOdstepstw(db) {
   }
 }
 
-describe('PRZ-068 przypisanie roli kontu', () => {
+describe('przypisanie roli kontu', () => {
   it('zmiana roli przepisuje ptaszki i flagę admin z roli; lista pokazuje nazwę roli z bazy', async () => {
     const { db, app, idEwa, admin } = panel();
     const mag = dodajRole(db, { nazwa: 'Magazynier', kopiujZ: 'produkcja', teraz });

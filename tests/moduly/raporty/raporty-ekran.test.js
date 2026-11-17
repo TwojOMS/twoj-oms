@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { openOmsDb } from '../../pomoc/dane-miesieczne-parytetu.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { openOmsDb } from '../../pomoc/testowe-dane-miesieczne.js';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { ustawGranice, zapiszHistorie } from '../../../src/oms/db/historia-sprzedazy.js';
-import { KANALY } from '../../pomoc/raporty-historyczne-fixture.js';
+import { KANALY } from '../../pomoc/przykladowe-dane-raportow.js';
 
 const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64') };
 const config = { auth: { user: 'adam', pass: 'x' }, klienciZbiorczy: [] };
@@ -73,7 +73,7 @@ describe('ekran /raporty', () => {
     expect(tresc.match(/btn--glowny/g)).toHaveLength(2);
   });
 
-  // ——— SKROT „DZISIAJ" (31.08.2026, prosba właściciela) ————————————————————————————————
+  // ——— SKROT „DZISIAJ" ————————————————————————————————
   // ⚠️ ZAKRES SPRAWDZAMY W POLACH FORMULARZA, a nie po nazwie skrotu w adresie: pola
   // niosa daty JUZ ROZWINIETE przez domene, wiec test lapie takze taki blad, po ktorym
   // przycisk odpowiada 200 i pokazuje CALY MIESIAC.
@@ -316,7 +316,7 @@ describe('wykres „Sprzedaż dzień po dniu"', () => {
     expect(dni[2]).not.toContain('dzien-slupek');
   });
 
-  // Okienko :hover (2026-08-28): kazda kolumna niesie karte z data, kwota i liczba
+  // Okienko :hover: kazda kolumna niesie karte z data, kwota i liczba
   // zamowien — czysty CSS, zero JS (wyjatek JS ma wylacznie /kampania).
   it('każda kolumna niesie okienko z datą, kwotą i liczbą zamówień', async () => {
     const odp = await wejdz('/raporty?od=2026-06-09&do=2026-06-11');
@@ -332,7 +332,7 @@ describe('wykres „Sprzedaż dzień po dniu"', () => {
 
   it('podpis dnia niesie date, dzien tygodnia i kwote (aria-label), a najwyzszy slupek kwote wprost', async () => {
     const odp = await wejdz('/raporty?od=2026-06-09&do=2026-06-11');
-    // aria-label zamiast title (2026-08-28): wizualnie podpis niesie okienko :hover,
+    // aria-label zamiast title: wizualnie podpis niesie okienko :hover,
     // a natywny dymek dublowalby je z opoznieniem; czytnik ekranu czyta aria-label.
     expect(odp.body).toMatch(/aria-label="10 czerwca \(śr\)[^"]*246,00 zł/);
     // ⚠️ Po </style>: arkusz niesie regule `.dzien-kwota` i liczenie po calym dokumencie
@@ -355,7 +355,7 @@ describe('wykres „Sprzedaż dzień po dniu"', () => {
     expect(odp.body).toContain('<div class="dzien"');
   });
 
-  // ⚠️ JEDEN SLUPEK TO NIE WYKRES (31.08.2026, razem ze skrotem „Dzisiaj"). Przy zakresie
+  // ⚠️ JEDEN SLUPEK TO NIE WYKRES. Przy zakresie
   // jednodniowym slupek liczy sie wzgledem samego siebie, wiec ZAWSZE ma 100% wysokosci
   // i wypelnia cala szerokosc karty — czarny prostokat, ktory nie mowi nic ponad kafel KPI
   // stojacy nad nim, a wyglada na usterke rysowania. Sekcja ma wtedy nie powstawac.
@@ -402,8 +402,8 @@ describe('kanaly — delta wzgledem poprzedniego okresu', () => {
     expect(s).toContain('—');
   });
 
-  // ——— OKIENKO :hover NA SLUPKU KANALU (31.08.2026, prosba właściciela) ————————————————————
-  // Ta sama karta, co przy wykresie dnia (28.08.2026): czysty CSS, zero JS. Okienko stoi
+  // ——— OKIENKO :hover NA SLUPKU KANALU ————————————————————
+  // Ta sama karta, co przy wykresie dnia: czysty CSS, zero JS. Okienko stoi
   // PRZED nazwa kanalu w drzewie, wiec wycinek „od okienka do nazwy" to dokladnie jego tresc
   // — i test mierzy kolejnosc razem z zawartoscia.
   const okienko = (s) => s.slice(s.indexOf('class="kanal-okienko"'), s.indexOf('class="kanal-nazwa"'));

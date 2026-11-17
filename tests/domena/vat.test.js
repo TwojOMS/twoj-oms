@@ -3,7 +3,7 @@ import {
   STAWKA_VAT, STAWKI_VAT, czyStawkaVat, stawkaPozycji, nettoZBruttoDoPokazania, bruttoZNetto,
 } from '../../src/domena/vat.js';
 
-// PRZ-105: stawka per pozycja (decyzja właściciela 21.10: 23/8/5/0, bez „zw” i „np”).
+// Stawka per pozycja: 23/8/5/0, bez „zw” i „np”.
 describe('STAWKI_VAT i czyStawkaVat', () => {
   it('dopuszcza dokładnie 23, 8, 5 i 0 — napis albo liczbę', () => {
     expect([...STAWKI_VAT]).toEqual(['23', '8', '5', '0']);

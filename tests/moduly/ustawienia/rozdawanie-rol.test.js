@@ -21,7 +21,7 @@ function baza() {
   return db;
 }
 
-describe('PRZ-068 rozdawanie nowego ekranu rolom', () => {
+describe('rozdawanie nowego ekranu rolom', () => {
   it('nowy klucz trafia do ról z manifestu i ich kont, nie do roli założonej przez admina (fail-closed)', () => {
     const db = baza();
     expect(rozdajNoweUprawnienia(db, [modul('nowy-ekran', ['sprzedaz'])], teraz)).toEqual(['nowy-ekran']);
@@ -32,7 +32,7 @@ describe('PRZ-068 rozdawanie nowego ekranu rolom', () => {
     expect(synchronizujRole(db, { teraz }).przejete).toEqual([]);
   });
 
-  it('manifest z rolami admin/operator nie trafia do żadnej roli (bez mapowania, O12)', () => {
+  it('manifest z rolami admin/operator nie trafia do żadnej roli (bez mapowania)', () => {
     const db = baza();
     rozdajNoweUprawnienia(db, [modul('inny-ekran', ['admin', 'operator'])], teraz);
     for (const k of ['sprzedaz', 'produkcja', 'r-magazyn1']) expect(rolaPoKluczu(db, k).ekrany.has('inny-ekran'), k).toBe(false);

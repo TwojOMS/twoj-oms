@@ -1,3 +1,4 @@
+// Bootstrap modułu kosztów nie powtarza zapisów w bazie przygotowanej przez fabrykę.
 import { describe, it, expect, vi } from 'vitest';
 import { tmpdir } from 'node:os';
 import { zbudujOms } from '../../../src/oms/bootstrap.ts';
@@ -16,9 +17,9 @@ const env = { OMS_USER: 'operator', OMS_PASS: 'fixture',
   OMS_PROFORMY_KATALOG: tmpdir(), OMS_ETYKIETY_KATALOG: tmpdir() };
 const headers = { authorization: `Basic ${Buffer.from('operator:fixture').toString('base64')}` };
 
-describe('PRZ-025 rzeczywista kompozycja bootstrapu', () => {
+describe('rzeczywista kompozycja bootstrapu', () => {
   it('baza przygotowana przez fabrykę i initializer sekretu Web pozwala czytać koszty po zablokowaniu zapisów', async () => {
-    // Fabryka migruje te same moduły, które potem buduje bootstrap (faktury mają własną migrację od PRZ-122.B02).
+    // Fabryka migruje te same moduły, które potem buduje bootstrap (faktury mają własną migrację).
     const moduly = [modulRdzen, modulWeb, modulKanaly, modulFaktury, modulKoszty];
     const db = openOmsDb(':memory:', { moduly: moduly as any });
     wczytajSekret(db);
@@ -64,7 +65,7 @@ describe('PRZ-025 rzeczywista kompozycja bootstrapu', () => {
         ['POST', '/koszty/reczne'], ['POST', '/koszty/firmy'],
         ['POST', '/koszty/reczne/:klucz'], ['POST', '/koszty/reczne/:klucz/usun'],
       ] as const) expect(z.app.hasRoute({ method, url })).toBe(true);
-      // PRZ-102.22: czuwacz i zegar stoją zawsze (token zapisany w Ustawieniach działa bez restartu), ale bez tokenu
+      // Czuwacz i zegar stoją zawsze (token zapisany w Ustawieniach działa bez restartu), ale bez tokenu
       // nie ma czym pobierać: usługa mówi „niedostępny”, a przebieg zegara wraca pominięty bez wyjścia do sieci.
       expect(z.usluga<any>('koszty', 'czuwaczKosztow').dostepny()).toBe(false);
       expect(z.usluga('koszty', 'ksefKlient')).toBeNull();

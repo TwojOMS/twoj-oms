@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { pobierzZamowienie, dodajPozycjeReczna, zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { utworzZamowienieReczne, przeliczKwoteRecznego } from '../../../src/oms/db/zamowienia-reczne.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { podsumowaniePozycji } from '../../../src/domena/tabela-pozycji.js';
 import { adresOdbiorcy } from '../../../src/domena/adres-odbiorcy.js';
 import { daneFaktury } from '../../../src/domena/dane-faktury.js';
@@ -39,10 +39,9 @@ describe('utworzZamowienieReczne', () => {
   });
 
   // ⚠️ TO SA PIENIADZE, KTORE INKASUJE KURIER. Ekran zakladania NIE MA pola „kwota pobrania"
-  // (decyzja wlasciciela 2026-08-01: „wyjdzie sama po dodaniu produktow") — wiec musi ja
-  // wyliczac panel, i to za KAZDYM razem, gdy zmienia sie pozycje albo koszt dostawy.
+  // — wiec musi ja wyliczac panel, i to za KAZDYM razem, gdy zmienia sie pozycje albo koszt dostawy.
   // Zapisana raz przy zakladaniu zestarzalaby sie przy pierwszej dopisanej pozycji i kurier
-  // zainkasowalby za malo. Tak samo dziala sklep (domain/mapowanie.js: kwota_pobrania = total).
+  // zainkasowalby za malo. Tak samo dziala sklep (src/domena/mapowanie.js: kwota_pobrania = total).
   it('przy pobraniu kwota pobrania idzie za kwotą zamówienia', () => {
     const id = utworzZamowienieReczne(db, { metoda_wysylki: 'dpd', pobranie: 1, koszt_dostawy_brutto: '23.00' });
     dodajPozycjeReczna(db, id, { nazwa: 'A', sku: null, ilosc: 2, cena_brutto: '50.00', brutto_linii: '100.00' });
@@ -82,7 +81,7 @@ describe('utworzZamowienieReczne', () => {
     expect(pobierzZamowienie(db, id).sklep).toBe('reczne');
   });
 
-  // C2 (recenzja calej galezi): `zrodlo_id` liczony z SAMEJ pozycji w roku zerowal sie
+  // `zrodlo_id` liczony z SAMEJ pozycji w roku zerowal sie
   // razem z licznikiem serii (nastepnyNumerReczny) — pierwsze zamowienie nowego roku
   // dostawaloby ten sam `zrodlo_id`, co pierwsze zamowienie roku poprzedniego, a
   // `UNIQUE (sklep, zrodlo_id)` w schema.sql nie wie nic o latach. Test przechodzi
@@ -112,11 +111,10 @@ describe('utworzZamowienieReczne', () => {
   });
 });
 
-// Formularz zakladania przeszedl 2026-08-01 z „rodzaj + nazwisko" na PELNY ekran: dane do
-// wysylki, dane do faktury (z GUS-em), dostawa, platnosc i piec wierszy pozycji — jednym
-// zapisem. Ponizsze testy sprawdzaja TRASY, nie sam parser (ten ma wlasny plik
-// tests/oms/nowe-zamowienie.test.js): mutacja usuwajaca wywolanie z trasy nie ma jak wpasc
-// na testy domenowe.
+// Formularz zakładania zapisuje razem dane do wysyłki i faktury (z GUS-em), dostawę,
+// płatność i wiersze pozycji. Testy sprawdzają TRASY, nie sam parser
+// (tests/domena/nowe-zamowienie.test.js): mutacja usuwająca wywołanie z trasy
+// nie ma jak wpaść na testy domenowe.
 describe('trasy zakładania zamówienia', () => {
   let db, app;
   beforeEach(async () => {
@@ -128,7 +126,7 @@ describe('trasy zakładania zamówienia', () => {
   const zaloz = (payload) => app.inject({ method: 'POST', url: '/zamowienia/nowe', headers: naglowek, payload });
   const idZOdpowiedzi = (r) => Number(r.headers.location.split('/').pop());
 
-  // PRZ-103 (21.10.2026, prośba właściciela „zrób 1 wiersz na start”): kolejne dokłada „+ Dodaj wiersz”.
+  // Kolejne dokłada „+ Dodaj wiersz”.
   it('GET pokazuje trzy kolumny karty i jeden wiersz pozycji', async () => {
     const r = await app.inject({ method: 'GET', url: '/zamowienia/nowe', headers: naglowek });
     expect(r.statusCode).toBe(200);
@@ -143,8 +141,7 @@ describe('trasy zakładania zamówienia', () => {
     expect(r.body).toContain('/zamowienia/nowe');
   });
 
-  // „Wszystkie pola nieobowiazkowe" (decyzja wlasciciela 2026-08-01) — do 2026-08-01 trasa
-  // odmawiala bez nazwiska albo firmy. Numer nadany przy telefonie jest wart wiecej niz
+  // Wszystkie pola nieobowiazkowe. Numer nadany przy telefonie jest wart wiecej niz
   // komplet danych; karta i tak zapali blokade przy nadaniu i przy fakturze.
   it('pusty formularz zakłada zamówienie, nie odmawia', async () => {
     const r = await zaloz({});
@@ -329,7 +326,7 @@ describe('pobranie z GUS przed założeniem zamówienia', () => {
     expect(r.body).toContain('Anna Kowalska');
   });
 
-  // ⚠️ USTALENIE RECENZJI 2026-08-01: „Pobierz z GUS" byl PIERWSZYM przyciskiem typu submit
+  // ⚠️ „Pobierz z GUS" byl PIERWSZYM przyciskiem typu submit
   // w formularzu, a wlasnie pierwszy w kolejnosci znacznikow jest PRZYCISKIEM DOMYSLNYM —
   // tym, ktory wciska Enter. Operator wpisywal nazwisko, wciskal Enter i zamiast zalozonego
   // zamowienia dostawal ekran z komunikatem GUS-u. Test pilnuje samej KOLEJNOSCI, bo to ona
@@ -347,8 +344,8 @@ describe('pobranie z GUS przed założeniem zamówienia', () => {
     expect(pierwszyPrzycisk.slice(0, 200)).toContain('Załóż zamówienie');
     // Przycisk GUS-u MUSI w tym formularzu byc — inaczej test przechodzilby dlatego,
     // ze nie ma z czym konkurowac.
-    // ⚠️ Adres niesie KOTWICE (21.08.2026) — bez niej ekran po pobraniu z GUS-u wraca na gore
-    // i operator szuka miejsca, w ktorym byl. Patrz tests/oms/nowe-zamowienie-ekran.test.js.
+    // ⚠️ Adres niesie KOTWICE — bez niej ekran po pobraniu z GUS-u wraca na gore
+    // i operator szuka miejsca, w ktorym byl. Patrz tests/moduly/zamowienia/nowe-zamowienie-ekran.test.js.
     expect(formularz).toContain('formaction="/zamowienia/nowe/gus#faktura"');
   });
 
@@ -359,8 +356,7 @@ describe('pobranie z GUS przed założeniem zamówienia', () => {
   });
 });
 
-// Powiazanie dosylki przeniosło sie 2026-08-01 z ekranu zakladania na KARTE (pole zniknelo
-// z formularza na prosbe wlasciciela). Bez tych tras dosylka nie mialaby jak pokazac sie
+// Powiazanie dosylki jest na KARCIE, bez pola na ekranie zakladania. Bez tych tras dosylka nie mialaby jak pokazac sie
 // przy zamowieniu, ktorego dotyczy — a wtedy reklamacja liczy sie drugi raz jako sprzedaz.
 describe('powiązanie dosyłki z karty', () => {
   let db, app;
@@ -403,8 +399,7 @@ describe('powiązanie dosyłki z karty', () => {
     expect(r.body).toContain(`value="${numer}"`);
   });
 
-  // ⚠️ To samo, co „dosylka do samego siebie", ale w DWOCH krokach (ustalenie recenzji
-  // 2026-08-01). Nic sie nie zapetla, ale OBIE karty pokazywalyby to samo zamowienie
+  // ⚠️ To samo, co „dosylka do samego siebie", ale w DWOCH krokach. Nic sie nie zapetla, ale OBIE karty pokazywalyby to samo zamowienie
   // naraz jako pierwotne i jako dosylke.
   it('powiązania w obie strony nie da się zbudować dwoma zapisami', async () => {
     const a = utworzZamowienieReczne(db, { metoda_wysylki: 'dpd' });
@@ -509,7 +504,7 @@ describe('trasy pozycji przeliczają kwotę zamówienia ręcznego (weryfikacja p
   });
 });
 
-// ⚠️ USTALENIA RECENZJI CALEJ ZMIANY (2026-08-01) — OBA O PIENIADZACH, KTORE INKASUJE KURIER.
+// ⚠️ PIENIADZE, KTORE INKASUJE KURIER.
 // Kwota pobrania ma DWA miejsca: kolumne `kwota_pobrania` (nalezaca do metody z kolumny)
 // i kwote w nadpisaniu `wysylka_reczna_json` (nalezaca do metody wlaczonej z karty). Ta
 // druga wygrywa przy odczycie. Pomylenie ich gubi pobranie BEZ ANI JEDNEGO BLEDU.
@@ -524,7 +519,7 @@ describe('kwota pobrania przy zmianach metody z karty (weryfikacja przez HTTP)',
   const post = (url, payload) => app.inject({ method: 'POST', url, headers: naglowek, payload });
   const dopisz = (id, cena) => post(`/zamowienia/${id}/pozycje`, { nazwa: 'Dodatek', ilosc: '1', cena_brutto: cena });
 
-  // Scenariusz z recenzji: pobranie → „Zmień metodę" na dpd bez pobrania → ruch na
+  // Pobranie → „Zmień metodę" na dpd bez pobrania → ruch na
   // pozycjach → „Przywróć metodę ze sklepu". Wracamy do pobrania i kwota MUSI tam być.
   // Bez poprawki kolumna była wyzerowana, DPD nie wstawiało <cod>, a paczka jechała
   // jak przedpłacona.
@@ -543,7 +538,7 @@ describe('kwota pobrania przy zmianach metody z karty (weryfikacja przez HTTP)',
     expect(z.kwota_pobrania).toBe('200.01');
   });
 
-  // Scenariusz z recenzji: pobranie WLACZONE Z KARTY siedzi w nadpisaniu razem z wlasna
+  // Pobranie WLACZONE Z KARTY siedzi w nadpisaniu razem z wlasna
   // kwota, wiec przeliczenie kolumny nic mu nie robilo — kurier inkasowal tyle, ile
   // zamowienie bylo warte PRZED dopisaniem pozycji.
   it('pobranie włączone z karty też nadąża za kwotą zamówienia', async () => {

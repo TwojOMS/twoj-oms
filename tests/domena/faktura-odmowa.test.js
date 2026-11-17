@@ -39,9 +39,9 @@ describe('powod odmowy faktury', () => {
   });
 });
 
-// PRZ-126.F02: opcja firmy „faktura także bez prośby klienta”. Wyłączona (domyślnie) = odmowa jak dziś;
+// Opcja firmy „faktura także bez prośby klienta”. Wyłączona (domyślnie) = odmowa jak dziś;
 // włączona zdejmuje WYŁĄCZNIE odmowę „nie prosił” — scalone, okres i anulowane nadal odmawiają tą samą treścią.
-describe('powod odmowy faktury — opcja dla kazdego (PRZ-126)', () => {
+describe('powod odmowy faktury — opcja dla kazdego', () => {
   const bezZadania = (n) => zam({ chce_fakture: 0, nip: null, ...n });
 
   it('bez opcji i z dlaKazdego: false odmawia zamowieniu bez zadania dokladnie ta sama trescia', () => {
@@ -71,9 +71,9 @@ describe('powod odmowy faktury — opcja dla kazdego (PRZ-126)', () => {
   });
 });
 
-// PRZ-126.PT5 (decyzja 8): bez adresu nabywcy nie ma faktury. Reguła czyta `daneFaktury(z)`
+// Bez adresu nabywcy nie ma faktury. Reguła czyta `daneFaktury(z)`
 // (ręczne nadpisanie wygrywa) i stoi OSTATNIA — anulowane, okres, scalone i „nie prosił” mówią pierwsze.
-describe('powod odmowy faktury — adres nabywcy (PRZ-126.PT5)', () => {
+describe('powod odmowy faktury — adres nabywcy', () => {
   const bezAdresu = (n) => zam({ klient: { company: 'Pracownia Półcień' }, ...n });
 
   it('odmawia bez adresu i wymienia braki po kolei', () => {

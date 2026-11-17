@@ -47,7 +47,7 @@ async function przypadek(praca) {
   }
 }
 
-describe('PRZ-024 — rzeczywisty zapis zwrotu przez chronione HTTP', () => {
+describe('rzeczywisty zapis zwrotu przez chronione HTTP', () => {
   it('utrwala nagłówek, pozycje, kwotę dostawy i log sukcesu po ponownym otwarciu bazy', async () => {
     await przypadek(async ({ id, wyslij, stan, otworzPonownie }) => {
       const r = await wyslij();

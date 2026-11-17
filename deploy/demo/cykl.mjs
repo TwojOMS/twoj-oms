@@ -1,5 +1,5 @@
-// PRZ-083: cykl resetu demo publicznego w JEDNYM procesie. Do PRZ-083 reset kończył proces i czekał na restart
-// kontenera (46 s przerwy, pomiar 15.10). Teraz:
+// Cykl resetu demo publicznego w JEDNYM procesie. Restart kontenera z generowaniem bazy
+// powoduje kilkadziesiąt sekund przerwy, dlatego:
 //   1. `wyprzedzenieMs` przed terminem — następna baza w procesie potomnym (baza.mjs → nastepna.mjs), panel działa dalej;
 //   2. w terminie — bezpiecznik izolacji (jak przy starcie kontenera), zamknięcie aplikacji, podmiana plików, nowa
 //      aplikacja z następnym terminem w DEMO_RESET_PLANOWY (pasek demo liczy do niego i po nim poznaje nową instancję);

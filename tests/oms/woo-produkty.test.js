@@ -47,7 +47,7 @@ describe('pobierzWszystkieProdukty', () => {
     expect(strony).toEqual(['1', '2', '3']);
   });
 
-  // ⚠️ Bez status=publish REST v3 oddaje `any`. Zmierzone 2026-08-06: sklep A ma 890
+  // ⚠️ Bez status=publish REST v3 oddaje `any`. Zmierzone: sklep A ma 890
   // produktow, z czego 222 to SZKICE — w duzej czesci produkty techniczne przeniesione na PRO
   // i zostawione na B2C jako nieopublikowane. Magazyn zalozylby ~222 karty-duchy.
   // KAZDE zadanie, nie tylko pierwsze. Klient filtrujacy tylko strone 1 sciagnalby

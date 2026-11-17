@@ -23,7 +23,7 @@ function zasiej(db, kanal, produkt_id) {
 const odczyt = (db, sklepy, dodatkowe = {}) => odswiezMagazyn({ db, sklepy, allegro: {}, teraz,
   kanalySklepow, kanalyAllegro, log: () => {}, ...dodatkowe });
 
-describe('PRZ-026 — ochrona lustra i neutralne kanały', () => {
+describe('ochrona lustra i neutralne kanały', () => {
   it('pusty odczyt zachowuje każdy zapisany fakt i ręczne powiązanie', async () => {
     const db = openOmsDb();
     try {

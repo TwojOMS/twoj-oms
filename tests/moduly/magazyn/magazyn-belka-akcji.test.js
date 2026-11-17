@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from './pliki-historyczne.js';
 
-// UKLAD BELKI AKCJI — pilnuje KONTRAKTU EKRANU, ktorego zadien test tras nie widzi:
-// (1) piec akcji (od PRZ-160 E2.06 „Wystaw na…”) jako <details name="akcja"> w JEDNEJ belce nad tabela;
-// (2) formaction i pary zakresow NIETKNIETE wzgledem stanu sprzed przebudowy;
-// (3) belka jest przyklejona (position: sticky) — regula w arkuszu layoutu.
+// UKŁAD BELKI AKCJI — kontrakt ekranu, którego testy tras nie sprawdzają:
+// (1) pięć akcji, w tym „Wystaw na…”, jako <details name="akcja"> w jednej belce nad tabelą;
+// (2) formaction i pary zakresów zachowane;
+// (3) belka jest przyklejona (position: sticky) — reguła w arkuszu layoutu.
 const widok = readFileSync('src/oms/web/views/magazyn-lista.ejs', 'utf8');
 const layout = readFileSync('src/public/oms-uklad.css', 'utf8');
 

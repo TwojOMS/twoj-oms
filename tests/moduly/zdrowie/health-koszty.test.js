@@ -13,13 +13,13 @@ function zapiszStan(db,ostatnieUdaneAt){
     ostatni_blad=NULL,ostatni_blad_at=NULL`).run(ostatnieUdaneAt);
 }
 afterEach(()=>vi.unstubAllGlobals());
-describe('PRZ-025/030 — rzeczywiste koszty w HTTP health',()=>{
+describe('rzeczywiste koszty w HTTP health',()=>{
   it('manifest włącza koszty, a health odczytuje zmieniający się stan tej samej DB bez sieci',async()=>{
     vi.stubGlobal('fetch',vi.fn(async()=>{throw Error('Sieć zabroniona w odbiorze health');}));
     const a=await zbudujOms({env:{...env,KSEF_TOKEN:'FIXTURE-NIE-UJAWNIAJ-KSEF',KSEF_API:'https://ksef.invalid'},teraz});
     try{
       expect(a.usluga('koszty','ksefKlient')).toBeTruthy();
-      // PRZ-102.22: funkcja (token z Ustawień i przełącznik modułu bez restartu), nie wartość z chwili startu.
+      // Funkcja (token z Ustawień i przełącznik modułu bez restartu), nie wartość z chwili startu.
       expect(a.usluga('koszty','kosztyWlaczone')()).toBe(true);
       // Konstrukcja klienta i zegara nie jest ich uruchomieniem.
       zapiszStan(a.db,aktualny);

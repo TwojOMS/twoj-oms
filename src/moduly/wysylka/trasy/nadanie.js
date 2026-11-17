@@ -702,7 +702,7 @@ app.post('/zamowienia/:id/nadaj', async (req, reply) => {
     // Tam łapie także wywołania spoza HTTP. Odmawia WYŁĄCZNIE pobrania OMS-owego (ręczne,
     // metoda albo pobranie zmienione na karcie) u kuriera bez włączonej umowy; sklepowe
     // zamówienie paczkomatowe za pobraniem jedzie z kwotą jak dotąd (sekcja F
-    // w kwota-pobrania-nadania.test.js, pobranie-umowa-oms-137.test.js). Lista wyboru kuriera
+    // w kwota-pobrania-nadania.test.js, pobranie-umowa-oms.test.js). Lista wyboru kuriera
     // (domena/kurier-nadania.js) dalej odsiewa paczkomat przy pobraniu bez umowy.
 
     const gabarytyAllegro = profilGabarytuAllegro(deliveryMethodIdAllegro);

@@ -29,7 +29,7 @@ const trasy = [['GET','/magazyn'],['POST','/magazyn/odswiez'],['GET','/magazyn/p
   ['GET','/magazyn/powiazania'],['POST','/magazyn/powiazania'],['POST','/magazyn/powiazania/odepnij'],
   ['POST','/magazyn/1'],['POST','/magazyn/1/powiaz'],['POST','/magazyn/1/odepnij']];
 afterEach(() => vi.unstubAllGlobals());
-describe('PRZ-026 — brakujące trasy w rzeczywistym składzie', () => {
+describe('brakujące trasy w rzeczywistym składzie', () => {
   it('rejestruje wszystkie 18 tras i chroni je globalnym uwierzytelnieniem', async () => {
     const a = await sklad();
     try {

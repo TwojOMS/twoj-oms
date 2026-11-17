@@ -1,7 +1,7 @@
 // Kopia publiczna: wspólne zakładki muszą działać bez modułu TF, dla Brak i inFaktu.
 import { describe, it, expect } from 'vitest';
 import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
-import { nowyPanel, jako, get, post } from '../../pomoc/konta-prz068.js';
+import { nowyPanel, jako, get, post } from '../../pomoc/panel-konta-testowe.js';
 const PROGRAM = '/ustawienia/integracje/program-fakturowy';
 const URLS = ['/ustawienia/firma/rejestrowe', '/ustawienia/firma/rachunek', '/ustawienia/faktury/zasady',
   '/ustawienia/faktury/vat', '/ustawienia/faktury/numeracja', '/ustawienia/faktury/ksef',

@@ -1,4 +1,4 @@
-// PRZ-152.G6z: „Pobierz ZPL” — plik ZPL paczki (Allegro WzA „Nadaj i drukuj”, DPD/InPost z ZPL)
+// „Pobierz ZPL” — plik ZPL paczki (Allegro WzA „Nadaj i drukuj”, DPD/InPost z ZPL)
 // do ręcznego wysłania na Zebrę, gdy czuwacz/komputer z drukarką nie działa. Ścieżka tylko z bazy,
 // plik bajt w bajt, jako załącznik, wpis w logu zamówienia.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { rozpocznijPrzesylke, zakonczPrzesylke } from '../../../src/moduly/wysylka/db/przesylki.js';
 import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
-import { nowyPanel, jako, get, BASIC } from '../../pomoc/konta-prz068.js';
+import { nowyPanel, jako, get, BASIC } from '../../pomoc/panel-konta-testowe.js';
 
 const zmapowane = (id) => ({
   zrodlo_id: id, numer: String(id), klient: { first_name: 'Jan', email: 'jan@przyklad.test', address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa' },
@@ -106,7 +106,7 @@ describe('GET /zamowienia/:id/przesylki/:przesylkaId/etykieta-zpl', () => {
     const pdf = await get(p.app, `/zamowienia/${a.id}/przesylki/${b.przesylkaId}/etykieta`, BASIC);
     expect(r.statusCode).toBe(404);
     expect(pdf.statusCode).toBe(404);
-    // PRZ-152.G13 W1: odmowa to strona w układzie OMS (formularz motywu niesie własny adres),
+    // Odmowa to strona w układzie OMS (formularz motywu niesie własny adres),
     // więc porównujemy komunikat z paska, nie cały dokument.
     const pasek = (body) => body.match(/<p class="pasek-uwaga" role="alert">([^<]*)<\/p>/)?.[1];
     expect(pasek(r.body)).toBe('To zamówienie nie ma takiej przesyłki.');

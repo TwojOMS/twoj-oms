@@ -164,7 +164,7 @@ describe('autoresponder — czuwacz formulki', () => {
   });
 });
 
-// ⚠️⚠️ GORNA GRANICA WIEKU — decyzja wlasciciela z 29.08.2026 (24 godziny).
+// ⚠️⚠️ GORNA GRANICA WIEKU (24 godziny).
 //
 // Powod: 29.08 wyszlo, ze poller bral ZLA wiadomosc jako ostatnia (Allegro oddaje od
 // najnowszej), przez co WSZYSTKIE 18 watkow swietlik kwalifikowalo sie do formulki — w tym

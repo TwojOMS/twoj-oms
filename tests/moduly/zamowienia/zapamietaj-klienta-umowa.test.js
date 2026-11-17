@@ -3,11 +3,11 @@ import {
 } from 'vitest';
 
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { klientPoNip, wszyscyKlienci } from '../../../src/oms/db/klienci.js';
 import { zalozZamowienieReczne } from '../../../src/moduly/zamowienia/services/zamowienie-reczne.js';
 
-// „UAKTUALNIJ DANE STAŁEGO KLIENTA” NIE MA PRAWA RUSZYĆ WARUNKÓW HANDLOWYCH (PRZ-102.07).
+// „UAKTUALNIJ DANE STAŁEGO KLIENTA” NIE MA PRAWA RUSZYĆ WARUNKÓW HANDLOWYCH.
 //
 // Przycisk na karcie zamówienia obiecuje w podpowiedzi: „Nadpisze dane teleadresowe
 // zapamiętanego klienta danymi z tego zamówienia. Rabatu, B2B ani terminu nie zmienia”.

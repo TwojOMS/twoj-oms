@@ -1,4 +1,4 @@
-// PRZ-153.E1.2b — GET /api/v1/ja oddaje zakresy w kolejności ZAKRESY_API, niezależnie od kolejności w Set.
+// GET /api/v1/ja oddaje zakresy w kolejności ZAKRESY_API, niezależnie od kolejności w Set.
 import Fastify from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 import { pluginApiV1 } from '../../../src/moduly/api/plugin.js';

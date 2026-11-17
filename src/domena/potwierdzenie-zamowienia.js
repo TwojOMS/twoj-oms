@@ -226,7 +226,7 @@ function sekcjeTekstu(m) {
 /**
  * Sekcje potwierdzenia jako BLOKI szablonu: te same linie, które składa `jakoTekst` niżej,
  * bez pustej linii na początku (odstępy między blokami stawia szablon). Zgodność z mailem bez szablonu pilnuje
- * tests/moduly/wiadomosci/szablony-rownosc.test.js, a bajt w bajt — zdania-platnosci-rownosc-prz102-17.test.js.
+ * tests/moduly/wiadomosci/szablony-rownosc.test.js, a bajt w bajt — zdania-platnosci-rownosc.test.js.
  */
 export function blokiTekstuPotwierdzenia(m) {
   const s = sekcjeTekstu(m);

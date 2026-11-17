@@ -151,7 +151,7 @@ describe('createFakturaOkresu', () => {
     expect(infakt.wystaw).not.toHaveBeenCalled();
   });
 
-  // ⚠️ NAJGROZNIEJSZA DZIURA TEGO ZADANIA (recenzja 2026-08-01). `zapytaj` z infakt/client.js
+  // ⚠️ NAJGROZNIEJSZA DZIURA TEGO ZADANIA. `zapytaj` z infakt/client.js
   // oddaje `null` dla KAZDEJ odpowiedzi 2xx, ktorej ciala nie da sie sparsowac jako JSON
   // (puste albo HTML-owe cialo z proxy), a `wystaw` degraduje to do `{uuid: null, ...}`.
   // Zadanie do inFaktu wtedy DOSZLO — dokument moze istniec. Zapisane jako „zafakturowany
@@ -190,7 +190,7 @@ describe('createFakturaOkresu', () => {
   });
 
   // Komunikat nie ma prawa obiecywac ponowienia — ze stanow 'do_wyjasnienia'/'zawieszona'
-  // panel sam nie wychodzi, a trasy odblokowania (Zadanie 9) jeszcze nie ma.
+  // panel sam nie wychodzi, a trasy odblokowania jeszcze nie ma.
   it('komunikat blokady nie obiecuje ponowienia', async () => {
     const { db, okres } = bazaZOkresem();
     const infakt = infaktUdany();
@@ -253,7 +253,7 @@ describe('createFakturaOkresu — bariera arytmetyczna', () => {
     expect(infakt.wystaw).not.toHaveBeenCalled();
   });
 
-  // Rozjazdy znoszace sie nawzajem (Zadanie 6) — tu przez cala usluge, zeby nikt tej
+  // Rozjazdy znoszace sie nawzajem — tu przez cala usluge, zeby nikt tej
   // wlasciwosci nie zgubil, przenoszac bariere w inne miejsce.
   it('dwa rozjazdy znoszace sie nawzajem dalej sa odmowa', async () => {
     const db = openOmsDb();

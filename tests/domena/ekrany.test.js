@@ -40,12 +40,12 @@ describe('ekranDlaAdresu', () => {
     expect(ekranDlaAdresu('/kolejka-druku-faktur/7/pdf')).toBe('pozostale-dokumenty-zamowienia');
   });
 
-  it('rozpoznaje TAKZE postac z parametrem Fastify, bo tego uzywa test kompletnosci', () => {
+  it('rozpoznaje TAKZE postac z parametrem Fastify, bo adresy z deklaracji tras Fastify maja taka postac', () => {
     expect(ekranDlaAdresu('/zamowienia/:id/faktura')).toBe('faktury-zamowienia');
     expect(ekranDlaAdresu('/zamowienia/:id/nadaj')).toBe('zamowienia');
   });
 
-  // ⚠️ REGRESJA (recenzja 12.09.2026): `/zamowienia/:id/dane/faktura` NIE lapal sie na
+  // ⚠️ REGRESJA: `/zamowienia/:id/dane/faktura` NIE lapal sie na
   // WZORCE_DOKUMENTOW, bo ten wymagal „faktura" jako PIERWSZEGO segmentu po identyfikatorze.
   // Trasa spadala do prefiksu `/zamowienia` i ladowala na ekranie „zamowienia" — rola
   // Produkcja mogla wiec zmienic NIP nabywcy i, przez rabat kontraktowy wywolywany po

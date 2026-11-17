@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { rozpocznijPrzesylke, zakonczPrzesylke, zapiszStatusDpd } from '../../../src/moduly/wysylka/db/przesylki.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
 // ZAKLADKA /przesylki (pomysl właściciela 23.08): jedna lista paczek zamiast otwierania kart
 // po kolei — kurier, numer, ETAP z dniami w drodze, ostatni ruch, filtr „bez ruchu".
@@ -128,7 +128,7 @@ describe('GET /przesylki', () => {
   });
 });
 
-// ——— UKRYWANIE (25.08.2026) ——————————————————————————————————————————————————————
+// ——— UKRYWANIE ——————————————————————————————————————————————————————
 // Dla paczek, ktorych zaden status nie uratuje: zamowienie testowe, etykieta zrobiona
 // i nigdy przez kuriera niepodjeta. Sprzatanie przez ukrycie ma sens WYLACZNIE dla nich —
 // szesc paczek, ktore 25.08 wisialy jako „bez ruchu", bylo w rzeczywistosci DORECZONYCH

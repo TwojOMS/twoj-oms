@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { nowyPanel, jako, get, post } from '../../pomoc/konta-prz068.js';
+import { nowyPanel, jako, get, post } from '../../pomoc/panel-konta-testowe.js';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
 import { zmienSzablonyWiadomosci, wczytajSzablonyWiadomosci } from '../../../src/oms/db/szablony-wiadomosci.js';
 import { zapiszSzablon } from '../../../src/domena/szablony-wiadomosci.js';

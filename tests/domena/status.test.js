@@ -29,7 +29,7 @@ describe('wyliczStatus', () => {
     expect(wyliczStatus(z({ w_realizacji_at: '2026-07-29' }))).toBe('w_realizacji');
   });
 
-  // ⚠️ ZMIANA 2026-07-31: status wysłany NIE wynika już z istnienia nadanej paczki,
+  // ⚠️ ZMIANA: status wysłany NIE wynika już z istnienia nadanej paczki,
   // tylko z własnego faktu `wyslane_at`. Etykieta powstaje przy pakowaniu, a paczka
   // wyjeżdża dopiero z kurierem — panel nie zna momentu wyjazdu, zna go człowiek.
   it('data wysyłki → wyslane', () => {
@@ -124,11 +124,11 @@ describe('doZrobienia', () => {
     expect(doZrobienia(z({ wyslane_at: teraz(), przesylki: [nadana()], faktura: { ksef_status: 'w_toku', utworzona_at: teraz() } }))).toBe(false);
   });
 
-  // ⚠️ K1 (recenzja Partii 1 Planu B). TA SAMA zasada, co dwie powyżej — „stan wymagający
+  // ⚠️ TA SAMA zasada, co dwie powyżej — „stan wymagający
   // człowieka nie może zniknąć z listy roboczej" — zastosowana wreszcie do śladu po
   // nieudanym odesłaniu statusu CAŁEGO zamówienia (`zamowienia.sync_woo_blad`).
   //
-  // Zmierzone przy recenzji: masowa zmiana na „Wysłane" przy padniętym kanale zapisała ślad
+  // Zmierzone: masowa zmiana na „Wysłane" przy padniętym kanale zapisała ślad
   // 20/20, a na liście roboczej nie było WIDOCZNE ANI JEDNO z nich — bo `wyliczStatus` daje
   // wtedy 'wyslane' i zamówienie schodzi z listy w tej samej sekundzie, w której powstał
   // problem. Kupujący dalej widzi u siebie stary status i nikt się o tym nie dowie bez
@@ -154,7 +154,7 @@ describe('doZrobienia', () => {
   });
 });
 
-// I4. Zasada „stan wymagajacy czlowieka nie moze zniknac z listy roboczej" jest w tym
+// Zasada „stan wymagajacy czlowieka nie moze zniknac z listy roboczej" jest w tym
 // projekcie zapisana dwa razy (komentarz przy przesylce 'do_wyjasnienia', potem doZrobienia
 // dla faktur), ale do przesylki JUZ NADANEJ nie byla zastosowana ani razu. A tam boli
 // najbardziej: wyliczStatus daje 'wyslane', wiec zamowienie schodzi z listy w tej samej
@@ -177,13 +177,13 @@ describe('doZrobienia — nadana przesyłka z nierozwiązaną sprawą', () => {
     expect(doZrobienia(z({ przesylki: [nadana({ status_kuriera_blad: 'INCORRECT_LOGIN_OR_PASSWORD' })] }))).toBe(true);
   });
 
-  // Kontrola pozytywna, ktora dzialala od Zadania 10 — pilnujemy, ze nie zgubilismy jej
+  // Kontrola pozytywna, ktora dzialala od dawna — pilnujemy, ze nie zgubilismy jej
   // po drodze przy przepisywaniu warunku na sprawyPrzesylki().
   it('przesyłka „do wyjaśnienia” nadal zostaje na liście roboczej', () => {
     expect(doZrobienia(z({ przesylki: [{ status: 'do_wyjasnienia', numer_listu: 'X1', utworzona_at: teraz() }] }))).toBe(true);
   });
 
-  // I3. Osierocone 'w_trakcie' po restarcie procesu: wiersz zostaje na zawsze, a status
+  // Osierocone 'w_trakcie' po restarcie procesu: wiersz zostaje na zawsze, a status
   // zamowienia to wtedy 'nowe' — akurat ten przypadek z listy nie znikal, ale musi byc
   // rozpoznawany jako sprawa czlowieka, bo panel sam z niego nie wyjdzie.
   it('zawieszone nadanie zostaje na liście roboczej', () => {
@@ -198,7 +198,7 @@ describe('doZrobienia — nadana przesyłka z nierozwiązaną sprawą', () => {
   });
 });
 
-// I5. Anulowanie PO nadaniu/wystawieniu chowalo zamowienie razem z paczka w drodze
+// Anulowanie PO nadaniu/wystawieniu chowalo zamowienie razem z paczka w drodze
 // i dokumentem w KSeF. Nie trzeba zadnego wyscigu — wystarczy anulowanie dzien po wysylce.
 describe('anulowane z żywą przesyłką albo fakturą', () => {
   it('anulowane po nadaniu zostaje na liście roboczej', () => {
@@ -226,10 +226,10 @@ describe('anulowane z żywą przesyłką albo fakturą', () => {
     expect(doZrobienia(zam)).toBe(false);
   });
 
-  // ⚠️⚠️ UKRYCIE PACZKI MA ZDEJMOWAĆ ZAMÓWIENIE TAKŻE Z LISTY ROBOCZEJ (13.09.2026).
+  // ⚠️⚠️ UKRYCIE PACZKI MA ZDEJMOWAĆ ZAMÓWIENIE TAKŻE Z LISTY ROBOCZEJ.
   //
   // Tak brzmi komentarz przy kolumnie `ukryta_at` w schema.sql od dnia jej dołożenia
-  // (25.08.2026) — i do dziś to nie było prawdą: `anulowaneWymagaUwagi` liczyło KAŻDY
+  // — i do dziś to nie było prawdą: `anulowaneWymagaUwagi` liczyło KAŻDY
   // wiersz przesyłki, także ukryty. Zmierzone na produkcji 13.09: zamówienie 1267
   // (anulowane ręcznie, paczka ukryta przez człowieka 25.08, list 1048123722945U) wisiało
   // na liście „Do zrobienia" 19 dni — jako 1 z 7 pozycji, czyli 14% tej listy — wbrew
@@ -280,7 +280,7 @@ describe('anulowane z żywą przesyłką albo fakturą', () => {
   });
 });
 
-// ——— STATUS „INDYWIDUALNE" (2026-08-07) ————————————————————————————————————————————
+// ——— STATUS „INDYWIDUALNE" ————————————————————————————————————————————
 //
 // Prośba właściciela, wprost: „Status «indywidualne» jest zwykłym statusem gdzie
 // zamówienie trafia na czas jego przetwarzania aż projekt indywidualny zostanie

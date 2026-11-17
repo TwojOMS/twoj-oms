@@ -2,7 +2,7 @@ import Fastify from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 import { pluginApiV1 } from '../../../src/moduly/api/plugin.js';
 import { czytajStronicowanie } from '../../../src/moduly/api/odpowiedzi.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 
 const aplikacje = [];
@@ -33,7 +33,7 @@ describe('plugin API v1', () => {
   it('oddaje nazwę, prefiks i zakresy klucza', async () => {
     const r = await serwer().inject('/api/v1/ja');
     expect(r.statusCode).toBe(200);
-    // E1.2b: zakresy w kolejności ZAKRESY_API (tests/moduly/api/ja.test.js), nie w kolejności wstawienia do Set.
+    // Zakresy w kolejności ZAKRESY_API (tests/moduly/api/ja.test.js), nie w kolejności wstawienia do Set.
     expect(r.json()).toEqual({ nazwa: 'integracja testowa', prefiks: 'abcdefgh', zakresy: ['zamowienia:odczyt', 'druk'] });
   });
   it('broni trasy ja przed brakiem klucza', async () => {

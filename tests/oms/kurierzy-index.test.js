@@ -16,7 +16,7 @@ describe('wybierzKuriera', () => {
       .toThrow(/dpd_pobranie.*nie jest obsługiwana/);
   });
 
-  // Zadanie 6: paczkomat MA juz kuriera. Do tej chwili ten sam test pilnowal czegos
+  // Paczkomat MA juz kuriera. Do tej chwili ten sam test pilnowal czegos
   // odwrotnego (metoda nieobslugiwana) — i tak bylo poprawnie, dopoki klient ShipX nie
   // istnial. Warunek nie zostal oslabiony, tylko przeniesiony na metode, ktora wpisu
   // NIGDY miec nie ma: odbior osobisty (patrz nizej).

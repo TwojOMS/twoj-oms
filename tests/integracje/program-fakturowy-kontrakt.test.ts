@@ -1,4 +1,4 @@
-// PRZ-118.02 — kontrakt ProgramFakturowy: strażnik przy składaniu modułu (sprawdzProgramFakturowy)
+// Kontrakt ProgramFakturowy: strażnik przy składaniu modułu (sprawdzProgramFakturowy)
 // i podkładka zProgramu, dzięki której usługi przyjmują `{ program }` albo stary `{ infakt }`.
 // Ten plik jest też wejściem tsc: wzorcowy program poniżej musi dać się zapisać typem ProgramFakturowy.
 import { describe, it, expect, vi } from 'vitest';
@@ -75,7 +75,7 @@ describe('sprawdzProgramFakturowy — odmowa startu przy złym programie', () =>
     expect(sprawdzProgramFakturowy(p)).toBe(p);
   });
 
-  it('(4) bez metody obowiązkowej → odmowa z nazwą metody (każda z dziewięciu)', () => {
+  it('bez metody obowiązkowej → odmowa z nazwą metody (każda z dziewięciu)', () => {
     expect(() => sprawdzProgramFakturowy(bez(wzorcowy(), 'listaKorekt'))).toThrow(/listaKorekt/);
     for (const m of ['sprawdzPolaczenie', 'przygotujNabywce', 'wystaw', 'wystawKorekte', 'pobierzPdf', 'pobierzPdfKorekty',
       'pobierzFakture', 'listaFaktur', 'listaKorekt']) {
@@ -84,7 +84,7 @@ describe('sprawdzProgramFakturowy — odmowa startu przy złym programie', () =>
     }
   });
 
-  it('(5) zdolność zadeklarowana bez metody → odmowa z nazwą zdolności i metody', () => {
+  it('zdolność zadeklarowana bez metody → odmowa z nazwą zdolności i metody', () => {
     expect(() => sprawdzProgramFakturowy(bez(wzorcowy(), 'wyslijDokumentDoKsef'))).toThrow(/wyslijDoKsef.*wyslijDokumentDoKsef|wyslijDokumentDoKsef.*wyslijDoKsef/);
     const pary: [ZdolnoscProgramu, string][] = [
       ['nieoplacone', 'listaNieoplaconych'], ['oznaczZaplacona', 'oznaczZaplacona'],
@@ -95,7 +95,7 @@ describe('sprawdzProgramFakturowy — odmowa startu przy złym programie', () =>
     }
   });
 
-  it('(5) metoda opcjonalna bez zadeklarowanej zdolności → odmowa (zdolności = DOKŁADNIE zbiór obecnych metod)', () => {
+  it('metoda opcjonalna bez zadeklarowanej zdolności → odmowa (zdolności = DOKŁADNIE zbiór obecnych metod)', () => {
     expect(() => sprawdzProgramFakturowy(zOpisem({ zdolnosci: ['nieoplacone', 'oznaczZaplacona', 'numeracjaWlasna'] }))).toThrow(/wyslijDoKsef/);
   });
 
@@ -103,18 +103,18 @@ describe('sprawdzProgramFakturowy — odmowa startu przy złym programie', () =>
     expect(() => sprawdzProgramFakturowy(zOpisem({ zdolnosci: [...OPIS.zdolnosci, 'teleportacja'] }))).toThrow(/teleportacja/);
   });
 
-  it('(6) regulaVat „odSumy” → odmowa (do PRZ-119); inna wartość też', () => {
+  it('regulaVat „odSumy” → odmowa; inna wartość też', () => {
     expect(() => sprawdzProgramFakturowy(zOpisem({ regulaVat: 'odSumy' }))).toThrow(/odSumy/);
     expect(() => sprawdzProgramFakturowy(zOpisem({ regulaVat: undefined }))).toThrow(/regulaVat/);
   });
 
-  it('(7) wystawienieWysylaDoKsef: true → odmowa; tylko literał false przechodzi', () => {
+  it('wystawienieWysylaDoKsef: true → odmowa; tylko literał false przechodzi', () => {
     expect(() => sprawdzProgramFakturowy(zOpisem({ wystawienieWysylaDoKsef: true }))).toThrow(/wystawienieWysylaDoKsef/);
     expect(() => sprawdzProgramFakturowy(zOpisem({ wystawienieWysylaDoKsef: undefined }))).toThrow(/wystawienieWysylaDoKsef/);
     expect(() => sprawdzProgramFakturowy(zOpisem({ wystawienieWysylaDoKsef: 0 }))).toThrow(/wystawienieWysylaDoKsef/);
   });
 
-  it('(8) limity.zadanieMs = PROG_ZAWIESZONEJ_FAKTURY_MS → odmowa; o milisekundę mniej przechodzi', () => {
+  it('limity.zadanieMs = PROG_ZAWIESZONEJ_FAKTURY_MS → odmowa; o milisekundę mniej przechodzi', () => {
     const limity = (zadanieMs: number) => zOpisem({ limity: { ...OPIS.limity, zadanieMs } });
     expect(() => sprawdzProgramFakturowy(limity(PROG_ZAWIESZONEJ_FAKTURY_MS))).toThrow(/zadanieMs/);
     expect(() => sprawdzProgramFakturowy(limity(PROG_ZAWIESZONEJ_FAKTURY_MS + 1))).toThrow(/zadanieMs/);
@@ -139,7 +139,7 @@ describe('sprawdzProgramFakturowy — odmowa startu przy złym programie', () =>
   });
 });
 
-describe('(10) zProgramu — podkładka na czas PRZ-118', () => {
+describe('zProgramu — podkładka przejściowa', () => {
   const klient = () => Object.fromEntries(METODY_INFAKTU.map((m: string) => [m, vi.fn(async (..._a: unknown[]) => `wynik ${m}`)]));
 
   it('oba naraz → wyjątek', () => {
@@ -163,7 +163,7 @@ describe('(10) zProgramu — podkładka na czas PRZ-118', () => {
     expect(k.wystaw.mock.calls[0][0]).toBe(ladunek);
   });
 
-  // PRZ-118.06 (odbiór): szew `fabryki.programFakturowy` modułu faktur podaje usługom program pod starą nazwą
+  // Szew `fabryki.programFakturowy` modułu faktur podaje usługom program pod starą nazwą
   // `infakt` — podkładka nie może go owinąć adapterem inFaktu (zgubiłaby `opis.id` i `przygotujNabywce` programu).
   it('`infakt`, który już jest programem (ma opis i przygotujNabywce) → ten sam program, bez owinięcia', () => {
     const p = wzorcowy();

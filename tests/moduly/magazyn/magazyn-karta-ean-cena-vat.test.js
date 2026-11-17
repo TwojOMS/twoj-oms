@@ -1,7 +1,7 @@
-// PRZ-153.E5.3c — karta produktu w MAGAZYNIE: EAN, cena katalogowa (zł → grosze) i stawka VAT.
+// Karta produktu w MAGAZYNIE: EAN, cena katalogowa (zł → grosze) i stawka VAT.
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { utworzKarte, zapiszKarte } from '../../../src/oms/db/magazyn.js';
 
 const config = { auth: { user: 'adam', pass: 'x' } };

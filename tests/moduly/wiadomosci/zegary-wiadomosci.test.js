@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { uruchomZegary } from '../../pomoc/bootstrap-parytetu.ts';
+import { uruchomZegary } from '../../pomoc/budowa-oms-testowa.ts';
 
 // PIATY I SZOSTY ZEGAR — poller Centrum wiadomosci i czuwacz formulki (spec 2026-08-28).
 //

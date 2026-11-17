@@ -1,4 +1,4 @@
-// PRZ-076 — piaskownica z atrapami inFaktu, Woo i Allegro (deploy/proba/atrapy): Faktury i Magazyn mają dane
+// Piaskownica z atrapami inFaktu, Woo i Allegro (deploy/proba/atrapy): Faktury i Magazyn mają dane
 // demo i dają się obsługiwać, a nic nie wychodzi z procesu (fetch zablokowany przez cały plik).
 //
 // ⛔ Trzy bariery przed atrapą na produkcji — każdą łamie tu osobny przypadek:
@@ -74,7 +74,7 @@ describe('piaskownica z atrapami — Faktury i Magazyn na danych demo', () => {
     cookie = login.headers.get('set-cookie').match(/sesja_oms_proba=[^;]+/)[0];
   });
 
-  it('PRZ-157.12a: demo zachowuje klienta ERLI obok atrap Allegro', () => {
+  it('demo zachowuje klienta ERLI obok atrap Allegro', () => {
     const db = baza();
     try {
       expect(db.prepare('SELECT typ, autoryzacja FROM kanaly_sprzedazy WHERE klucz = ?').get('erli_polcien'))
@@ -86,7 +86,7 @@ describe('piaskownica z atrapami — Faktury i Magazyn na danych demo', () => {
     expect(klienci['allegro-outlet'].atrapa).toBe(true);
     expect(typeof klienci.erli_polcien.pobierzZamowienie).toBe('function');
     const config = live.aplikacja.usluga('kanaly', 'config');
-    expect(Object.keys(config.kanaly)).not.toContain('erli_polcien'); // config.kanaly = ustawienia Allegro (recenzja 12b)
+    expect(Object.keys(config.kanaly)).not.toContain('erli_polcien'); // config.kanaly = ustawienia Allegro
     expect(config.definicje.map((d) => d.klucz)).toContain('erli_polcien');
   });
 
@@ -171,7 +171,7 @@ describe('piaskownica z atrapami — Faktury i Magazyn na danych demo', () => {
     } finally { db.close(); }
   });
 
-  it('PRZ-087: karta zamówienia ma sekcję Wiadomości, „Wyślij” przechodzi przez atrapę poczty i trafia do historii', async () => {
+  it('karta zamówienia ma sekcję Wiadomości, „Wyślij” przechodzi przez atrapę poczty i trafia do historii', async () => {
     const db = baza();
     let zam;
     try {
@@ -195,7 +195,7 @@ describe('piaskownica z atrapami — Faktury i Magazyn na danych demo', () => {
     expect(logi.some((l) => l.includes('atrapa poczty') && l.includes('nic nie poszło'))).toBe(true);
   });
 
-  it('PRZ-094.04: Ustawienia → Poczta wychodząca — zapis prawdziwego SMTP i wiadomość próbna idą przez atrapę poczty', async () => {
+  it('Ustawienia → Poczta wychodząca — zapis prawdziwego SMTP i wiadomość próbna idą przez atrapę poczty', async () => {
     const ekran = await strona('/ustawienia/integracje/poczta');
     expect(ekran.status).toBe(200);
     expect(ekran.html).toContain('atrapa poczty');

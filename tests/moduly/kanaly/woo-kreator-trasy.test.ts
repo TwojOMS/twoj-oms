@@ -34,7 +34,7 @@ async function setup(zPliku=false,proba=false){
  }
  return {req,szkic,calls,stan,cookies};
 }
-it('C6: pole adresu przyjmuje domenę, serwer zapisuje HTTPS i informuje o zmianie HTTP',async()=>{
+it('pole adresu przyjmuje domenę, serwer zapisuje HTTPS i informuje o zmianie HTTP',async()=>{
  const f=await setup();const ekran=await f.req('GET','/nowy');
  expect(ekran.body).toMatch(/name="adres"[^>]*type="text"[^>]*inputmode="url"/);
  expect(ekran.body).toContain('placeholder="sklep.pl"');
@@ -48,7 +48,7 @@ it('C6: pole adresu przyjmuje domenę, serwer zapisuje HTTPS i informuje o zmian
  expect(db.prepare('SELECT adres FROM kanaly_sklepy').all()).toEqual([{adres:'https://example.test'}]);
  expect(f.calls.every(u=>u.startsWith('https://example.test/'))).toBe(true);
 });
-it('C5: piaskownica odmawia obcego sklepu przed klientem i zapisem kluczy',async()=>{
+it('piaskownica odmawia obcego sklepu przed klientem i zapisem kluczy',async()=>{
  const f=await setup(false,true);
  const p=await f.req('POST','/szkice',{nazwa:'Pracownia Półcień',adres:'https://example.test'});
  expect(p.statusCode).toBe(200);
@@ -69,7 +69,7 @@ it('piaskownica dopuszcza wyłącznie adres atrapy z konfiguracji kanałów',asy
   expect(r.statusCode).toBe(status);
   if(status===400){expect(r.body).toContain('Piaskownica nie łączy się z prawdziwymi sklepami — działa tu tylko sklep przykładowy.');expect(f.calls).toEqual([]);}
  }
- // PRZ-150.01: adres atrapy obsługuje atrapa w module (bez sieci) — transport nie dostaje żadnego żądania.
+ // Adres atrapy obsługuje atrapa w module (bez sieci) — transport nie dostaje żadnego żądania.
  expect(f.calls).toEqual([]);
 });
 it.each(['sklep-polcien.test/','  http://sklep-polcien.test/  '])('komunikat zmiany HTTP zależy od schematu po usunięciu spacji: %s',async adres=>{
@@ -109,9 +109,9 @@ it('pokazuje odmowę kluczy już przy zapisie pierwszego szkicu',async()=>{
  const r=await f.req('POST','/nowy/klucze',{formularzId,wersja:0,ck:'ck_test_polcien',cs:'cs_test_polcien'});
  expect(r.statusCode).toBe(503);expect(r.body).toContain('Sklep odrzucił klucze.');expect(r.body).not.toContain('cs_test_polcien');
 });
-// PRZ-134.PT8 (zgłoszenie właściciela 03.11): odrzucone klucze nie zostawiają szkicu w bazie — wcześniej sklep znikał z listy,
+// Odrzucone klucze nie zostawiają szkicu w bazie — wcześniej sklep znikał z listy,
 // a jego adres blokował ponowne dodanie. Konfigurator zostaje na kroku kluczy z tym samym formularzem.
-it('odrzucone klucze nowego sklepu niczego nie zapisują, poprawne w tym samym formularzu tworzą sklep (PRZ-134.PT8)',async()=>{
+it('odrzucone klucze nowego sklepu niczego nie zapisują, poprawne w tym samym formularzu tworzą sklep',async()=>{
  const f=await setup();f.stan.odmowa=true;
  const p=await f.req('POST','/szkice',{nazwa:'Pracownia Półcień',adres:'https://sklep.polcien.example'});
  const formularzId=p.body.match(/name="formularzId" value="([^"]+)"/)?.[1];
@@ -152,7 +152,7 @@ it('konfigurator: sprawdzenie i metody wysyłki po 302 na obcy origin nie wysył
  await f.req('GET',path);
  expect(f.calls.length).toBeGreaterThan(przed);expect(f.calls.filter(u=>!u.startsWith('https://sklep.polcien.example/'))).toEqual([]);
 });
-it('PRZ-134 krok 3: formularz zapisuje bramki pobrania i pobranie przy metodzie; bez decyzji odmowa',async()=>{
+it('krok 3: formularz zapisuje bramki pobrania i pobranie przy metodzie; bez decyzji odmowa',async()=>{
  const f=await setup();const path=await f.szkic();const k=()=>db.prepare('SELECT * FROM kanaly_sprzedazy').get()! as any;
  const mapa=()=>JSON.parse(String((db.prepare('SELECT ustawienia_json FROM kanaly_sklepy').get() as any).ustawienia_json)).mapowanie;
  let r=await f.req('GET',path);
@@ -177,7 +177,7 @@ it('PRZ-134 krok 3: formularz zapisuje bramki pobrania i pobranie przy metodzie;
  r=await f.req('GET',path);expect(r.body).not.toMatch(/value="cod" checked/);expect(r.body).toContain('Zapisano: żadne zamówienie z tego sklepu nie będzie za pobraniem.');
  expect(r.body).not.toMatch(/aria-current="step">\s*<span class="step-dot" aria-hidden="true">3</s);expect(r.body).not.toContain('Uzupełnij pobranie');
 });
-it('PRZ-134 krok 3: stare mapowanie bez decyzji — krok bieżący 3 i pasek w kroku 3 (kroku 5 szkic jeszcze nie pokazuje, PT9); bez listy bramek pole tekstowe',async()=>{
+it('krok 3: stare mapowanie bez decyzji — krok bieżący 3 i pasek w kroku 3 (kroku 5 szkic jeszcze nie pokazuje, PT9); bez listy bramek pole tekstowe',async()=>{
  const f=await setup();const path=await f.szkic();
  db.prepare('UPDATE kanaly_sklepy SET ustawienia_json=?').run(JSON.stringify({mapowanie:{instancje:{'1':{metoda:'dpd'}},poPozycji:[]}}));
  let r=await f.req('GET',path);
@@ -186,7 +186,7 @@ it('PRZ-134 krok 3: stare mapowanie bez decyzji — krok bieżący 3 i pasek w k
  f.stan.bezBramek=true;r=await f.req('GET',path);
  expect(r.body).toMatch(/name="bramki_tekst"[^>]*value="cod"/);expect(r.body).toContain('Nie udało się odczytać bramek płatności ze sklepu.');expect(r.body).not.toContain('name="bramki" value=');
 });
-// PRZ-134.PT9 (zgłoszenie właściciela 03.11): szkic pokazuje kroki tylko do bieżącego; szkic bez zamówień da się usunąć.
+// Szkic pokazuje kroki tylko do bieżącego; szkic bez zamówień da się usunąć.
 const forma=(akcja:string)=>new RegExp(`<form[^>]+action="[^"]*/${akcja}"`);
 const liczba=(sql:string,...p:unknown[])=>(db.prepare(sql).get(...p as any[]) as {n:number}).n;
 it('PT9 (a): szkic z kluczami odrzuconymi albo niesprawdzonymi — tylko formularz kluczy, bez mapowania, daty i aktywacji',async()=>{
@@ -251,7 +251,7 @@ it('PT9 (d): odmowa usunięcia, gdy sklep ma zamówienie albo jest aktywny',asyn
  r=await f.req('POST',path+'/usun',{wersja:k().wersja,potwierdz:'tak'});expect(r.statusCode).toBe(409);expect(r.body).toContain('Najpierw odłącz sklep, potem go usuń.');
  expect(liczba('SELECT count(*) n FROM kanaly_sprzedazy')).toBe(1);expect(liczba('SELECT count(*) n FROM kanaly_sklepy')).toBe(1);expect(k().autoryzacja).toBe('polaczone');
 });
-// Decyzja kierownika PT9: aktywacja bez pobranych danych nie blokuje usunięcia — inaczej adres zostaje zajęty na zawsze.
+// Reguła produktu: aktywacja bez pobranych danych nie blokuje usunięcia — inaczej adres zostaje zajęty na zawsze.
 it('PT9 (f): sklep aktywowany i odłączony, który nic nie pobrał, daje się usunąć razem z granicą historii; adres wolny',async()=>{
  const f=await setup();const path=await f.szkic();const k=()=>db.prepare('SELECT * FROM kanaly_sprzedazy').get()! as any;
  expect((await f.req('POST',path+'/mapowanie',{wersja:k().wersja,'instancja_1':'dpd',pobranie_decyzja:'1'})).statusCode).toBe(303);

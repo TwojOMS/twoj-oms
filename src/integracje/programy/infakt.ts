@@ -2,7 +2,7 @@
 // owija każdy z czterech obiektów „inFakt” o 14 metodach (createInfaktClient, pośrednik z Ustawień
 // moduly/faktury/infakt-ustawien.ts, atrapę piaskownicy, odmowę próby) i przekazuje te same argumenty, ten sam
 // wynik (tożsamość — Buffer z PDF, tablica z listy) i ten sam obiekt błędu. Złoty zapis żądań
-// (tests/moduly/faktury/zapis-zadan-infaktu-prz118.test.js) rozstrzyga, że do inFaktu idzie bajt w bajt to samo.
+// (tests/moduly/faktury/zapis-zadan-infaktu.test.js) rozstrzyga, że do inFaktu idzie bajt w bajt to samo.
 //
 // Zdolność obecna ⇔ owijany obiekt ma metodę W CHWILI OWIJANIA (mock bez `oznaczZaplacona` = program bez tej
 // zdolności, jak w moduly/wysylka/services/oznaczanie-pobran.js). Metoda brakująca u owijanego obiektu nie

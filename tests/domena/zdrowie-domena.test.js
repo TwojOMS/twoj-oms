@@ -75,7 +75,7 @@ describe('ocenZdrowie — poller (stan_pollera per zrodlo)', () => {
       ],
     });
     expect(w.ok).toBe(false);
-    // ⚠️ W BAZIE ANGIELSKI, NA WYJSCIU POLSKI (10.09.2026, domain/blad-po-polsku.js):
+    // ⚠️ W BAZIE ANGIELSKI, NA WYJSCIU POLSKI:
     // „fetch failed" pisze Node, a alarm czyta czlowiek z ekranu telefonu.
     expect(w.alarmy.some((a) => a.includes('pro') && a.includes('połączenie nie doszło do skutku'))).toBe(true);
   });
@@ -238,7 +238,7 @@ describe('ocenZdrowie — ksztalt wyniku dla czujki', () => {
   });
 });
 
-// Moment startu procesu (2026-09-10). Panel ZNAL te liczbe od poczatku — `procesWiekS`
+// Moment startu procesu. Panel ZNAL te liczbe od poczatku — `procesWiekS`
 // decyduje, czy mlody proces ma czekac zamiast klamac alarmem — ale jej nie oddawal.
 // Bez niej z zewnatrz nie da sie odroznic RESTARTU PANELU od zadlawienia sieci: jedno
 // i drugie wyglada jak cisza na /health. Bot diagnozujacy awarie pisal wprost „nie
@@ -286,7 +286,7 @@ describe('ocenZdrowie — moment startu procesu', () => {
   });
 });
 
-// Zegar #6: czuwacz ostrzezen (2026-08-29) — lustra tabelki ostrzezen strony glownej
+// Zegar #6: czuwacz ostrzezen — lustra tabelki ostrzezen strony glownej
 // (luki KSeF + terminy platnosci). Zyje WYLACZNIE pulsem, jak KSeF i przesylki;
 // prog 3 h (chodzi co godzine, jedna czkawka sieci nie budzi telefonu).
 describe('ocenZdrowie — czuwacz ostrzezen (puls)', () => {

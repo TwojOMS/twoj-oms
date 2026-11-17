@@ -1,4 +1,4 @@
-// ⚠️ DRUGI I TRZECI ZAPIS DO ALLEGRO (Plan B, Zadanie 8) — metadane faktury i sam plik PDF.
+// ⚠️ DRUGI I TRZECI ZAPIS DO ALLEGRO — metadane faktury i sam plik PDF.
 // Białą listę metod zapisujących pilnuje `tests/oms/allegro-client-zapis.test.js`; tu jest
 // zachowanie tych trzech wywołań: POST metadanych, PUT pliku i pomocniczy GET listy faktur.
 import { describe, it, expect } from 'vitest';
@@ -87,7 +87,7 @@ describe('klient Allegro — faktura', () => {
   });
 
   // ⚠️ Content-Type ma być `application/pdf`, ale Accept dalej wersjonowany — odpowiedź na ten
-  // PUT niesie stan weryfikacji pliku (Zadanie 10) i przychodzi JSON-em Allegro.
+  // PUT niesie stan weryfikacji pliku i przychodzi JSON-em Allegro.
   it('Accept zostaje wersjonowany, a plik idzie ciałem bez zmian', async () => {
     const bajty = pdf(50);
     const { k, wolania } = klient();
@@ -168,7 +168,7 @@ describe('klient Allegro — faktura', () => {
   });
 
   // ⚠️ POMIAR Z 05.08.2026: ten zasób oddaje dziś 400 na każde nasze zamówienie, z przyczyn
-  // leżących po stronie Allegro (notatka `2026-08-05-allegro-zapis-rozpoznanie.md` §2).
+  // leżących po stronie Allegro.
   // Odczyt jest pomocniczy, więc jego niedziałanie nie ma prawa wywalić wysyłki faktury.
   it('400 czyta jak pustą listę, a nie jak awarię', async () => {
     const { k } = klient({ ok: false, status: 400, json: async () => ({ errors: [{ code: 'ERROR' }] }) });
@@ -209,23 +209,23 @@ describe('klient Allegro — faktura', () => {
   // ta lista jest w dwóch miejscach — żeby podniesienie bariery w jednym pliku nie wyglądało
   // na komplet. Kto tu dopisuje metodę, ma poprawić OBIE i przeczytać uzasadnienie w tamtej.
   // ⚠️ LISTA SCALONA 11.08.2026 z DWÓCH gałęzi: czternaście z planu WzA plus `pobierzOferty`
-  // z magazynu (Zadanie 6, ODCZYT `GET /sale/offers`) = SZESNAŚCIE (16. to `pobierzSledzenie`, historia zdarzeń przewozu, 25.08.2026).
+  // z magazynu = SZESNAŚCIE (16. to `pobierzSledzenie`, historia zdarzeń przewozu, 25.08.2026).
   // Sama ta para konfliktów
   // jest dowodem, że druga kopia zarabia na swoje utrzymanie: rozstrzygnięcie „po swojemu"
   // w jednym pliku zostawiłoby drugi z listą, która milczy o połowie metod.
   // Podjazdy (22.09): trzy odczyty i jedno nieodwracalne zlecenie, z osobnym
   // kontraktem i blokadą w tests/oms/allegro-podjazdy-klient.test.js.
-  it('biała lista metod obejmuje teraz DOKŁADNIE pięćdziesiąt (PRZ-160.E3.03: dwadzieścia metod ofert)', () => {
+  it('biała lista metod obejmuje teraz DOKŁADNIE pięćdziesiąt (dwadzieścia metod ofert)', () => {
     const { k } = klient();
     expect(Object.keys(k).sort()).toEqual([
       'deklarujZalacznikWiadomosci',
       'pobierzEtykieteWza', 'pobierzFakturyZamowienia',
-      // PRZ-160.04a: kategoria i jej parametry — wyłącznie odczyt (`GET /sale/categories/{id}[/parameters]`).
+      // Kategoria i jej parametry — wyłącznie odczyt (`GET /sale/categories/{id}[/parameters]`).
       'pobierzKategorie', 'pobierzMetodeDostawy', 'pobierzMojeKonto', 'pobierzOferte',
       'pobierzOferty', 'pobierzParametryKategorii', 'pobierzPodjazd', 'pobierzPropozycjePodjazdu', 'pobierzPropozycjeWysylki',
       // ⚠️ `pobierzWatki` i `pobierzWiadomosci` — Centrum wiadomości (spec 2026-08-28),
       // wyłącznie odczyt (`GET /messaging/threads…`).
-      // `pobierzSprawy` (28.08.2026) tylko CZYTA `GET /sale/issues` — bariera zapisu bez zmian.
+      // `pobierzSprawy` tylko CZYTA `GET /sale/issues` — bariera zapisu bez zmian.
       'pobierzPrzesylkeWza', 'pobierzPrzesylki', 'pobierzSledzenie', 'pobierzSprawy',
       'pobierzStanRealizacji',
       'pobierzWatki', 'pobierzWiadomosci', 'pobierzZamowienia',
@@ -235,7 +235,7 @@ describe('klient Allegro — faktura', () => {
       // ktory dostaje powiadomienie. Bariera zapisu nizej rosnie razem z nia.
       'ustawStatusRealizacji', 'utworzPrzesylke', 'wgrajZalacznikWiadomosci', 'wyslijPlikFaktury',
       'wyslijWiadomosc', 'zglosFakture', 'zlecPodjazd',
-      // PRZ-160.E3.03: wystawianie ofert — zapisy wylicza tests/oms/allegro-client-zapis.test.js.
+      // Wystawianie ofert — zapisy wylicza tests/oms/allegro-client-zapis.test.js.
       'dopasujKategorie', 'edytujOferte', 'komendaCeny', 'komendaIlosci', 'komendaPublikacji', 'ofertyKonta', 'ofertyPoSygnaturze',
       'oplatyOferty', 'pobierzCenniki', 'pobierzGwarancje', 'pobierzOsobyOdpowiedzialne', 'pobierzProducentow',
       'pobierzReklamacje', 'pobierzZwroty', 'podgladOplat', 'stanOperacji', 'szukajProduktow', 'ustawieniaPodatku',

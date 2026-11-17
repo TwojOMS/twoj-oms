@@ -2,7 +2,7 @@ import { expect, it, vi } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { nowyPanel, jako, get } from '../../pomoc/konta-prz068.js';
+import { nowyPanel, jako, get } from '../../pomoc/panel-konta-testowe.js';
 import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { mapujZamowienieErli } from '../../../src/domena/erli-mapowanie.js';
@@ -80,7 +80,7 @@ it('karta, GET i usługa honorują drogę ERLI, blokady i ręczne nadpisanie bez
     expect((await karta(ids.erliPaczkomat)).body).toContain('Kanał ERLI wyłączony — włącz pobieranie');
   }));
 
-// PRZ-157.07f (recenzja 07): plan rozdz. 3 pkt 3 — kurier z umowy firmy, dla którego OMS nie ma modułu,
+// Kurier z umowy firmy, dla którego OMS nie ma modułu,
 // blokuje nadanie. Karta i usługa nadania mówią to samo, z jednego miejsca (drogaErliDlaZamowienia).
 it('Kurier InPost z umowy firmy: karta ma sprawę nadania kanału, nadanie odmawia, nic nie wychodzi', () =>
   zKanalemErli(['paczkomat'], async ({ dane, zapisz, uslugi, kurierzy, nadanie, karta, przesylki }) => {

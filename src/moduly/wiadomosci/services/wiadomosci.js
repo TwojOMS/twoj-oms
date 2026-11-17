@@ -252,7 +252,7 @@ export function createWiadomosci({
   // `tryb: 'automat'` — ten sam mail, ta sama zgoda domeny i ten sam skład, inny ślad:
   // rejestr dostaje `kto` = `ktoKlikal` („automat: <nazwa reguły>”), dziennik karty „Automatycznie (reguła „…”)”, a błąd
   // złożenia (nic nie poszło) niesie `przedWysylka`, żeby silnik nie uznał go za „niepewne”. Domyślny tryb (ręczny)
-  // zostaje znak w znak — pilnują tego testy wiadomości i tests/moduly/automatyzacje/c1-mail-kupujacy.test.js.
+  // zostaje znak w znak — pilnują tego testy wiadomości i tests/moduly/automatyzacje/automatyczne-maile-kupujacych.test.js.
   async function wyslij(id, temat_id, { ktoKlikal = 'operator', tryb = 'reczny', regula = null } = {}) {
     const automat = tryb === 'automat';
     // ⚠️⚠️ ŚLAD TAKŻE WTEDY, GDY NIE BYŁO CZEGO WYSŁAĆ.

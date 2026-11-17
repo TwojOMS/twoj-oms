@@ -21,7 +21,7 @@ it.each([['nieznana', 'Nowa dostawa'], ['dhl', 'Kurier testowy'], ['erliNieznana
   expect(drogaNadaniaErli({ typeId, nazwa, metodyErli, metodyDostawy })).toEqual({ droga: 'blokada',
     komunikat: `ERLI: nie wiem, jak nadać metodę ${nazwa} (${typeId}) — sprawdź cennik dostaw w panelu ERLI albo mapowanie w Ustawieniach` });
 });
-// PRZ-157.11b: mapowanie z kroku 3 konfiguratora rozstrzyga kuriera metody umowy firmy; metod ERLI nie zmienia.
+// Mapowanie z kroku 3 konfiguratora rozstrzyga kuriera metody umowy firmy; metod ERLI nie zmienia.
 it.each([
   ['erliWlasna', null, { erliWlasna: 'inpost_paczkomat' }, { droga: 'umowa', kurier: 'inpost_paczkomat', metoda: metodyDostawy[0] }],
   ['dhl', null, { dhl: 'dpd' }, { droga: 'umowa', kurier: 'dpd', metoda: metodyDostawy[3] }],

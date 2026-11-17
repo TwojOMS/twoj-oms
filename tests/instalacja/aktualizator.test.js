@@ -1,4 +1,4 @@
-// PRZ-059: aktualizator V0 instalacji klienta (deploy/klient/aktualizuj.sh). Testy całych sekwencji
+// Aktualizator V0 instalacji klienta (deploy/klient/aktualizuj.sh). Testy całych sekwencji
 // deploy → accept | recover i ich SKUTKÓW: wskaźnik wydania, blokada, obrazy kontenerów (atrapa dockera
 // ze stanem), prawdziwa baza SQLite i kopia operacji robiona prawdziwym kopia.mjs.
 import { afterEach, describe, expect, it } from 'vitest';
@@ -53,7 +53,7 @@ const stanDockera = k => JSON.parse(fs.readFileSync(path.join(k.baza, 'docker-st
 const kontener = (k, n) => stanDockera(k).kontenery[n];
 const rewizja = (k, n) => stanDockera(k).obrazy[kontener(k, n).obraz].revision;
 
-// PRZ-182: wydanie z narzędziem poświadczeń — scripts/sekrety.mjs w paczce przekazuje wywołanie prawdziwemu narzędziu.
+// Wydanie z narzędziem poświadczeń — scripts/sekrety.mjs w paczce przekazuje wywołanie prawdziwemu narzędziu.
 const NARZEDZIE = Buffer.from(`import { uruchom } from ${JSON.stringify(pathToFileURL(path.join(ROOT, 'scripts/sekrety.mjs')).href)};\nprocess.exitCode = uruchom(process.argv.slice(2));\n`);
 const SEKRET_INFAKT = '{"apiKey":"KONTROLA-INFAKT-sekret-12345"}';
 const MIEJSCE_INFAKT = { tabela: 'konfiguracja_integracji', kolumna: 'sekrety_json', id: 'infakt' };
@@ -63,7 +63,7 @@ function paczkaZSekretami(k, nazwa, { format = 1, znaczniki = ['TEST_SZYFRUJE'],
   return paczka(k, nazwa, { ...reszta, commit, znaczniki, wydanieJson: wydanieJson(commit, format), dodatkowe: new Map([[`${wyd(commit)}/scripts/sekrety.mjs`, NARZEDZIE]]) });
 }
 
-/** Instalacja jak po PRZ-058: wydanie A rozpakowane, obraz zbudowany, oms + kopia działają; bez wskaźnika. */
+/** Instalacja: wydanie A rozpakowane, obraz zbudowany, oms + kopia działają; bez wskaźnika. */
 function instalacja({ formatA, dodatkoweA = new Map() } = {}) {
   const baza = fs.mkdtempSync(path.join(os.tmpdir(), 'oms-akt-'));
   katalogi.push(baza);
@@ -78,7 +78,7 @@ function instalacja({ formatA, dodatkoweA = new Map() } = {}) {
   db.exec('CREATE TABLE konta (login TEXT)');
   db.exec("INSERT INTO konta VALUES ('administrator-proby')");
   for (const n of ['DEMO-001', 'DEMO-002', 'DEMO-003']) db.prepare('INSERT INTO zamowienia (numer) VALUES (?)').run(n);
-  // PRZ-182: poświadczenie integracji zapisane jawnie (baza sprzed szyfrowania) i tabela ustawień ze znacznikiem formatu.
+  // Poświadczenie integracji zapisane jawnie (baza sprzed szyfrowania) i tabela ustawień ze znacznikiem formatu.
   db.exec('CREATE TABLE ustawienia (klucz TEXT PRIMARY KEY, wartosc TEXT, zmienione_at TEXT)');
   db.exec('CREATE TABLE konfiguracja_integracji (integracja TEXT PRIMARY KEY, sekrety_json TEXT)');
   db.prepare("INSERT INTO konfiguracja_integracji VALUES ('infakt', ?)").run(SEKRET_INFAKT);
@@ -143,7 +143,7 @@ describe('aktualizator V0: deploy → accept', () => {
     // Blokada trzyma do decyzji; wskaźnik nadal na A (adopcja zapisała go pod blokadą).
     expect(czytaj(k, 'update-state/blokada/stan')).toMatch(/^etap=czeka_na_akceptacje$/m);
     expect(czytaj(k, 'update-state/biezace').trim()).toBe(wyd(COMMIT.A));
-    // Kopia operacji: baza spójna (te same zamówienia), lista migracji, NAZWY zmiennych konfiguracji (PRZ-182:
+    // Kopia operacji: baza spójna (te same zamówienia), lista migracji, NAZWY zmiennych konfiguracji (
     // bez wartości — recover konfiguracji nie przywraca) i pliki, odciski.
     const opdir = `backups/operacje/${op}`;
     expect(zamowienia(k, `${opdir}/oms.sqlite`)).toEqual(['DEMO-001', 'DEMO-002', 'DEMO-003']);
@@ -195,7 +195,7 @@ describe('aktualizator V0: deploy → accept', () => {
 });
 
 describe('aktualizator V0: recover', () => {
-  it('PRZ-093: komunikat użycia recover podaje obie opcje (oba miejsca: brak operacji i nieznana opcja)', () => {
+  it('komunikat użycia recover podaje obie opcje (oba miejsca: brak operacji i nieznana opcja)', () => {
     const k = instalacja();
     const bezOperacji = akt(k, ['recover']);
     expect(bezOperacji.status).not.toBe(0);
@@ -492,7 +492,7 @@ describe('aktualizator V0: retencja', () => {
   });
 });
 
-// --- PRZ-182: poświadczenia integracji szyfrowane w bazie -----------------------------------------------------
+// --- Poświadczenia integracji szyfrowane w bazie -----------------------------------------------------
 
 const wszystkiePliki = d => fs.readdirSync(d, { withFileTypes: true }).flatMap(e => (e.isDirectory() ? wszystkiePliki(path.join(d, e.name)) : [path.join(d, e.name)]));
 const zBazy = (k, sql) => { const d = new DatabaseSync(plik(k, 'data/oms.sqlite'), { readOnly: true }); try { return d.prepare(sql).get(); } finally { d.close(); } };
@@ -529,7 +529,7 @@ function poDeployuSzyfrujacym() {
   return { k, r, op: operacja(r), obrazA, obrazB: kontener(k, 'oms').obraz };
 }
 
-describe('PRZ-182: deploy wydania z poświadczeniami szyfrowanymi w bazie', () => {
+describe('deploy wydania z poświadczeniami szyfrowanymi w bazie', () => {
   it('klucz zapewniony obrazem kandydata PRZED zatrzymaniem OMS-u; plik 600; komunikat z plikiem i id; kandydat szyfruje bazę', () => {
     const { k, r, obrazB } = poDeployuSzyfrujacym();
     const klucz = kluczZPliku(k);
@@ -611,7 +611,7 @@ describe('PRZ-182: deploy wydania z poświadczeniami szyfrowanymi w bazie', () =
   }
 });
 
-describe('PRZ-182: recover — decyzja po stanie bazy', () => {
+describe('recover — decyzja po stanie bazy', () => {
   it('konwersja zakończona: po zatrzymaniu kandydata odszyfrowanie obrazem kandydata, dopiero potem start starego wydania', () => {
     const { k, op, obrazA, obrazB } = poDeployuSzyfrujacym();
     expect(formatBazy(k)).toBe('1');
@@ -719,7 +719,7 @@ describe('PRZ-182: recover — decyzja po stanie bazy', () => {
   });
 });
 
-describe('PRZ-182: aktualizuj.sh sekrety — narzędzie poświadczeń', () => {
+describe('aktualizuj.sh sekrety — narzędzie poświadczeń', () => {
   function poAkceptacji() {
     const s = poDeployuSzyfrujacym();
     const a = akt(s.k, ['accept', s.op]);
@@ -809,7 +809,7 @@ describe('PRZ-182: aktualizuj.sh sekrety — narzędzie poświadczeń', () => {
   });
 });
 
-describe('PRZ-182: przejście próba → praca a klucz poświadczeń', () => {
+describe('przejście próba → praca a klucz poświadczeń', () => {
   const zPrzejsciem = () => instalacja({ dodatkoweA: new Map([[`${wyd(COMMIT.A)}/scripts/produkcja-pierwszy-start.mjs`, Buffer.from('// atrapa\n')]]) });
 
   it('klucz.env zostaje na miejscu (nie trafia do archiwum); accept usuwa z archiwum kopię produkcja.env, próba zostaje', () => {

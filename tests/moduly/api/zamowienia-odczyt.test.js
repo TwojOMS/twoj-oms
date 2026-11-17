@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { nowyPanel, BASIC } from '../../pomoc/konta-prz068.js';
+import { nowyPanel, BASIC } from '../../pomoc/panel-konta-testowe.js';
 import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
 import { zalozKluczApi } from '../../../src/core/bezpieczenstwo/klucze-api.js';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
@@ -56,7 +56,7 @@ describe('Przeniesione odczyty: Basic /api i klucz /api/v1', () => {
   for (const [nazwa, stara, nowa, zakres] of trasy) {
     it(`${nazwa}: identyczny status i pełne ciało`, async () => {
       if (nazwa === 'sprzedaż') {
-        // Stara trasa `/api/sprzedaz` zniknęła (PRZ-171 poz. 12) — porównanie stary=nowy
+        // Stara trasa `/api/sprzedaz` nie istnieje — porównanie stary=nowy
         // byłoby tautologią (ten sam handler), więc v1 sprawdzamy dosłownym ciałem.
         const r = await app.inject({ url: `/api/v1${stara()}`, headers: sprzedaz });
         expect(r.statusCode).toBe(200);

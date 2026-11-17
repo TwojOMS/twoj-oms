@@ -1,5 +1,5 @@
 // =====================================================================================
-// Z4 — KWOTA POBRANIA EDYTOWALNA NA EKRANIE NADANIA.
+// KWOTA POBRANIA EDYTOWALNA NA EKRANIE NADANIA.
 //
 // ⚠️ TO SĄ PRAWDZIWE PIENIĄDZE. Kwota pobrania to gotówka, którą kurier inkasuje od
 // klienta przy doręczeniu; po nadaniu nie da się jej odkręcić inaczej niż w panelu DPD.
@@ -10,8 +10,7 @@
 //     kurier zainkasowałby od klienta DRUGI RAZ);
 //  2. PUSTE pole to ODMOWA, nigdy „bez pobrania" — DPD przy braku kwoty po prostu nie
 //     wstawia <cod>, więc paczka pojechałaby jak przedpłacona i NIGDZIE nie byłoby błędu;
-//  3. kwota FAKTYCZNIE UŻYTA ląduje w logu zamówienia — bez górnego progu (decyzja
-//     właściciela 04.08) to jedyna droga, żeby po miesiącu odpowiedzieć, ile kurier miał
+//  3. kwota FAKTYCZNIE UŻYTA ląduje w logu zamówienia — bez górnego progu to jedyna droga, żeby po miesiącu odpowiedzieć, ile kurier miał
 //     zainkasować, gdy ktoś wpisze „31033" zamiast „310,33";
 //  4. zamówienie BEZ pobrania dostaje kopertę bez <cod>, choćby ktoś podrzucił pole
 //     w żądaniu — inaczej przesyłkę przedpłaconą dałoby się zamienić w pobraniową.
@@ -28,7 +27,7 @@ import { zapiszUmowePobrania } from '../../../src/moduly/wysylka/db/umowy-pobran
 import { createNadanie } from '../../../src/moduly/wysylka/services/nadanie.js';
 import { createDpdClient } from '../../../src/oms/kurierzy/dpd.js';
 import { createInpostClient } from '../../../src/oms/kurierzy/inpost.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { parsujNadpisanieKwotyPobrania } from '../../../src/domena/pobranie-nadania.js';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
@@ -118,7 +117,7 @@ describe('parsujNadpisanieKwotyPobrania — pole istnieje tylko tam, gdzie ma pr
     expect(w.kwotaPobrania).toBeUndefined();
   });
 
-  // ZAMIENNIK WYRZUCONEJ ETYKIETY (04.09.2026). Gdy operator ŚWIADOMIE każe pobraniu pojechać
+  // ZAMIENNIK WYRZUCONEJ ETYKIETY. Gdy operator ŚWIADOMIE każe pobraniu pojechać
   // na paczce nr 2, pole na ekranie ISTNIEJE — więc jego wartość musi przejść, a nie zostać
   // po cichu zignorowana. Cichy zwrot `undefined` byłby tu najgorszym z możliwych wyników:
   // paczka pojechałaby z kwotą Z ZAMÓWIENIA (74 zł zamiast 123 zł) i nikt by się nie dowiedział.
@@ -197,7 +196,7 @@ describe('parsujNadpisanieKwotyPobrania — walidacja kwoty', () => {
     ['tekst z jednostką', '310 zł'],
     ['notacja wykładnicza', '1e3'],
     ['zapis szesnastkowy', '0x10'],
-    // PRZ-145.01 (E5-D2): pół grosza nie istnieje — dawniej „0.005” jechało do DPD dosłownie.
+    // Pół grosza nie istnieje — dawniej „0.005” jechało do DPD dosłownie.
     ['pół grosza', '0.005'],
     ['trzy miejsca po przecinku', '12,345'],
   ])('%s → ODMOWA, kwota nie rusza w stronę kuriera', (_nazwa, wejscie) => {
@@ -206,9 +205,9 @@ describe('parsujNadpisanieKwotyPobrania — walidacja kwoty', () => {
     expect(w.blad).toBeTruthy();
   });
 
-  // ⚠️ BEZ GÓRNEGO PROGU — świadoma decyzja właściciela 04.08. Literówka „31033" zamiast
+  // ⚠️ BEZ GÓRNEGO PROGU. Literówka „31033" zamiast
   // „310,33" MA przejść do kuriera; jedyną obroną jest wpis w logu zamówienia (sekcja D).
-  // PRZ-145.01: Woo z trzema miejscami w ustawieniach sklepu oddaje „212.900” — to ta sama kwota.
+  // Woo z trzema miejscami w ustawieniach sklepu oddaje „212.900” — to ta sama kwota.
   it('końcowe zera po groszach przechodzą („212.900”)', () => {
     expect(parsuj('212.900')).toEqual({ kwotaPobrania: '212.900' });
   });
@@ -232,7 +231,7 @@ describe('GET /zamowienia/:id/nadaj — pole kwoty pobrania', () => {
     expect(r.body).toMatch(/name="kwota_pobrania"[^>]*value="212\.90"|value="212\.90"[^>]*name="kwota_pobrania"/);
   });
 
-  // ⚠️ ZMIANA DECYZJI 04.09.2026 (właściciel, po zamówieniu 1385). Do tego dnia pola tu NIE
+  // ⚠️ Dawniej pola tu NIE
   // BYŁO ANI ŚLADU, bo pobranie na paczce N > 1 było niemożliwe. Zdarzenie pokazało brakujący
   // przypadek: paczka nr 2 bywa ZAMIENNIKIEM pierwszej (wyrzucona etykieta), nie dosyłką obok
   // niej — i wtedy pobranie MUSI móc pojechać, bo inaczej kurier nie zainkasuje ani złotówki.
@@ -255,7 +254,7 @@ describe('GET /zamowienia/:id/nadaj — pole kwoty pobrania', () => {
     // ⚠️ DRUGI PAS, NIEZALEZNY OD PIENIEDZY: kolejna paczka do tego samego zamowienia jest
     // sytuacja rzadka i kosztowna (poprzednie JUZ ISTNIEJA u kuriera), wiec ekran ma ja nazwac
     // wprost, zamiast wygladac jak zwykle nadanie. Bez tej asercji zdanie dalo sie usunac
-    // bez ani jednej czerwieni — zmierzone mutacja 01.09.2026.
+    // bez ani jednej czerwieni — zmierzone mutacja.
     expect(r.body).toMatch(/KOLEJNA paczka do tego zamówienia/);
   });
 
@@ -354,7 +353,7 @@ describe('POST /zamowienia/:id/nadaj — kwota z formularza jedzie do koperty', 
     expect(druga).not.toContain('999.00');
   });
 
-  // ⚠️⚠️ DODATNI ODPOWIEDNIK TESTU WYŻEJ (04.09.2026) — i te dwa razem są całą treścią tej
+  // ⚠️⚠️ DODATNI ODPOWIEDNIK TESTU WYŻEJ — i te dwa razem są całą treścią tej
   // zmiany: to samo żądanie, różniące się WYŁĄCZNIE jawnym zaznaczeniem, ma dać raz kopertę
   // bez <cod>, a raz z <cod>. Bez tej pary „usunęliśmy blokadę" znaczyłoby tyle, co
   // „przepuszczamy wszystko".
@@ -535,8 +534,8 @@ describe('wywołania spoza formularza zachowują się DOKŁADNIE jak dziś', () 
 // F. PACZKOMAT ZA POBRANIEM — TA SAMA GWARANCJA, CO PRZY DPD
 // =====================================================================================
 //
-// ⚠️ DZIURA ZNALEZIONA W RECENZJI (05.08). `kurierzy/inpost.js` dostał parametr
-// `kwotaPobrania` razem z Z4, ale NIC w `tests/` mu go nie przekazywało — cała ta ścieżka
+// ⚠️ LUKA W POKRYCIU TESTAMI. `kurierzy/inpost.js` dostał parametr
+// `kwotaPobrania`, ale NIC w `tests/` mu go nie przekazywało — cała ta ścieżka
 // była pilnowana wyłącznie po stronie DPD. Skasowanie `nadpisanie ??` w inpost.js dawało
 // więc cichą EDYCJĘ POZORNĄ: operator poprawia kwotę na ekranie nadania, ekran ją przyjmuje,
 // a kurier inkasuje od klienta STARĄ kwotę z zamówienia — i cały zestaw zostaje zielony.
@@ -556,9 +555,9 @@ describe('paczkomat za pobraniem — kwota z formularza jedzie do InPostu', () =
 
   // Atrapa `fetch` odpowiadająca jak ShipX: POST /shipments oddaje gotową przesyłkę,
   // GET etykiet oddaje pliki. ZERO żądań do prawdziwego InPostu.
-  // ⚠️ ATRAPA ODSYLA POBRANIE, KTORE DOSTALA (poprawione 27.08.2026). Do tego dnia oddawala
+  // ⚠️ ATRAPA ODSYLA POBRANIE, KTORE DOSTALA. Do tego dnia oddawala
   // przesylke BEZ pola `cod` — ksztalt, ktorego prawdziwy ShipX przy pobraniu nigdy nie daje,
-  // a od 27.08 klient InPostu sprawdza, czy kurier POTWIERDZIL pobranie. Atrapa milcząca
+  // a klient InPostu sprawdza, czy kurier POTWIERDZIL pobranie. Atrapa milcząca
   // o `cod` opisywalaby wiec przesylke, przy ktorej nikt nie zainkasuje pieniedzy.
   function inpostKlient() {
     const fetchImpl = vi.fn(async (adres, opcje) => {
@@ -650,9 +649,9 @@ describe('paczkomat za pobraniem — kwota z formularza jedzie do InPostu', () =
     expect(logi(id).some((w) => w.akcja === 'nadanie.pobranie' && w.wynik.includes('310.33'))).toBe(true);
   });
 
-  // PRZ-137.03 (D2, D3): zamiennik za pobraniem paczkomatem — z umową firmy `cod` jedzie
+  // Zamiennik za pobraniem paczkomatem — z umową firmy `cod` jedzie
   // także na paczce nr 2 (z jawnym zaznaczeniem), a ekran nie podpowiada „panelu DPD".
-  describe('zamiennik paczkomatem (paczka nr 2, PRZ-137.03)', () => {
+  describe('zamiennik paczkomatem (paczka nr 2)', () => {
     function poPierwszejPaczce({ umowa }) {
       const t = zServeremInpost();
       zapiszUmowePobrania(db, 'inpost', umowa);
@@ -704,7 +703,7 @@ describe('paczkomat za pobraniem — kwota z formularza jedzie do InPostu', () =
     });
   });
 
-  // ⚠️⚠️ INPOST POŁKNĄŁ POBRANIE — GDZIE MA WYLĄDOWAĆ WIERSZ PRZESYŁKI (27.08.2026).
+  // ⚠️⚠️ INPOST POŁKNĄŁ POBRANIE — GDZIE MA WYLĄDOWAĆ WIERSZ PRZESYŁKI.
   //
   // Strażnik w `kurierzy/inpost.js` rzuca JUŻ PO utworzeniu przesyłki, więc wyjątek niesie
   // `shipmentId`. Sam ten fakt kierowałby wiersz do `oznaczTworzonaUKuriera`, czyli na stan

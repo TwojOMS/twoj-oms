@@ -3,7 +3,7 @@ import {
   wymagaWyboruKuriera, kurierzyDoWyboru, metodaNadania, nadanieDaZpl,
 } from '../../src/domena/kurier-nadania.js';
 
-// ZGŁOSZENIE WŁAŚCICIELA 2026-08-07 (zam. 1120 i 1126): do zamówienia z Allegro trzeba
+// ZGŁOSZENIE (zam. 1120 i 1126): do zamówienia z Allegro trzeba
 // dosłać paczkę WŁASNYM kurierem — DPD albo paczkomatem. Panel tego nie potrafił, a karta
 // mimo to pokazywała „Nadaj paczkę" i ekran nadania wypełniał komplet pól: odmowa padała
 // dopiero z `wybierzKuriera`, po zapakowaniu paczki.
@@ -11,7 +11,7 @@ import {
 const zam = (o = {}) => ({ sklep: 'allegro_swietlik', metoda_wysylki: 'allegro_dpd', pobranie: 0, ...o });
 
 describe('kiedy panel musi zapytać o kuriera', () => {
-  // ⚠️ PACZKOMAT WYPADL Z TEJ LISTY 07.08.2026 (druga fala) — Allegro etykiety paczkomatowej
+  // ⚠️ PACZKOMAT WYPADL Z TEJ LISTY 07.08.2026 — Allegro etykiety paczkomatowej
   // nie sprzedaje, wiec nie ma czego dublowac i pytanie byloby klikaniem bez tresci. Ma to
   // swoj wlasny blok testow na koncu pliku.
   it('zamówienie z Allegro — tak, dla metod, których panel nie umie nadać', () => {
@@ -61,14 +61,14 @@ describe('kogo wolno wskazać', () => {
       .toEqual(['wza', 'dpd', 'inpost_paczkomat']);
   });
 
-  // ⚠️⚠️ PIENIĄDZE, I TO JEST NAJWAŻNIEJSZY TEST TEJ ZMIANY (04.09.2026). Od chwili, gdy
+  // ⚠️⚠️ PIENIĄDZE, I TO JEST NAJWAŻNIEJSZY TEST TEJ ZMIANY. Od chwili, gdy
   // operator może kazać pobraniu pojechać na paczce N > 1 (zamiennik wyrzuconej etykiety),
   // zdanie „na paczce N > 1 pobranie i tak nie jedzie" PRZESTAJE być prawdziwe — a to ono
   // uzasadniało pełny wybór kuriera powyżej. Bez tej bariery powstaje droga: zamiennik za
   // pobraniem przez paczkomat → InPost nie inkasuje NIC → towar oddany za darmo, bez ani
   // jednego błędu po drodze. Dyskryminatorem jest więc „czy pobranie jedzie na TEJ paczce",
   // a nie sam numer paczki.
-  // PRZ-137.03: adapter InPostu wysyła już cod na zamienniku, więc paczkomat wraca do listy —
+  // Adapter InPostu wysyła już cod na zamienniku, więc paczkomat wraca do listy —
   // ale tylko z umową firmy na pobranie (tu jej brak). WzA odpada: Allegro nie przyjmie
   // pobrania na kolejnej paczce (`pobranieNaDosylce: false`).
   it('gdy pobranie jedzie na paczce nr 2: sam DPD — bez WzA i bez paczkomatu bez umowy', () => {
@@ -152,7 +152,7 @@ describe('metoda, którą panel naprawdę nada', () => {
   });
 });
 
-// ——— PACZKOMAT Z ALLEGRO NADAJE OMS (2026-08-07, druga fala) ————————————————————————
+// ——— PACZKOMAT Z ALLEGRO NADAJE OMS ————————————————————————
 //
 // Właściciel, wprost: „Paczka paczkomat allegro nadawana ma być przez OMS. Tak jest teraz
 // w Apilo. Nie da się jej nadać przez allegro."
@@ -226,7 +226,7 @@ describe('paczkomat z Allegro idzie naszym InPostem, bez pytania', () => {
   });
 });
 
-// ⚠️⚠️ REGUŁA NIEDOSTĘPNA Z EKRANU NIE ISTNIEJE (11.08.2026, po pierwszej próbie nadania).
+// ⚠️⚠️ REGUŁA NIEDOSTĘPNA Z EKRANU NIE ISTNIEJE.
 //
 // `WZA_DOMYSLNIE` sprawiło, że BRAK wskazania prowadzi do „Wysyłam z Allegro" — ale ekran
 // nadania każe wybrać pozycję Z LISTY, a lista znała wyłącznie naszych kurierów. Jedyne, co
@@ -257,14 +257,14 @@ describe('droga domyślna musi być NA LIŚCIE WYBORU, nie tylko w regule', () =
     expect(metodaNadania(punkt, 'wza').blad).toMatch(/Nie umiem nadać/);
   });
 
-  // Pobranie przez WzA jeszcze nie wchodzi (Partia 2) — lista ma go wtedy NIE proponować,
+  // Pobranie przez WzA jeszcze nie wchodzi — lista ma go wtedy NIE proponować,
   // bo panel i tak by odmówił, a przycisk prowadzący prosto w odmowę jest gorszy niż brak.
   it('przy pobraniu na pierwszej paczce WzA JEST, a paczkomatu nie', () => {
     expect(kurierzyDoWyboru({ ...allegroDpd, pobranie: 1 }, 1).map((k) => k.klucz)).toEqual(['wza', 'dpd']);
   });
 });
 
-// ——— CZY Z NADANIA BĘDZIE ZPL (zgłoszenie właściciela 2026-09-01: „Nadaj i drukuj nie działa") ———
+// ——— CZY Z NADANIA BĘDZIE ZPL („Nadaj i drukuj nie działa") ———
 // Kolejka druku na Zebrze przyjmuje WYŁĄCZNIE ZPL. Wysyłka z Allegro (WzA) oddaje etykietę
 // wyłącznie jako PDF — zmierzone 10.08.2026 (notatki/2026-08-10-allegro-wysylka-rozpoznanie.md:
 // „Etykieta wraca jako binarny PDF"; `labelFormat: "PDF"` w podpowiedzi Allegro). „Nadaj

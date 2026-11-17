@@ -18,7 +18,7 @@
 //
 // ⚠️ Żadne wywołanie w tym pliku nie dotyka prawdziwego sklepu: `fetch` i klienci są
 // atrapami, a baza siedzi w pamięci albo w katalogu tymczasowym.
-import { potwierdzOdmoweHistorycznegoSchema } from '../../pomoc/baseline-historyczne.js';
+import { potwierdzOdmoweHistorycznegoSchema } from '../../pomoc/sprawdzanie-schematu-bazy.js';
 import { describe, it, expect, vi } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -270,7 +270,7 @@ describe('odswiezMagazyn — miniatura zapisana, nie zgadnięta', () => {
   // ⚠️ ALLEGRO NIE MA STORE API i miniatury nie oddaje w ogóle — jedynym adresem jest
   // `primaryImage.url`. Wariant rozmiaru wyprowadzamy tam PODMIANĄ SEGMENTU ŚCIEŻKI
   // (`/original/` → `/s150/`), co jest CO INNEGO niż doklejanie rozmiaru do nazwy pliku:
-  // tamta reguła jest ZMIERZONA na żywych zdjęciach (05.08.2026, wszystkie warianty HTTP 200).
+  // tamta reguła jest ZMIERZONA na żywych zdjęciach.
   // Ten test pilnuje, żeby zdjęcie ofert Allegro nie zgasło przy okazji naprawy sklepów.
   it('oferta Allegro zapisuje miniaturę s150, mimo braku Store API', async () => {
     const db = openOmsDb(':memory:');

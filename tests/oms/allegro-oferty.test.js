@@ -1,4 +1,4 @@
-// Odczyt OFERT Allegro do lustra magazynu (Zadanie 6).
+// Odczyt OFERT Allegro do lustra magazynu.
 //
 // Dwie warstwy w jednym pliku, bo to jedna decyzja: `ofertaNaProdukt` (regula czysta,
 // domain/) mowi CO zapisujemy, a `pobierzOferty` (client.js) mowi SKAD to bierzemy.
@@ -14,7 +14,7 @@ import {
   LIMIT_ZAPYTANIA_OFERT_MS, LIMIT_ZAPYTANIA_ZAMOWIEN_MS, LIMIT_ZAPYTANIA_PRZESYLEK_MS,
 } from '../../src/oms/allegro/client.js';
 
-// Ksztalt zmierzony w Zadaniu 0 (notatka 2026-08-06): tyle i tylko tyle bierzemy z listy ofert.
+// Kształt odpowiedzi listy ofert: tyle i tylko tyle bierzemy z listy.
 const oferta = (nadpisz = {}) => ({
   id: '1234567890',
   name: 'Lampa stołowa Grzybek 30x45 cm',
@@ -47,7 +47,7 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
   // ⚠️ Wiersz idzie wprost do `zapiszProduktSklepowy` (db/magazyn.js), ktore rozdziela dane
   // po KANALE — a upsert leci po `(kanal, produkt_id, wariant_id)`. Kanal wziety skadinad
   // rozjechalby sie z tym, co mapowanie uwaza za zrodlo wiersza.
-  // PRZ-160 E3.10 (D19): karta oferty z OMS-u przychodzi z rejestru `oferty_kanalow` przy zapisie lustra
+  // Karta oferty z OMS-u przychodzi z rejestru `oferty_kanalow` przy zapisie lustra
   // (services/magazyn-sync.js), nigdy z treści oferty — `external.id` to tylko SKU, a ręczne przypięcie ma przetrwać.
   it('wiersz lustra nie niesie karty, nawet gdy external.id wygląda jak znak instalacji', () => {
     const p = ofertaNaProdukt(oferta({ external: { id: 'POL-K17' } }), KANAL, KANALY_ALLEGRO);
@@ -86,7 +86,7 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
     }
   });
 
-  // ⚠️ Zmierzone przy Planie A i potwierdzone w Zadaniu 0: `offer.external` jest dzis `null`
+  // ⚠️ Zmierzone: `offer.external` jest dzis `null`
   // na WSZYSTKICH sprawdzonych ofertach obu kont (0/40). Powiazanie produktu z oferta jest
   // przez to reczne — ale mapowanie ma to przezyc, a nie wywalic caly odczyt.
   it('brak external nie wywraca mapowania', () => {
@@ -146,7 +146,7 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
       .toBe(7);
   });
 
-  // ⚠️ ZMIERZONE w Zadaniu 0: Allegro oddaje kwote z JEDNYM miejscem po przecinku
+  // ⚠️ ZMIERZONE: Allegro oddaje kwote z JEDNYM miejscem po przecinku
   // („79.0", „28.9"), nie dwoma. Samo mnozenie daje 2890.0000000000005.
   it('kwota z jednym miejscem po przecinku (tak oddaje Allegro)', () => {
     expect(ofertaNaProdukt({ id: '1', name: 'X', sellingMode: { price: { amount: '79.0', currency: 'PLN' } } }, KANAL, ['allegro_swietlik', 'allegro_polcien2']).cena_gr)
@@ -205,7 +205,7 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
     // Komunikat ma nazwac ofertę — inaczej „zla kwota" w przebiegu po 447 ofertach
     // nie mowi, ktora z nich obejrzec.
     expect(zKwota('89,00')).toThrow(/1234567890/);
-    // ⚠️ …I MA NAZWAC ZRODLO. Od Zadania 7 samo przeliczenie kwoty jest WSPOLNE ze sklepami
+    // ⚠️ …I MA NAZWAC ZRODLO. Samo przeliczenie kwoty jest WSPOLNE ze sklepami
     // (`domain/kwota.js`), bo obie ceny lada w tej samej kolumnie `cena_gr`. Sam tekst
     // „nie umiem przeliczyć kwoty" nie mowi juz przez to, ktory z czterech kanalow sie
     // wysypal — a odczyt magazynu chodzi po wszystkich naraz i to ten komunikat laduje
@@ -225,7 +225,7 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
 
   // ⚠️⚠️ WALUTA. `produkty_sklepowe.cena_gr` to goly INTEGER i kolumny waluty NIE MA, wiec
   // oferta w EUR wpadalaby do lustra jako te same 8900 groszy, co oferta za 89 zl — czyli
-  // wygladalaby na ~4× tansza od tego samego produktu w sklepie, CICHO. Zmierzone przy recenzji:
+// wygladalaby na ~4× tansza od tego samego produktu w sklepie, CICHO. Przykład:
   // 'EUR', 'CZK' i brak pola dawaly identyczny wynik co 'PLN'.
   //
   // Odmowa NIE jest sadem o EUR, tylko o kolumnie: skoro schemat waluty nie utrzyma, zapis
@@ -280,7 +280,7 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
   });
 
   // ⚠️ Bez tego oferta zakonczona udaje zywa — i wchodzi do generatora SKU oraz na liste
-  // „do powiazania" na rowni ze sprzedawana. Pole ZMIERZONE w Zadaniu 0.
+// „do powiazania” na rowni ze sprzedawana. Pole pochodzi z odpowiedzi API.
   it('przepisuje stan publikacji oferty', () => {
     expect(ofertaNaProdukt({
       id: '1', name: 'X', sellingMode: { price: { amount: '1.0', currency: 'PLN' } },
@@ -320,7 +320,7 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
     expect(ofertaNaProdukt(oferta({ primaryImage: { url: '/original/aaa' } }), KANAL, ['allegro_swietlik', 'allegro_polcien2']).zdjecia_json).toBe(null);
   });
 
-  // ⚠️ Rozmiar jest w nazwie tylko w ~40% ofert (zmierzone w Zadaniu 0), a `wymiaryZTekstu`
+  // ⚠️ Rozmiar jest w nazwie tylko w ~40% ofert (zmierzone), a `wymiaryZTekstu`
   // NIGDY nie zgaduje. Do lustra idzie CALA nazwa jako tekst zrodlowy rozmiaru — wyprowadzenie
   // milimetrow jest osobna regula i osobnym krokiem.
   it('rozmiar_tekst to nazwa oferty, bo Allegro nie ma osobnego pola rozmiaru', () => {
@@ -329,7 +329,7 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
     expect(p.rozmiar_tekst).toBe(p.nazwa);
   });
 
-  // ⚠️ NIEZMIENNIK 8 (PRZ-160 E4 D60: lustro niesie ilosc kanalu z chwili odczytu; stan magazynu
+  // ⚠️ NIEZMIENNIK 8 (lustro niesie ilosc kanalu z chwili odczytu; stan magazynu
   // liczy wylacznie `stanyKart`): magazyn NIE PROWADZI STANOW MAGAZYNOWYCH. `stock.available` jest
   // w odpowiedzi (zmierzone: 490, 15) i jest kuszacy — a raz zapisany stan zaczyna byc
   // czytany jako prawda, mimo ze odswieza sie wylacznie przyciskiem.
@@ -354,7 +354,7 @@ describe('ofertaNaProdukt — oferta na wiersz lustra', () => {
 
 // =======================================================================================
 // KLIENT — `pobierzOferty`. Stronicowanie `limit`/`offset`, odpowiedz `{count, offers,
-// totalCount}` (ksztalt ZMIERZONY w Zadaniu 0, nie wziety z dokumentacji).
+// totalCount}` (ksztalt odpowiedzi API).
 // =======================================================================================
 
 const tokeny = { waznyToken: async () => 'TOKEN' };
@@ -399,7 +399,7 @@ const kontoBezDna = () => vi.fn().mockImplementation(async (url) => {
 const odpowiedz = (cialo) => ({ ok: true, status: 200, json: async () => cialo });
 
 // Parametry KAZDEGO zadania. Asercja po `calls[0]` przepuszcza klienta, ktory dokleja
-// cokolwiek tylko do pierwszej strony (lekcja z Zadania 5).
+    // cokolwiek tylko do pierwszej strony.
 const parametryWywolan = (fetchImpl) => fetchImpl.mock.calls.map(([url]) => new URL(url).searchParams);
 
 describe('pobierzOferty — stronicowanie', () => {
@@ -415,7 +415,7 @@ describe('pobierzOferty — stronicowanie', () => {
   });
 
   // ⚠️ `GET /sale/offers/{id}` Allegro WYCOFALO (403 „no longer supported"), ale LISTA
-  // `/sale/offers` dziala — zmierzone 2026-08-06, HTTP 200. Szczegoly jednej oferty ida
+  // `/sale/offers` dziala — zmierzone, HTTP 200. Szczegoly jednej oferty ida
   // przez `/sale/product-offers/{id}` (pobierzOferte) i to JEST inny zasob: pomylka tutaj
   // wycisza caly odczyt magazynu z Allegro.
   it('lista ofert NIE idzie przez /sale/product-offers', async () => {
@@ -468,7 +468,7 @@ describe('pobierzOferty — stronicowanie', () => {
   });
 
   it('limit strony mieści się w tym, co Allegro przyjmuje', () => {
-    // PRZ-160 E3.30 (P19, produkcja 14.11): 1000 przyjęte, 1001 → 400.
+    // Limit partii ofert: 1000 przyjęte, 1001 → 400.
     expect(LIMIT_STRONY_OFERT).toBe(1000);
   });
 
@@ -480,7 +480,7 @@ describe('pobierzOferty — stronicowanie', () => {
   });
 
   // 200 z cialem, ktore NIE jest lista ofert, wygladaloby jak „konto nie ma nic" — a wtedy
-  // Zadanie 7 oznaczyloby CALY katalog kanalu jako znikniety.
+// oznaczyłby CALY katalog kanalu jako znikniety.
   it('200 z ciałem nie-tablicą NIE MOŻE udawać „brak ofert”', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(odpowiedz({ count: 0, offers: null, totalCount: 0 }));
     await expect(klient(fetchImpl).pobierzOferty()).rejects.toThrow(/nie oddało listy ofert/);
@@ -537,8 +537,8 @@ describe('pobierzOferty — stronicowanie', () => {
 });
 
 // ⚠️ Uciety odczyt (Allegro urwalo strone, proxy zjadlo odpowiedz) WYGLADA JAK SUKCES,
-// a potem Zadanie 7 oznacza brakujace oferty jako `zniknal_at` — czyli jest nieodrozninalny
-// od „konto stracilo pol katalogu". Ta sama dyscyplina, co przy Woo w Zadaniu 5.
+// a potem lustro oznacza brakujace oferty jako `zniknal_at` — czyli jest nieodrozninalny
+// od „konto stracilo pol katalogu”. Ta sama dyscyplina, co przy Woo.
 describe('pobierzOferty — kontrola kompletności po totalCount', () => {
   it('zebranie mniej ofert, niż zapowiedziało Allegro, to błąd', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(odpowiedz({ count: 2, offers: [{ id: '1' }, { id: '2' }], totalCount: 447 }));
@@ -556,7 +556,7 @@ describe('pobierzOferty — kontrola kompletności po totalCount', () => {
   // stronach. Bez niego straznik PRZENIESIONY DO WNETRZA PETLI (a nie usuniety!) przechodzi
   // cala suite na zielono, a na prawdziwym koncie wywala sie po pierwszej stronie — bo
   // zebrane 20 zawsze jest mniejsze od zapowiedzianych 447. Magazyn nie wczytalby ANI
-  // JEDNEJ oferty. Ta sama dziura kosztowala runde recenzji w Zadaniu 5.
+// JEDNEJ oferty.
   it('447 ofert zapowiedzianych i zebranych na 23 stronach przechodzi w całości', async () => {
     const fetchImpl = kontoZOfertami(447);
 
@@ -566,12 +566,12 @@ describe('pobierzOferty — kontrola kompletności po totalCount', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(Math.ceil(447 / LIMIT_STRONY_OFERT));
   });
 
-  // ⚠️⚠️ GRANICA PRZYPIETA CO DO JEDNEGO. Recenzja zmierzyla: `wszystkie.length < zapowiedziano`
+  // ⚠️⚠️ GRANICA PRZYPIETA CO DO JEDNEGO. Zmierzono: `wszystkie.length < zapowiedziano`
   // podmienione na `wszystkie.length + 1 < zapowiedziano` przechodzilo 56/56 na zielono —
   // testy pilnowaly 2 wobec 447 i 447 wobec 447, czyli obu koncow, ale nie SAMEJ GRANICY.
   //
   // Scenariusz, ktory to ucisza, jest zwyczajny: Allegro zapowiada 447, jedna oferta konczy
-  // sie w trakcie 23-zadaniowego odczytu, zbieramy 446. Alarm milknie, Zadanie 7 uznaje liste
+// sie w trakcie 23-zadaniowego odczytu, zbieramy 446. Alarm milknie, lustro uznaje liste
   // za kompletna i oznacza te oferte `zniknal_at`. Jeden widmowy wiersz zamiast katalogu — ale
   // to jest DOKLADNIE ten przypadek, ktory wybralismy jako glosny („wolimy glosny falszywy
   // alarm od cichej straty"), wiec ma sie odzywac.

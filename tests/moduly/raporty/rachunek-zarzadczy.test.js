@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { openOmsDb } from '../../pomoc/dane-miesieczne-parytetu.js';
+import { openOmsDb } from '../../pomoc/testowe-dane-miesieczne.js';
 import { ustawGranice, zapiszHistorie } from '../../../src/oms/db/historia-sprzedazy.js';
-import { KANALY } from '../../pomoc/raporty-historyczne-fixture.js';
-import { zapiszDaneMiesiaca } from '../../pomoc/dane-miesieczne-parytetu.js';
+import { KANALY } from '../../pomoc/przykladowe-dane-raportow.js';
+import { zapiszDaneMiesiaca } from '../../pomoc/testowe-dane-miesieczne.js';
 import {
   zapiszKoszt, zapiszRecznyKoszt, przypnijKategorieDoDokumentu,
 } from '../../../src/oms/db/koszty.js';
-import { rachunekOkresu } from '../../pomoc/raporty-parytetu.js';
+import { rachunekOkresu } from '../../pomoc/testowe-reguly-raportow.js';
 
 let db;
 beforeEach(() => {

@@ -1,8 +1,8 @@
-// PRZ-153.E1.3b — wyjątek CSRF dla żądań z kluczem API (plan docs/plany/PRZ-153-api-v1.md, E1.3).
+// Wyjątek CSRF dla żądań z kluczem API.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { czyZadanieKluczem } from '../../../src/core/bezpieczenstwo/csrf.js';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { zalozKluczApi } from '../../../src/core/bezpieczenstwo/klucze-api.js';
 import { NAZWA_CIASTECZKA_OMS } from '../../../src/core/bezpieczenstwo/sesja.js';
 import { MODULY } from '../../../src/moduly/lista.ts';

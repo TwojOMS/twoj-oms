@@ -3,7 +3,7 @@ import {
   wartoPytacAllegroONumery, OKNO_DOPYTANIA_PO_WYSLANIU_DNI,
 } from '../../src/domena/allegro-numery.js';
 
-// CZY PYTAC ALLEGRO O NUMERY LISTOW TEGO ZAMOWIENIA (25.08.2026).
+// CZY PYTAC ALLEGRO O NUMERY LISTOW TEGO ZAMOWIENIA.
 //
 // Do tej pory warunek brzmial „dopoki zamowienie NIE MA `wyslane_at`" — czyli dopoki wisi
 // na liscie roboczej. Zmierzone na produkcji tego dnia: **22 zamowienia Allegro oznaczone

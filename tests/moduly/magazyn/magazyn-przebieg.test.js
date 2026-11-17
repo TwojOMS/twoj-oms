@@ -19,7 +19,7 @@ function wstrzymana() {
 
 const db = { to: 'atrapa bazy' };
 // Scenariusze przebiegu mają skonfigurowane źródło. Pusta instalacja odmawia
-// startu do czasu dodania pierwszego konta (PRZ-128).
+// startu do czasu dodania pierwszego konta.
 const przebiegZeZrodlem = (opcje) => createMagazynPrzebieg({ sklepy: { pro: {} }, ...opcje });
 
 describe('createMagazynPrzebieg', () => {

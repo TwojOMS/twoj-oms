@@ -5,7 +5,7 @@ import { zapiszProforme } from '../../../src/moduly/faktury/db/proformy.js';
 import { createWiadomosci } from '../../../src/moduly/wiadomosci/services/wiadomosci.js';
 import { createPotwierdzenie } from '../../../src/moduly/wiadomosci/services/potwierdzenie.js';
 import { wiadomosciZamowienia } from '../../../src/oms/db/wiadomosci.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 // ⚠️ TEN SAM FORMATER, KTÓRYM RENDERUJE WIDOK — asercja na dacie liczy oczekiwany napis
 // tą samą funkcją, którą naprawia znalezisko 2 (schema.sql: znaczniki są w UTC, obcięcie
 // napisu pokazałoby operatorowi godzinę o dwie wcześniejszą niż naprawdę).
@@ -125,7 +125,7 @@ describe('usługa wiadomości', () => {
     expect(wiadomosciZamowienia(db, id)[0].temat_id).toBe('potwierdzenie');
   });
 
-  // ⚠️ PUŁAPKA WPROST Z BRIEFU: numer dokumentu ma ukośniki („PF/1/08/2026"). Bez
+  // ⚠️ UKOŚNIKI W NUMERZE DOKUMENTU: numer dokumentu ma ukośniki („PF/1/08/2026"). Bez
   // `bezpiecznaNazwa` ukośnik stałby się separatorem katalogu — klient dostałby błąd zapisu
   // albo plik pod inną ścieżką, niż panel myśli, że zapisał. Sprawdzone w TRZECH miejscach,
   // bo każde z nich mogłoby po cichu zgubić sanityzację niezależnie od pozostałych.
@@ -188,8 +188,8 @@ describe('usługa wiadomości', () => {
     expect(poczta.wyslane[0].text).not.toContain('W załączeniu proforma');
   });
 
-  // ⚠️⚠️ ZNALEZISKO RECENZJI CAŁOŚCI GAŁĘZI (22.08.2026, styk usługi i domeny): reguła
-  // „proforma → faktura → numer zamówienia" stoi w TRZECH miejscach (makieta zatwierdzona,
+  // ⚠️⚠️ SPÓJNY TYTUŁ PRZELEWU: reguła
+  // „proforma → faktura → numer zamówienia" stoi w TRZECH miejscach (reguła domeny i
   // oba komentarze przy `modelWiadomosci` w wiadomosc-platnicza.js), ale `dokument` liczony
   // TU, w usłudze, dotąd realizował wyłącznie „proforma → numer zamówienia" — faktura nigdy
   // tu nie trafiała. Realny scenariusz: zamówienie B2B z fakturą i terminem 14 dni, BEZ
@@ -283,7 +283,7 @@ describe('trasy sekcji wiadomości', () => {
     expect(res.body).not.toContain('Wybierz temat');
   });
 
-  // ⚠️⚠️ PIĄTA FAŁSZYWA ZIELEŃ TEJ GAŁĘZI (recenzja całości gałęzi, 22.08.2026). Do tej pory
+  // ⚠️⚠️ ASERCJA LISTY TEMATÓW. Do tej pory
   // stało tu gołe `toContain('Proforma')` — a ten napis jest na KAŻDYM renderze karty,
   // w metryczce dokumentów (zamowienie.ejs: wiersz „Proforma" i zdanie „Proforma: data
   // dzisiejsza…"). Test przechodził więc także wtedy, gdy lista tematów renderowała się
@@ -327,7 +327,7 @@ describe('trasy sekcji wiadomości', () => {
 
   it('?wiadomosc=przypomnienie pokazuje podgląd z adresem i tematem', async () => {
     const res = await karta('?wiadomosc=przypomnienie');
-    // ⚠️ ZAKOTWICZONE W LIŚCIE `<dl class="dane">` PODGLĄDU (recenzja 22.08.2026), nie gołe
+    // ⚠️ ZAKOTWICZONE W LIŚCIE `<dl class="dane">` PODGLĄDU, nie gołe
     // `toContain`: karta drukuje adres klienta w danych do wysyłki na KAŻDYM renderze, więc
     // `toContain` przechodziłby nawet gdyby ten konkretny podgląd w ogóle nie pokazał adresata.
     expect(res.body).toMatch(/<dt>Do<\/dt>\s*<dd>klient@firma\.pl<\/dd>/);
@@ -338,7 +338,7 @@ describe('trasy sekcji wiadomości', () => {
   // ⚠️ MAIL JEST KOMPLETNYM DOKUMENTEM (własny <html>, własne tło, style inline). Wpuszczony
   // wprost w kartę pomieszałby się z jej stylami i pokazałby coś, czego klient nigdy nie
   // zobaczy — a cała wartość podglądu polega na tym, że pokazuje to, co pójdzie. Ta sama
-  // asercja stoi przy podglądzie potwierdzenia (tests/oms/web-potwierdzenie.test.js).
+  // asercja stoi przy podglądzie potwierdzenia (tests/moduly/wiadomosci/web-potwierdzenie.test.js).
   it('podgląd siedzi w RAMCE sandbox, a nie wklejony w kartę', async () => {
     const res = await karta('?wiadomosc=przypomnienie');
     expect(res.body).toMatch(/<iframe[^>]*sandbox[^>]*srcdoc=/);
@@ -358,7 +358,7 @@ describe('trasy sekcji wiadomości', () => {
     expect(wiadomosciZamowienia(bazaW, idZ)).toHaveLength(1);
   });
 
-  // ⚠️⚠️ LUKA W POKRYCIU DOMKNIĘTA (recenzja 22.08.2026, Zadanie 10 — część B). Test wyżej
+  // ⚠️⚠️ LUKA W POKRYCIU DOMKNIĘTA. Test wyżej
   // sprawdza tylko status 302 i długość rejestru — NIGDY nie ogląda karty PO przeładowaniu.
   // Niesprawdzone zostawały: tabela „Wysłane" dla tematu innego niż potwierdzenie, ostrzeżenie
   // „Ta wiadomość poszła już…" i etykieta „Wyślij ponownie" na przycisku. To jest JEDYNY
@@ -383,10 +383,10 @@ describe('trasy sekcji wiadomości', () => {
     expect(spoczynek).toMatch(/<td>klient@firma\.pl<\/td>/);
   });
 
-  // ⚠️⚠️ ZNALEZISKO RECENZJI CAŁOŚCI GAŁĘZI (22.08.2026, styk trasy i starej kolumny). Schema.sql
+  // ⚠️⚠️ REZERWA DLA STAREJ KOLUMNY. Schema.sql
   // obiecuje wprost: `potwierdzenie_wyslane_at` „ZOSTAJE i dalej jest zapisywana […] karta ma
   // mówić prawdę także o mailach wysłanych PRZED powstaniem rejestru" — ale `daneWiadomosci`
-  // czytał WYŁĄCZNIE rejestr `wiadomosci`, który istnieje dopiero od 22.08.2026. Zamówienie
+  // czytał WYŁĄCZNIE rejestr `wiadomosci`, dodany później. Zamówienie
   // potwierdzone WCZEŚNIEJ (rejestru wtedy jeszcze nie było) traciło JEDYNY hamulec przed
   // wysłaniem klientowi DRUGIEGO potwierdzenia: ekran wyboru mówił „jeszcze nie wysłane",
   // podgląd nie pokazywał paska „Ta wiadomość poszła już…", a przycisk „Wyślij" zamiast
@@ -394,7 +394,7 @@ describe('trasy sekcji wiadomości', () => {
   it('zamówienie potwierdzone PRZED powstaniem rejestru: stara kolumna działa jako rezerwa', async () => {
     bazaW.prepare('UPDATE zamowienia SET potwierdzenie_wyslane_at = ? WHERE id = ?')
       .run('2026-08-21T12:40:00.000Z', idZ);
-    // Rejestr milczy — dokładnie scenariusz z briefu: potwierdzone ZANIM rejestr zaczął
+    // Rejestr milczy — potwierdzone ZANIM rejestr zaczął
     // cokolwiek zapisywać.
     expect(wiadomosciZamowienia(bazaW, idZ)).toHaveLength(0);
 
@@ -417,8 +417,7 @@ describe('trasy sekcji wiadomości', () => {
     expect(res.body).toContain('Najpierw wystaw fakturę');
   });
 
-  // ⚠️⚠️ ASYMETRIA ŚLADU DOMKNIĘTA (recenzja całości gałęzi, 22.08.2026 — najpoważniejsza
-  // z odłożonych). `try/catch` obejmował WYŁĄCZNIE `sendMail`, a złożenie treści stało poza
+  // ⚠️⚠️ ASYMETRIA ŚLADU DOMKNIĘTA. `try/catch` obejmował WYŁĄCZNIE `sendMail`, a złożenie treści stało poza
   // nim: padnięty inFakt, zniknięty plik proformy i odmowa domeny oddawały operatorowi 400
   // i ZERO śladu na karcie. „Kliknąłem, coś mrugnęło, karta pusta" to dokładnie ten stan,
   // którego reszta modułu unika.
@@ -439,8 +438,7 @@ describe('trasy sekcji wiadomości', () => {
     expect(log.at(-1).wynik).not.toContain('klient@firma.pl');
   });
 
-  // PRZ-074 (14.10.2026, prośba właściciela): komentarz wewnętrzny wrócił NAD Pozycje, obok uwag
-  // klienta — do tej pory test pilnował odwrotnego miejsca (przy wiadomościach, decyzja 22.08).
+  // Komentarz wewnętrzny stoi nad Pozycjami, obok uwag klienta.
   it('komentarz wewnętrzny stoi nad Pozycjami, a nie przy wiadomościach', async () => {
     const res = await karta();
     const iKomentarz = res.body.indexOf('id="komentarz"');
@@ -453,8 +451,7 @@ describe('trasy sekcji wiadomości', () => {
   // ⚠️⚠️ KOMENTARZ WEWNĘTRZNY NIE ZALEŻY OD POCZTY — a przez przenosiny na dół karty łatwo
   // go w tę zależność wpuścić (pierwsza wersja tej zmiany to zrobiła). Panel bez skonfigurowanej
   // poczty ma DALEJ pokazywać pole notatki: inaczej pierwszej notatki nie ma jak założyć,
-  // a stara notatka znika z ekranu bez śladu. Pilnuje tego też tests/oms/web-komentarz.test.js,
-  // ale tam nikt nie wie, że pole zjechało do `_wiadomosci.ejs` — tutaj wiadomo.
+  // a stara notatka znika z ekranu bez śladu. Ten test sprawdza obecność pola także bez usługi wiadomości.
   it('bez usługi wiadomości sekcja znika, ale komentarz wewnętrzny ZOSTAJE', async () => {
     const bezPoczty = buildOmsServer({
       db: bazaW, config, poller: { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) },
@@ -463,7 +460,7 @@ describe('trasy sekcji wiadomości', () => {
     const res = await bezPoczty.inject({ method: 'GET', url: `/zamowienia/${idZ}`, headers: naglowek });
     expect(res.statusCode).toBe(200);
     expect(res.body).not.toContain('Wyślij nową wiadomość');
-    // PRZ-074: bez notatki pole jest zwinięte pod „+ Dodaj komentarz wewnętrzny" (małą literą);
+    // Bez notatki pole jest zwinięte pod „+ Dodaj komentarz wewnętrzny" (małą literą);
     // nagłówek „Komentarz wewnętrzny" stoi tylko przy zapisanej notatce. Sens testu — pole jest
     // ZAWSZE — niesie adres formularza i <textarea> poniżej.
     expect(res.body).toContain('Dodaj komentarz wewnętrzny');
@@ -486,7 +483,7 @@ describe('trasy sekcji wiadomości', () => {
   });
 });
 
-// ⚠️⚠️ TRZY WSTRZYKNIĘTE USŁUGI, TRZY STRAŻNIKI (recenzja całości gałęzi, 22.08.2026).
+// ⚠️⚠️ TRZY WSTRZYKNIĘTE USŁUGI, TRZY STRAŻNIKI.
 // `proforma`, `infakt` i `potwierdzenie` mają w `createWiadomosci` domyślne `null`, a ekran
 // wyboru pokazuje odpowiadające im tematy jako DOSTĘPNE — bariera domeny pyta o wiersz
 // w bazie (proforma, faktura z uuid i numerem), a nie o to, czy usługa jest podpięta.

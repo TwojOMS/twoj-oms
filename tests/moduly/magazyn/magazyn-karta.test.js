@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { readFileSync } from './pliki-historyczne.js';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { zapiszProduktSklepowy, utworzKarte, powiazProdukt } from '../../../src/oms/db/magazyn.js';
 
 // KARTA PRODUKTU — stanowisko pracy przy JEDNEJ karcie: dane, powiazane produkty i oferty,
@@ -104,7 +104,7 @@ const nazwyKandydatow = (body) => [...sekcja(body, 'dopisz-oferte')
 /**
  * AKAPIT ODNOSNIKA „Wróć do magazynu" — sam akapit, bez reszty strony. RZUCA, gdy go nie ma.
  *
- * ⚠️⚠️ WARUNEK NOSNOSCI asercji strażnika `wroc` (Zadanie 6): zla wartosc ma NIE WYSTAPIC
+ * ⚠️⚠️ WARUNEK NOSNOSCI asercji strażnika `wroc`: zla wartosc ma NIE WYSTAPIC
  * W TEJ KOTWICE, nie „gdziekolwiek na stronie" — `not.toContain` na calym `body` bywa
  * spelnione z powodow, ktore nie maja nic wspolnego z bariera (patrz test nizej).
  */
@@ -899,7 +899,7 @@ describe('karta produktu — wejscie i wyglad', () => {
     const id = kartaO('Kandelabr srebrny');
     // Bez tego odnosnika karta istnieje wylacznie dla kogos, kto zna adres.
     //
-    // ⚠️ Odnosnik od Zadania 6 niesie DALEJ adres listy jako „?wroc=…" (dokladna wartosc ma
+    // ⚠️ Odnosnik od dawna niesie DALEJ adres listy jako „?wroc=…" (dokladna wartosc ma
     // wlasny test w opisie „powrót z karty..."), wiec goly `href="/magazyn/{id}">` juz nie
     // wystapi — pilnujemy tu WYLACZNIE, ze nazwa linkuje na WLASCIWA karte (id sie zgadza).
     const dopasowanie = new RegExp(`<a href="/magazyn/${id}\\?wroc=[^"]*">Kandelabr srebrny</a>`)
@@ -951,7 +951,7 @@ describe('powrót z karty produktu z zachowaniem filtrów (wroc)', () => {
       const r = await get(app, `/magazyn/${id}?wroc=${encodeURIComponent(zly)}`);
       const akapit = akapitWroc(r.body);
       // ⚠️⚠️ ASERCJE CELUJA W SAM ODNOSNIK (`akapitWroc`) I W SUROWA ZLA WARTOSC — obie
-      // poprawki po recenzji (Zadanie 6). Pierwotna wersja robila dwie rzeczy nienosne:
+      // asercje wymuszone. Pierwotna wersja robila dwie rzeczy nienosne:
       // (1) `not.toContain` na CALYM `body` dla „/zamowienia" przechodzil tylko dlatego, ze
       // uklad strony AKURAT nigdzie indziej nie linkuje tego adresu — przypadek, nie bariera;
       // (2) `zly.replace('//', '')` na „https://evil.example" daje „https:evil.example" —
@@ -981,7 +981,7 @@ describe('powrót z karty produktu z zachowaniem filtrów (wroc)', () => {
       .toEqual({ brak: 'sku', sort: 'nazwa', kier: 'asc' });
   });
 
-  // ⚠️ DRUGA POLOWA NIEZMIENNIKA 4.13b (poprawka po recenzji): `wroc` ma niesc DALEJ TAKZE
+  // ⚠️ DRUGA POLOWA NIEZMIENNIKA 4.13b: `wroc` ma niesc DALEJ TAKZE
   // `widok=katalog`, nie tylko `sort`/`kier`/filtry — inaczej powrot z karty otwartej z
   // trybu katalogowego cichcem przelaczalby ekran z powrotem na porzadki.
   it('lista W TRYBIE KATALOGOWYM linkuje karty z wroc niosącym takze widok=katalog', async () => {
@@ -998,7 +998,7 @@ describe('powrót z karty produktu z zachowaniem filtrów (wroc)', () => {
       });
   });
 
-  // ⚠️ PIERWSZA POLOWA NIEZMIENNIKA 4.13b (poprawka po recenzji): karta otwarta Z `wroc`
+  // ⚠️ PIERWSZA POLOWA NIEZMIENNIKA 4.13b: karta otwarta Z `wroc`
   // ma niesc go DALEJ takze przez link „Edytuj" — inaczej otwarcie formularza edycji
   // cichcem gubiloby adres powrotu, mimo ze karta go dostala.
   it('link „Edytuj" NIESIE DALEJ wroc, gdy karta byla otwarta z adresu powrotu', async () => {
@@ -1043,7 +1043,7 @@ describe('powrót z karty produktu z zachowaniem filtrów (wroc)', () => {
     expect(r.headers.location).toBe(`/magazyn/${id}?wroc=${encodeURIComponent(wroc)}`);
   });
 
-  // ⚠️⚠️ PUŁAPKA SKLEJANIA ADRESU (POPRAWIONY OPIS SKUTKU — sprostowanie po recenzji):
+  // ⚠️⚠️ PUŁAPKA SKLEJANIA ADRESU:
   // formularz „Odepnij" doklejal do tej pory `/odepnij` PO gotowym adresie karty
   // (`<%= adresKarty %>/odepnij`). Gdy `adresKarty` niesie `?wroc=…`, naiwne doklejenie
   // wsadza `/odepnij` W SRODEK wartosci parametru `wroc` zamiast za nim — sciezka w adresie

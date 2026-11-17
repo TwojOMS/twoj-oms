@@ -1,4 +1,4 @@
-// Atrapa startu kandydata z szyfrowaniem poświadczeń (PRZ-182) dla tests/instalacja/atrapa-dockera.mjs:
+// Atrapa startu kandydata z szyfrowaniem poświadczeń dla tests/instalacja/atrapa-dockera.mjs:
 // klucz z pliku klucz.env (u klienta compose podaje go jako env_file), konwersja bazy tym samym kodem co start OMS-u.
 // Brak albo zły plik klucza, odmowa konwersji = kod 1 (OMS nie wstaje).
 //   node atrapa-kandydat-sekrety.mjs <baza.sqlite> <klucz.env>

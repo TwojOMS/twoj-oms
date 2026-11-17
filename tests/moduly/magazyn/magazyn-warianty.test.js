@@ -1,4 +1,4 @@
-import { potwierdzOdmoweHistorycznegoSchema } from '../../pomoc/baseline-historyczne.js';
+import { potwierdzOdmoweHistorycznegoSchema } from '../../pomoc/sprawdzanie-schematu-bazy.js';
 import { describe, it, expect } from 'vitest';
 import { atrybutyWariantu, osiePodzialu } from '../../../src/domena/atrybuty-wariantu.js';
 import { powodPominiecia, kartaZProduktu, czyPominietyCelowo } from '../../../src/domena/karta-z-produktu.js';
@@ -313,7 +313,7 @@ describe('grupujPominiete — grupa celowa po TRESCI pozycji', () => {
 // SWIADECTWO: 47 POZYCJI Z PIERWSZEGO PRAWDZIWEGO ODCZYTU
 // ============================================================================
 //
-// ⚠️⚠️ TO NIE SA WYMYSLONE DANE. Pierwszy odczyt katalogow (2026-08-11) wciagnal 1459 pozycji.
+// ⚠️⚠️ TO NIE SA WYMYSLONE DANE. Pierwszy odczyt katalogow wciagnal 1459 pozycji.
 // Kart powstalo 0, bo zakladanie jest osobnym przyciskiem — ale ekran „pominiete" pokazal
 // 47 pozycji ZE SKLEPOW, ktore do jednego worka „wariant bez rozmiaru" wpadaly z CZTERECH
 // ROZNYCH powodow. Ten test odtwarza te cztery grupy i zostaje w suicie jako odpowiedz na

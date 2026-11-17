@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import {
   zalozKonto, kontoPoLoginie, ustawUprawnienia, dopiszLogowanie, ustawCzynne,
 } from '../../../src/core/bezpieczenstwo/konta.js';
@@ -209,7 +209,7 @@ describe('ekran kont', () => {
     expect(kontoPoLoginie(db, 'ewa').uprawnienia).toEqual(new Set(['magazyn']));
   });
 
-  // ⚠️ K1 (recenzja 2026-09-12): TEN test mial w bazie JEDNO konto, wiec w istocie odpalal
+  // ⚠️ TEN test mial w bazie JEDNO konto, wiec w istocie odpalal
   // bezpiecznik „ostatni czynny admin" (D3 wyzej), nie ten, ktorego nazwa nosi — usuniecie
   // WYLACZNIE bezpiecznika „nie odbierz sobie" (ponizej, w routes/konta.js) przechodziloby
   // ta suita na zielono, bo „ostatni admin" i tak by zablokowal operacje. DRUGIE czynne konto
@@ -277,7 +277,7 @@ describe('ekran kont', () => {
     });
 
     expect(r.statusCode).toBe(200);
-    // D1 (recenzja 2026-09-12): odkad ekran mapuje identyfikator na tekst dla czlowieka,
+    // Odkad ekran mapuje identyfikator na tekst dla czlowieka,
     // szuka sie TEKSTU ("Złe hasło"), nie surowego klucza bazy — patrz testy D1/D2 nizej,
     // ktore dowodza wprost, ze surowy identyfikator NIE wyciega sie juz do HTML-a.
     expect(r.body).toContain('Złe hasło');
@@ -557,7 +557,7 @@ describe('ekran kont', () => {
   });
 });
 
-// ⚠️⚠️ TRZECI BEZPIECZNIK, KTOREGO BRIEF NIE PRZEWIDUJE (wykryty w recenzji strażnika):
+// ⚠️⚠️ TRZECI BEZPIECZNIK, KTOREGO BRIEF NIE PRZEWIDUJE:
 // dopoki `czyIstniejeCzynnyAdmin` (db/konta.js) oddaje `false`, haslo z `.env` jest PELNYM
 // adminem (straznik.js, `dopuscSerwisowe`). Gdyby dalo sie wylaczyc albo odebrac admina
 // OSTATNIEMU czynnemu administratorowi, brama degradacji zamykalaby sie na zawias — kto zna

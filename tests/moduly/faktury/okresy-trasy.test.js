@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { zapewnijOkres, pobierzOkres, zamknijOkres } from '../../../src/oms/db/okresy.js';
 import { dodajWplateOkresu, wplatyOkresu } from '../../../src/oms/db/platnosci.js';
 import { STAN } from '../../../src/domena/okres-rozliczeniowy.js';
@@ -183,7 +183,7 @@ describe('GET /okresy/:id (karta okresu)', () => {
   });
 });
 
-// ⚠️ DOMKNIECIE 1 (recenzja Zadania 9, runda 2): karta zaprzeczala sama sobie — sekcja
+// ⚠️ DOMKNIECIE 1: karta zaprzeczala sama sobie — sekcja
 // „Faktura za okres" pokazywala numer FV, a blok salda ponizej pisal, ze faktury nie ma
 // (albo kazal zwracac pieniadze, ktorych nikt nie oddal). Wyzwalaczem NIE jest czlowiek:
 // klient dropshippingowy anuluje zamowienia po zamknieciu miesiaca rutynowo, a `anulowane`
@@ -194,7 +194,7 @@ describe('GET /okresy/:id (karta okresu)', () => {
 describe('GET /okresy/:id — anulowanie PO wystawieniu faktury nie ma prawa zaprzeczać karcie', () => {
   const anulujPoFakturze = (numer) => db.prepare('UPDATE zamowienia SET anulowane = 1 WHERE numer = ?').run(numer);
 
-  // Wariant (a) z recenzji: faktura wystawiona na 140,00 (oba zamowienia aktywne), klient
+  // Wariant (a): faktura wystawiona na 140,00 (oba zamowienia aktywne), klient
   // placi dokladnie 140,00 — rozliczone co do grosza. DOPIERO POTEM jedno z zamowien
   // anuluje sie samo. Suma liczona NA DZIS spada do 100,00, wiec naiwne porownanie
   // (140,00 wplaty kontra 100,00 „dzis") wygladaloby na 40 zl nadplaty do zwrotu —
@@ -215,7 +215,7 @@ describe('GET /okresy/:id — anulowanie PO wystawieniu faktury nie ma prawa zap
     expect(saldo).toMatch(/do wyjaśnienia/);
   });
 
-  // Wariant (b) z recenzji, wprost zmierzony: faktura wystawiona (1 zamowienie, 104,00),
+  // Wariant (b), wprost zmierzony: faktura wystawiona (1 zamowienie, 104,00),
   // klient wplaca zaliczkowo 100,00. DOPIERO POTEM jedyne zamowienie okresu anuluje sie
   // samo — suma aktywnych spada do zera, a `rozliczenie.stan` klamliwie wraca do
   // „niezafakturowany”. Zmierzone przed poprawka: „zaliczka 100.00 zł — faktury za ten
@@ -381,7 +381,7 @@ describe('GET /okresy/:id — stan faktury sterujący przyciskiem wystawienia', 
   });
 });
 
-// ⚠️ DOMKNIECIE 3 (recenzja Zadania 9, runda 2): przycisk „Wystaw fakturę" na okresie bez
+// ⚠️ DOMKNIECIE 3: przycisk „Wystaw fakturę" na okresie bez
 // ani jednego zamowienia do zafakturowania kusil do klikniecia, o ktorym z gory wiadomo,
 // ze sie nie uda (bariera arytmetyczna w services/faktura-okresu.js i tak odmawia —
 // zmierzone: `infakt.wystaw` nie jest wolany, wiec bezpiecznie, ale mylaco). Bariera

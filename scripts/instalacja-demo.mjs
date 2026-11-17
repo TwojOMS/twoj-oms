@@ -24,7 +24,7 @@ function bezDowiazan(katalog) {
     }
   }
 }
-// PRZ-182: katalog „pusty” także wtedy, gdy ma wyłącznie prawidłowy plik klucza (przerwane przygotowanie).
+// Katalog „pusty” także wtedy, gdy ma wyłącznie prawidłowy plik klucza (przerwane przygotowanie).
 async function odmowNadpisania(katalog, plikKlucza) {
   bezDowiazan(katalog);
   await wymagajPustegoKatalogu(katalog, plikKlucza);
@@ -36,14 +36,14 @@ function etap(name, katalog, port, plikKlucza) {
   const result = spawnSync(process.execPath, [script, '--katalog', katalog, '--port', String(port)], {
     cwd: fileURLToPath(new URL('..', import.meta.url)), env: { [ZMIENNA_PLIKU_KLUCZA]: plikKlucza }, encoding: 'utf8', timeout: LIMIT_ETAPU_MS,
   });
-  // PRZ-093.03: kod etapu zostaje (parsują go testy i kontener), ale z powodem — wcześniej przyczyna
+  // Kod etapu zostaje (parsują go testy i kontener), ale z powodem — wcześniej przyczyna
   // (zajęty port, stary Node, limit 60 s) ginęła i człowiek widział samo INSTALACJA_DEMO_PROBA_ODMOWA.
   if (result.status !== 0) {
     const powod = powodPotomka(result, { limitMs: LIMIT_ETAPU_MS, sekrety: sekretyKatalogu(katalog, plikKlucza) });
     throw Error(`INSTALACJA_DEMO_${name.toUpperCase()}_ODMOWA: ${powod}`);
   }
 }
-// Daty względem chwili instalacji (PRZ-089): ze sztywnym 2026-01-01…03 pierwszy ekran nowicjusza po pół roku
+// Daty względem chwili instalacji: ze sztywnym 2026-01-01…03 pierwszy ekran nowicjusza po pół roku
 // pokazywał „po terminie o 204 dni rob.”. Zamówienie N złożone N godzin temu, wpłata 10 min później — po północy
 // odstępy krótsze, żeby wszystkie zostały w dzisiejszym dniu Warszawy (`krokDemoMs`).
 async function wygeneruj(db, teraz = Date.now()) {
@@ -52,7 +52,7 @@ async function wygeneruj(db, teraz = Date.now()) {
   const { zapiszZamowienie, zapiszFaktyStatusu } = await import('../src/oms/db/zamowienia.js');
   for (let number = 1; number <= 3; number++) {
     const code = String(number).padStart(3, '0');
-    // PRZ-108.04: sklep `reczne`, nie `demo`. Raporty klasyfikują zamówienie po kluczu sklepu z OMS_KANALY, a
+    // Sklep `reczne`, nie `demo`. Raporty klasyfikują zamówienie po kluczu sklepu z OMS_KANALY, a
     // instalacja demo ma tę listę pustą — zamówienie o sklepie `demo` kończyło zakładkę RAPORTY odmową (400).
     // `reczne` produkt zna zawsze (kanał RECZNE), bez konfiguracji i bez wyjątku „demo” w kodzie raportów.
     // zrodlo_id 1…3 nie koliduje z numeracją ręczną (rok × 100 000 + n), a numery DEMO-nnn są poza serią R/RRRR/nnn.

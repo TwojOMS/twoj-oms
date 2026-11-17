@@ -4,11 +4,11 @@ import { zbudujOms } from '../../../src/oms/bootstrap.ts';
 import { uruchomZegary } from '../../../src/core/zegary.ts';
 import { zapiszWatek } from '../../../src/oms/db/allegro-watki.js';
 
-// ⚠️⚠️ TA SAMA RODZINA, CO `tests/okablowanie-oms-status.test.js`. Testy uslug wstrzykuja
+// ⚠️⚠️ OKABLOWANIE USŁUG W BOOTSTRAPIE. Testy uslug wstrzykuja
 // zaleznosci WPROST, wiec swieca na zielono takze wtedy, gdy punkt wejscia nigdy ich nie
 // uruchamia — a martwy poller wyglada DOKLADNIE tak samo jak brak wiadomosci w Allegro.
 // To jest ta sama klasa pomylki, co `puls`, ktory „MUSI wrocic do src/oms.js".
-// PRZ-029 (zgoda właściciela 2026-10-01): skan statyczny zastapiony rzeczywista kompozycja —
+// skan statyczny zastapiony rzeczywista kompozycja —
 // zbudujOms + uruchomZegary z wstrzyknietym interwalem, zadnego serwera ani sieci.
 
 const licz = vi.hoisted(() => ({ klient: 0, tokeny: 0, poller: [], czuwacz: [], sprawy: [] }));
@@ -89,7 +89,7 @@ describe('okablowanie: wiadomości Allegro', () => {
     } finally { wyslij.mockRestore(); }
   });
 
-  // PRZ-128: klienci powstają leniwie. Konsumenci współdzielą jedną mapę i te same
+  // Klienci powstają leniwie. Konsumenci współdzielą jedną mapę i te same
   // uchwyty; deduplikację refresh per DB/kanał sprawdzają rzeczywiste testy tokenów.
   it('usługi biorą ISTNIEJĄCĄ mapę klientów, a nie własne instancje', () => {
     expect(licz.poller[0]?.o.klienci).toBe(kanaly);

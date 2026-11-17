@@ -1,12 +1,12 @@
 import { programInfakt } from '../../src/integracje/programy/infakt.ts';
-import { wykonajWejscie, wykonajZegary, wykonajJednaFabrykeTokenow } from '../pomoc/odbior-bootstrap-030.ts';
+import { wykonajWejscie, wykonajZegary, wykonajJednaFabrykeTokenow } from '../pomoc/sprawdzanie-startu-zegarow.ts';
 import { describe, it, expect, vi } from 'vitest';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { zbudujOms, uruchomZegary, ODSTEP_CZUWACZA_MS } from '../pomoc/bootstrap-parytetu.ts';
+import { zbudujOms, uruchomZegary, ODSTEP_CZUWACZA_MS } from '../pomoc/budowa-oms-testowa.ts';
 import {
   POWOD_TRWA, POWOD_NIE_TA_PORA, SUFIT_STRON, BUDZET_ARCHIWUM_MS,
   NAJDLUZSZY_PRZEBIEG_KOSZTOW_MS,
@@ -54,7 +54,7 @@ const env = (nad = {}) => ({ ...PELNE, OMS_ETYKIETY_DIR: katalogEtykiet(), ...na
 const UA = 'PrzykladowyPanel/0.0.0 (+https://przyklad.invalid/panel)';
 const atrapaDpd = () => vi.fn(() => ({ nadaj: vi.fn() }));
 
-// I1. Cale okablowanie stalo w src/oms.js — pliku, ktory jest RODZENSTWEM katalogu
+// Cale okablowanie stalo w src/oms.js — pliku, ktory jest RODZENSTWEM katalogu
 // src/oms/, wiec `git add src/oms` go nie lapie. Wypadl z commita juz trzy razy,
 // za kazdym razem zostawiajac w HEAD usluge bez podpietych funkcji: `faktura` i `nadanie`
 // byly `null`, wiec obie trasy oddawaly 503, a testy modulow i tak swiecily na zielono.
@@ -105,7 +105,7 @@ describe('zbudujOms — okablowanie usługi', () => {
     expect(karta.body).not.toMatch(/inFakt nie jest skonfigurowany/);
   });
 
-  // ⚠️ TRZECIA DROGA TEJ SAMEJ DZIURY (recenzja Zadania 7, Finding 1). `fakturyWidok` jedzie
+  // ⚠️ TRZECIA DROGA TEJ SAMEJ DZIURY. `fakturyWidok` jedzie
   // do `buildOmsServer` OSOBNYM argumentem (routes/faktury.js), dokladnie jak `infakt` i
   // `fakturaAllegro` wyzej — wystarczy zgubic JEDEN argument w bootstrap.js, zeby zakladka
   // /faktury zaczela pokazywac strone „pusta celowo" MIMO skonfigurowanego inFaktu, i zaden
@@ -118,7 +118,7 @@ describe('zbudujOms — okablowanie usługi', () => {
     // Fetch stubowany na szybka odmowe: uslugom faktur nie chodzi tu o PRAWDZIWE dane
     // z inFaktu (te maja wlasne testy w services/faktury-widok.test.js), tylko o to, czy
     // usluga w ogole DOTARLA do trasy. Trasa i tak degraduje sie do komunikatu (patrz
-    // Finding 2 nizej), wiec naglowek zywego ekranu zostaje widoczny.
+    // test degradacji nizej), wiec naglowek zywego ekranu zostaje widoczny.
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 400, json: async () => ({}) })));
     try {
       const { app } = zbudujOms({ env: env(), createDpd: atrapaDpd() });
@@ -133,7 +133,7 @@ describe('zbudujOms — okablowanie usługi', () => {
     } finally { vi.unstubAllGlobals(); }
   });
 
-  // ⚠️ TA SAMA KLASA DZIURY, TERAZ PRZY MAGAZYNIE (Zadanie 9). `magazyn` (przebieg odczytu
+  // ⚠️ TA SAMA KLASA DZIURY, TERAZ PRZY MAGAZYNIE. `magazyn` (przebieg odczytu
   // katalogow) jedzie do `buildOmsServer` OSOBNYM argumentem — zgubiony w tym jednym
   // wywolaniu daje objaw nie do odroznienia od poprawnego trybu „panel bez sklepow":
   // zakladka pokazuje strone „pusta celowo", a CALA suite swieci na zielono, bo testy trasy
@@ -147,13 +147,13 @@ describe('zbudujOms — okablowanie usługi', () => {
     expect(r.statusCode).toBe(200);
     // Znacznik ZYWEGO ekranu (web/views/magazyn-lista.ejs), a nie tresci strony „pusta
     // celowo" (routes/magazyn.js: stala BEZ_SKLEPOW).
-    // PRZ-160 P3b.03b: pasek „Odczyt katalogów" pojawia się już tylko przy trwaniu albo błędzie — znacznikiem
+    // Pasek „Odczyt katalogów” pojawia się już tylko przy trwaniu albo błędzie — znacznikiem
     // żywego ekranu jest tabela kart.
     expect(r.body).toContain('<table class="tresc-lista magazyn-tabela">');
     expect(r.body).not.toContain('nie ma podpiętego żadnego sklepu');
   });
 
-  // ⚠️ CZWARTA DROGA TEJ SAMEJ DZIURY (Zadanie 8). `infakt` jedzie do GET /faktury/:uuid/pdf
+  // ⚠️ CZWARTA DROGA TEJ SAMEJ DZIURY. `infakt` jedzie do GET /faktury/:uuid/pdf
   // OSOBNYM argumentem `buildOmsServer` → `registerFakturyRoutes` (routes/faktury.js) —
   // wystarczy zgubic go w tym jednym wywolaniu, zeby przycisk „PDF" na liscie zaczal oddawac
   // 503 MIMO skonfigurowanego inFaktu, i zaden test modulu faktury.js tego nie zlapie (dostaje
@@ -173,7 +173,7 @@ describe('zbudujOms — okablowanie usługi', () => {
     } finally { vi.unstubAllGlobals(); }
   });
 
-  // ⚠️⚠️ PIATA DROGA TEJ SAMEJ DZIURY (Zadanie 9) — I NAJDROZSZA. `wysylkaKsef` jedzie do
+  // ⚠️⚠️ PIATA DROGA TEJ SAMEJ DZIURY — I NAJDROZSZA. `wysylkaKsef` jedzie do
   // `buildOmsServer` OSOBNYM argumentem, dokladnie jak `fakturyWidok` i `infakt` wyzej.
   // Zgubiona w tym jednym wywolaniu daje objaw, ktorego zaden test modulu nie zlapie:
   // ekran podgladu wysylki oddaje 503 MIMO skonfigurowanego inFaktu, a testy trasy swieca
@@ -192,7 +192,7 @@ describe('zbudujOms — okablowanie usługi', () => {
           entities: pusto ? [] : [{
             uuid: 'u1', number: '1/08/2026', ksef_number: null, gross_price: 12300,
             left_to_pay: 0, client_company_name: 'Firma X', invoice_date: '2026-08-06',
-            // ⚠️ NIP JEST TU NOŚNY OD 28.08.2026, a nie ozdobny. Dokument bez
+            // ⚠️ NIP JEST TU NOŚNY, a nie ozdobny. Dokument bez
             // `client_tax_code` jest dla panelu fakturą KONSUMENCKĄ i odbija się od bariery
             // (`czyKonsumencka` w domain/wysylka-ksef.js), więc ekran podglądu pokazałby go
             // w „pominiętych" i BEZ przycisku zatwierdzenia — a ten test sprawdza okablowanie
@@ -227,11 +227,11 @@ describe('zbudujOms — okablowanie usługi', () => {
     } finally { vi.unstubAllGlobals(); }
   });
 
-  // ⚠️⚠️ SIODMA DROGA TEJ SAMEJ DZIURY (Zadanie 8). `korekta` (services/korekta.js) jedzie do
+  // ⚠️⚠️ SIODMA DROGA TEJ SAMEJ DZIURY. `korekta` (services/korekta.js) jedzie do
   // `buildOmsServer` OSOBNYM argumentem, dokladnie jak `fakturyWidok` i `wysylkaKsef` wyzej.
   // Zgubiona w tym jednym wywolaniu daje objaw, ktorego zaden test modulu nie zlapie: trasa
   // POST .../korekta (routes/zwroty.js) oddaje 503 MIMO skonfigurowanego inFaktu, a
-  // tests/oms/korekta-service.test.js swieci na zielono, bo wstrzykuje `infakt` WPROST,
+  // tests/moduly/zwroty/korekta-service.test.js swieci na zielono, bo wstrzykuje `infakt` WPROST,
   // nie przez bootstrap. Droga jest zmierzona CALA: env → zbudujOms → buildOmsServer →
   // trasa → usluga → dwa wywolania HTTP do inFaktu (odczyt faktury, zlecenie korekty) → zapis.
   it('podpięty inFakt dociera do trasy POST .../korekta (przebieg naprawdę się odbył, nie 503)', async () => {
@@ -304,7 +304,7 @@ describe('zbudujOms — okablowanie usługi', () => {
     expect(r.statusCode).toBe(503);
   });
 
-  // ⚠️⚠️ SZOSTA DROGA TEJ SAMEJ DZIURY (Zadanie 10). `czuwaczKosztow` powstaje w bootstrapie
+  // ⚠️⚠️ SZOSTA DROGA TEJ SAMEJ DZIURY. `czuwaczKosztow` powstaje w bootstrapie
   // dla ZEGARA (nocne pobranie kosztow), ale przycisk „Odśwież teraz" na zakladce KOSZTY wola
   // ten sam obiekt PRZEZ SERWER — osobnym argumentem `buildOmsServer`. Zgubiony w tym jednym
   // wywolaniu daje objaw, ktorego nie zlapie ani test trasy (buduje serwer sam, z atrapa
@@ -351,7 +351,7 @@ describe('zbudujOms — okablowanie usługi', () => {
     expect(() => nadanie.nadaj(999, {})).toThrow(/nie jest skonfigurowane/);
   });
 
-  // ⚠️ DOKLADNIE TA SAMA KLASA DZIURY, CO PRZY `infakt` WYZEJ (Zadanie 9). Kurierzy byli
+  // ⚠️ DOKLADNIE TA SAMA KLASA DZIURY, CO PRZY `infakt` WYZEJ. Kurierzy byli
   // skladani w mape w bootstrap.js, ale do `buildOmsServer` szedl SAM `dpd` — wiec karta
   // zamowienia odswiezala status kazdej przesylki DPD, takze paczkomatowej. Testy modulow
   // swiecilyby na zielono, bo klient InPostu istnieje i dziala; gubi go OKABLOWANIE.
@@ -380,7 +380,7 @@ describe('zbudujOms — okablowanie usługi', () => {
     expect(r.body).toContain('Gotowa do odbioru w paczkomacie');
   });
 
-  // ⚠️⚠️ SIODMA DROGA TEJ SAMEJ DZIURY (recenzja Zadania 5, W2). `infakt` jedzie do
+  // ⚠️⚠️ SIODMA DROGA TEJ SAMEJ DZIURY. `infakt` jedzie do
   // `createCzuwaczPrzesylek` OSOBNYM argumentem — dokladnie jak `infakt` do `buildOmsServer`
   // i `fakturyWidok` wyzej. Zgubiony w tym JEDNYM wywolaniu daje objaw, ktorego nie zlapie
   // ani test skanu (dostaje atrape klienta WPROST), ani test czuwacza (tak samo): doreczone
@@ -521,7 +521,7 @@ describe('zbudujOms — katalog proform nie kładzie usługi', () => {
 // ⚠️ Data startowa musi PRZEJSC z konfiguracji do pollera. Sam config.js moze ja czytac
 // bez zarzutu, a poller ja rozumiec — i pierwszy przebieg i tak przeczyta cala historie
 // sklepu, jesli okablowanie jej nie przekaze. To dokladnie ta klasa dziury, przez ktora
-// panel wciagnal 8866 zamowien z swietlik.example.test (01.08.2026).
+// panel wciagnal 8866 zamowien z swietlik.example.test.
 describe('zbudujOms — data startowa dociera do pollera', () => {
   it('poller pyta sklep od daty z konfiguracji, a nie od początku historii', async () => {
     const zapytania = [];
@@ -554,7 +554,7 @@ describe('zbudujOms — data startowa dociera do pollera', () => {
   });
 });
 
-// ⚠️ KANAL ALLEGRO WCHODZI DO TEJ SAMEJ TABLICY POLLEROW, CO SKLEPY (Zadanie 9). To nie jest
+// ⚠️ KANAL ALLEGRO WCHODZI DO TEJ SAMEJ TABLICY POLLEROW, CO SKLEPY. To nie jest
 // kosmetyka: zbiorczy `przebieg()` wyzej wola kazdy poller osobno i ZBIERA bledy, wiec awaria
 // jednego kanalu nie zatrzymuje pozostalych. Druga sciezka przebiegu — wlasna petla dla
 // kanalow — musialaby powtorzyc te regule, a jej kopia rozjechalaby sie po cichu.
@@ -622,7 +622,7 @@ describe('zbudujOms — kanał Allegro w pollerze', () => {
     expect(poller.stany().map((s) => s.sklep)).toEqual(['pro']);
   });
 
-  // ⚠️⚠️ OKABLOWANIE ŚLEDZENIA KANAŁU ALLEGRO (25.08.2026). Klient zbudowany, ale NIEWPIĘTY
+  // ⚠️⚠️ OKABLOWANIE ŚLEDZENIA KANAŁU ALLEGRO. Klient zbudowany, ale NIEWPIĘTY
   // w mapę kurierów, wygląda z zewnątrz identycznie jak jego brak: `sledzeniePrzesylki`
   // oddaje `null`, paczka nie jest odpytywana, `status_kuriera` zostaje NULL — czyli
   // dokładnie stan sprzed całej zmiany, tyle że po cichu.
@@ -726,7 +726,7 @@ describe('zbudujOms — kanał Allegro w pollerze', () => {
   // `lineItems.boughtAt.gte`), a to jest INNA sciezka: przy ZAPISANYM kursorze klient pyta po
   // `updatedAt.gte`, wiec podloga po dacie ZLOZENIA nie jedzie juz w zapytaniu w ogole —
   // musi zadzialac PO STRONIE POLLERA, przy zapisie (`zeStarego`). To jest ta sama sytuacja,
-  // ktora 01.08.2026 wciagnela 500 zamowien z 2019, 2020 i 2024: zrodlo masowo dotknelo
+  // ktora wciagnela 500 zamowien z 2019, 2020 i 2024: zrodlo masowo dotknelo
   // archiwum, filtr po dacie MODYFIKACJI je oddal, a jedyna obrona byla podloga po dacie
   // ZLOZENIA. Poziom adaptera i poller maja na to wlasne testy — ten przechodzi CALA droge
   // (env → bootstrap → poller → adapter → klient → baza), bo zgubione ogniwo jest po drodze
@@ -764,7 +764,7 @@ describe('zbudujOms — kanał Allegro w pollerze', () => {
     } finally { vi.unstubAllGlobals(); }
   });
 
-  // PRZ-128: niepołączony kanał pozostaje w diagnostyce, lecz nie jest źródłem importu.
+  // Niepołączony kanał pozostaje w diagnostyce, lecz nie jest źródłem importu.
   // Nie wykonuje HTTP i nie zatrzymuje drugiego konta ani sklepu.
   it('niepołączony kanał nie zatrzymuje drugiego kanału ani sklepu', async () => {
     const { zapytania, fetchImpl } = atrapaSieci({ 'https://api2.allegro.test': [zamowienieAllegro('ALG-2')] });
@@ -788,10 +788,10 @@ describe('zbudujOms — kanał Allegro w pollerze', () => {
   });
 });
 
-// ⚠️⚠️ MUST-FIX 1 (recenzja calej galezi): BLAD KANALU MA BYC WIDOCZNY.
+// ⚠️⚠️ BLAD KANALU MA BYC WIDOCZNY.
 //
 // `stan()` karmi pasek na liscie zamowien (web/views/lista.ejs) — JEDYNE miejsce w calym
-// panelu, w ktorym widac stan synchronizacji. Do 04.08.2026 oddawal `pollery[0].stan()`,
+// panelu, w ktorym widac stan synchronizacji. Dawniej oddawal `pollery[0].stan()`,
 // czyli stan PIERWSZEGO SKLEPU, wiec blad kanalu Allegro nie docieral do czlowieka NIGDY:
 // ladowal do `stan_pollera` pod kluczem `allegro_*`, ktorego nikt nie czytal, a jedynym
 // sladem zostawal `console.error` w kontenerze. Refresh token Allegro wygasa raz na 3
@@ -816,7 +816,7 @@ describe('zbudujOms — stan pollera pokazuje BŁĄD, a nie zawsze pierwszy skle
     } finally { vi.unstubAllGlobals(); }
   });
 
-  // PRZ-128: brak pary oznacza brak importu; błąd aktywnego konta nadal wypiera czysty sklep.
+  // Brak pary oznacza brak importu; błąd aktywnego konta nadal wypiera czysty sklep.
   it('błąd KANAŁU wypiera z paska czysty stan sklepu', async () => {
     const sklep = sklepPusty();
     vi.stubGlobal('fetch', vi.fn(async (url, init) => String(url).startsWith('https://api.allegro.test')
@@ -848,7 +848,7 @@ describe('zbudujOms — stan pollera pokazuje BŁĄD, a nie zawsze pierwszy skle
   });
 });
 
-// ⚠️⚠️ C-2 (recenzja calej galezi) CALA DROGA: env → bootstrap → poller → adapter Allegro →
+// ⚠️⚠️ CALA DROGA: env → bootstrap → poller → adapter Allegro →
 // mapowanie → baza. Testy pollera mierza izolacje na atrapie kanalu; ten mierzy ja na
 // PRAWDZIWYM mapowaniu Allegro i na prawdziwym ksztalcie odpowiedzi API — bo to wlasnie
 // `mapujZamowienieAllegro` jest jedynym mapowaniem w tym repo, ktore w ogole rzuca.
@@ -918,7 +918,7 @@ describe('zbudujOms — jedno złe zamówienie z Allegro nie zabija kanału', ()
   });
 });
 
-// ⚠️ USLUGA NUMEROW LISTOW Z ALLEGRO (Zadanie 11). Sama w sobie niczego nie pokazuje —
+// ⚠️ USLUGA NUMEROW LISTOW Z ALLEGRO. Sama w sobie niczego nie pokazuje —
 // bez podpiecia w okablowaniu numery nadanych paczek nie pojawilyby sie w panelu NIGDY,
 // a testy modulu swiecilyby na zielono. Dokladnie ta cicha awaria, dla ktorej ten plik
 // w ogole powstal (I1).
@@ -945,7 +945,7 @@ describe('zbudujOms — numery listow z Allegro', () => {
   // a Allegro uniewaznia poprzedni przy kazdym odswiezeniu.
   // ⚠️⚠️ TEN TEST ISTNIEJE, BO MUTACJA GO ZNALAZLA. Skasowanie `przesylkiAllegro` z wywolania
   // `buildOmsServer` w bootstrap.js przechodzilo na ZIELONO przez cala suite: usluga byla
-  // zbudowana (test wyzej), trasa umiala jej uzyc (tests/oms/przesylki-allegro-karta.test.js
+  // zbudowana (test wyzej), trasa umiala jej uzyc (tests/moduly/wysylka/przesylki-allegro-karta.test.js
   // buduje serwer sama), a mimo to w prawdziwym panelu numery listow z Allegro nie pojawilyby
   // sie NIGDY. Dokladnie tryb awarii, dla ktorego ten plik powstal (I1) — dlatego pomiar musi
   // przejsc CALA droge: env → zbudujOms → serwer → karta → Allegro → HTML.
@@ -1009,10 +1009,10 @@ describe('zbudujOms — numery listow z Allegro', () => {
   });
 });
 
-// ⚠️⚠️ WYSLANIE FAKTURY NA KONTO KUPUJACEGO W ALLEGRO (Plan B, Zadanie 9).
+// ⚠️⚠️ WYSLANIE FAKTURY NA KONTO KUPUJACEGO W ALLEGRO.
 //
 // Usluga zbudowana w bootstrap.js i ZGUBIONA po drodze do tras to dokladnie ta cicha awaria,
-// ktora w Partii 1 i 2 PRZEZYLA cala suite (4442 i 4506 testow na zielono) przy usludze, ktora
+// ktora PRZEZYLA cala suite (tysiace testow na zielono) przy usludze, ktora
 // na produkcji nigdy by sie nie uruchomila — i ktora mutacja zlapala juz raz przy
 // `przesylkiAllegro`. Tutaj stawka jest najwyzsza w calym panelu: to jedyna operacja, ktorej
 // NIE DA SIE COFNAC (dokument laduje u kupujacego). Dlatego pomiar idzie CALA droga:
@@ -1073,7 +1073,7 @@ describe('zbudujOms — faktura na konto kupującego w Allegro', () => {
       if (adres.includes('/v3/invoices/u1/pdf.json')) {
         return { ok: true, status: 200, arrayBuffer: async () => PDF };
       }
-      // ⚠️ Zdalna lista faktur oddaje na produkcji 400 (zmierzone 05.08.2026) — atrapa oddaje
+      // ⚠️ Zdalna lista faktur oddaje na produkcji 400 (zmierzone) — atrapa oddaje
       // to samo, zeby test mierzyl RZECZYWISTOSC, a nie zasob, ktorego dzis nie ma.
       if (adres.endsWith('/invoices') && (opcje.method ?? 'GET') === 'GET') {
         return { ok: false, status: 400, json: async () => ({}) };
@@ -1110,7 +1110,7 @@ describe('zbudujOms — faktura na konto kupującego w Allegro', () => {
     } finally { vi.unstubAllGlobals(); }
   });
 
-  // ⚠️⚠️ FURTKA „BEZ NUMERU KSEF" ZNIKNELA 01.09.2026 (decyzja właściciela) — a wraz z nia jej
+  // ⚠️⚠️ FURTKA „BEZ NUMERU KSEF" ZNIKNELA — a wraz z nia jej
   // okablowanie. Zostaje asercja odwrotna do tamtej: trasy ma NIE BYC w zbudowanym panelu.
   // Zostawiona w routerze po usunieciu z widoku dalej wysylalaby dokument kupujacemu ze
   // starej karty albo z `curl`, i nikt by tego nie zobaczyl.
@@ -1133,7 +1133,7 @@ describe('zbudujOms — faktura na konto kupującego w Allegro', () => {
     expect(f.allegro_wyslana_at).toBeNull();
   });
 
-  // ⚠️ WYSYLKA JEST RECZNA (Zadanie 9). Automat to Zadanie 12 i ma wejsc DOPIERO po tym, jak
+  // ⚠️ WYSYLKA JEST RECZNA. Automat ma wejsc DOPIERO po tym, jak
   // pierwszy dokument pojdzie pod okiem wlasciciela. Podpiecie tej uslugi do zegara „przy
   // okazji" zdjeloby czlowieka z petli przy operacji nieodwracalnej — bez ani jednej decyzji.
   it('NIE dostaje własnego zegara — pierwszy dokument idzie ręcznie', () => {
@@ -1146,7 +1146,7 @@ describe('zbudujOms — faktura na konto kupującego w Allegro', () => {
   });
 });
 
-// I2. Wersja sprzed poprawki doklejala do konfiguracji DPD drugi obiekt `nadawca`,
+// Wersja sprzed poprawki doklejala do konfiguracji DPD drugi obiekt `nadawca`,
 // zlozony z NIEPREFIKSOWANYCH zmiennych NADAWCA_* z domyslnymi '' — i PRZESLANIALA nim
 // zwalidowany adres z DPD_NADAWCA_*. Puste stringi przechodzily przez `if (!nadawca)`,
 // wiec KAZDA paczka jechalaby z pusta ulica, kodem i miastem nadawcy.
@@ -1156,7 +1156,7 @@ describe('zbudujOms — adres nadawcy', () => {
     zbudujOms({ env: env(), createDpd });
     expect(createDpd.mock.calls[0][0].nadawca).toEqual({
       // `phone` i `email` sa PUSTE, bo DPD ich nie wymaga — a InPost owszem i dlatego
-      // odmawia nadania do paczkomatu, gdy ich brak (usterka 05.08.2026, zam. 28173).
+      // odmawia nadania do paczkomatu, gdy ich brak.
       // Ten test pilnuje KSZTALTU adresu firmy: nowe pole ma sie tu pojawic swiadomie.
       nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'Fabryczna 7', kod: '00-950', miasto: 'Warszawa', kraj: 'PL', phone: '', email: '',
     });
@@ -1201,9 +1201,9 @@ describe('src/oms.js pozostaje cienkim punktem wejścia', () => {
   });
 
   // ⚠️⚠️ ZEGARY SA WOLANE Z TEGO PLIKU, ALE MIESZKAJA W `uruchomZegary` (bootstrap.js) —
-  // poprawka z recenzji Partii 2 (K2). Do 06.08.2026 stal tu `setInterval` wprost, a jedynym
-  // testem zegara byl GREP PO ZRODLE — a grep nie widzi OSIAGALNOSCI galezi: recenzent zmienil
-  // `if (czuwaczKsef)` na `if (false && czuwaczKsef)` i 4506/4506 testow przeszlo. To ta sama
+  // Dawniej stal tu `setInterval` wprost, a jedynym
+  // testem zegara byl GREP PO ZRODLE — a grep nie widzi OSIAGALNOSCI galezi: mutacja zmieniajaca
+  // `if (czuwaczKsef)` na `if (false && czuwaczKsef)` zostawiala wszystkie testy na zielono. To ta sama
   // awaria, co „device flow zbudowany, przetestowany i bez ani jednego wywolania".
   //
   // Zostaje tu wylacznie sprawdzenie, ze punkt wejscia NAPRAWDE te funkcje wola — reszta
@@ -1217,21 +1217,21 @@ describe('src/oms.js pozostaje cienkim punktem wejścia', () => {
       ['pollerWiadomosci', 300000], ['czuwaczFormulki', 120000], ['czuwaczPrzesylek', 3600000],
       ['czuwaczPodjazdow', 600000], ['czuwaczKosztow', 3600000], ['czuwaczOstrzezen', 3600000],
       ['czuwaczReklam', 3600000],
-      // PRZ-102.12: automat wysyłki do KSeF (tyka co minutę, sam rozstrzyga porę; domyślnie wyłączony).
+      // Automat wysyłki do KSeF (tyka co minutę, sam rozstrzyga porę; domyślnie wyłączony).
       ['automatKsef', 60000],
-      // PRZ-108.07: silnik reguł automatyzacji (co minutę; przy zerze reguł jedno SELECT, zero zapisów).
+      // Silnik reguł automatyzacji (co minutę; przy zerze reguł jedno SELECT, zero zapisów).
       ['automatyzacje', 60000],
-      // PRZ-117: ponawianie statusu po błędzie przejściowym (co 15 min).
+      // Ponawianie statusu po błędzie przejściowym (co 15 min).
       ['ponawianieStatusow', 900000],
-      // PRZ-153.E1.3: sprzątanie dziennika API (raz na dobę).
+      // Sprzątanie dziennika API (raz na dobę).
       ['api-dziennik', 3600000],
-      // PRZ-153.E5.1: sprzątanie idempotencji API (wpisy starsze niż 7 dni).
+      // Sprzątanie idempotencji API (wpisy starsze niż 7 dni).
       ['api-idempotencja', 3600000],
-      // PRZ-160.E2.05: pętla ofert ERLI (co 5 min; bez czynnego konta ERLI zero zapisów).
+      // Pętla ofert ERLI (co 5 min; bez czynnego konta ERLI zero zapisów).
       ['petlaOfert', 300000],
-      // PRZ-160.E3.09b: pętla ofert Allegro (co 5 min; bez konta z zgodą na oferty zero zapytań).
+      // Pętla ofert Allegro (co 5 min; bez konta z zgodą na oferty zero zapytań).
       ['petlaOfertAllegro', 300000],
-      // PRZ-160.E4.15: pętla stanów Woo (co 5 min) i strażnik stanów (co 30 s; przy wyłączonych stanach nic nie robi).
+      // Pętla stanów Woo (co 5 min) i strażnik stanów (co 30 s; przy wyłączonych stanach nic nie robi).
       ['petlaStanowWoo', 300000],
       ['straznikStanow', 30000],
     ].sort());
@@ -1295,7 +1295,7 @@ describe('uruchomZegary', () => {
     expect(log).toHaveBeenCalledWith(expect.stringMatching(/czuwacz KSeF/), 'inFakt nieosiągalny');
   });
 
-  // ⚠️⚠️ W5 (recenzja Partii 3): PRZEKROCZENIE GODZINY BYLO CALKOWICIE CICHE.
+  // ⚠️⚠️ PRZEKROCZENIE GODZINY BYLO CALKOWICIE CICHE.
   // `przebieg()` oddaje `{ pominiety: true }`, gdy poprzedni jeszcze trwa — a `uruchomZegary`
   // ten wynik WYRZUCAL. `.catch` nic nie lapal, bo przebieg wcale nie odrzuca. Czuwacz
   // zaczynal chodzic co DWIE godziny bez ani jednego wpisu — dosłownie awaria, przed ktora
@@ -1347,7 +1347,7 @@ describe('uruchomZegary', () => {
     expect(zegar.zarejestrowane).toEqual([]);
   });
 
-  // ZEGAR #6 — czuwacz ostrzeżeń (2026-08-29): lustra tabelki strony głównej (luki KSeF
+  // ZEGAR #6 — czuwacz ostrzeżeń: lustra tabelki strony głównej (luki KSeF
   // + terminy płatności). Ten sam wzorzec, co czuwacz KSeF: godzina, pominięty zostawia
   // ślad, sukces bije puls (jedyny ślad tego zegara dla /health).
   it('czuwacz ostrzeżeń chodzi co godzinę i bije puls po sukcesie', async () => {
@@ -1422,9 +1422,9 @@ describe('zbudujOms — czuwacz ostrzeżeń (lustra tabelki strony głównej)', 
   it('src/oms.js przekazuje czuwacza ostrzeżeń do zegarów', async () => { await wykonajZegary('czuwaczOstrzezen'); });
 });
 
-// ⚠️⚠️ W2a (recenzja Partii 1 Planu B): OKABLOWANIE ODSYLANIA STATUSU DO KANALU.
-// Zmierzone przez recenzenta: usuniecie `klienciKanalow` z wywolania `createSyncSklep`
-// w bootstrap.js zostawialo 4442/4442 testow na zielono. Na produkcji znaczyloby to, ze
+// ⚠️⚠️ OKABLOWANIE ODSYLANIA STATUSU DO KANALU.
+// Zmierzone mutacja: usuniecie `klienciKanalow` z wywolania `createSyncSklep`
+// w bootstrap.js zostawialo wszystkie testy na zielono. Na produkcji znaczyloby to, ze
 // ZADEN status allegrowy nigdy nie jedzie — bez jednego bledu, bez jednego sladu, nie do
 // odroznienia od poprawnego dzialania (usluga bez kanalow po prostu milczy, i to celowo,
 // patrz komentarz przy `znaKanaly` w services/sync-sklep.js).
@@ -1486,7 +1486,7 @@ describe('zbudujOms — status jedzie do KANAŁU (nie tylko do sklepu)', () => {
     } finally { vi.unstubAllGlobals(); }
   });
 
-  // ⚠️ SAME KANALY, BEZ ANI JEDNEGO SKLEPU. Do Planu B usluga powstawala wylacznie przy
+  // ⚠️ SAME KANALY, BEZ ANI JEDNEGO SKLEPU. Dawniej usluga powstawala wylacznie przy
   // `jestSklep`, wiec panel z samym Allegro dostawalby `null` i status nie jechalby NIGDZIE.
   // Warunek w bootstrap.js obejmuje teraz kanaly — i to jest test dokladnie na to.
   it('panel z samym Allegro (zero sklepów) też odsyła status', async () => {
@@ -1509,7 +1509,7 @@ describe('zbudujOms — status jedzie do KANAŁU (nie tylko do sklepu)', () => {
   });
 });
 
-// Czuwacz KSeF (Plan B, Zadanie 7). Chodzi CO GODZINE, CALA DOBE — wiec panel, ktory nie ma
+// Czuwacz KSeF. Chodzi CO GODZINE, CALA DOBE — wiec panel, ktory nie ma
 // go po co uruchamiac, nie ma prawa dostac tego zegara wcale. `null` znaczy „nie ma czuwacza",
 // a nie „czuwacz bez roboty": bez kanalu Allegro nie ma po co pytac, bez inFaktu nie ma czego.
 describe('zbudujOms — czuwacz KSeF', () => {
@@ -1525,7 +1525,7 @@ describe('zbudujOms — czuwacz KSeF', () => {
     expect(typeof czuwaczKsef.przebieg).toBe('function');
   });
 
-  // PRZ-128: czuwacz jest zbudowany od startu; pierwsze konto nie wymaga nowego zegara.
+  // Czuwacz jest zbudowany od startu; pierwsze konto nie wymaga nowego zegara.
   it('bez konta Allegro czuwacz istnieje i może wykonać pusty przebieg', async () => {
     const {czuwaczKsef}=zbudujOms({ env: env(), createDpd: atrapaDpd() });
     expect(await czuwaczKsef.przebieg()).toMatchObject({sprawdzone:0,znalezione:0});
@@ -1537,7 +1537,7 @@ describe('zbudujOms — czuwacz KSeF', () => {
     expect(zbudujOms({ env: bezInfaktu, createDpd: atrapaDpd() }).czuwaczKsef).toBeNull();
   });
 
-  // ⚠️⚠️ OKABLOWANIE DRUGIEJ PETLI (Zadanie 10). Czuwacz dostal drugi krok — odczyt wyniku
+  // ⚠️⚠️ OKABLOWANIE DRUGIEJ PETLI. Czuwacz dostal drugi krok — odczyt wyniku
   // weryfikacji pliku po stronie Allegro — a ten krok potrzebuje KLIENTOW KANALOW. Bez nich
   // petla wykonuje sie w calosci i nie robi NIC: `klienciKanalow[f.sklep]` jest `undefined`,
   // wiec kazda faktura wypada na `continue`. Zadna suita jednostkowa tego nie zlapie (tam
@@ -1556,7 +1556,7 @@ describe('zbudujOms — czuwacz KSeF', () => {
     klienciKanalow.allegro_swietlik.pobierzFakturyZamowienia = async () => [
       { id: 'INV-1', file: { securityVerification: { status: 'REJECTED' } } },
     ];
-    // ⚠️ Krok 3 przebiegu (lustro luk KSeF, 2026-08-29) woła `listaFaktur` przy KAŻDYM
+    // ⚠️ Krok 3 przebiegu (lustro luk KSeF) woła `listaFaktur` przy KAŻDYM
     // przebiegu — stub trzyma ten test z dala od sieci, tak samo jak stub wyżej trzyma
     // drugą pętlę z dala od Allegro.
     infakt.listaFaktur = async () => [];
@@ -1580,11 +1580,11 @@ describe('zbudujOms — czuwacz KSeF', () => {
   });
 });
 
-// ⚠️⚠️ AUTOMAT MUSI BYĆ OKABLOWANY, A NIE TYLKO NAPISANY (Partia 4, 2026-08-07).
+// ⚠️⚠️ AUTOMAT MUSI BYĆ OKABLOWANY, A NIE TYLKO NAPISANY.
 //
 // Testy jednostkowe czuwacza wstrzykują usługę wysyłki WPROST, więc przechodzą nawet wtedy,
-// gdy bootstrap jej nie podaje — czyli gdy automat na produkcji nie odpala się NIGDY. To ta
-// sama klasa błędu, którą recenzja Planu A złapała przy device flow: kod zbudowany,
+// gdy bootstrap jej nie podaje — czyli gdy automat na produkcji nie odpala się NIGDY. To ta sama
+// klasa błędu co przy device flow: kod zbudowany,
 // przetestowany i bez ani jednego wywołania.
 describe('zbudujOms — okablowanie automatu wysyłki faktury do Allegro', () => {
   const KANAL = {
@@ -1607,7 +1607,7 @@ describe('zbudujOms — okablowanie automatu wysyłki faktury do Allegro', () =>
     expect(typeof dostal.wyslij).toBe('function');
   });
 
-  // PRZ-128: usługi istnieją także przed pierwszym kontem, wysyłka pozostaje niegotowa.
+  // Usługi istnieją także przed pierwszym kontem, wysyłka pozostaje niegotowa.
   it('bez konta Allegro czuwacz i usługa czekają na późniejsze podłączenie', () => {
     const oms = zbudujOms({ env: env(), createDpd: atrapaDpd() });
     expect(typeof oms.czuwaczKsef.przebieg).toBe('function');
@@ -1615,7 +1615,7 @@ describe('zbudujOms — okablowanie automatu wysyłki faktury do Allegro', () =>
   });
 });
 
-// ⚠️⚠️ OKABLOWANIE KURIERA „Wysyłam z Allegro" (11.08.2026). Osobny opis, bo mutacja
+// ⚠️⚠️ OKABLOWANIE KURIERA „Wysyłam z Allegro". Osobny opis, bo mutacja
 // kasująca podpięcie `allegro_wza` do mapy kurierów PRZEŻYŁA pełną suitę 5235 testów —
 // dokładnie ta klasa błędu, która w tym projekcie przeszła już dwa razy (device flow bez
 // ani jednego wywołania, zegar czuwacza w martwej gałęzi). Testy samego adaptera niczego
@@ -1666,7 +1666,7 @@ describe('zbudujOms — kurier Wysyłam z Allegro', () => {
     expect(nadajWza).toHaveBeenCalledTimes(1);
   });
 
-  // PRZ-128: jeden adapter od startu, ale brak konta nadal daje jawną odmowę nadania.
+  // Jeden adapter od startu, ale brak konta nadal daje jawną odmowę nadania.
   it('bez konta Allegro adapter WzA nie pozwala wybrać klienta dla zamówienia', () => {
     const utworzone = [];
     zbudujOms({
@@ -1706,8 +1706,8 @@ describe('zbudujOms — kurier Wysyłam z Allegro', () => {
 // NABYWCA). Ten test jest OBOWIAZKOWY i nie jest powtorzeniem testow jednostkowych czuwacza:
 // tamte wstrzykuja klienta i sesje WPROST, wiec przeszlyby co do jednego takze wtedy, gdyby
 // bootstrap w ogole tego czuwacza nie zbudowal albo zbudowal go bez sesji. To ta sama klasa
-// bledu, ktora recenzja Planu A zlapala przy device flow (kod zbudowany, przetestowany i bez
-// ani jednego wywolania) i ktora w tym pliku ma juz trzy wlasne opisy.
+// bledu co przy device flow (kod zbudowany, przetestowany i bez ani jednego wywolania)
+// i ktora w tym pliku ma juz trzy wlasne opisy.
 //
 // ⚠️ TO NIE JEST `czuwaczKsef` WYZEJ. Tamten pyta inFakt o numer KSeF NASZEJ faktury
 // sprzedazowej; ten pobiera z KSeF faktury KOSZTOWE. Dwa czuwacze, dwa zrodla, dwa kierunki.
@@ -1720,7 +1720,7 @@ describe('zbudujOms — czuwacz kosztów (KSeF)', () => {
     expect(typeof czuwaczKosztow.przebieg).toBe('function');
   });
 
-  // PRZ-102.22: token KSeF można zapisać w Ustawieniach bez restartu, więc czuwacz (i jego zegar) stoi także bez
+  // Token KSeF można zapisać w Ustawieniach bez restartu, więc czuwacz (i jego zegar) stoi także bez
   // KSEF_TOKEN — ale bez tokenu w pliku i w panelu jest NIEDOSTĘPNY, a przebieg wraca pominięty, bez KSeF.
   it('bez KSEF_TOKEN czuwacz kosztów jest niedostępny i niczego nie pobiera', async () => {
     const { czuwaczKosztow } = zbudujOms({ env: env(), createDpd: atrapaDpd() });
@@ -1769,7 +1769,7 @@ describe('zbudujOms — czuwacz kosztów (KSeF)', () => {
     });
   });
 
-  // ⚠️⚠️ ÓSMA DROGA TEJ SAMEJ DZIURY (Zadanie 12). `services/wizualizacja-kosztu.js` powstałby
+  // ⚠️⚠️ ÓSMA DROGA TEJ SAMEJ DZIURY. `services/wizualizacja-kosztu.js` powstałby
   // zbudowany, przetestowany i BEZ ANI JEDNEGO WOŁAJĄCEGO w `src/`, gdyby zabrakło jednej
   // linijki w bootstrapie albo jednego argumentu `buildOmsServer` — objaw: przycisk „PDF"
   // na zakładce KOSZTY oddaje 503 MIMO skonfigurowanego KSeF, a cała suita świeci na zielono.
@@ -1812,7 +1812,7 @@ describe('zbudujOms — czuwacz kosztów (KSeF)', () => {
     expect(uWizualizacji.sesja).toBe(uCzuwacza.sesja);
   });
 
-  // Panel bez tokenu KSeF (plik ani Ustawienia) nie ma przycisku „PDF" — PRZ-102.22: usługa jest, ale niedostępna.
+  // Panel bez tokenu KSeF (plik ani Ustawienia) nie ma przycisku „PDF” — usługa jest, ale niedostępna.
   it('bez KSEF_TOKEN wizualizacja kosztu jest niedostępna', async () => {
     const { wizualizacjaKosztu } = zbudujOms({ env: env(), createDpd: atrapaDpd() });
     expect(wizualizacjaKosztu.dostepny()).toBe(false);
@@ -1820,7 +1820,7 @@ describe('zbudujOms — czuwacz kosztów (KSeF)', () => {
   });
 
   // ⚠️⚠️ ARCHIWUM XML MA WOŁAJĄCEGO — I TEN TEST JEST JEDYNYM MIEJSCEM, KTÓRE TEGO PILNUJE.
-  // `services/archiwum-kosztow.js` powstał przetestowany i przez cały Etap bez ANI JEDNEGO
+  // `services/archiwum-kosztow.js` powstał przetestowany i bez ANI JEDNEGO
   // wołającego w `src/` — dokładnie ta klasa cichej dziury, którą to repo złapało już
   // sześciokrotnie (device flow, `fakturaAllegro`, `fakturyWidok`, `sklepy` u magazynu,
   // `czuwaczKosztow` u serwera). Testy jednostkowe czuwacza wstrzykują katalog i atrapę
@@ -2190,7 +2190,7 @@ describe('zbudujOms — paczka dla biura rachunkowego', () => {
   });
 });
 
-// ⚠️⚠️ STRAZNIK CZASU PRZEBIEGU DLA CZUWACZA KOSZTOW (recenzja calej galezi, W4).
+// ⚠️⚠️ STRAZNIK CZASU PRZEBIEGU DLA CZUWACZA KOSZTOW.
 //
 // `bootstrap.js` pilnowal `najdluzszyPrzebiegMs(programInfakt({}).opis.limity) < ODSTEP_CZUWACZA_MS` WYLACZNIE dla czuwacza
 // KSeF. Czuwacz kosztow wisi na tym samym zegarze godzinowym i ma wlasny, znacznie dluzszy
@@ -2226,7 +2226,7 @@ describe('straznik czasu przebiegu czuwacza kosztow', () => {
   });
 });
 
-// ⚠️⚠️ STRAZNIK CZASU PRZEBIEGU DLA CZUWACZA ARCHIWUM SPRZEDAZY (recenzja calej galezi).
+// ⚠️⚠️ STRAZNIK CZASU PRZEBIEGU DLA CZUWACZA ARCHIWUM SPRZEDAZY.
 // Zegar #7 wisi na tym samym tyknieciu godzinowym, co czuwacz KSeF, i do tej pory nie mial ani
 // jednej arytmetyki, ktora by policzyla jego najgorszy przypadek.
 //
@@ -2264,7 +2264,7 @@ describe('straznik czasu przebiegu czuwacza archiwum sprzedazy', () => {
   });
 });
 
-// ⚠️⚠️ OKABLOWANIE STANU KANALOW (14.08.2026). Testy widoku i reguly niczego tu nie dowodza:
+// ⚠️⚠️ OKABLOWANIE STANU KANALOW. Testy widoku i reguly niczego tu nie dowodza:
 // pierwsze czytaja PLIK, druga dostaje dane wprost. Gdyby `stanyKanalow` nie doszlo z
 // bootstrapu do trasy, pas po prostu NIGDY by sie nie pokazal — bez bledu i bez sladu,
 // nie do odroznienia od „wszystkie kanaly zdrowe". To ta sama klasa awarii, co device flow
@@ -2284,7 +2284,7 @@ describe('zbudujOms — stan kanałów dla paska ostrzeżenia', () => {
     expect(stany[0]).toMatchObject({ kanal: 'allegro_swietlik', pilne: true, wolnoWiazac: true });
   });
 
-  // ⚠️ ZAPISANY BLAD MA DOJSC AZ NA EKRAN — to jest cala tresc awarii z 14.08.
+  // ⚠️ ZAPISANY BLAD MA DOJSC AZ NA EKRAN — to jest cala tresc awarii.
   it('zapisany błąd tokenu dociera z bazy do stanu ekranu', () => {
     const { db, stanyKanalow } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
     zapiszTokeny(db, 'allegro_swietlik', {
@@ -2299,7 +2299,7 @@ describe('zbudujOms — stan kanałów dla paska ostrzeżenia', () => {
     expect(s.powod).toMatch(/zamówień/i);
   });
 
-  // ⚠️ NIGDY POSWIADCZEN POZA WARSTWE TOKENOW (4.10).
+  // ⚠️ NIGDY POSWIADCZEN POZA WARSTWE TOKENOW.
   it('stan kanału NIE NIESIE tokenów', () => {
     const { db, stanyKanalow } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
     zapiszTokeny(db, 'allegro_swietlik', {
@@ -2322,7 +2322,7 @@ describe('zbudujOms — stan kanałów dla paska ostrzeżenia', () => {
 // `allegro/tokeny.js`, więc chroni w obrębie JEDNEJ instancji. Druga instancja nad tą samą
 // bazą to druga mapa, czyli dwa równoległe odświeżenia tym samym (jednorazowym!) refresh
 // tokenem — a Allegro unieważnia wtedy całą rodzinę. Dokładnie to zabiło kanał
-// `allegro_swietlik` w nocy 13/14.08.2026 (`HTTP 400, invalid_grant` przy 89 dniach ważności).
+// `allegro_swietlik` (`HTTP 400, invalid_grant` przy 89 dniach ważności).
 //
 // Test czyta ŹRÓDŁO, bo instancji nie da się porównać z zewnątrz — `createAllegroClient`
 // zamyka ją w domknięciu. Asercja jest wąska celowo: liczy wywołania fabryki.
@@ -2376,7 +2376,7 @@ describe('pas kanału dociera aż na stronę listy', () => {
   });
 });
 
-// ⚠️⚠️ OD RAZU END-TO-END, po nauce z Zadania 2. Tam mutacja „nie podaje stanu do serwera"
+// ⚠️⚠️ OD RAZU END-TO-END, po wcześniejszej mutacji. Tam mutacja „nie podaje stanu do serwera"
 // przeżyła całą suitę, bo wszystkie testy sprawdzały, że bootstrap ODDAJE wartość — żaden,
 // czy dochodzi NA EKRAN. Przycisk, który nigdy się nie renderuje, wygląda dokładnie tak
 // samo jak „kanał zdrowy, nie ma co naprawiać".

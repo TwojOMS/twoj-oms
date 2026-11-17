@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   trescPotwierdzenia, czyWolnoWyslacPotwierdzenie, adresatPotwierdzenia,
-} from '../pomoc/potwierdzenie-parytetu.js';
+} from '../pomoc/testowe-potwierdzenie-zamowienia.js';
 
 const zam = (nad = {}) => ({
   numer: '202600014',
@@ -107,7 +107,7 @@ describe('treść potwierdzenia', () => {
     expect(trescPotwierdzenia(zF).tekst).toContain('Tak — wystawimy na');
   });
 
-  // ⚠️ PODPISUJEMY SIĘ MARKĄ, nie nazwą podmiotu (decyzja właściciela 21.08.2026).
+  // ⚠️ PODPISUJEMY SIĘ MARKĄ, nie nazwą podmiotu.
   // Klient zna Swietlik.example.test; Pracownia Półcień Anna Wzorcowa widuje dopiero na fakturze i musiałby
   // się domyślić, że to ten sam sprzedawca.
   it('podpisuje się marką, nie nazwą podmiotu', () => {
@@ -122,7 +122,7 @@ describe('treść potwierdzenia', () => {
 });
 
 describe('adres dostawy w mailu', () => {
-  // ⚠️ Zmierzone na zywym zamowieniu R/2026/013 (21.08.2026): zamowienie telefoniczne bywa
+  // ⚠️ Zmierzone na zywym zamowieniu R/2026/013: zamowienie telefoniczne bywa
   // zakladane z samym e-mailem klienta, a panel pokazuje ten e-mail w polu nazwy odbiorcy.
   // Bez warunku mail twierdzilby, ze dostawa pojdzie „na odbiorca@example.test".
   it('sama nazwa bez ulicy i miasta NIE jest adresem', () => {

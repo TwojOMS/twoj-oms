@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { createMetaClient } from '../../src/oms/meta/client.js';
 
-// Klient Meta Graph API (Etap 1 kampanii). Atrapa `fetch` — suita nie rozmawia z Meta.
-// Ksztalt odpowiedzi odwzorowany z ZYWEGO konta (odczyt 2026-08-25, act_10200536090637189):
+// Klient Meta Graph API. Atrapa `fetch` — suita nie rozmawia z Meta.
+// Ksztalt odpowiedzi odwzorowany z ZYWEGO konta (odczyt, act_10200536090637189):
 // `data: [{ spend, impressions, reach, clicks, inline_link_clicks, date_start, date_stop }]`.
 
 const KONTO = 'act_10200536090637189';

@@ -1,4 +1,4 @@
-// PRZ-090 — instancja bez sklepu WooCommerce: karty produktów powstają z ofert Allegro (decyzja właściciela 17.10).
+// Instancja bez sklepu WooCommerce: karty produktów powstają z ofert Allegro.
 // Z co najmniej jednym sklepem nic się nie zmienia: karta powstaje ze sklepu, ofertę Allegro wiąże się ręcznie.
 import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';

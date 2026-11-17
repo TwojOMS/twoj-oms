@@ -10,7 +10,7 @@ import {
 } from '../faktury/_hurtem-pomocniki.js';
 import { SUFIT_SPECYFIKACJI_DRUKU } from '../../../src/domena/masowe.js';
 
-// Trasy pobrania „Specyfikacji zamowienia" — kartki wkladanej do KAZDEJ paczki (Zadanie 8):
+// Trasy pobrania „Specyfikacji zamowienia" — kartki wkladanej do KAZDEJ paczki:
 // GET z karty (jedno zamowienie) i POST z listy (wiele zaznaczonych → jeden plik, w kolejnosci
 // listy). Zadna z tras nie liczy niczego sama — sklada tylko dane (domain/specyfikacja.js,
 // Zadanie 6) i rysowanie (pdf/specyfikacja-pdf.js, Zadanie 7).
@@ -107,13 +107,13 @@ describe('trasa pojedyncza: GET /zamowienia/:id/specyfikacja.pdf', () => {
     const tekst = pdfNaTekst(r.rawPayload);
     expect(tekst).toContain('Pracownia Półcień Anna Wzorcowa');
     expect(tekst).toContain('Przykładowa 1');
-    // ⚠️ NIP dolozony do skladu 12.08.2026 (recenzja): przy zamowieniach firmowych ta kartka
+    // ⚠️ NIP dolozony do skladu 12.08.2026: przy zamowieniach firmowych ta kartka
     // ZASTEPUJE wydruk faktury, wiec dokument bez NIP-u wystawcy byl widoczna dziura.
     expect(tekst).toContain(NIP);
     expect(tekst).toContain(BDO);
   });
 
-  // ⚠️ SPOSOB DOSTAWY I STAN PLATNOSCI NA KARTCE DLA KLIENTA (recenzja 12.08.2026). Do tej
+  // ⚠️ SPOSOB DOSTAWY I STAN PLATNOSCI NA KARTCE DLA KLIENTA. Do tej
   // poprawki na dokument szedl WEWNETRZNY KOD metody (`dpd`, `inpost_paczkomat`, a w
   // najgorszym razie „Sposób dostawy: nieznana") i sama metoda platnosci, bez slowa o tym,
   // czy pieniadze wplynely. Kartka idzie do KAZDEJ paczki i przy firmach zastepuje wydruk
@@ -198,7 +198,7 @@ describe('trasa zbiorcza: POST /zamowienia/specyfikacje.pdf', () => {
     expect(strony[1]).toContain('3002');
   });
 
-  // ⚠️ SEDNO AKCJI MASOWEJ (recenzja 12.08.2026). Bez tego testu trasa mogla po cichu
+  // ⚠️ SEDNO AKCJI MASOWEJ. Bez tego testu trasa mogla po cichu
   // zignorowac zaznaczenie i wziac `wczytajListe()` w calosci — oba testy powyzej zaznaczaja
   // WSZYSTKIE istniejace zamowienia, wiec taka mutacja i tak dawalaby poprawny wynik. Test
   // trzyma w bazie TRZY zamowienia i zaznacza JEDNO — operator ma dostac dokument z
@@ -237,7 +237,7 @@ describe('trasa zbiorcza: POST /zamowienia/specyfikacje.pdf', () => {
     expect(r.body).toMatch(/nie zaznaczono/i);
   });
 
-  // ⚠️ ODROZNIA „PUSTE ZAZNACZENIE" OD „PUSTEJ BAZY" (recenzja 12.08.2026). Test wyzej
+  // ⚠️ ODROZNIA „PUSTE ZAZNACZENIE" OD „PUSTEJ BAZY". Test wyzej
   // odmawia na bazie bez ani jednego zamowienia — co dowodzi tylko, ze pusta baza daje pusty
   // wynik, nie ze pusty FORMULARZ daje odmowe. Tutaj w bazie SA zamowienia (operator mial co
   // zaznaczyc), a mimo to nic nie zaznaczyl — to jest prawdziwy przypadek z briefu.
@@ -262,7 +262,7 @@ describe('trasa zbiorcza: POST /zamowienia/specyfikacje.pdf', () => {
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // SUFIT PARTII DRUKU (recenzja 12.08.2026). Do tego dnia trasa nie miala go wcale —
+  // SUFIT PARTII DRUKU. Do tego dnia trasa nie miala go wcale —
   // uznano, ze jest niepotrzebny, bo rysowanie jest lokalne. Bledne z powodow niewidocznych
   // z poziomu tej trasy: `listaZamowien` nie ma `LIMIT`, „zaznacz wszystkie" to odnosnik
   // `?zaznacz=1` zaznaczajacy KAZDY wyrenderowany wiersz, a `zbudujSpecyfikacjeWieluPdf`

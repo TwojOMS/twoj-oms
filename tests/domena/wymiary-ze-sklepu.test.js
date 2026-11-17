@@ -1,4 +1,4 @@
-// PRZ-090 — wymiary i waga, które sklep WooCommerce podaje sam (`dimensions`, `weight`), oraz głębokość i waga karty.
+// Wymiary i waga, które sklep WooCommerce podaje sam (`dimensions`, `weight`), oraz głębokość i waga karty.
 import { describe, it, expect } from 'vitest';
 import {
   wymiaryZeSklepu, wagaZeSklepu, gramyZKilogramow, kilogramyZGramow, opisWymiarow,

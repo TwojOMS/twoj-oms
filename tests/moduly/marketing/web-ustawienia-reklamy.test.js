@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { KATALOG_INTEGRACJI } from '../../../src/domena/katalog-integracji.ts';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { zalozKonto, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
 import { podpisz, NAZWA_CIASTECZKA_OMS } from '../../../src/core/bezpieczenstwo/sesja.js';
 import { odczytajSekret } from '../../../src/core/bezpieczenstwo/sekret-sesji.js';
@@ -23,7 +23,7 @@ describe('Ustawienia → Integracje → Reklamy', () => {
     const app = buildOmsServer({ db: openOmsDb(':memory:'), config: CONFIG });
     const r = await app.inject({ method: 'GET', url: '/ustawienia/integracje/reklamy', headers: BASIC });
     expect(r.statusCode).toBe(200);
-    // PRZ-138.02: nazwy wierszy z katalogu integracji, nie własne.
+    // Nazwy wierszy z katalogu integracji, nie własne.
     for (const id of ['ga4', 'google_ads', 'meta']) {
       expect(r.body).toContain(`<h2>${KATALOG_INTEGRACJI.find((w) => w.id === id).nazwa}</h2>`);
     }
@@ -35,7 +35,7 @@ describe('Ustawienia → Integracje → Reklamy', () => {
     await app.close();
   });
 
-  it('PRZ-094.12: układ jak ekrany kurierów — kafel na liście, plakietki stanu, blok instrukcji bez stylu inline', async () => {
+  it('układ jak ekrany kurierów — kafel na liście, plakietki stanu, blok instrukcji bez stylu inline', async () => {
     const db = openOmsDb(':memory:');
     zapiszPolaczenie(db, { typ: 'meta', kontoId: 'act_1', kanal: 'sklep_a', sekretRef: `meta:${randomUUID()}` });
     const app = buildOmsServer({ db, config: CONFIG });
@@ -52,7 +52,7 @@ describe('Ustawienia → Integracje → Reklamy', () => {
     expect(r.body).toMatch(/ust-stan ust-stan-weryfikacja"><strong>Weryfikacja<\/strong>/);
     expect((r.body.match(/<aside class="ust-instrukcja"/g) ?? [])).toHaveLength(2);
     expect(r.body).toContain('class="ust-prompt"');
-    // PRZ-141.02: pole z promptem ma wysokość dobraną do treści (rows >= 7), nie stałe 7 wierszy.
+    // Pole z promptem ma wysokość dobraną do treści (rows >= 7), nie stałe 7 wierszy.
     const rows = [...r.body.matchAll(/class="ust-prompt" readonly rows="(\d+)"/g)].map((m) => Number(m[1]));
     expect(rows).toHaveLength(2);
     for (const n of rows) expect(n).toBeGreaterThan(7);
@@ -60,7 +60,7 @@ describe('Ustawienia → Integracje → Reklamy', () => {
     await app.close();
   });
 
-  it('PRZ-141.02: ostatni udany odczyt w formacie panelu (fmtKiedy), nie surowym znacznikiem', async () => {
+  it('ostatni udany odczyt w formacie panelu (fmtKiedy), nie surowym znacznikiem', async () => {
     const db = openOmsDb(':memory:');
     const p = zapiszPolaczenie(db, { typ: 'meta', kontoId: 'act_1', kanal: 'sklep_a', sekretRef: `meta:${randomUUID()}` });
     zapiszStan(db, { polaczenieId: p.id, ostatniaProbaAt: '2026-09-23T09:00:00Z', ostatniSukcesAt: '2026-09-23T09:00:00Z' });
@@ -119,7 +119,7 @@ describe('Ustawienia → Integracje → Reklamy', () => {
     }
   });
 
-  describe('PRZ-094.14: „Test odczytu” wraca na ekran reklam z komunikatem', () => {
+  describe('„Test odczytu” wraca na ekran reklam z komunikatem', () => {
     const NAGLOWKI = { ...BASIC, origin: 'http://localhost' };
     const serwerZTestem = (raportReklam) => {
       const db = openOmsDb(':memory:');
@@ -187,7 +187,7 @@ describe('Ustawienia → Integracje → Reklamy', () => {
     } });
     const r = await app.inject({ method: 'POST', url: '/ustawienia/integracje/reklamy/test',
       payload: { polaczenieId: polaczenie.id } });
-    // PRZ-094.14: wynik wraca na ekran reklam (PRG), nie jako surowy JSON.
+    // Wynik wraca na ekran reklam (PRG), nie jako surowy JSON.
     expect(r.statusCode).toBe(303);
     expect(r.headers.location).toBe(`/ustawienia/integracje/reklamy?test=dziala&polaczenie=${polaczenie.id}`);
     expect(r.headers['content-type'] ?? '').not.toContain('json');

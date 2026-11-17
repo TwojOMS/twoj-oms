@@ -16,7 +16,7 @@ describe('kluczOkresu', () => {
     expect(kluczOkresu('2026-07-31T20:00:00.000Z')).toEqual({ rok: 2026, miesiac: 7 });
   });
 
-  // ⚠️ PUŁAPKA, KTORA KOSZTUJE FAKTURE (recenzja 2026-08-01). Zamowienie przyjete przez
+  // ⚠️ PUŁAPKA, KTORA KOSZTUJE FAKTURE. Zamowienie przyjete przez
   // telefon 1 sierpnia o 01:30 czasu polskiego dostaje znacznik '2026-07-31T23:30:00Z',
   // bo kontener chodzi z TZ=UTC. Liczone w UTC wpadaloby do LIPCA: albo po cichu na lipcowa
   // fakture zbiorcza (lipiec otwarty), albo — czesciej, bo lipiec zamyka sie wlasnie
@@ -126,7 +126,7 @@ describe('stanFakturyOkresu', () => {
     expect(stanFakturyOkresu({ ksef_status: 'do_wyjasnienia', blad_opis: 'bum' })).toBe('do_wyjasnienia');
   });
 
-  // ⚠️ REGRESJA Z RECENZJI 2026-08-01. Warunek o samych kolumnach faktury czytal okres
+  // ⚠️ REGRESJA. Warunek o samych kolumnach faktury czytal okres
   // zafakturowany dokumentem BEZ uuid-a i BEZ numeru (odpowiedz inFaktu z nieczytelnym
   // cialem) jako „brak" — czyli kasowal blokade i przepuszczal drugie wystawienie. `stan`
   // jest w tym jednym przypadku JEDYNYM sladem, ze faktura juz poszla.

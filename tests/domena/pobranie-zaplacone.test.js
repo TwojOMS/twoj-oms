@@ -56,7 +56,7 @@ describe('czy pobranie jest rozliczone', () => {
     })).toBe(false);
   });
 
-  // ⚠️⚠️ POPRAWKA 2 (recenzja 28.08.2026). `etapPrzesylki` łapie „nie doręczono" i
+  // ⚠️⚠️ `etapPrzesylki` łapie „nie doręczono" i
   // „odbiorca nieobecny" na tych samych wzorcach co prawdziwe doręczenie (`doręczon`,
   // `odbiorc`) — nie naprawiamy TAMTEJ funkcji (obsługuje też zakładkę przesyłek i
   // czuwacza), tylko stawiamy własny bezpiecznik w ścieżce pieniędzy.
@@ -104,7 +104,7 @@ describe('czy pobranie jest rozliczone', () => {
   });
 });
 
-// ⚠️⚠️ JEDNA REGUŁA, DWÓCH CZYTELNIKÓW (recenzja poprawkowa 28.08.2026, W4). Pas długów
+// ⚠️⚠️ JEDNA REGUŁA, DWÓCH CZYTELNIKÓW. Pas długów
 // (services/faktury-widok.js) pytał wyłącznie `etapPrzesylki(...) === 'zwrot'`, więc paczka
 // z nieudanym doręczeniem — etap `doreczona` — znikała z listy „kto nam zalega" NA STAŁE:
 // czuwacz przesyłek przestaje odpytywać doręczone, a pas jej nie pokazywał. Ta funkcja jest
@@ -158,7 +158,7 @@ describe('data zapłaty pobrania', () => {
     expect(dataZaplatyPobrania(null, '2026-08-20')).toBe('2026-08-20');
   });
 
-  // ⚠️⚠️ POPRAWKA 1 (recenzja 28.08.2026). `invoiceDate === null` (osiągalne z odpowiedzi
+  // ⚠️⚠️ `invoiceDate === null` (osiągalne z odpowiedzi
   // inFaktu: `dane?.invoice_date ?? null`) szło dawniej przez `dzien > null` → `NaN > 0` →
   // `false`, więc funkcja PO CICHU oddawała `null`, mimo że dzień doręczenia był znany.
   describe('invoiceDate nie jest poprawną datą, ale dzień doręczenia JEST znany', () => {

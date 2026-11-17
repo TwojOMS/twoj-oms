@@ -1,4 +1,4 @@
-// PRZ-153.E5.1 — nagłówek Idempotency-Key na zapisach /api/v1 (plan PRZ-153, E5.1 i Review Focus pkt 3).
+// Nagłówek Idempotency-Key na zapisach /api/v1.
 import Fastify from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 import { pluginApiV1 } from '../../../src/moduly/api/plugin.js';

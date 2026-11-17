@@ -1,7 +1,7 @@
-// PRZ-090 — karta produktu: głębokość (cm) i waga (kg) obok szerokości i wysokości.
+// Karta produktu: głębokość (cm) i waga (kg) obok szerokości i wysokości.
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { utworzKarte } from '../../../src/oms/db/magazyn.js';
 
 const config = { auth: { user: 'adam', pass: 'x' } };

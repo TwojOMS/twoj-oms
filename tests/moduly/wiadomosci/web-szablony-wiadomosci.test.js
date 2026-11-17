@@ -7,9 +7,9 @@ import { wczytajSzablonyWiadomosci, zmienSzablonyWiadomosci } from '../../../src
 import { zapiszSzablon } from '../../../src/domena/szablony-wiadomosci.js';
 import { createWiadomosci } from '../../../src/moduly/wiadomosci/services/wiadomosci.js';
 import { createPotwierdzenie } from '../../../src/moduly/wiadomosci/services/potwierdzenie.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
-// PRZ-101.03: Ustawienia → Szablony wiadomości, szablon własny na karcie zamówienia, „Wstaw szablon" w Allegro.
+// Ustawienia → Szablony wiadomości, szablon własny na karcie zamówienia, „Wstaw szablon" w Allegro.
 // Poczta to atrapa (lista wysłanych w pamięci) — nic nie wychodzi.
 
 const naglowek = { authorization: `Basic ${Buffer.from('adam:x').toString('base64')}`, origin: 'http://localhost' };
@@ -50,13 +50,13 @@ beforeEach(async () => {
 });
 
 describe('ekran Ustawienia → Szablony wiadomości', () => {
-  // PRZ-102.21: piąty mail wbudowany „Zamówienie wysłane" — zmiana zachowania listy (było 4 + 2).
+  // Piąty mail wbudowany „Zamówienie wysłane" — zmiana zachowania listy (było 4 + 2).
   it('lista: pięć maili wbudowanych jako domyślne, zero własnych, przycisk dodawania', async () => {
     const r = await get(ADRES);
     expect(r.statusCode).toBe(200);
     for (const n of ['Potwierdzenie przyjęcia zamówienia', 'Proforma', 'Faktura', 'Przypomnienie o płatności', 'Zamówienie wysłane']) expect(r.body).toContain(`<td>${n}</td>`);
-    // PRZ-101.06: dwa maile do zespołu w osobnej sekcji — tu liczymy tylko maile do klienta.
-    const klient = r.body.slice(r.body.indexOf('id="szablony-wbudowane"'), r.body.indexOf('id="zdania-platnosci"')); // PRZ-108.11: „Szablony własne” przeniesione na górę ekranu (decyzja właściciela 22.10)
+    // Dwa maile do zespołu w osobnej sekcji — tu liczymy tylko maile do klienta.
+    const klient = r.body.slice(r.body.indexOf('id="szablony-wbudowane"'), r.body.indexOf('id="zdania-platnosci"')); // „Szablony własne” przeniesione na górę ekranu (decyzja właściciela 22.10)
     expect(klient.match(/<td>domyślna<\/td>/g)).toHaveLength(5);
     expect(r.body.match(/<td>domyślna<\/td>/g)).toHaveLength(7);
     expect(r.body).toContain('href="/ustawienia/szablony-wiadomosci/nowy"');

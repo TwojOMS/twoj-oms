@@ -3,7 +3,7 @@ import {
   uslugaInpost, czySmart, USLUGA_SKLEP, USLUGA_ALLEGRO, USLUGA_ALLEGRO_SMART,
 } from '../../src/domena/usluga-inpost.js';
 
-// ⚠️⚠️ TEN PLIK POWSTAL Z PRAWDZIWEJ POMYLKI, KTORA KOSZTOWALA PIENIADZE (2026-08-07).
+// ⚠️⚠️ TEN PLIK POWSTAL Z PRAWDZIWEJ POMYLKI, KTORA KOSZTOWALA PIENIADZE.
 // Panel wysylal `inpost_locker_standard` NA SZTYWNO, wiec pierwsze nadanie paczkomatu
 // z Allegro poszlo na taryfie standardowej zamiast allegrowej (przesylka 6000000001,
 // zam. 1126) i wlasciciel musial ja anulowac.

@@ -24,7 +24,7 @@ function karta(db) {
     wariant_id: '', nazwa: `Kandelabr oferta ${kanal}`, odczytane_at: 'x' });
 }
 afterEach(() => vi.unstubAllGlobals());
-describe('PRZ-026 — rzeczywisty skład i chroniona karta', () => {
+describe('rzeczywisty skład i chroniona karta', () => {
   it('bez konfiguracji kanałów zwraca pusty stan bez sieci i historycznych kanałów', async () => {
     const fetch = vi.fn(async () => { throw Error('Test nie zezwala na sieć'); }); vi.stubGlobal('fetch', fetch);
     const a = await zbudujOms({ env });

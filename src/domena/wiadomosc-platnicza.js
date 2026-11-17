@@ -186,7 +186,7 @@ function srodekTekstu(m) {
  * Pusty, gdy nie ma ani przelewu, ani załącznika (np. faktura opłacona bez PDF-u) — wtedy blok znika z maila.
  *
  * Zgodność z mailem bez szablonu pilnują tests/moduly/wiadomosci/szablony-rownosc.test.js i wzorzec bajt w bajt
- * (zdania-platnosci-rownosc-prz102-17.test.js).
+ * (zdania-platnosci-rownosc.test.js).
  */
 export function blokiTekstuWiadomosci(m) {
   return { dane_platnosci: srodekTekstu(m).slice(1) };

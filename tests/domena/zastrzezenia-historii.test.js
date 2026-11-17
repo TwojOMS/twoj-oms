@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { zastrzezenia } from '../pomoc/raporty-parytetu.js';
+import { zastrzezenia } from '../pomoc/testowe-reguly-raportow.js';
 
 describe('zastrzezenia do okresu sprzed ery Apilo', () => {
   it('okres w calosci po granicy nie ma zastrzezen', () => {

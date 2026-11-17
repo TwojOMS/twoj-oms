@@ -5,7 +5,7 @@ import { zapiszZamowienie, pobierzZamowienie, zapiszNadpisanieWysylki } from '..
 import { createFaktura } from '../../../src/moduly/faktury/services/faktura.js';
 import { sposobPlatnosciFaktury, PLATNOSC_POBRANIE } from '../../../src/domena/sposob-platnosci.js';
 
-// ZGŁOSZENIE WŁAŚCICIELA 2026-08-07: faktura 18/08/2026 do allegrowego zamówienia ZA
+// ZGŁOSZENIE: faktura 18/08/2026 do allegrowego zamówienia ZA
 // POBRANIEM (220,89 zł) wyszła z sposobem płatności „przelew" i terminem na dziś. Panel
 // pola `payment_method` nie wysyłał w ogóle, więc inFakt podstawiał domyślne z ustawień
 // konta. Zmierzone na żywym dokumencie przed poprawką: payment_method='transfer'.

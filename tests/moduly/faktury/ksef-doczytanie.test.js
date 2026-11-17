@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { czyDoczytacKsef, PROG_DOCZYTANIA_KSEF_MS } from '../../../src/domena/ksef-doczytanie.js';
 import { createDoczytanieKsef } from '../../../src/moduly/faktury/services/ksef-doczytanie.js';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { zapiszZamowienie, pobierzZamowienie, ostatniWpisLogu } from '../../../src/oms/db/zamowienia.js';
 import { rozpocznijFakture, zakonczFakture } from '../../../src/moduly/faktury/db/faktury.js';
 
@@ -73,7 +73,7 @@ describe('doczytanie numeru KSeF przy otwarciu karty', () => {
     expect(String(ostatniWpisLogu(db, id, "ksef")?.wynik).includes("KSEF-1")).toBe(true);
   });
 
-  // PRZ-123.CZUWACZ-NUMER: TwojeFaktury oddaje numer jako `ksef_number` (ksztalt v3).
+  // TwojeFaktury oddaje numer jako `ksef_number` (ksztalt v3).
   it('zapisuje numer z odczytu TwojeFaktury (`ksef_number`)', async () => {
     const { db, id } = baza();
     const usluga = createDoczytanieKsef({
@@ -122,7 +122,7 @@ describe('doczytanie numeru KSeF przy otwarciu karty', () => {
     await expect(usluga.dlaFaktury(fakturaZ(db, id), id)).resolves.toBe(false);
   });
 
-  // ⚠️⚠️ REGRESJA Z PRODUKCJI, 14.08.2026 — „faktury nie wysylaja sie do Allegro".
+  // ⚠️⚠️ „faktury nie wysylaja sie do Allegro".
   //
   // Czuwacz szuka faktur po warunku `ksef_numer IS NULL` (domain/ksef-oczekiwanie.js) i to ON
   // po znalezieniu numeru wysyla dokument kupujacemu na Allegro. Ta sciezka zapisywala numer
@@ -130,7 +130,7 @@ describe('doczytanie numeru KSeF przy otwarciu karty', () => {
   // wypadala z jego kolejki NA ZAWSZE i nie szla do kupujacego nigdy.
   //
   // Trafialo za kazdym razem, bo naturalna kolejnosc ruchow operatora to dokladnie: zlec
-  // wysylke do KSeF w zakladce FAKTURY, potem zajrzyj na karte. Zmierzone na zamowieniu 1167.
+  // wysylke do KSeF w zakladce FAKTURY, potem zajrzyj na karte.
   //
   // ⚠️ KAZDY, KTO ZAPISUJE `ksef_numer`, MUSI URUCHOMIC TO SAMO. Dlatego nastepstwo mieszka
   // w jednym miejscu (services/po-numerze-ksef.js), a nie w dwoch kopiach.

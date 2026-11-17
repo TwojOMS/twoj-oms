@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { listaProduktowZbiorcza } from '../../src/domena/lista-produktow.js';
 
-// Zbiorcza „Lista produktów" (PRZ-084): jedna kartka do kompletowania kilku zaznaczonych
+// Zbiorcza „Lista produktów": jedna kartka do kompletowania kilku zaznaczonych
 // zamowien. Scalanie po SKU, bez SKU po DOKLADNEJ nazwie; przy kazdym wierszu numery
 // zamowien z krotnoscia, zeby po skompletowaniu dalo sie rozdzielic towar.
 

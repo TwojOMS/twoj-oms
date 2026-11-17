@@ -1,12 +1,12 @@
-// PRZ-108.09 (zmiana C2 planu automatyzacji, test 1): BIAŁA LISTA dowodów, że kurier odebrał paczkę — podstawa zdarzenia
+// BIAŁA LISTA dowodów, że kurier odebrał paczkę — podstawa zdarzenia
 // „Kurier odebrał paczkę”. Mail do klienta jest nieodwracalny, więc rozstrzyga lista ZMIERZONYCH stanów, a nie
 // `etapPrzesylki` (ten nieznany stan InPostu uznaje za „w drodze”, a opis z „odbiorc” za doręczenie).
 //
 // Przykładowe odpowiedzi to zapisane stany z repo:
-//  • DPD — opisy z sondy na żywym API zdarzeń (23.08) i produkcyjnej bazy (`domena/przejecie-przesylki.js`, PRZEJETE_DPD;
+//  • DPD — opisy z sondy na żywym API zdarzeń i produkcyjnej bazy (`domena/przejecie-przesylki.js`, PRZEJETE_DPD;
 //    fikstura `tests/oms/fixtures/dpd/info-events-ok.xml` — „Zarejestrowano dane przesyłki, przesyłka jeszcze nie nadana”);
 //  • InPost — NASZE opisy stanów (`oms/kurierzy/inpost.js`, OPISY_STANOW; tylko stany widziane na koncie);
-//  • Allegro — maszynowe kody zasobu śledzenia (sonda 25.08, `domena/etap-przesylki.js`, KODY_ALLEGRO).
+//  • Allegro — maszynowe kody zasobu śledzenia (`domena/etap-przesylki.js`, KODY_ALLEGRO).
 import { describe, it, expect } from 'vitest';
 import {
   dowodOdbioru, OPISY_ODBIORU_INPOST, STANY_INPOST_BEZ_ODBIORU, KODY_ODBIORU_ALLEGRO,
@@ -17,7 +17,7 @@ import { KODY_ALLEGRO } from '../../src/domena/etap-przesylki.js';
 
 const p = (o = {}) => ({ kurier: 'dpd', status_kuriera: null, status_kuriera_kod: null, przejeta_at: null, ...o });
 
-describe('dowodOdbioru — plan C2, test 1', () => {
+describe('dowodOdbioru', () => {
   it('Allegro: PENDING → nie; IN_TRANSIT → tak (kod rozstrzyga, opis to tłumaczenie)', () => {
     expect(dowodOdbioru(p({ kurier: 'allegro', status_kuriera: 'Przesyłka przygotowana przez nadawcę', status_kuriera_kod: 'PENDING' }))).toBeNull();
     expect(dowodOdbioru(p({ kurier: 'allegro', status_kuriera: 'Przesyłka w drodze', status_kuriera_kod: 'IN_TRANSIT' }))).toBe('allegro:IN_TRANSIT');
@@ -98,7 +98,7 @@ describe('strażnicy zupełności białej listy', () => {
   });
 });
 
-// Recenzja 09, usterka 1: czas zdarzenia U KURIERA (kiedy kurier naprawdę odebrał) — do odrzucenia spóźnionego dowodu.
+// Czas zdarzenia U KURIERA (kiedy kurier naprawdę odebrał) — do odrzucenia spóźnionego dowodu.
 describe('czas odbioru u kuriera i spóźniony dowód', () => {
   it('DPD bez strefy = czas warszawski (lato +2, zima +1); ze strefą — jak podano', () => {
     expect(msCzasuKuriera('2026-10-21T14:10:00.000')).toBe(Date.parse('2026-10-21T12:10:00.000Z'));

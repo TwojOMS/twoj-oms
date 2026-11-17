@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { PLIKI_INSTALACJI, envEtapu, opcje, oczyscPowod, coDalejLokalnie, sciezkaKlucza } from './instalacja-wspolne.mjs';
-// Dynamicznie, PO kontroli wersji z instalacja-wspolne.mjs (PRZ-093.03): statyczny import node:sqlite albo .ts
+// Dynamicznie, PO kontroli wersji z instalacja-wspolne.mjs: statyczny import node:sqlite albo .ts
 // wywraca skrypt na Node 20 jeszcze przed ewaluacją pierwszego modułu, bez słowa o wersji.
 const { DatabaseSync } = await import('node:sqlite');
 const { uruchomOms } = await import('../src/main.ts');
@@ -44,7 +44,7 @@ async function main() {
   const znacznik = path.join(katalog, PLIKI_INSTALACJI.znacznik);
   const plikEnv = path.join(katalog, PLIKI_INSTALACJI.proba);
   wymagany(znacznik); wymagany(plikEnv);
-  // PRZ-182: proba.env + klucz poświadczeń z pliku klucza (ten sam dla wszystkich startów i odtworzenia).
+  // proba.env + klucz poświadczeń z pliku klucza (ten sam dla wszystkich startów i odtworzenia).
   const plikKlucza = sciezkaKlucza(katalog);
   const env = await envEtapu(katalog);
   sekrety.push(env.OMS_PASS, env.OMS_KLUCZ_SEKRETOW);
@@ -98,7 +98,7 @@ async function main() {
   console.log(JSON.stringify({ status: 'proba-zakonczona', katalog, port, kontoProby: path.join(katalog, PLIKI_INSTALACJI.daneAdmina), kluczPoswiadczen: plikKlucza, health: 'HTTP/DB gotowe; integracje niepodlaczone' }));
 }
 
-// PRZ-093.03: kod etapu zostaje, dochodzi powód (np. „listen EADDRINUSE … 127.0.0.1:39151”). Hasła serwisowe
+// Kod etapu zostaje, dochodzi powód (np. „listen EADDRINUSE … 127.0.0.1:39151”). Hasła serwisowe
 // i administratora są w `sekrety` — maskowane, gdyby trafiły do cudzego komunikatu.
 main().catch((e) => {
   console.error(e instanceof Error && /^INSTALACJA_/.test(e.message) ? e.message

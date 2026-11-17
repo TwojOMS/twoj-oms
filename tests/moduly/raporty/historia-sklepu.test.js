@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { wierszHistorii, KONTA_SKLEPOW } from '../../pomoc/import-sklep-parytet.js';
+import { wierszHistorii, KONTA_SKLEPOW } from '../../pomoc/przykladowy-import-sklepu.js';
 
 const zam = (nad = {}) => ({
   id: 28225, number: '28225', status: 'completed',

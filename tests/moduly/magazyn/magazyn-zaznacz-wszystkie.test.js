@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { utworzKarte, zapiszProduktSklepowy, powiazProdukt } from '../../../src/oms/db/magazyn.js';
 
 // „ZAZNACZ WSZYSTKIE" NA LISCIE KART — druga tura tego samego zgloszenia wlasciciela:
@@ -125,7 +125,7 @@ function zawezenieFormularza(body) {
  * szukala `div.nazwa-karty` (klasa z ekranow PODGLADU, nie listy) i oddawala `['','']` —
  * czyli asercja „ta sama lista przed i po" bylaby spelniona przez dwie puste dziury.
  */
-// ⚠️ WYJATEK OD „bez modyfikacji" (Zadanie 6, powrot z karty z zachowaniem filtrow):
+// ⚠️ WYJATEK OD „bez modyfikacji":
 // odnosnik nazwy karty od tego zadania niesie DALEJ adres listy jako „?wroc=…", wiec
 // `href="/magazyn/{id}">` bez ogonka juz nie wystapi. `(?:\?[^"]*)?` tylko TOLERUJE ten
 // dopisek — nie zmienia, CO ten test sprawdza (ten sam zbior wierszy przed i po zaznaczeniu).

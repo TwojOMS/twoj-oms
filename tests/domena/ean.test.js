@@ -1,4 +1,4 @@
-// PRZ-153.E5.3c — EAN na karcie produktu: 8 albo 13 cyfr z cyfrą kontrolną GTIN.
+// EAN na karcie produktu: 8 albo 13 cyfr z cyfrą kontrolną GTIN.
 import { describe, it, expect } from 'vitest';
 import { poprawnyEan } from '../../src/domena/ean.js';
 

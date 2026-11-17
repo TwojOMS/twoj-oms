@@ -7,11 +7,11 @@ import {wczytajRaporty} from '../../../src/moduly/raporty/konfiguracja.ts';
 import {MODULY} from '../../../src/moduly/lista.ts';
 import {nawigacjaDla} from '../../../src/domena/menu-stron.js';
 import {ustawGranice,zapiszHistorie} from '../../../src/oms/db/historia-sprzedazy.js';
-import {KANALY} from '../../pomoc/raporty-historyczne-fixture.js';
+import {KANALY} from '../../pomoc/przykladowe-dane-raportow.js';
 import {zapiszDaneMiesiaca} from '../../../src/oms/db/dane-miesieczne.js';
 const env={OMS_USER:'operator',OMS_PASS:'fixture',OMS_SPRZEDAWCA_NIP:'1234563218',OMS_RACHUNEK:'34109010140000000000000000',OMS_PROFORMY_KATALOG:tmpdir(),OMS_ETYKIETY_KATALOG:tmpdir()};
 const headers={authorization:`Basic ${Buffer.from('operator:fixture').toString('base64')}`};
-it('PRZ027F syntetyczna instalacja liczy rachunek i filtruje zamówienia według jej konfiguracji',async()=>{
+it('syntetyczna instalacja liczy rachunek i filtruje zamówienia według jej konfiguracji',async()=>{
  const db=openOmsDb();
  for(const k of KANALY)ustawGranice(db,k,'2031-07-02','fixture',null);
  for(const [id,email,brutto] of [['sprzedaz','kupiec@example.test','246.00'],['test','test@example.test','1230.00']])zapiszHistorie(db,{
@@ -35,7 +35,7 @@ it('PRZ027F syntetyczna instalacja liczy rachunek i filtruje zamówienia według
   }
  }finally{await a.app.close();db.close();}
 });
-it('PRZ027F brak podłogi odmawia rachunku, dane działają i produkt nie zasiewa firmy',async()=>{
+it('brak podłogi odmawia rachunku, dane działają i produkt nie zasiewa firmy',async()=>{
  const siec=vi.spyOn(globalThis,'fetch').mockRejectedValue(new Error('Sieć zabroniona'));
  const a=await zbudujOms({env});
  try{
@@ -47,7 +47,7 @@ it('PRZ027F brak podłogi odmawia rachunku, dane działają i produkt nie zasiew
   expect(siec).not.toHaveBeenCalled();
  }finally{await a.app.close();a.db.close();siec.mockRestore();}
 });
-it('PRZ027F podłoga jest miesiącem z konfiguracji, bez wartości firmy i bez ujawnienia wadliwego wejścia',()=>{
+it('podłoga jest miesiącem z konfiguracji, bez wartości firmy i bez ujawnienia wadliwego wejścia',()=>{
  expect((wczytajRaporty({}) as any).podlogaKosztow).toBeNull();
  expect((wczytajRaporty({OMS_RAPORTY_PODLOGA_KOSZTOW:' 2031-02 '}) as any).podlogaKosztow).toBe('2031-02');
  for(const v of ['2031-00','2031-13','canary-private-value']){
@@ -55,7 +55,7 @@ it('PRZ027F podłoga jest miesiącem z konfiguracji, bez wartości firmy i bez u
   try{wczytajRaporty({OMS_RAPORTY_PODLOGA_KOSZTOW:v});}catch(e){expect(String(e)).not.toContain(v);}
  }
 });
-it('PRZ027F istniejące odebrane prawo nie wraca, przyznane zostaje, nowe Sprzedaż nie dostaje Finansów',async()=>{
+it('istniejące odebrane prawo nie wraca, przyznane zostaje, nowe Sprzedaż nie dostaje Finansów',async()=>{
  const db=openOmsDb();
  const zabrane=zalozKonto(db,{login:'zabrane',imie:'Z',haslo:'fixture',rola:'administrator'});
  const przyznane=zalozKonto(db,{login:'przyznane',imie:'P',haslo:'fixture',rola:'sprzedaz'});

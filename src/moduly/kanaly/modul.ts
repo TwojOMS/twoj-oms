@@ -8,6 +8,7 @@ import {registerTrasyAllegro} from './trasy-allegro.ts';
 import {registerTrasyWoo} from './trasy-woo.ts';
 import {registerTrasyErli} from './trasy-erli.ts';
 import {createSklepyErli} from './services/sklepy-erli.ts';
+import {celeKanalowLacznosci} from './lacznosc-kanalow.ts';
 import {createSklepyWoo} from './services/sklepy-woo.ts';
 import {createWooClient} from '../../oms/woo/client.js';
 import {klientSklepuPrzykladowego} from './services/atrapa-sklepu-przykladowego.ts';
@@ -47,7 +48,13 @@ export function createModulKanaly(definicje:readonly DefinicjaKanalu[],niekomple
     }});
    const sklepyErli=createSklepyErli({db:ctx.db,teraz:ctx.teraz,ustawieniaEnv:uslugi.config.erli??{},definicje:definicje.filter(d=>d.typ==='erli'),fetchImpl:o.fetchImpl,
     poAktywacji:k=>uslugi.poAktywacji(uslugi.repozytoriumKanalow.listaTypu('erli').find(p=>p.klucz===k)!)});
-   return {uslugi:{...uslugi,sklepyWoo,sklepyErli},
+   // Ekran Łączność, czytane przy każdym wejściu: kanały z konfiguratora (każdy typ) i sklepy ERLI z pliku — gotowe
+   // cele bez kluczy; `zPliku` = klucze kanałów z pliku, które ekran bierze z konfiguracji modułu.
+   const celeLacznosci=()=>({
+    cele:celeKanalowLacznosci({db:ctx.db,lista:t=>uslugi.repozytoriumKanalow.listaTypu(t),erli:()=>sklepyErli.lista() as any}),
+    zPliku:definicje.map(d=>d.klucz),
+   });
+   return {uslugi:{...uslugi,sklepyWoo,sklepyErli,celeLacznosci},
     zegary:[{nazwa:'poller',odstepMs:uslugi.config.odstepMs,przebieg:async()=>{try{await uslugi.poller.przebieg();}catch(e){ctx.log('poller:',e instanceof Error?e.message:String(e));}}}],
     zdrowie:()=>{
      const nieznane=nieznaneKanalyZamowien();

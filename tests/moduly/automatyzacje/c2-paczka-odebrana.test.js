@@ -1,5 +1,4 @@
-// PRZ-108.09 (zmiana C2 planu automatyzacji, właściciel 21.10): zdarzenie „Kurier odebrał paczkę”. Numery w opisach =
-// numery testów z planu (sekcja 8, „C2. Testy najpierw”).
+// Zdarzenie „Kurier odebrał paczkę”.
 //
 // Droga faktu jest PRAWDZIWA: status kuriera zapisuje `odswiezStatusKuriera` (ta sama funkcja co czuwacz i karta), a
 // klient kuriera oddaje odpowiedź w kształcie prawdziwych klientów (DPD: najnowsze zdarzenie + historia; InPost: najnowsze
@@ -34,7 +33,7 @@ afterEach(() => {
 });
 const przesun = (ms) => vi.setSystemTime(Date.now() + ms);
 
-// Zapisane odpowiedzi kurierów (kształt prawdziwych klientów; opisy DPD z sondy 23.08 i fikstury info-events-ok.xml).
+// Zapisane odpowiedzi kurierów (kształt prawdziwych klientów; opisy DPD z sondy i fikstury info-events-ok.xml).
 const DPD_ZAREJESTROWANA = 'Zarejestrowano dane przesyłki, przesyłka jeszcze nie nadana';
 const DPD_ODEBRANA = 'Przesyłka odebrana przez Kuriera';
 const DPD_DORECZONA = 'Przesyłka doręczona';
@@ -161,7 +160,7 @@ describe('2. detektor', () => {
     expect(e.listy).toEqual([]);
   });
 
-  // Recenzja 08, usterka 1 — WSPÓLNY warunek wykonania C1 (`historiaPrzedGranica`, kod `przed_granica`) obejmuje też odbiór:
+  // WSPÓLNY warunek wykonania C1 (`historiaPrzedGranica`, kod `przed_granica`) obejmuje też odbiór:
   // paczka powstała po granicy, ale ZAMÓWIENIE jest stare (karta dociąga numer Allegro sprzed miesięcy, ktoś rejestruje
   // ręcznie dawną paczkę, a czuwacz zaraz czyta jej stan „doręczona”) → pominięte z powodem, zero maili.
   it('zamówienie złożone dawniej niż 14 dni przed granicą, paczka zarejestrowana i odebrana po włączeniu → pominięte „przed_granica”, 0 maili', async () => {
@@ -370,11 +369,11 @@ describe('3. przebieg piaskownicy: atrapa DPD → czuwacz → reguła', () => {
   });
 });
 
-// Recenzja 09, usterka 1 (KRYTYCZNA): pierwszy odczyt śledzenia po dniach (awaria czuwacza, kurier podłączony później,
+// Pierwszy odczyt śledzenia po dniach (awaria czuwacza, kurier podłączony później,
 // numer z Allegro dociągnięty przy otwarciu karty) zapisywał `odebrana_at` = dziś, więc „Kurier odebrał” szło dni po
 // odbiorze. Teraz odbiór zapisuje się dla historii razem z czasem zdarzenia U KURIERA (`odebrana_kurier_at`), a reguła
 // pomija wykonanie, gdy odbiór u kuriera był ponad ODBIOR_SPOZNIONY_H godzin przed chwilą zapisu.
-describe('spóźniony dowód odbioru (recenzja 09, usterka 1)', () => {
+describe('spóźniony dowód odbioru', () => {
   it('DPD: pierwszy odczyt 3 dni po odbiorze („doręczona”, odbiór w historii) → odbiór zapisany, pominięte „odbior_spozniony”, 0 maili', async () => {
     const e = srodowisko();
     regula(e);

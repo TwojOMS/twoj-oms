@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
 const sciezka = new URL('../../../docs/api/openapi.json', import.meta.url);
 const metody = new Set(['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace']);

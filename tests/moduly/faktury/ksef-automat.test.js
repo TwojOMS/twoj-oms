@@ -1,4 +1,4 @@
-// PRZ-102.12 — automat wysyłki do KSeF o ustalonej godzinie.
+// Automat wysyłki do KSeF o ustalonej godzinie.
 //
 // ⚠️ Automat ma wysłać DOKŁADNIE to, co przycisk po „zaznacz wszystkie” na ekranie Faktur, i nic więcej. Dlatego
 // test składa PRAWDZIWE `createFakturyWidok` i `createWysylkaKsef` (barierę `coWolnoWyslac`, rezerwację w bazie,
@@ -13,7 +13,7 @@ import { createWysylkaKsef } from '../../../src/moduly/faktury/services/wysylka-
 import { createAutomatKsef } from '../../../src/moduly/faktury/services/ksef-automat.js';
 import { wczytajAutomatKsef, zapiszUstawieniaAutomatu, zapiszWynikAutomatu } from '../../../src/moduly/faktury/db/ksef-automat.js';
 import { ostrzezeniaAutomatuKsef } from '../../../src/domena/ostrzezenia.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
 const NIP = '1234563218';
 const dok = (uuid, invoice_date, nadpisz = {}) => ({
@@ -50,7 +50,7 @@ function zamowienieZFaktura(db, uuid, numer) {
   return id;
 }
 
-// Październik 2026: A (bieżący), B (31.09 — poprzedni), H (WDT, numer VAT UE) mają polecieć. Reszta nie:
+// Październik 2026: A (bieżący), B (30.09 — poprzedni), H (WDT, numer VAT UE) mają polecieć. Reszta nie:
 // C już w KSeF, D korekta, E konsumencka (bez NIP-u), F zarezerwowana wcześniej, G sprzed dwóch miesięcy.
 function zestaw({ wyslij } = {}) {
   const db = openOmsDb(':memory:');
@@ -74,7 +74,7 @@ function zestaw({ wyslij } = {}) {
 }
 const wlacz = (db, godzina = '20:00') => zapiszUstawieniaAutomatu(db, { wlaczony: true, godzina, ostatniPrzebieg: null, login: 'adam' });
 
-it('PRZ-102.26: firmowe B2C działa bez restartu na liście, w podglądzie, wysyłce i automacie', async () => {
+it('firmowe B2C działa bez restartu na liście, w podglądzie, wysyłce i automacie', async () => {
   const z = zestaw();
   const app = buildOmsServer({ db: z.db, config: { auth: { user: 't', pass: 'h' } }, fakturyWidok: z.fakturyWidok });
   const args = { uuids: ['E'], miesiac: '2026-10', pole: 'invoice_date' };
@@ -97,7 +97,7 @@ it('PRZ-102.26: firmowe B2C działa bez restartu na liście, w podglądzie, wysy
   } finally { await app.close(); z.db.close(); }
 });
 
-describe('PRZ-102.12 automat KSeF — kiedy wysyła', () => {
+describe('automat KSeF — kiedy wysyła', () => {
   it('wyłączony (domyślnie) — tyknięcie po godzinie nic nie wysyła', async () => {
     const z = zestaw();
     expect(wczytajAutomatKsef(z.db)).toMatchObject({ wlaczony: false, godzina: '20:00', ostatniPrzebieg: null, wynik: null });
@@ -132,7 +132,7 @@ describe('PRZ-102.12 automat KSeF — kiedy wysyła', () => {
     expect(z.logi.some((t) => t.includes('automat KSeF') && t.includes('wysłano 3'))).toBe(true);
   });
 
-  // PRZ-126.C07a (D9): „zaznacz wszystkie” zaznacza każdy dokument z uuid (także już w KSeF, korekty, B2C);
+  // „zaznacz wszystkie” zaznacza każdy dokument z uuid (także już w KSeF, korekty, B2C);
   // automat wysyła z tego zbioru tylko to, co przepuści filtr wysyłki — A i H.
   it('zbiór automatu dla miesiąca = zaznaczone przez „zaznacz wszystkie” po filtrze wysyłki', async () => {
     const z = zestaw();
@@ -233,7 +233,7 @@ describe('PRZ-102.12 automat KSeF — kiedy wysyła', () => {
   });
 });
 
-describe('PRZ-102.12 automat KSeF — awaria', () => {
+describe('automat KSeF — awaria', () => {
   it('awaria inFaktu przy pierwszym dokumencie: stop, dokument „nie wiadomo”, wiersz ostrzeżenia, bez ponowienia', async () => {
     const z = zestaw({ wyslij: () => { throw Object.assign(new Error('inFakt nie odpowiedział w 30 s'), { dlaOperatora: true }); } });
     wlacz(z.db);
@@ -288,7 +288,7 @@ describe('PRZ-102.12 automat KSeF — awaria', () => {
     expect(ostrzezeniaAutomatuKsef({ wynik })[0].tekst).toContain('przerwany');
   });
 
-  // Poprawka po recenzji (WAŻNE 1): odmowa 4xx zdejmuje rezerwację (usługa — słusznie, dokumentu u organu nie ma),
+  // Odmowa 4xx zdejmuje rezerwację (usługa — słusznie, dokumentu u organu nie ma),
   // więc bez pamięci automatu ta sama faktura stawałaby pierwsza każdego dnia i blokowała resztę stopem na błędzie.
   it('odmowa inFaktu (4xx) dnia 1 — faktura wstrzymana: dnia 2 nie leci, reszta leci; ostrzeżenie mówi, co zrobić', async () => {
     const odmowa = () => Object.assign(new Error('inFakt odrzucił wysyłkę do KSeF (422): brak adresu nabywcy'),

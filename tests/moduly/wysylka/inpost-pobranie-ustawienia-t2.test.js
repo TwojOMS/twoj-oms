@@ -1,12 +1,12 @@
-// PRZ-135.T2.03 — Ustawienia → Integracje → Kurier InPost: przełącznik „Mam umowę z InPostem na przesyłki za pobraniem”.
+// Ustawienia → Integracje → Kurier InPost: przełącznik „Mam umowę z InPostem na przesyłki za pobraniem”.
 // ⚠️ PIENIĄDZE: włączenie dopuszcza paczkomat przy pobraniu. Domyślnie wyłączone; tylko pole z value="tak" włącza;
 // „Odłącz” wyłącza (nowe konto to może być nowa umowa). Prawdziwy serwer, zmyślone dane, zero sieci.
 import { describe, it, expect, vi } from 'vitest';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
 import { nazwaCiasteczkaOms } from '../../../src/core/bezpieczenstwo/sesja.js';
 import { umowyPobraniaFirmy, zapiszUmowePobrania } from '../../../src/moduly/wysylka/db/umowy-pobrania.js';
-import { jako, get, post, CONFIG, POLLER } from '../../pomoc/konta-prz068.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { jako, get, post, CONFIG, POLLER } from '../../pomoc/panel-konta-testowe.js';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { modulRdzen } from '../../../src/moduly/rdzen/modul.ts';
 import { modulWeb } from '../../../src/core/web/modul.ts';
@@ -44,7 +44,7 @@ function panel({ env = NADAWCA, demo = null } = {}) {
 const wartosc = (db) => db.prepare('SELECT wartosc FROM ustawienia WHERE klucz = ?').get(KLUCZ)?.wartosc ?? null;
 const sekcja = (html) => /<section[^>]*id="inpost-pobranie"[\s\S]*?<\/section>/u.exec(html)?.[0] ?? '';
 
-describe('PRZ-135.T2.03 przełącznik umowy na pobranie w InPoście', () => {
+describe('przełącznik umowy na pobranie w InPoście', () => {
   it('pusty ekran: sekcja z polem (niezaznaczonym), formularz POST …/pobranie, stan „wyłączone”', async () => {
     const { app, admin } = panel();
     const r = await get(app, ADRES, admin);
@@ -55,7 +55,7 @@ describe('PRZ-135.T2.03 przełącznik umowy na pobranie w InPoście', () => {
     expect(s).toMatch(/<input[^>]*type="checkbox"[^>]*name="umowa"[^>]*value="tak"/u);
     expect(s).not.toMatch(/name="umowa"[^>]*checked/u);
     expect(s).toContain('wyłączone');
-    // PRZ-142.01: opis zgodny z regułą PRZ-137.03 — bez „kurierem DPD”, z podziałem sklep / OMS.
+    // Opis bez „kurierem DPD”, z podziałem sklep / OMS.
     expect(s).not.toContain('DPD');
     expect(s).toContain('pobranie sprzedane przez sklep (paczka nr 1');
     expect(s).toContain('zamiennik za pobraniem (paczka nr 2 i kolejne)');

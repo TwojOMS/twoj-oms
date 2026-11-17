@@ -22,7 +22,7 @@ async function login(a,uzytkownik,haslo) {
 }
 function sesja(a,c) { return sprawdz(c.slice(c.indexOf('=')+1),wczytajSekret(a.db)); }
 afterEach(()=>vi.unstubAllGlobals());
-describe('PRZ-030 rzeczywisty bootstrap i trasy kont',()=>{
+describe('rzeczywisty bootstrap i trasy kont',()=>{
   it('login → założenie dwóch kont → zmiana hasła → relogin zachowuje wersję i drugą sesję',async()=>{
     vi.stubGlobal('fetch',vi.fn(async()=>{throw Error('Sieć zabroniona');}));
     const a=await zbudujOms({env});

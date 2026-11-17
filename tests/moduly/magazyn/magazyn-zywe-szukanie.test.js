@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie, pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { zapiszProduktSklepowy } from '../../../src/oms/db/magazyn.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
 // ŻYWE SZUKANIE W MAGAZYNIE (21.08.2026, prośba właściciela: „wyszukiwanie na żywo
 // w magazynie to super opcja").
@@ -125,7 +125,7 @@ describe('wpięcie htmx', () => {
   // ⚠️ Z WŁASNEGO HOSTA, nigdy z CDN-u: panel chodzi w LAN-ie bez wyjścia na świat.
   it('biblioteka ładuje się z panelu, nie z sieci', async () => {
     const body = (await get('/zamowienia/nowe')).body;
-    expect(body).toMatch(/src="\/public\/htmx\.min\.js\?v=[0-9a-f]{10}"/); // PRZ-100: adres z wersją
+    expect(body).toMatch(/src="\/public\/htmx\.min\.js\?v=[0-9a-f]{10}"/); // Adres z wersją
     expect(body).not.toMatch(/src="https?:\/\//);
   });
 

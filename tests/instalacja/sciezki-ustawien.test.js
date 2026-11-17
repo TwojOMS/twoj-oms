@@ -1,9 +1,9 @@
-// PRZ-168 A1c: teksty dla użytkownika nie odsyłają do pozycji Ustawień, których nie ma w menu.
+// Teksty dla użytkownika nie odsyłają do pozycji Ustawień, których nie ma w menu.
 // Obcy sprzedawca, który czyta „Ustawienia → Moduły”, a w menu jest „System → Włączone funkcje”, nie znajdzie ekranu.
 //
 // Test przechodzi src/**/*.{js,ts,mjs,ejs} (bez komentarzy — to samo wycinanie co odsylacze-src.test.js)
-// i docs/**/*.md (bez docs/plany, docs/archiwum, plików prz* i rejestru docs/zadania.md), a także deploy/**/*.md
-// oraz wiersze „#” w .env.example i deploy/klient/*.yaml. PRZ-174 B1: także docs/konfiguracja.json (opisy zmiennych
+// i dokumentację (bez planów, archiwum i rejestru zadań), a także deploy/**/*.md
+// oraz wiersze „#” w .env.example i deploy/klient/*.yaml. Także docs/konfiguracja.json (opisy zmiennych
 // trafiają do panelu i docs/konfiguracja.md), scripts/ (napisy na ekran; bez jednorazowych prz*/mutacje-*)
 // i deploy/**/*.{json,sh,mjs} (np. deploy/klient/aktualizuj.sh, deploy/drukarka/config*.przyklad.json). Każde
 // „Ustawienia → A” / „Ustawieniach → A” / „z Ustawień → A” / „Ustawieniami → A” (opcjonalnie „→ B”, „→ C”) musi wskazywać:
@@ -28,7 +28,7 @@ import { KATALOG_INTEGRACJI } from '../../src/domena/katalog-integracji.ts';
 const KORZEN = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const KOD = new Set(['.js', '.ts', '.mjs', '.ejs']);
 
-// docs/zadania.md to rejestr historyczny zadań (co zrobiono i kiedy) — opisuje dawne menu, jak docs/plany.
+// Historyczny rejestr zadań i plany opisują dawne menu, więc nie są sprawdzane.
 const POMIJANE_DOKUMENTY = new Set(['docs/zadania.md']);
 
 // Ścieżki w cudzych systemach (tekst po „Ustawienia → ”). Krótko i z powodem.
@@ -99,7 +99,7 @@ const DALEJ = new RegExp(String.raw`${OZDOBY_PO}${STRZALKA}`, 'uy');
 const SPOJNIK = String.raw`(?:i|oraz)\s(?!${OZDOBY}(?:${wzorListy([...ZAKLADKI.keys(), 'Analizy i finanse'])})${OZDOBY_PO}\s*→)`;
 const KONIEC_ETYKIETY = new RegExp(String.raw`(?:${OZDOBY_PO.replace(/\*$/, '+')}|${OZDOBY_PO}(?:$|[ \t]*\n(?![\s#*]*${SPOJNIK})`
   + String.raw`|[.,;:!?…)\]”"'<]|\s+(?!\s)(?!${SPOJNIK})(?!\p{Lu})))`, 'uy');
-// PRZ-174 B1 (M14): dopisek małą literą sklejony z etykietą w nieistniejącą nazwę — JEDNO słowo (albo „i”/„oraz”
+// Dopisek małą literą sklejony z etykietą w nieistniejącą nazwę — JEDNO słowo (albo „i”/„oraz”
 // + jedno słowo) w tym samym wierszu, zaraz po nim koniec zdania, wiersza, napisu albo znacznika:
 // „→ Włączone funkcje sklepu.”, „**Ustawienia → Firma** i logo”. Zdanie, które toczy się dalej, przechodzi:
 // „→ Allegro tego kanału.” (dwa słowa), „→ Firma uzupełnij NIP” (dalej słowo), „→ KSeF sprawdź, czy…” (po słowie
@@ -115,7 +115,10 @@ const KAZDA_ETYKIETA = dopasowanie(wzorListy([...ZAKLADKI.keys(), ...[...ZAKLADK
 // Elementy ekranu (sekcja, przycisk), do których prowadzi dalszy ciąg ścieżki: menu ich nie ma, ale ekran tak
 // („Integracje → ERLI → Metody dostawy”, „Integracje → Poczta wychodząca → Usuń ustawienia poczty”). Klucz = etykieta
 // poprzedniego poziomu (zakładka albo nazwa integracji), wartość = napisy z tego ekranu. Każdy napis musi stać
-// w src/ (osobny test niżej), więc przemianowany przycisk wyrzuci go z listy, a nie zostawi martwego wyjątku.
+// w widoku tego ekranu (EKRANY_ELEMENTOW, osobny test niżej), więc przemianowany przycisk wyrzuci go z listy,
+// a nie zostawi martwego wyjątku. Sekcje „Poczty wychodzącej” to prawdziwe nagłówki <h2> widoku, nie ręczna lista.
+const EKRAN_POCZTY = 'src/moduly/ustawienia/widoki/ustawienia-poczta.ejs';
+export const naglowkiH2 = (zrodlo) => [...zrodlo.matchAll(/<h2[^>]*>([^<>]+)<\/h2>/g)].map((m) => m[1].trim());
 export const ELEMENTY_EKRANU = {
   ERLI: ['Metody dostawy', 'Dodaj konto'],
   Allegro: ['Dodaj konto'],
@@ -123,9 +126,21 @@ export const ELEMENTY_EKRANU = {
   DPD: ['Odłącz DPD'],
   InPost: ['Pobranie przy paczkomatach', 'Odłącz InPost'],
   'Pobranie przy paczkomatach': ['Mam umowę z InPostem na przesyłki za pobraniem'],
-  'Poczta wychodząca': ['Adres panelu', 'Usuń ustawienia poczty'],
+  'Poczta wychodząca': [...naglowkiH2(fs.readFileSync(path.join(KORZEN, EKRAN_POCZTY), 'utf8')), 'Usuń ustawienia poczty'],
   'Stany magazynowe': ['Wyłącz stany'],
   'Automaty systemowe': ['Automatyczna wysyłka do KSeF'],
+};
+// Pliki, w których dany ekran ma te napisy (konfigurator integracji z kroków modułu, reszta z widoku).
+export const EKRANY_ELEMENTOW = {
+  ERLI: ['src/domena/modul-erli.ts'],
+  Allegro: ['src/domena/modul-allegro.ts'],
+  WooCommerce: ['src/domena/modul-woo.ts'],
+  DPD: ['src/moduly/wysylka/widoki/ustawienia-dpd.ejs'],
+  InPost: ['src/moduly/wysylka/widoki/ustawienia-inpost.ejs'],
+  'Pobranie przy paczkomatach': ['src/moduly/wysylka/widoki/ustawienia-inpost.ejs'],
+  'Poczta wychodząca': [EKRAN_POCZTY],
+  'Stany magazynowe': ['src/moduly/ustawienia/widoki/ustawienia-magazyn.ejs'],
+  'Automaty systemowe': ['src/moduly/faktury/widoki/_automat-ksef.ejs'],
 };
 const WSZYSTKIE_ELEMENTY = Object.values(ELEMENTY_EKRANU).flat();
 const WSZYSTKIE_ETYKIETY = [...ZAKLADKI.keys(), ...[...ZAKLADKI.values()].flat(), ...WSZYSTKIE_ELEMENTY];
@@ -241,16 +256,29 @@ const wzgledna = (p) => path.relative(KORZEN, p).split(path.sep).join('/');
 const KONFIGURACJA = 'docs/konfiguracja.json';
 
 // Grupy plików z własnym progiem: zgubiony skan jednej grupy (zła ścieżka katalogu, zepsute wycinanie) nie może
-// przejść po cichu, bo reszta repo i tak przekracza próg ogólny. Progi z zapasem w dół (ok. połowa stanu z dnia
-// PRZ-174 B1: ogółem 391 — src 132, docs 133, konfiguracja.json 80, scripts 31, deploy 12, .env.example 3; z wiersza
+// przejść po cichu, bo reszta repo i tak przekracza próg ogólny. Progi z zapasem w dół (ok. połowa pomiaru:
+// ogółem 391 — src 132, docs 133, konfiguracja.json 80, scripts 31, deploy 12 (w tym config.przyklad.json 1, aktualizuj.sh 7), .env.example 3; z wiersza
 // „stan skanu” w teście niżej), ale każdy > 0: skaner, który w grupie nic nie widzi, pada.
-const PROGI = { src: 65, docs: 65, konfiguracja: 40, scripts: 15, deploy: 6, env: 1 };
+// Dwa pliki deploy/ mają własny próg: przykład konfiguracji drukarki (JSON) i skrypt powłoki, bo ich rodzaje
+// (.json, .sh) skanuje osobna gałąź tekstDoSkanu — zgubiona gałąź nie może zniknąć w sumie grupy deploy.
+const PLIKI_Z_PROGIEM = { 'deploy/drukarka/config.przyklad.json': 'drukarka-json', 'deploy/klient/aktualizuj.sh': 'aktualizuj-sh' };
+const PROGI = { src: 65, docs: 65, konfiguracja: 40, scripts: 15, deploy: 2, env: 1, 'drukarka-json': 1, 'aktualizuj-sh': 1 };
 const OGOLEM_MIN = 195;
+
+// Znane rozbieżności tekstu z ekranem, do poprawienia w tekście (nie w teście): sekcja Poczty wychodzącej ma
+// nagłówek „Adres OMS-u w mailach”, a te teksty nazywają ją „Adres panelu”. Wpis znika razem z poprawką tekstu.
+const ROZBIEZNE_Z_EKRANEM = [
+  ['docs/instalacja-docker.md', 'Ustawienia → Integracje → Poczta wychodząca → Adres panelu'],
+  ['docs/zmienne.md', 'Ustawienia → Integracje → Poczta wychodząca → Adres panelu'],
+  ['docs/konfiguracja.json', 'Ustawienia → Integracje → Poczta wychodząca → Adres panelu'],
+  ['scripts/zmienne-panel.mjs', 'Integracje → Poczta wychodząca → Adres panelu'],
+];
 
 function grupa(p) {
   const w = wzgledna(p);
   if (w === KONFIGURACJA) return 'konfiguracja';
   if (w === '.env.example') return 'env';
+  if (PLIKI_Z_PROGIEM[w]) return PLIKI_Z_PROGIEM[w];
   return w.split('/')[0];
 }
 
@@ -258,11 +286,11 @@ function plikiDoSkanu() {
   const src = pliki(path.join(KORZEN, 'src'), (p) => KOD.has(path.extname(p)));
   const docs = pliki(path.join(KORZEN, 'docs'), (p, nazwa) => nazwa.endsWith('.md') && !nazwa.startsWith('prz')
     && !POMIJANE_DOKUMENTY.has(wzgledna(p)) && !/^docs\/(plany|archiwum)\//.test(wzgledna(p)));
-  // PRZ-174 B1: scripts/ — napisy wypisywane na ekran i wpisywane do dokumentów (zmienne-tabela.mjs → docs/zmienne.md).
+    // scripts/ — napisy wypisywane na ekran i wpisywane do dokumentów (zmienne-tabela.mjs → docs/zmienne.md).
   // Pomijamy jednorazowe skrypty zadań (prz*, mutacje-*): cytują stare teksty i celowo zepsute wersje.
   const scripts = pliki(path.join(KORZEN, 'scripts'), (p, nazwa) => /\.(?:m?js|ts|sh)$/.test(nazwa)
     && !/^(?:prz|mutacje-)/.test(nazwa) && !wzgledna(p).startsWith('scripts/testy/'));
-  // PRZ-168 D5: instrukcje instalacji czyta obcy sprzedawca tak samo jak docs/; PRZ-174 B1: także skrypty
+  // Instrukcje instalacji czyta obcy sprzedawca tak samo jak docs/; także skrypty
   // i przykładowe pliki konfiguracji w deploy/ (echo na ekran, zdania wpisywane do produkcja.env).
   const deploy = [
     ...pliki(path.join(KORZEN, 'deploy'), (p, nazwa) => /\.(?:md|json|sh|mjs)$/.test(nazwa)),
@@ -295,7 +323,7 @@ describe('ścieżki „Ustawienia → …” w src/ i docs/ wskazują pozycje z 
       'Otwórz Integracje → Moje połączenia albo Faktury i podatki → KSeF.',
       'W Ustawienia → Firma uzupełnij NIP, a w Ustawieniach → System (Stan systemu) sprawdź połączenia',
       '**Ustawienia → Kopie zapasowe** — tu kopie.',
-      // PRZ-174 B1 — nowe formy, po jednym dobrym przypadku na każdą
+            // Odmienione formy, po jednym dobrym przypadku na każdą
       'Dane wpiszesz z Ustawień → Firma.', // „z Ustawień →”
       'Zarządzasz Ustawieniami → Zespół i dostęp → Użytkownicy.', // „Ustawieniami →”
       'Rachunek w Ustawienia -> Firma -> Rachunek bankowy.', // „->”
@@ -310,6 +338,10 @@ describe('ścieżki „Ustawienia → …” w src/ i docs/ wskazują pozycje z 
       '**Ustawienia → Firma** — dane i logo.', // „**” + myślnik
       'Wróć do Ustawienia → ${dzial} → Stany magazynowe.', // po wstawce dobra zakładka
       'Wróć do Ustawienia → <%= dzial %> → Klucze API.', // po wstawce EJS dobra zakładka
+      'Wróć do Ustawienia → Integracje → ${zakladka} → ERLI.', // po wstawce dobra integracja z katalogu
+      'Wróć do Ustawienia → Integracje → ${zakladka} → KSeF.', // po wstawce dobra integracja z katalogu
+      'Wróć do Ustawienia → Integracje → ${zakladka} → ERLI → Metody dostawy.', // po wstawce integracja i jej element
+      'Ustawienia → Faktury i podatki → KSeF → sprawdź połączenie.', // trzeci poziom małą literą = polecenie
       'Wróć do Ustawienia → Integracje → ${zakladka} → inFakt.', // po wstawce dobra integracja
       'if (Ustawienia => 1) x();', // „=>” w kodzie to nie strzałka
       'Połącz ponownie w Ustawieniach → Integracje → Fakturownia ponownie.', // słowo zdania, nie dopisek
@@ -318,6 +350,7 @@ describe('ścieżki „Ustawienia → …” w src/ i docs/ wskazują pozycje z 
       'Ustawienia → Integracje → Dodaj integrację → Allegro → „Dodaj konto”.', // element na czwartym poziomie
       'Ustawienia → Integracje → InPost → Pobranie przy paczkomatach → Mam umowę z InPostem na przesyłki za pobraniem.', // element w elemencie
       'Ustawienia → Integracje → Poczta wychodząca → Usuń ustawienia poczty.', // element ekranu zakładki
+      'Ustawienia → Integracje → Poczta wychodząca → Podpis maili.', // sekcja z nagłówka <h2> widoku
       'Ustawienia → Integracje → Allegro → połącz kanał z kontem.', // mała litera na poziomie ≥ 3 = polecenie
       'Wróć do Ustawienia → ${dzial} → ${zakladka} → Wyłącz stany.', // po wstawce znany element
     ];
@@ -332,7 +365,8 @@ describe('ścieżki „Ustawienia → …” w src/ i docs/ wskazują pozycje z 
       'Ustawienia → <a href="/ustawienia/druk">Druk i etykiety</a>',
       'Otwórz <a href="/x">Integracje → Reklamy</a>',
       'W menu Integracje → Moduł faktur wybierz program.',
-      'Wpisz w Ustawienia → Integracje → Poczta wychodząca → Podpis maili.',
+      'Wpisz w Ustawienia → Integracje → Poczta wychodząca → Podpis wiadomości.',
+      'Wpisz w Ustawienia → Integracje → Poczta wychodząca → Adres OMS-u.', // nagłówek brzmi „Adres OMS-u w mailach”
       'Połącz w Ustawienia → Integracje → GLS.',
       'Logo w Ustawienia → Firma i logo.',
       'Włącz w Ustawienia → System i moduły.',
@@ -350,7 +384,7 @@ describe('ścieżki „Ustawienia → …” w src/ i docs/ wskazują pozycje z 
       'Ustawienia → Integracje i Kurierzy → DPD.',
       'Ustawienia → Integracje → DPD i Kurierzy → InPost.',
       'Ustawienia → Firma oraz Rachunek → Rachunek bankowy.',
-      // PRZ-174 B1 — nowe formy, po jednym złym przypadku na każdą
+            // Odmienione formy, po jednym złym przypadku na każdą
       'włącz je z Ustawień → Magazyn.', // M05a
       'Zarządzasz Ustawieniami → Konta.', // „Ustawieniami →”
       'włącz je w Ustawieniach -> Magazyn.', // M05b
@@ -367,6 +401,9 @@ describe('ścieżki „Ustawienia → …” w src/ i docs/ wskazują pozycje z 
       'Wróć do Ustawienia → ${dzial} → Magazyn.', // po wstawce zła zakładka
       'Wróć do Ustawienia → <%= dzial %> → Magazyn.', // po wstawce EJS zła zakładka
       'Wróć do Ustawienia → Integracje → ${zakladka} → Klucz.', // po wstawce trzeci poziom spoza menu
+      'Wróć do Ustawienia → Integracje → ${zakladka} → ERLI → Klucz.', // po wstawce dobra integracja, zły element
+      'Wróć do Ustawienia → Integracje → ${zakladka} → KSeF → Metody dostawy.', // element innej integracji
+      'Ustawienia → Faktury i podatki → KSeF → Sprawdź połączenie.', // trzeci poziom wielką literą = nieistniejąca pozycja
       'Ustawienia → Faktury i podatki → Program do faktur → Wysyłka do KSeF.', // B4b — zakładka bez takiego elementu
       'Ustawienia → Integracje → DPD → Dodaj konto.', // element z innego ekranu
       'Ustawienia → Integracje → ERLI → Metody dostawy → Kurier.', // poziom dalej niż ekran
@@ -381,7 +418,7 @@ describe('ścieżki „Ustawienia → …” w src/ i docs/ wskazują pozycje z 
     expect(sprawdzSciezki(tekstDoSkanu('.env.example', '# Ustawienia → System\n# i moduły.')).naruszenia).toHaveLength(1);
   });
 
-  it('PRZ-174 B1: pliki .json i .sh — ucieczki w napisie JSON, cały skrypt powłoki', () => {
+  it('pliki .json i .sh — ucieczki w napisie JSON, cały skrypt powłoki', () => {
     const json = '{\n  "skutekBraku": "Wysyłkę włączysz w Ustawienia → Program do faktur → Wysyłka do KSeF."\n}';
     expect(sprawdzSciezki(tekstDoSkanu('docs/konfiguracja.json', json)).naruszenia.map((n) => n.linia)).toEqual([2]);
     const jsonDobry = '{ "opis": "Wpisz w \\"Ustawienia → Firma\\"\\nDane z panelu wygrywają." }';
@@ -392,11 +429,22 @@ describe('ścieżki „Ustawienia → …” w src/ i docs/ wskazują pozycje z 
     expect(sprawdzSciezki(tekstDoSkanu('deploy/klient/x.sh', sh)).naruszenia.map((n) => n.linia)).toEqual([2]);
   });
 
-  it('PRZ-174 B1: elementy ekranu z ELEMENTY_EKRANU istnieją w src/ (lista nie butwieje)', () => {
-    const zrodla = pliki(path.join(KORZEN, 'src'), (p) => KOD.has(path.extname(p)))
-      .map((p) => fs.readFileSync(p, 'utf8')).join('\n');
-    const brak = Object.values(ELEMENTY_EKRANU).flat().filter((e) => !zrodla.includes(e));
-    expect(brak, 'element ekranu, którego nie ma w żadnym pliku src/ — usuń go z ELEMENTY_EKRANU').toEqual([]);
+  it('elementy ekranu z ELEMENTY_EKRANU stoją w widoku swojego ekranu (lista nie butwieje)', () => {
+    expect(Object.keys(EKRANY_ELEMENTOW).sort(), 'każdy klucz ELEMENTY_EKRANU ma plik ekranu').toEqual(Object.keys(ELEMENTY_EKRANU).sort());
+    const brak = [];
+    for (const [klucz, elementy] of Object.entries(ELEMENTY_EKRANU)) {
+      const tekst = EKRANY_ELEMENTOW[klucz].map((plik) => tekstDoSkanu(plik, fs.readFileSync(path.join(KORZEN, plik), 'utf8'))).join('\n');
+      for (const e of elementy) if (!tekst.includes(e)) brak.push(`${klucz} → ${e}`);
+    }
+    expect(brak, 'element, którego nie ma w widoku swojego ekranu — usuń go z ELEMENTY_EKRANU').toEqual([]);
+  });
+
+  it('sekcje Poczty wychodzącej pochodzą z nagłówków <h2> widoku', () => {
+    const zrodlo = fs.readFileSync(path.join(KORZEN, EKRAN_POCZTY), 'utf8');
+    expect(naglowkiH2('<h2>A</h2><h2 class="x">B c</h2><h2><%= x %></h2>')).toEqual(['A', 'B c']);
+    for (const h of naglowkiH2(zrodlo).filter((t) => !t.includes('<%'))) expect(ELEMENTY_EKRANU['Poczta wychodząca']).toContain(h);
+    expect(zrodlo).toContain('<h2>Serwer poczty</h2>');
+    expect(sprawdzSciezki('Ustawienia → Integracje → Poczta wychodząca → Serwer poczty.').naruszenia).toEqual([]);
   });
 
   it('w komentarzu kodu ścieżka nie jest sprawdzana, w napisie jest', () => {
@@ -408,13 +456,15 @@ describe('ścieżki „Ustawienia → …” w src/ i docs/ wskazują pozycje z 
 
   it('każda ścieżka wskazuje dział i zakładkę z menu', () => {
     const naruszenia = [];
-    const liczby = { src: 0, docs: 0, konfiguracja: 0, scripts: 0, deploy: 0, env: 0 };
+    const liczby = Object.fromEntries(Object.keys(PROGI).map((g) => [g, 0]));
     let sprawdzone = 0;
     for (const plik of plikiDoSkanu()) {
       const wynik = sprawdzSciezki(tekstDoSkanu(plik, fs.readFileSync(plik, 'utf8')));
       sprawdzone += wynik.sprawdzone;
       liczby[grupa(plik)] += wynik.sprawdzone;
-      for (const n of wynik.naruszenia) naruszenia.push(`${wzgledna(plik)}:${n.linia}: ${n.sciezka}`);
+      for (const n of wynik.naruszenia) {
+        if (!ROZBIEZNE_Z_EKRANEM.some(([f, poczatek]) => f === wzgledna(plik) && n.sciezka.startsWith(poczatek))) naruszenia.push(`${wzgledna(plik)}:${n.linia}: ${n.sciezka}`);
+      }
     }
     expect(naruszenia, `ścieżki do pozycji, których nie ma w menu Ustawień:\n${naruszenia.join('\n')}`).toEqual([]);
     // kontrola skanera: inaczej pusty skan dałby zieleń; osobno każda grupa (stan skanu w komunikacie)

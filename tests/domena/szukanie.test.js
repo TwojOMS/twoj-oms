@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { normalizuj, polaSzukania, pasujeDoSzukania, filtrujSzukaniem } from '../../src/domena/szukanie.js';
 
-// Wyszukiwarka nad tabelą zamówień (zadanie „strona główna", 2026-07-31). Reguła jest
+// Wyszukiwarka nad tabelą zamówień. Reguła jest
 // CZYSTA — testuje się bez bazy i bez HTTP; ten plik pilnuje samej reguły, a
 // tests/oms/web-szukanie.test.js tego, że trasa jej faktycznie używa.
 

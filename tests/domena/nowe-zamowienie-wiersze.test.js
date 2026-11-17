@@ -3,7 +3,7 @@ import {
   POLA_WIERSZA_POZYCJI, dodajWierszFormularza, usunWierszFormularza, liczbaWierszyFormularza,
 } from '../../src/domena/nowe-zamowienie.js';
 
-// PRZ-103 (21.10.2026): na ekranie „Nowe zamówienie" operator dokłada i kasuje wiersze pozycji.
+// Na ekranie „Nowe zamówienie" operator dokłada i kasuje wiersze pozycji.
 // Wiersz to OSIEM równoległych tablic (`poz_nazwa[]`, `poz_cena_brutto[]`, ukryte `poz_produkt_id[]`…).
 // Skasowanie wiersza w jednej tablicy, a nie w drugiej, przesuwa cenę i tożsamość produktu
 // o jeden wiersz w dół — po cichu, bo każdy wiersz z osobna wygląda poprawnie.
@@ -58,7 +58,7 @@ describe('dodajWierszFormularza', () => {
     const wynik = dodajWierszFormularza(trzyWiersze());
     for (const pole of POLA_WIERSZA_POZYCJI) {
       expect(wynik[pole]).toHaveLength(4);
-      // PRZ-106: ilość w nowym wierszu to 1 (wartość, nie podpowiedź), reszta pusta.
+      // Ilość w nowym wierszu to 1 (wartość, nie podpowiedź), reszta pusta.
       expect(wynik[pole][3]).toBe(pole === 'poz_ilosc' ? '1' : '');
     }
     expect(wynik.poz_nazwa.slice(0, 3)).toEqual(trzyWiersze().poz_nazwa);
@@ -70,7 +70,7 @@ describe('dodajWierszFormularza', () => {
 });
 
 describe('liczbaWierszyFormularza', () => {
-  // Prośba właściciela 21.10: „zrób 1 wiersz na start”. Do PRZ-103 było pięć pustych.
+  // Formularz zaczyna od jednego pustego wiersza.
   it('pierwsze wejście na ekran: jeden pusty wiersz', () => {
     expect(liczbaWierszyFormularza({})).toBe(1);
   });

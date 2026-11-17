@@ -32,7 +32,7 @@ describe('kwotaSlownie — zero', () => {
 
 // Odmiana „złoty/złote/złotych" — klasyczna polska liczebnikowa pułapka.
 //
-// Reguła (poprawiona po recenzji — pierwsza wersja tego testu ZASZYŁA błędną regułę
+// Reguła (pierwsza wersja tego testu ZASZYŁA błędną regułę
 // „jedność 1 → złoty" i przez to potwierdzała zły kod zamiast go łapać):
 //   - liczba RÓWNA DOKŁADNIE 1 → „złoty" (forma pojedyncza — WYŁĄCZNIE dla samej jedynki,
 //     nie dla każdej liczby kończącej się na 1: „21 złotych", nie „21 złoty");

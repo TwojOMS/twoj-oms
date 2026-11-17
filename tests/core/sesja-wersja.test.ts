@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createHmac } from 'node:crypto';
 import { sprawdz } from '../../src/core/bezpieczenstwo/sesja.js';
-import { podpiszWersje as podpisz } from '../pomoc/bezpieczenstwo-prz-007.ts';
+import { podpiszWersje as podpisz } from '../pomoc/bezpieczenstwo-typowane.ts';
 
 // Syntetyczny sekret wyłącznie tej próby. Surowy signer pozwala sprawdzić walidację
 // również poprawnie podpisanej treści pochodzącej od starszego/innego wystawcy.

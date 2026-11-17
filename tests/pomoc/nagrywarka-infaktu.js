@@ -1,11 +1,11 @@
-// PRZ-118.01 — nagrywarka żądań do inFaktu: podstawiany `globalThis.fetch`, który
+// Nagrywarka żądań do inFaktu: podstawiany `globalThis.fetch`, który
 //  (1) zapisuje KAŻDE żądanie do api.infakt.pl w postaci porównywalnej (metoda, ścieżka z posortowanym
 //      zapytaniem, nagłówki bez klucza API, ciało JSON z posortowanymi kluczami),
 //  (2) odpowiada encjami z atrapy piaskownicy (deploy/proba/atrapy/infakt.mjs — te same kształty, co
 //      prawdziwe API; pilnuje tego tests/instalacja/atrapy-kontrakt.test.js), trzymanej we WŁASNEJ bazie,
 //  (3) nie wypuszcza niczego do sieci: VIES dostaje odpowiedź „numer ważny”, każdy inny adres — odmowę.
 //
-// Nagrywarka siedzi na granicy procesu (fetch), więc nie wie nic o usługach OMS-u: zmiana 02–09 PRZ-118 może
+// Nagrywarka siedzi na granicy procesu (fetch), więc nie wie nic o usługach OMS-u: można
 // przebudować wszystko między trasą a klientem inFaktu, a zapis ma zostać ten sam.
 //
 // Determinizm:

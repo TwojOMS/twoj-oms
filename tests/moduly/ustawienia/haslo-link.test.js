@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { zalozKonto, kontoPoLoginie, ustawCzynne, ostatnieLogowania } from '../../../src/core/bezpieczenstwo/konta.js';
 import { wydajLink } from '../../../src/moduly/ustawienia/linki-hasla.js';
-import { nowyPanel, get, post, ORIGIN } from '../../pomoc/konta-prz068.js';
+import { nowyPanel, get, post, ORIGIN } from '../../pomoc/panel-konta-testowe.js';
 
 const NOWE = { nowe: 'nowe-haslo-12345', nowe2: 'nowe-haslo-12345' };
 function panel() {
@@ -13,8 +13,8 @@ function panel() {
 }
 const NIEWAZNY = 'Link jest nieważny — poproś administratora o nowy';
 
-describe('PRZ-069 /haslo/:token', () => {
-  it('bez logowania: formularz, no-store, Referrer-Policy strict-origin (recenzja D8 r1, P1-1), bez menu panelu', async () => {
+describe('/haslo/:token', () => {
+  it('bez logowania: formularz, no-store, Referrer-Policy strict-origin, bez menu panelu', async () => {
     const { app, link } = panel();
     const r = await get(app, `/haslo/${link()}`);
     expect(r.statusCode).toBe(200);

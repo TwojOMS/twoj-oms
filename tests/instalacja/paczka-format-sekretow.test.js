@@ -1,4 +1,4 @@
-// PRZ-182: paczka klienta niesie w wydanie.json format poświadczeń w bazie, który zna PAKOWANY commit
+// Paczka klienta niesie w wydanie.json format poświadczeń w bazie, który zna PAKOWANY commit
 // (plik src/core/bezpieczenstwo/format-sekretow.json z tego commita, bez wykonywania jego kodu; brak pliku = 0).
 // Aktualizator decyduje po nim przy powrocie do starszego wydania — format z bieżącego drzewa oznaczyłby
 // stare wydanie jako znające szyfrowanie i powrót pominąłby odszyfrowanie bazy.

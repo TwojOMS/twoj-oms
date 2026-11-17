@@ -288,7 +288,7 @@ it('Moje połączenia pokazują skonfigurowane i odłączone konto oraz zachowuj
  const katalog=await f.req('GET','/ustawienia/integracje/katalog');expect(katalog.body).toContain(root+'/nowe');
 });
 const tresc=(html:string)=>html.slice(html.indexOf('<div class="allegro-konfiguracja">'));
-it('B3, U21–U22: ekran dodawania nie mówi naraz „krok 0 zrobione” i „Najpierw załóż aplikację”; jeden „Dalej”',async()=>{
+it('ekran dodawania nie mówi naraz „krok 0 zrobione” i „Najpierw załóż aplikację”; jeden „Dalej”',async()=>{
  const f=await setup();
  const przyciskiDalej=(html:string)=>html.match(/<button[^>]*>\s*Dalej/g)??[];
  const bez=await f.req('GET',root+'/nowe');
@@ -297,7 +297,7 @@ it('B3, U21–U22: ekran dodawania nie mówi naraz „krok 0 zrobione” i „Na
  const po=await f.req('GET',root+'/nowe');
  expect(po.body).toContain('Aplikacja Allegro — zrobione');expect(po.body).not.toContain('Najpierw załóż aplikację');expect(przyciskiDalej(po.body)).toHaveLength(1);
 });
-it('PRZ-146.05 (B1): bez aplikacji bieżący jest krok 0; z aplikacją w jednym środowisku start od 1 i ostrzeżenie przy drugim',async()=>{
+it('bez aplikacji bieżący jest krok 0; z aplikacją w jednym środowisku start od 1 i ostrzeżenie przy drugim',async()=>{
  const f=await setup();
  const biezacy=(html:string)=>html.match(/class="step current" aria-current="step">\s*<span class="step-dot" aria-hidden="true">(\d)</)?.[1];
  const ostrzezenie=(html:string,s:string)=>html.match(new RegExp(`<p class="ust-uwaga" data-bez-aplikacji="${s}"( hidden)?[^>]*>([\\s\\S]*?)</p>`));
@@ -318,7 +318,7 @@ it('PRZ-146.05 (B1): bez aplikacji bieżący jest krok 0; z aplikacją w jednym 
  const widoczne=ostrzezenie(krok1.body,'sandbox')!;expect(widoczne).toBeTruthy();expect(widoczne[1]).toBeUndefined();
  expect(widoczne[2]).toContain(`href="${root}/aplikacja?srodowisko=sandbox"`);
 });
-it('U24–U27: działające konto ma tytuł „Allegro: nazwa”, stan zamiast stepera, „Odłącz” jako przycisk niebezpieczny (B9); główny przycisk sprawdzania tylko przy problemie; zapis nazwy ma wspólny wariant zapisu',async()=>{
+it('działające konto ma tytuł „Allegro: nazwa”, stan zamiast stepera, „Odłącz” jako przycisk niebezpieczny; główny przycisk sprawdzania tylko przy problemie; zapis nazwy ma wspólny wariant zapisu',async()=>{
  const f=await setup(),k=await f.draft('Półcień');await f.req('POST',root+'/aplikacja',{kod:'CODE-BAIT',srodowisko:'produkcja'});
  const p=await f.candidate(k);await f.req('POST',root+'/'+k+'/aktywuj',p);
  await f.req('POST',root+'/'+k+'/sprawdz',{wersja:String(f.repo.pobierz(k).wersja)});
@@ -329,7 +329,7 @@ it('U24–U27: działające konto ma tytuł „Allegro: nazwa”, stan zamiast s
  const bl=await f.req('POST',root+'/'+k+'/sprawdz',{wersja:String(f.repo.pobierz(k).wersja)});expect(bl.body).toContain('nie odpowiada');
  const problem=await f.req('GET',root+'/'+k);expect(problem.body).toMatch(/class="btn btn--maly btn--glowny"[^>]*>Sprawdź połączenie/);
 });
-it('G16a: zapis przy zatrzymywanym pobieraniu wraca na ekran kanału, nie gołym tekstem 202',async()=>{
+it('zapis przy zatrzymywanym pobieraniu wraca na ekran kanału, nie gołym tekstem 202',async()=>{
  const f=await setup(true);
  expect(f.repo.zapiszZmiane('legacy',0,{kontoId:'123',pobieranie:'zatrzymywanie'},{id:1,login:'admin'}).ok).toBe(true);
  const r=await f.req('POST',root+'/legacy/nazwa',{nazwa:'Pracownia Półcień',wersja:String(f.repo.pobierz('legacy').wersja)});

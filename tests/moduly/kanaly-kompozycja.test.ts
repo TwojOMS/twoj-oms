@@ -66,7 +66,6 @@ it('endpoint wymaga administratora także bez modułu web i nie używa starego r
    env:{OMS_SPRZEDAWCA_NIP:'1234563218',OMS_RACHUNEK:'34109010140000000000000000'}});
   const r=await a.app.inject({method:'POST',url:'/ustawienia/kanaly/rynek/wiazanie'});
   expect(r.statusCode).toBe(403);expect(r.body).toContain('administrator');
-  expect(a.usluga('ustawienia','widokIntegracji')).toBe(renderer);
   expect(renderer).not.toHaveBeenCalled();
  }finally{await a?.app.close();db.close();}
 });

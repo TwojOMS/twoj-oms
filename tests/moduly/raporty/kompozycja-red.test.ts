@@ -3,11 +3,10 @@ import { tmpdir } from 'node:os';
 import { zbudujOms } from '../../../src/oms/bootstrap.ts';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { ustawGranice, zapiszHistorie } from '../../../src/oms/db/historia-sprzedazy.js';
-import { KANALY, envRaportowHistorycznyFixture } from '../../pomoc/raporty-historyczne-fixture.js';
+import { KANALY, envRaportowHistorycznyFixture } from '../../pomoc/przykladowe-dane-raportow.js';
 
-// PRZ-027 RED: OBECNA produkcyjna kompozycja (domyślna lista modułów bootstrapu), prawdziwa
-// baza z migracji i jawnie fikcyjne dane. Bez helperów parytetu i bez nieistniejącego manifestu:
-// po GREEN te same asercje muszą przejść, bo koordynator dopisze modulRaporty do bootstrapu.
+// Produkcyjna kompozycja raportów: domyślna lista modułów bootstrapu,
+// prawdziwa baza z migracji i jawnie fikcyjne dane.
 const env = { ...envRaportowHistorycznyFixture, OMS_USER: 'operator027', OMS_PASS: 'fixture-027',
   OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000',
   OMS_PROFORMY_KATALOG: tmpdir(), OMS_ETYKIETY_KATALOG: tmpdir() };
@@ -59,19 +58,19 @@ async function zAplikacja(test: (z: Awaited<ReturnType<typeof zbudujOms>>) => Pr
   }
 }
 
-describe('PRZ-027 kompozycja — kontrola bramki (zielona przed i po implementacji)', () => {
+describe('kompozycja — kontrola bramki (zielona przed i po implementacji)', () => {
   it('BasicAuth odrzuca brak poświadczeń i przepuszcza operatora do routera', async () => {
     await zAplikacja(async (z) => {
       expect((await z.app.inject({ method: 'GET', url: '/raporty' })).statusCode).toBe(401);
       expect((await z.app.inject({ method: 'GET', url: '/prz027-nie-ma-takiej-trasy', headers })).statusCode).toBe(404);
-      // PRZ-027F: jawny powrót UI Finansów decyzją właściciela 07.10.2026.
+      // UI Finansów jest dostępne w kompozycji produktu.
       for (const url of ['/finanse', '/finanse/dane', '/raporty/zarzadczy', '/raporty/dane', '/raporty/dane/:miesiac'])
         expect(z.app.hasRoute({ method: 'GET', url })).toBe(true);
     });
   });
 });
 
-describe('PRZ-027 kompozycja — RED brakujących tras raportów i statystyk', () => {
+describe('kompozycja — RED brakujących tras raportów i statystyk', () => {
   it('GET /raporty renderuje sprzedaż obu epok z policzonymi kwotami kanału', async () => {
     await zAplikacja(async (z) => {
       const odp = await z.app.inject({ method: 'GET', url: '/raporty?od=2026-06-01&do=2026-07-31', headers });

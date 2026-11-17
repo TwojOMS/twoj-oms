@@ -1,3 +1,4 @@
+// Zwroty przez HTTP: rejestracja, kwoty, korekty, komunikaty i historia zamówienia.
 import { readFileSync } from 'node:fs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
@@ -5,22 +6,22 @@ import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import {
   zwrotyZamowienia, dodajZwrot, oznaczPieniadzeOddane, zarezerwujKorekte, zapiszKorekte,
 } from '../../../src/oms/db/zwroty.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { createKorekta } from '../../../src/moduly/zwroty/services/korekta.js';
 import { fileURLToPath } from 'node:url';
 import { adresZasobu } from '../../../src/core/web/wersja-zasobow.js';
 
-// PRZ-160.P1.02: wspólne skrypty układu — adresy z wersją bieżących plików publicznych.
+// Wspólne skrypty układu — adresy z wersją bieżących plików publicznych.
 const zasob = adresZasobu(fileURLToPath(new URL('../../../src/public', import.meta.url)));
 const SKRYPT_PODMENU = `<script src="${zasob('oms-podmenu.js')}"></script>`;
 const SKRYPT_NAWIGACJI = `<script type="module" src="${zasob('oms-nawigacja.js')}"></script>`;
 
-// Ksztalt wziety z tests/oms/api-sprzedaz.test.js — `buildOmsServer` NIE jest asynchroniczne,
+// Ksztalt wziety z tests/moduly/api-panelu/api-sprzedaz.test.js — `buildOmsServer` NIE jest asynchroniczne,
 // a config ma `auth: { user, pass }` (nie `authUser`/`authPass`).
-// ⚠️ Rozbieznosc z briefem: brakowalo naglowka `origin` — POST bez niego odbija sie o CSRF
+// ⚠️ Brakowalo naglowka `origin` — POST bez niego odbija sie o CSRF
 // (403 z security/csrf.js), zanim w ogole dotrze do trasy. Ta sama poprawka, co w
-// tests/oms/web-pozycje.test.js. Brakowalo tez `content-type` — bez niego @fastify/formbody
-// nie parsuje ciala i POST odbija sie o 415 (wzorem tests/oms/koszty-trasy.test.js: AUTH_POST).
+// tests/moduly/zamowienia/web-pozycje.test.js. Brakowalo tez `content-type` — bez niego @fastify/formbody
+// nie parsuje ciala i POST odbija sie o 415 (wzorem tests/moduly/koszty/koszty-trasy.test.js: AUTH_POST).
 const AUTH = {
   authorization: `Basic ${Buffer.from('adam:x').toString('base64')}`,
   origin: 'http://localhost',
@@ -37,7 +38,7 @@ const zmapowane = (nad = {}) => ({
   zrodlo_id: 1301, numer: '1301', klient: { email: 'j@k.pl' }, dostawa: {},
   metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null,
   kwota_brutto: '317.90', status_woo: 'processing', oplacone_at: null, anulowane: 0,
-  // ⚠️ DOPISANE 2026-08-15 (dwa kroki ekranu zwrotu). Bez kosztu dostawy fikstura nie miala
+  // ⚠️ Bez kosztu dostawy fikstura nie miala
   // czego proponowac w polu „Zwrot kosztu dostawy", a 198,00 + 100,90 + 19,00 to dokladnie
   // `kwota_brutto` — zamowienie zaczyna sie w koncu zgadzac samo ze soba.
   koszt_dostawy_brutto: '19.00', koszt_dostawy_netto: '15.45',
@@ -54,14 +55,14 @@ let app;
 let id;
 beforeEach(() => {
   db = openOmsDb(':memory:');
-  // ⚠️ Rozbieznosc z briefem: `zapiszZamowienie` oddaje LICZBOWE `id` wprost (return id
-  // w db/zamowienia.js), nie obiekt { id } — ta sama pulapka, co w tests/oms/zwroty-db.test.js
-  // i tests/oms/zwrot-status.test.js. `.id` na liczbie dawaloby `undefined` i psulo fikture cicho.
+  // ⚠️ `zapiszZamowienie` oddaje LICZBOWE `id` wprost (return id
+  // w db/zamowienia.js), nie obiekt { id } — ta sama pulapka, co w tests/moduly/zwroty/zwroty-db.test.js
+  // i tests/moduly/zwroty/zwrot-status.test.js. `.id` na liczbie dawaloby `undefined` i psulo fikture cicho.
   id = zapiszZamowienie(db, 'pro', zmapowane(), {});
   app = buildOmsServer({ db, config: CONFIG });
 });
 
-// ⚠️ KOLOR NA PROSBE WŁAŚCICIELA (01.09.2026: „zrób na czerwono lub jakiś inny wyraźny kolor").
+// ⚠️ Przycisk zwrotu ma wyraźny kolor.
 // Wyglad rozstrzyga WYLACZNIE klasa w HTML-u i regula w arkuszu, wiec cala suita byla na to
 // slepa — zdjecie klasy przechodzilo na zielono (zmierzone mutacja). Test sprawdza OBIE
 // warstwy, bo sama klasa bez reguly nie farbuje niczego.
@@ -69,7 +70,7 @@ describe('karta: „Zarejestruj zwrot" jest wyróżniony kolorem', () => {
   it('odnośnik na karcie jest czerwony (btn--groza), a arkusz zachowuje btn--groza dla innych akcji', async () => {
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: AUTH });
     expect(r.statusCode).toBe(200);
-    // D7 (04.11) zdjęło czerwień; właściciel 06.11 (PRZ-154.E1.7): „Przycisk Zwrotu zrób na czerwono”.
+    // Przycisk zwrotu jest czerwony.
     expect(r.body).toMatch(/<a class="btn btn--groza" href="\/zamowienia\/\d+\/zwrot">Zarejestruj zwrot<\/a>/);
     // ⚠️ WSZYSTKIE reguly konczace sie na `.btn--groza {`, nie pierwsza z brzegu: arkusz ma
     // takze wariant kontekstowy (`.belka-masowa .btn--groza`, sam `color`), a on stoi wyzej.
@@ -107,7 +108,7 @@ describe('ekran zwrotu', () => {
       ]).toString(),
     });
     expect(zapis.statusCode).toBe(302);
-    // PRZ-147.03: po rejestracji ekran zwrotu (następny krok — korekta), z tym samym powrotem.
+    // Po rejestracji ekran zwrotu (następny krok — korekta), z tym samym powrotem.
     expect(zapis.headers.location).toBe(`/zamowienia/${id}/zwrot?powrot=%2F%3Fstatus%3Dnowe%26kanal%3Dpro`);
   });
 
@@ -119,7 +120,7 @@ describe('ekran zwrotu', () => {
     expect(r.body).toContain('value="s77"');
   });
 
-  it('zapisuje zwrot czesciowy i prowadzi na ekran zwrotu (PRZ-147.03)', async () => {
+  it('zapisuje zwrot czesciowy i prowadzi na ekran zwrotu', async () => {
     const r = await app.inject({
       method: 'POST', url: `/zamowienia/${id}/zwrot`, headers: AUTH,
       payload: new URLSearchParams([
@@ -135,7 +136,7 @@ describe('ekran zwrotu', () => {
     expect(lista[0].pozycje).toHaveLength(1);
   });
 
-  // ⚠️ `pozycja_kwota` dopasowana do naglowkowej `kwota` (bariera spojnosci, 2026-08-15) —
+  // ⚠️ `pozycja_kwota` dopasowana do naglowkowej `kwota` (bariera spojnosci) —
   // inaczej ten POST odbijalby sie o NOWA barierę zamiast o barierę "przekracza kwotę
   // zamówienia", ktorej ma dowodzic.
   it('odmowa reguly wraca 400 z polskim komunikatem i NICZEGO nie zapisuje', async () => {
@@ -158,9 +159,8 @@ describe('ekran zwrotu', () => {
 });
 
 // ---------------------------------------------------------------------------------------
-// ⚠️⚠️ EKRAN NOWEGO ZWROTU MA DWA KROKI (prosba wlasciciela 2026-08-15: „Teraz nie widać kwot
-// jakie mam wpisać — powinno być gdzieś podsumowanie zamówienia przed zwrotem. Kwota zwrotu
-// (pozycje) — czy to liczy się samo?"). Do tego dnia NIE liczylo sie samo.
+// ⚠️⚠️ EKRAN NOWEGO ZWROTU MA DWA KROKI: podsumowanie zamówienia przed zwrotem
+// oraz propozycję kwoty wyliczoną z pozycji.
 // ---------------------------------------------------------------------------------------
 
 // Krotki skrot na cialo formularza kroku 1 — dokladnie te pola, ktore wysyla przegladarka.
@@ -453,7 +453,7 @@ describe('ekran zwrotu — pozycja z RABATEM', () => {
 });
 
 // ---------------------------------------------------------------------------------------
-// ⚠️⚠️⚠️ WADA KRYTYCZNA Z RECENZJI 2026-08-15: KWOTA NIE PODAZALA ZA ILOSCIA.
+// ⚠️⚠️⚠️ KWOTA NIE PODAZALA ZA ILOSCIA.
 //
 // Zmierzone: pozycja „Zestaw 3x", 3 szt., `brutto_linii` 100,00 (rabat — cena jednostkowa
 // 35,00). Operator ustawia „wraca 1", kwoty nie rusza (bo stoi tam wiarygodna liczba, a pod
@@ -503,7 +503,7 @@ describe('ekran zwrotu — kwota PODAZA ZA ILOSCIA (pozycja z RABATEM)', () => {
     expect(r.body).toContain('<input type="hidden" name="pozycja_kwota" value="33.33">');
     expect(r.body).toContain('<input type="hidden" name="kwota" value="33.33">');
     expect(r.body).toContain('33.33 zł');
-    // ⚠️ Wzorce OBEJMUJA ZNACZNIKI, a nie sam napis (zaostrzone 2026-08-15 przy I1): od kiedy
+    // ⚠️ Wzorce OBEJMUJA ZNACZNIKI, a nie sam napis: od kiedy
     // krok 2 MOWI o przeliczeniu („panel przeliczył 100.00 → 33.33 zł […] naprawdę wyszło
     // 100.00 zł"), goly napis „100.00 zł" stoi w tresci ostrzezenia — i szukanie go zapalaloby
     // test na czerwono za zdanie, ktore jest tu POZADANE. Sprawdzamy to, o co naprawde chodzi:
@@ -514,7 +514,7 @@ describe('ekran zwrotu — kwota PODAZA ZA ILOSCIA (pozycja z RABATEM)', () => {
     expect(r.body).not.toContain('>35.00 zł<');
   });
 
-  // ⚠️⚠️ WADA WAZNA I1 (recenzja kontrolna 2026-08-15): PRZELICZENIE BYLO CICHE. Operator,
+  // ⚠️⚠️ PRZELICZENIE BYLO CICHE. Operator,
   // ktory zostawil 100,00 zl SWIADOMIE (bo tyle Allegro naprawde oddalo kupujacemu przy zwrocie
   // 1 z 3 szt. — gest, wyrownanie kosztu odeslania), dostawal zapis na 33,33 zl bez slowa.
   // Ostrzezenie, nie odmowa: przycisk „Zarejestruj zwrot" zostaje.
@@ -585,8 +585,7 @@ describe('ekran zwrotu — kwota PODAZA ZA ILOSCIA (pozycja z RABATEM)', () => {
     ]);
   });
 
-  // ⚠️ CZLOWIEK WYGRYWA (decyzja wlasciciela: „kwotę przepisujesz z Allegro i to ONA jest
-  // prawdą") — ale krok 2 MA TO POKAZAC. Ostrzezenie, nie odmowa.
+  // ⚠️ CZLOWIEK WYGRYWA: kwota przepisana z Allegro rozstrzyga — ale krok 2 MA TO POKAZAC. Ostrzezenie, nie odmowa.
   it('recznie zmieniona kwota wygrywa, ale krok 2 pokazuje obie liczby', async () => {
     const r = await app.inject({
       method: 'POST',
@@ -652,7 +651,7 @@ describe('ekran zwrotu — kwota PODAZA ZA ILOSCIA (pozycja z RABATEM)', () => {
   });
 });
 
-// ⚠️⚠️ WADA WAZNA Z RECENZJI 2026-08-15: PROPOZYCJA BYWALA ODBIJANA PRZEZ WLASNA BARIERE PANELU.
+// ⚠️⚠️ PROPOZYCJA BYWALA ODBIJANA PRZEZ WLASNA BARIERE PANELU.
 // Zmierzone: pozycje 198,00 + 100,90 + dostawa 19,00 przy `kwota_brutto = '317.00'` — kafel
 // mowil „Zostało do zwrotu 317,00 zł", pola wypelnialy sie na 317,90 i zapis odbijal sie
 // komunikatem „Suma zwrotów (317,90 zł) przekracza kwotę zamówienia (317,00 zł)". Operator
@@ -677,7 +676,7 @@ describe('ekran zwrotu — zamowienie, ktore nie sumuje sie samo ze soba', () =>
   });
 
   // ⚠️ Wzorzec MUSI pasowac do zdania, ktore panel naprawde pisze — inaczej test jest zielony
-  // zawsze i o niczym nie swiadczy (zaostrzone 2026-08-15 przy M2, [[testy-falszywa-zielen]]).
+  // zawsze i o niczym nie swiadczy.
   it('zamowienie zgodne samo ze soba nie dostaje zadnego takiego ostrzezenia', async () => {
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}/zwrot`, headers: AUTH });
     expect(r.body).not.toMatch(/za dużo, więc panel odmówi zapisu całości/i);
@@ -693,7 +692,7 @@ describe('ekran zwrotu — zamowienie, ktore nie sumuje sie samo ze soba', () =>
   });
 });
 
-// ⚠️ DROBIAZG 2 Z RECENZJI: zamowienie ANULOWANE dostawalo pelny, wypelniony formularz, a odmowe
+// ⚠️ Zamowienie ANULOWANE dostawalo pelny, wypelniony formularz, a odmowe
 // dopiero PO kliknieciu „Zarejestruj zwrot". Ekran ma powiedziec to od razu — i tym samym
 // zdaniem, ktore oddaje `parsujZwrot`.
 describe('ekran zwrotu — zamowienie anulowane', () => {
@@ -709,10 +708,10 @@ describe('ekran zwrotu — zamowienie anulowane', () => {
   });
 });
 
-// ⚠️ DROBIAZG 4 Z RECENZJI: `kwota_dostawy` nie miala sufitu — recznie sklecony POST zapisywal
+// ⚠️ `kwota_dostawy` nie miala sufitu — recznie sklecony POST zapisywal
 // zwrot dostawy 139,00 zl przy dostawie 19,00 zl, a `paryKorekty` odmawialaby potem dokumentu
 // na kwote, ktorej w zamowieniu nie ma. Zwrot zostawalby NIEROZLICZALNY.
-// ⚠️⚠️ DROBIAZG M1 (recenzja kontrolna 2026-08-15): EKRAN I BARIERA ROZJECHALY SIE PRZY
+// ⚠️⚠️ EKRAN I BARIERA ROZJECHALY SIE PRZY
 // CZESCIOWYM ZWROCIE DOSTAWY. Bariera liczy RESZTE i pozwala oddac brakujace 10,00 zl z 19,00 zl,
 // a ekran pisal „Koszt dostawy wrócił już przy wcześniejszym zwrocie — drugi raz nie wraca"
 // i zostawial puste pole. Zdanie bylo NIEPRAWDA, a operator nie mial jak dojsc do reszty
@@ -747,7 +746,7 @@ describe('ekran zwrotu — CZESCIOWY zwrot kosztu dostawy', () => {
   });
 });
 
-// ⚠️⚠️ DROBIAZG I2 (recenzja kontrolna 2026-08-15): `/podglad` ODDAWALO 500 ZAMIAST ZDANIA.
+// ⚠️⚠️ `/podglad` ODDAWALO 500 ZAMIAST ZDANIA.
 // `kwotaZaSztukiGrosze` czytalo cene PRZED strazikiem `sztuki <= 0`, a trasa nie miala `try` —
 // wiec pozycja bez ceny wywracala krok 2. Z ekranu nieosiagalne (krok 1 blokuje takie
 // zamowienie wczesniej), ale sciezka POST istnieje, a ta warstwa ma NIGDY nie rzucac.
@@ -806,8 +805,7 @@ describe('ekran zwrotu — sufit zwrotu dostawy', () => {
 });
 
 describe('karta zamowienia — trzy elementy zwrotu', () => {
-  // ⚠️ NAJWAZNIEJSZY TEST TEGO ZADANIA (prosba wlasciciela: „nie chce zeby zwroty zajmowaly
-  // za duzo miejsca na ekranie karty zamowienia"). PRZEFORMULOWANY po poprawce Zadania 5:
+  // ⚠️ NAJWAZNIEJSZY TEST ZWROTÓW NA KARCIE ZAMÓWIENIA:
   // karta dostala JEDEN staly odnosnik akcji „Zarejestruj zwrot" (patrz test nizej), wiec
   // wymog „ani slowa o zwrotach" nie da sie juz dosc doslownie — a nigdy o to nie chodzilo.
   // Wlasciwy wymog wlasciciela to brak PODSUMOWANIA: zadnej nowej sekcji, zadnego znacznika
@@ -829,8 +827,7 @@ describe('karta zamowienia — trzy elementy zwrotu', () => {
   });
 
   // Odnosnik akcji jest DOZWOLONYM WYJATKIEM od „karta bez zwrotu nie pokazuje niczego o
-  // zwrocie" — to JEDYNE wejscie z karty na ekran /zamowienia/:id/zwrot (poprawka po
-  // recenzji, patrz raport Zadania 5). Dwa osobne sprawdzenia: (1) odnosnik istnieje i (2)
+  // zwrocie" — to JEDYNE wejscie z karty na ekran /zamowienia/:id/zwrot. Dwa osobne sprawdzenia: (1) odnosnik istnieje i (2)
   // jest DOKLADNIE JEDEN — spec mowi wprost „jeden odnosnik", nie sekcja ani kilka miejsc.
   it('karta BEZ zwrotu i tak zawiera JEDEN odnosnik akcji „Zarejestruj zwrot”, prowadzacy pod wlasciwy adres', async () => {
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: AUTH });
@@ -848,12 +845,8 @@ describe('karta zamowienia — trzy elementy zwrotu', () => {
     expect(r.body).toContain('−118,00 zł');
   });
 
-  // ⚠️ Trzeci element (korekta w tabeli dokumentow) jest DZIS niedostepny przez zaden POST —
-  // Zadanie 8 (wystawienie korekty w inFakcie) jeszcze nie istnieje (routes/zwroty.js:
-  // `korekta = null`). Wiersz zapisujemy wiec WPROST przez SQL, tak jak inne testy karty
-  // symuluja stan po dokumencie, ktorego trasa jeszcze nie umie wystawic (np.
-  // web-lista.test.js: „wysłane zamówienie z fakturą do wyjaśnienia"). To sprawdza, ze
-  // WIDOK jest gotowy na Zadanie 8 juz teraz.
+  // ⚠️ Korektę w tabeli dokumentów zapisujemy WPROST przez SQL,
+  // aby sprawdzić widok niezależnie od ścieżki wystawiania dokumentu.
   it('korekta zwrotu, gdy istnieje, jest wierszem w tabeli dokumentow', async () => {
     db.prepare('INSERT INTO faktury (zamowienie_id, numer, utworzona_at) VALUES (?, ?, ?)')
       .run(id, 'FV/1/2026', '2026-08-01T10:00:00');
@@ -877,8 +870,7 @@ describe('karta zamowienia — trzy elementy zwrotu', () => {
   });
 });
 
-// ⚠️ Liczniki AUTOINCREMENT roznych tabel zbiegaja sie w swiezej bazie (przewodnik OMS, 6.3;
-// ten sam wzorzec, co `zamowienieZRozjechanymiLicznikami` w tests/oms/web-platnosci.test.js).
+// ⚠️ Liczniki AUTOINCREMENT roznych tabel zbiegaja sie w swiezej bazie (ten sam wzorzec, co `zamowienieZRozjechanymiLicznikami` w tests/moduly/zamowienia/web-platnosci.test.js).
 // Kilka zamowien-wypelniaczy PRZED „prawdziwym" zamowieniem odsuwa jego `id` od `id` zwrotow,
 // zeby test pomylki argumentu (nizej) nie zaliczyl przypadkiem, przez to, ze oba liczniki
 // akurat trafily na ta sama liczbe.
@@ -929,7 +921,7 @@ describe('POST /zamowienia/:id/zwroty/:zwrotId/usun', () => {
     expect(zwrotyZamowienia(db, id)).toHaveLength(1);
   });
 
-  // ⚠️ NAJWAZNIEJSZY TEST TEGO ZADANIA: zwrot NALEZACY do innego zamowienia nie da sie ruszyc
+  // ⚠️ Zwrot NALEZACY do innego zamowienia nie da sie ruszyc
   // przez podanie cudzego `:id` w adresie. Trasy musza szukac po PARZE (id zwrotu, id
   // zamowienia) — sam `id` zwrotu przepuscilby pomylke argumentu. Fikstura ma DWA zamowienia
   // i ROZJECHANE liczniki po OBU stronach (zamowienia i zwroty), zeby id uzyte w tescie nie
@@ -941,7 +933,7 @@ describe('POST /zamowienia/:id/zwroty/:zwrotId/usun', () => {
     // Wypelniacze zwrotow NA WLASNYM zamowieniu `a`, zeby numer zwrotu ponizej („cudzy")
     // odjechal od numerow OBU zamowien — bez tego numer pierwszego zwrotu w swiezej bazie
     // (1) moglby przypadkiem zgodzic sie z `id` zamowienia `a`, gdyby ono rowniez bylo 1.
-    // ⚠️ KWOTY MUSZA SIE ROZNIC (poprawka I6, 2026-08-15): `dodajZwrot` odmawia teraz
+    // ⚠️ KWOTY MUSZA SIE ROZNIC: `dodajZwrot` odmawia teraz
     // drugiego IDENTYCZNEGO zwrotu przy tym samym zamowieniu (ta sama data, kwota i zestaw
     // pozycji = powtorne wyslanie formularza). Wypelniaczom chodzi wylacznie o przesuniecie
     // licznika AUTOINCREMENT, wiec rozna kwota niczego tu nie oslabia.
@@ -968,7 +960,7 @@ describe('POST /zamowienia/:id/zwroty/:zwrotId/usun', () => {
   });
 });
 
-// Zadanie 9: ekran zwrotu dociaga numer korekty z inFaktu PRZY KAZDYM otwarciu
+// Ekran zwrotu dociaga numer korekty z inFaktu PRZY KAZDYM otwarciu
 // (routes/zwroty.js: petla `korekta.doczytaj`) i pokazuje jasno, gdy zlecenie przepadlo
 // (domain/zwrot.js: korektaPrzepadla). Fikstura tutaj potrzebuje FAKTURY zamowienia — bez
 // niej `doczytaj` (services/korekta.js) odmawia PRZED wywolaniem inFaktu, bo nie ma czego
@@ -1032,7 +1024,7 @@ describe('ekran zwrotu — zlecenie korekty, ktore przepadlo', () => {
     expect(r.body).not.toMatch(/zlecenie zostało odrzucone/);
   });
 
-  // ⚠️⚠️ C2: EKRAN MUSI DAWAC WYJSCIE, A NIE SAM KOMUNIKAT. Do 2026-08-15 gałąź „przepadło"
+  // ⚠️⚠️ EKRAN MUSI DAWAC WYJSCIE, A NIE SAM KOMUNIKAT. Dawniej gałąź „przepadło"
   // konczyla sie zdaniem „sprawdź w inFakcie" — i na tym koniec: przycisku „Wystaw korektę"
   // juz nie bylo (warunek `!w.korekta_zlecona_at`), kasowania odmawial
   // `powodOdmowyUsunieciaZwrotu`, a zwrot zostawal nierozliczony NA ZAWSZE.
@@ -1072,7 +1064,7 @@ describe('ekran zwrotu — zlecenie korekty, ktore przepadlo', () => {
     expect(r.body).toContain(`/zamowienia/${id}/zwroty/${w.id}/korekta/reczna`);
   });
 
-  // ⚠️⚠️ K2 (recenzja kontrolna 2026-08-15): FORMULARZ RECZNEGO NUMERU RYSOWAL SIE TAKZE PRZY
+  // ⚠️⚠️ FORMULARZ RECZNEGO NUMERU RYSOWAL SIE TAKZE PRZY
   // REZERWACJI W TOKU. Gdy zlecenie panelu jeszcze sie przetwarza, a czlowiek w miedzyczasie
   // wystawi korekte recznie, powstaja DWA dokumenty do jednej faktury — i nikt tego juz nie
   // zauwazy. Przycisk odblokowania panel chowa przed progiem CELOWO; ten formularz jest ta sama
@@ -1101,7 +1093,7 @@ describe('ekran zwrotu — zlecenie korekty, ktore przepadlo', () => {
 });
 
 /**
- * ⚠️⚠️ WARUNEK Z RECENZJI 2026-08-15: PANEL NIE MA PRAWA ORZEKAC O DOKUMENCIE, KTOREGO
+ * ⚠️⚠️ PANEL NIE MA PRAWA ORZEKAC O DOKUMENCIE, KTOREGO
  * SWIADOMIE NIE SPRAWDZIL.
  *
  * Sekwencja: zamowienie z faktura, zwrot A dostaje rezerwacje korekty, operator dopisuje
@@ -1110,7 +1102,7 @@ describe('ekran zwrotu — zlecenie korekty, ktore przepadlo', () => {
  * ma jak rozstrzygnac, ktory z dwoch nierozliczonych zwrotow opisuje znaleziony dokument. To
  * jest swiadoma decyzja i ma zostac.
  *
- * Ale do tego dnia ekran po progu (`korektaPrzepadla`) i tak pisal „inFakt nie wystawił
+ * Ale dawniej ekran po progu (`korektaPrzepadla`) i tak pisal „inFakt nie wystawił
  * dokumentu — zlecenie zostało odrzucone" — zdanie o fakcie, ktorego panel NIE ZNA, bo nigdy
  * nie zapytal. Czlowiek, ktory temu uwierzy, odblokuje rezerwacje i otworzy droge do DRUGIEGO
  * DOKUMENTU u organu podatkowego.
@@ -1157,7 +1149,7 @@ describe('ekran zwrotu — WARUNEK: „nie pytalismy" nie ma prawa brzmiec jak �
 });
 
 /**
- * DROBIAZG 1 (recenzja 2026-08-15): PRZYCISK „Wystaw korektę" NIE MA PRAWA OBIECYWAC
+ * PRZYCISK „Wystaw korektę" NIE MA PRAWA OBIECYWAC
  * DZIALANIA, KTORE TRASA ZAWSZE ODMOWI. Gdy INNY zwrot tego zamowienia ma juz korekte (numer
  * albo samo zlecenie), `powodOdmowyKorektyDlaFaktury` (domain/zwrot.js) odmawia KAZDEJ probie
  * POST /korekta dla TEGO zwrotu — wiec przycisk, ktory ekran i tak by narysowal, zawsze
@@ -1212,8 +1204,8 @@ describe('ekran zwrotu — przycisk „Wystaw korektę" znika, gdy trasa zawsze 
   });
 });
 
-// ⚠️⚠️ C2 — TRASY WYJSCIOWE. `201` z inFaktu nie dowodzi, ze tresc korekty byla poprawna
-// (pomiar 2026-08-14 na zywym koncie: `201` NA PUSTE CIALO), wiec panel MUSI umiec wyjsc
+// ⚠️⚠️ TRASY WYJSCIOWE. `201` z inFaktu nie dowodzi, ze tresc korekty byla poprawna
+// (`201` może przyjść także NA PUSTE CIALO), wiec panel MUSI umiec wyjsc
 // z rezerwacji, ktora przepadla. Obie trasy CELOWO nie wolaja inFaktu: rozstrzyga czlowiek,
 // ktory tam sprawdzil — dokladnie jak przy `/faktura/odblokuj` i `/faktura/skasowana`.
 describe('POST /zamowienia/:id/zwroty/:zwrotId/korekta/odblokuj', () => {
@@ -1352,7 +1344,7 @@ describe('POST /zamowienia/:id/zwroty/:zwrotId/korekta/reczna', () => {
   });
 });
 
-// ⚠️⚠️ I5 (recenzja 2026-08-15): ZADNA AKCJA ZWROTU NIE ZOSTAWIALA SLADU W LOGU ZAMOWIENIA.
+// ⚠️⚠️ ZADNA AKCJA ZWROTU NIE ZOSTAWIALA SLADU W LOGU ZAMOWIENIA.
 // Rejestracja zwrotu przykleja zamowieniu status koncowy i ZDEJMUJE KWOTE Z PRZYCHODU,
 // skasowanie usuwa go bez sladu, a zlecenie korekty ma skutki podatkowe. Kazda inna akcja tej
 // wagi w panelu pisze slad („Ręcznie (kto): …"), a przy fakturze wprost: nieudana proba

@@ -155,7 +155,7 @@ export function dzienTerminu(termin) {
  * zegar listy, „Po terminie”, statystyki i karta pytają tutaj.
  *
  * ⚠️ Dla standardu to dokładnie `dniRoboczeMiedzy(start, chwila) − limit` (przypięte
- * testem równoważności w tests/domena/termin-wysylki-reczny-prz104.test.js), z ulgą weekendową:
+ * testem równoważności w tests/domena/termin-wysylki-reczny.test.js), z ulgą weekendową:
  * termin w piątek czerwienieje w poniedziałek. Ręczna data dostaje tę samą ulgę.
  */
 export function dniPoTerminie(termin, chwila) {

@@ -38,7 +38,7 @@ describe('.env.example a manifest konfiguracji', () => {
     }
   });
 
-  it('nie zawiera śladów roboczych (KANDYDAT, PRZ-0)', () => {
+  it('nie zawiera śladów roboczych (KANDYDAT, numerów zadań)', () => {
     expect(env).not.toMatch(/KANDYDAT/);
     expect(env).not.toMatch(/PRZ-\d/);
   });

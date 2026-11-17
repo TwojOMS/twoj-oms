@@ -14,11 +14,11 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { zbudujOms } from '../../pomoc/bootstrap-parytetu.ts';
+import { zbudujOms } from '../../pomoc/budowa-oms-testowa.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { rozpocznijPrzesylke, zakonczPrzesylke, zapiszProbeStatusuDpd } from '../../../src/moduly/wysylka/db/przesylki.js';
 import { wyczyscBladStatusuBezSledzenia } from '../../../src/moduly/wysylka/db/przesylki.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { sprawyPrzesylki } from '../../../src/domena/przesylka-stan.js';
 
 const config = { auth: { user: 'adam', pass: 'x' } };

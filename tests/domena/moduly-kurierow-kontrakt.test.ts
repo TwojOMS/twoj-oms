@@ -11,7 +11,7 @@ const kopia = (): Record<string, OpisKuriera> => Object.fromEntries(
   }]),
 );
 
-describe('strażnik opisów kurierów — D5', () => {
+describe('strażnik opisów kurierów', () => {
   it.each<[string, (r: Record<string, OpisKuriera>) => void, RegExp]>([
     ['klucz rejestru', r => { r.DPD = r.dpd!; delete r.dpd; }, /DPD:.*klucz/],
     ['klucz opisu', r => { r.dpd!.klucz = 'DPD'; }, /dpd:.*klucz/],
@@ -46,7 +46,7 @@ describe('strażnik opisów kurierów — D5', () => {
   });
 });
 
-describe('dane zachowują dzisiejsze tablice (PRZ-135.01)', () => {
+describe('dane zachowują dzisiejsze tablice', () => {
   it.each([
     ['dpd', 'dpd'], ['inpost_paczkomat', 'inpost'], ['odbior_osobisty', null],
     ['allegro_dpd', 'allegro_wza'], ['allegro_paczkomat', null],
@@ -60,7 +60,7 @@ describe('dane zachowują dzisiejsze tablice (PRZ-135.01)', () => {
         inpost: { pobranie: 'adapter', pobranieNaDosylce: true, nadanieAsynchroniczne: true, sledzenie: 'wlasne', etykieta: { zpl: true, zplPrzyNadaniu: true } },
         allegro_wza: { pobranie: 'umowa', pobranieNaDosylce: false, nadanieAsynchroniczne: true, sledzenie: 'przez_przewoznika', etykieta: { zpl: true, zplPrzyNadaniu: false } },
         allegro: { pobranie: 'brak', pobranieNaDosylce: false, nadanieAsynchroniczne: false, sledzenie: 'wlasne', etykieta: { zpl: false, zplPrzyNadaniu: false } },
-        // PRZ-157.08: Przesyłki Erli — etykieta dopiero po `waybills[]`, sam PDF; 07e: śledzenie z API ERLI (statusPrzesylki).
+        // Przesyłki Erli — etykieta dopiero po `waybills[]`, sam PDF; 07e: śledzenie z API ERLI (statusPrzesylki).
         erli_przesylki: { pobranie: 'umowa', pobranieNaDosylce: false, nadanieAsynchroniczne: true, sledzenie: 'wlasne', etykieta: { zpl: false, zplPrzyNadaniu: false } },
       });
   });

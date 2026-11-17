@@ -15,7 +15,7 @@ describe('katalog integracji', () => {
     expect(allegro?.konfigurator).toEqual({ dodaj: MODUL_ALLEGRO.konfigurator.dodaj, href: `${MODUL_ALLEGRO.konfigurator.sciezka}/${MODUL_ALLEGRO.konfigurator.nowy}` });
     expect(allegro?.href).toBe(allegro?.konfigurator?.href);
   });
-  it('dostępne sklepy przed planowanymi — ERLI trzecie (PRZ-157.12h)', () => {
+  it('dostępne sklepy przed planowanymi — ERLI trzecie', () => {
     expect(KATALOG_INTEGRACJI.filter(u => u.kategoria === 'sklepy').map(u => u.id)).toEqual(['allegro', 'woocommerce', 'erli', 'shoper', 'empik', 'etsy', 'tiktok-shop']);
   });
   it('obejmuje wymagane usługi bez duplikatów i bez TwojeFaktury', () => {
@@ -26,7 +26,7 @@ describe('katalog integracji', () => {
     ].sort());
   });
 
-  it('oznacza siedem zapowiedzi (PRZ-167: z TikTok Shop) bez odnośnika do podłączenia', () => {
+  it('oznacza siedem zapowiedzi (z TikTok Shop) bez odnośnika do podłączenia', () => {
     const planowane = KATALOG_INTEGRACJI.filter((usluga) => usluga.dostepnosc === 'planowana');
     expect(planowane.map((usluga) => usluga.id).sort()).toEqual(
       ['shoper', 'empik', 'etsy', 'tiktok-shop', 'gls', 'dhl', 'apaczka'].sort(),
@@ -63,7 +63,7 @@ describe('katalog integracji', () => {
   });
 });
 
-describe('katalog integracji — wysyłka z rejestru kurierów (PRZ-135.07a)', () => {
+describe('katalog integracji — wysyłka z rejestru kurierów', () => {
   it('wpis wysyłki z rejestru: każdy kurier z metodami ma wpis z polami z opisu, w kolejności rejestru', () => {
     const kurierzy = Object.values(MODULY_KURIEROW).filter((opis) => opis.metody.length > 0 && (opis as { wKatalogu?: false }).wKatalogu !== false);
     const dostepne = KATALOG_INTEGRACJI.filter((u) => u.kategoria === 'wysylka' && u.dostepnosc === 'dostepna');
@@ -71,13 +71,13 @@ describe('katalog integracji — wysyłka z rejestru kurierów (PRZ-135.07a)', (
     for (const opis of kurierzy) {
       expect(KATALOG_INTEGRACJI.find((u) => u.id === opis.idKatalogu)).toEqual({
         id: opis.idKatalogu, nazwa: opis.nazwa, kategoria: 'wysylka', opis: opis.opisKatalogu, logo: opis.logo,
-        dostepnosc: 'dostepna', // PRZ-136.14 (#5): WzA nie ma ekranu — cel to grupa kont Allegro na liście.
+        dostepnosc: 'dostepna', // WzA nie ma ekranu — cel to grupa kont Allegro na liście.
         href: opis.idKatalogu === 'wza' ? '/ustawienia/integracje#grupa-sprzedaz' : opis.konfigurator.sciezka, konfigurator: null,
       });
     }
   });
 
-  it('DHL i Apaczka planowane (T3, decyzja właściciela 03.11), jak GLS — bez odnośnika i bez modułu', () => {
+  it('DHL i Apaczka planowane, jak GLS — bez odnośnika i bez modułu', () => {
     const gls = KATALOG_INTEGRACJI.find((u) => u.id === 'gls');
     for (const id of ['dhl', 'apaczka']) {
       const wpis = KATALOG_INTEGRACJI.find((u) => u.id === id);

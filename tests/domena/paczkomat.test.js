@@ -3,13 +3,13 @@ import {
   METODY_WYSYLKI, ETYKIETY_WYSYLKI, etykietaWysylki, sprawdzZmianeMetody,
   punktOdbioru, punktOdbioruOpis, punktOdbioruZeSklepu, metodaZmienionaRecznie,
 } from '../../src/domena/wysylka.js';
-import { MAPOWANIE_SKLEPOW, metodaZLinii, metodaWysylkiZamowienia } from '../pomoc/mapowanie-sklepow-historyczne-fixture.js';
+import { MAPOWANIE_SKLEPOW, metodaZLinii, metodaWysylkiZamowienia } from '../pomoc/przykladowe-mapowanie-wysylki.js';
 import { mapujZamowienie, punktOdbioruZeSurowych } from '../../src/domena/mapowanie.js';
 import { podzielDoNadania } from '../../src/domena/masowe.js';
 
 const SWIETLIK = MAPOWANIE_SKLEPOW.swietlik;
 
-// ⚠️ KSZTALTY ODWZOROWANE Z ZYWEGO SKLEPU (odczyt 2026-08-01) — nie zmyslone. Kody
+// ⚠️ KSZTALTY ODWZOROWANE Z ZYWEGO SKLEPU — nie zmyslone. Kody
 // WRO10B / JAB03M / SLN06M to trzy prawdziwe paczkomaty z produkcji.
 const zPaczkomatem = (nad = {}) => ({
   id: 28079,
@@ -228,12 +228,12 @@ describe('sprawdzZmianeMetody — kod punktu przechodzi przez tę samą bramkę'
   });
 });
 
-// ⚠️ Zadanie 8 dodało paczkomatom WLASNY powod pominiecia („paczkomat — nadaj pojedynczo").
+// ⚠️ Dodano paczkomatom WLASNY powod pominiecia („paczkomat — nadaj pojedynczo").
 // Tu pilnujemy rzeczy wazniejszej i wczesniejszej: dopisanie metody do METODY_WYSYLKI NIE MA
 // PRAWA wpuscic paczkomatow do nadania zbiorczego przez biala liste METODY_HURTEM. Dziesiec
 // przesylek razy kilkanascie sekund to ponad dwie minuty w jednym zadaniu HTTP, a urwanie
 // w polowie zostawia wiersze `w_trakcie`, ktore blokuja ponowienie.
-// PRZ-070 (właściciel 14.10.2026): paczkomat WCHODZI do hurtu — nie przez biała listę, tylko przez
+// Paczkomat WCHODZI do hurtu — nie przez biała listę, tylko przez
 // te same funkcje, co karta. Czas pilnuje budżet partii (services/nadanie-hurtem.js: pętla
 // przestaje ZACZYNAĆ paczki po 150 s), a wiersz `w_trakcie` dokańcza „Sprawdź ponownie".
 describe('nadanie zbiorcze a paczkomaty', () => {

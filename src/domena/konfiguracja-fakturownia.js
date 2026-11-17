@@ -47,3 +47,9 @@ export function opcjeKlientaFakturowni(zapis) {
     fetchImpl: undefined,
   };
 }
+
+/** Adres konta, pod który łączy się klient (`https://<domena>.fakturownia.pl`), albo `null` przy złej domenie. */
+export function adresKontaFakturowni(domena) {
+  const d = String(domena ?? '');
+  return WZOR_DOMENY_FAKTUROWNI.test(d) ? `https://${d}.fakturownia.pl` : null;
+}

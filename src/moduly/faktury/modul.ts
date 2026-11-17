@@ -64,7 +64,7 @@ import { createFakturowniaClient } from '../../oms/fakturownia/client.js';
 import { programFakturownia, NAZWA_FAKTUROWNI } from '../../integracje/programy/fakturownia.ts';
 import { utworzAlarmAutoKsef } from './db/alarm-auto-ksef.js';
 import { fakturowniaZUstawien, odmowaFakturowniWProbie } from './fakturownia-ustawien.ts';
-import { opcjeKlientaFakturowni, EKRAN_FAKTUROWNI, WZOR_DOMENY_FAKTUROWNI } from '../../domena/konfiguracja-fakturownia.js';
+import { opcjeKlientaFakturowni, adresKontaFakturowni, EKRAN_FAKTUROWNI, WZOR_DOMENY_FAKTUROWNI } from '../../domena/konfiguracja-fakturownia.js';
 
 export const ODSTEP_FAKTUR_MS = 3600000;
 
@@ -247,7 +247,13 @@ return {
       fabryka: k.proba ? odmowaInfaktuWProbie : createInfaktClient });
     // Wybór źródła jak dla klienta; na zewnątrz modułu wychodzi wyłącznie adres, nigdy klucz API. Przy „brak” — nic.
     const celeLacznosci = () => {
-      if (brakTeraz() || fakturowniaWybrana) return { infakt: null };
+      if (brakTeraz()) return { infakt: null };
+      // Fakturownia: host konta, z którym łączy się klient (plik albo zapis z ekranu); bez domeny — nic.
+      if (fakturowniaWybrana) {
+        const domena = k.fakturownia?.domena ?? opcjeKlientaFakturowni(zapisFakturowni()).domena;
+        const baseUrl = adresKontaFakturowni(domena);
+        return { infakt: null, fakturownia: baseUrl ? { baseUrl } : null };
+      }
       const zapis = infaktUstawien ? zapisKlucza() : null;
       return { infakt: infaktUstawien ? (zapis ? { baseUrl: opcjeKlientaInfakt(zapis).baseUrl } : null)
         : k.infakt ? { baseUrl: k.infakt.baseUrl } : null };

@@ -9,7 +9,7 @@ const KLUCZ = 'statusy.konfiguracja';
 const kanalyIndywidualne = new WeakMap();
 // ⚠️ „Czy są zamówienia indywidualne” NIE jest pytaniem na żądanie: kolumna nie ma
 // indeksu, więc przy braku takich zamówień EXISTS przechodzi CAŁĄ tabelę zamówień — przy każdym
-// żądaniu, wbrew strażnikowi wydajności listy (tests/prz051/lista-http.test.js). Odpowiedź zapada raz na
+// żądaniu, wbrew strażnikowi wydajności listy (tests/moduly/zamowienia/lista/stronicowanie-listy-http.test.js). Odpowiedź zapada raz na
 // połączenie, a dalej dopisuje ją wyzwalacz TEMP (jak oms/db/sledzenie-listy.js, bez migracji) przy
 // KAŻDYM zapisie tym połączeniem: poller, zamówienie ręczne, uzupełnienia startowe. Flaga jest
 // jednokierunkowa — skasowanie ostatniego takiego zamówienia albo wycofana transakcja zostawiają

@@ -6,7 +6,7 @@ import {
 } from '../../src/domena/wysylka.js';
 
 // Surowy wiersz z bazy — tak wyglada zamowienie ZANIM przejdzie przez zLinii().
-// ⚠️ Od 2026-08-01 pobranie ma WLASNA kolumne obok metody — surowy wiersz musi ja miec,
+// ⚠️ Pobranie ma WLASNA kolumne obok metody — surowy wiersz musi ja miec,
 // bo to ona (a nie nazwa metody) decyduje, czy kurier cos inkasuje.
 const surowy = (o = {}) => ({
   metoda_wysylki: 'dpd', pobranie: 0, kwota_pobrania: null, wysylka_reczna_json: null, ...o,
@@ -161,7 +161,7 @@ describe('sprawdzZmianeMetody — bramka na pieniadze', () => {
   });
 
   // Przecinek dziesietny to najczestsza literowka polskiej klawiatury, a Number('12,50')
-  // to NaN. Od PRZ-145.02 (plan E5, gotowe 5) karta normalizuje go jak ekran nadania:
+  // to NaN. Karta normalizuje go jak ekran nadania:
   // zapisuje '12.50', zamiast odmawiac albo cicho gubic kwote.
   it('kwota z przecinkiem dziesietnym zapisuje sie znormalizowana, nie jako NaN', () => {
     const w = sprawdzZmianeMetody('dpd', true, '12,50');

@@ -3,8 +3,8 @@ import { daneZestawienia } from '../../src/domena/zestawienie-zamowien.js';
 import { daneSpecyfikacji } from '../../src/domena/specyfikacja.js';
 import { UWAGA_Z_KARTY } from '../../src/domena/z-panelu/oms-order.js';
 
-// „Zestawienie zamówień" (PRZ-084) — wewnetrzny wydruk jak „order-shipping" z Apilo. Dane
-// osobowe w pelni (decyzja właściciela 15.10), kwoty WYLACZNIE ze specyfikacji, adres efektywny.
+// „Zestawienie zamówień" — wewnetrzny wydruk jak „order-shipping" z Apilo. Dane
+// osobowe w pelni, kwoty WYLACZNIE ze specyfikacji, adres efektywny.
 // Dane w fixture zmyslone.
 
 const z = (n = {}) => ({

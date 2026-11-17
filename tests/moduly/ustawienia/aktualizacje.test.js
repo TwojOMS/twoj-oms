@@ -1,8 +1,8 @@
-// PRZ-099: Ustawienia → Aktualizacje na prawdziwym serwerze — usługa `ustawienia.aktualizacje` podmieniona atrapą
+// Ustawienia → Aktualizacje na prawdziwym serwerze — usługa `ustawienia.aktualizacje` podmieniona atrapą
 // (bez pliku wydania i bez sieci).
 import { describe, it, expect } from 'vitest';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
-import { nowyPanel, jako, get, post } from '../../pomoc/konta-prz068.js';
+import { nowyPanel, jako, get, post } from '../../pomoc/panel-konta-testowe.js';
 
 const COMMIT = 'abc123def4560000000000000000000000000000';
 const WYDANIE = { commit: COMMIT, wersja: 'v0.2.0', utworzono: '2026-10-18T12:02:00Z' };
@@ -27,7 +27,7 @@ const sekcja = (html, id) => {
 const AKTYWNA = /<a href="\/ustawienia\/aktualizacje" aria-current="page">/u;
 const INSTRUKCJA = 'href="https://github.com/TwojOMS/twoj-oms/blob/main/docs/aktualizacja-klienta-v0.md"';
 
-describe('PRZ-099 Ustawienia → Aktualizacje', () => {
+describe('Ustawienia → Aktualizacje', () => {
   it('bez pliku wydania: „Wersja: nieznana”, przycisk „Sprawdź teraz”, zapowiedź przycisku instalacji; GET nie pyta GitHuba', async () => {
     const { app, admin, atrapa } = panel();
     const r = await get(app, '/ustawienia/aktualizacje', admin);

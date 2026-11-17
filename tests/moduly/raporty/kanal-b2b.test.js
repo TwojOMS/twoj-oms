@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { openOmsDb } from '../../pomoc/dane-miesieczne-parytetu.js';
+import { openOmsDb } from '../../pomoc/testowe-dane-miesieczne.js';
 import { ustawGranice } from '../../../src/oms/db/historia-sprzedazy.js';
 import { kanalOms } from '../../../src/domena/kanaly-raportowe.js';
-import { KANALY, klasyfikacjaHistorycznaFixture } from '../../pomoc/raporty-historyczne-fixture.js';
-import { sprzedazWOkresie } from '../../pomoc/raporty-parytetu.js';
+import { KANALY, klasyfikacjaHistorycznaFixture } from '../../pomoc/przykladowe-dane-raportow.js';
+import { sprzedazWOkresie } from '../../pomoc/testowe-reguly-raportow.js';
 
-// KANAL B2B PO GRANICY Z APILO (21.08.2026).
+// KANAL B2B PO GRANICY Z APILO.
 //
 // Do tego dnia kanal `B2B` istnial na liscie i byl PUSTY: w Apilo rozstrzygal tag, ktorego
 // panel nie nadaje. Znacznik `zamowienia.b2b` podstawia sie z bazy stalych klientow przy

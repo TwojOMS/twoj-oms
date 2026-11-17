@@ -176,7 +176,7 @@ describe('nazwaBezRozmiaru — usuwa rozmiar z nazwy produktu, nigdy nie zgaduje
   });
 });
 
-// Trzy recenzje z rzedu wywrocily sie na TEJ SAMEJ rodzinie bledu: nazwa byla skladana
+// Trzy przeglady z rzedu wywrocily sie na TEJ SAMEJ rodzinie bledu: nazwa byla skladana
 // z dwoch kawalkow, a o spoiwie decydowala tylko JEDNA strona (albo dopiero brzegi
 // gotowego napisu). Ponizsze przypadki opisuja obie strony osobno, zeby kazda kolejna
 // proba „doczyszczenia brzegow" od razu tu padla.
@@ -327,7 +327,7 @@ describe('nazwaBezRozmiaru — nawias jest PARA, nie separatorem', () => {
   });
 });
 
-// Runda 6: gdy nawias mial biale znaki po OBU swoich stronach, zdjecie samego znaku
+// Gdy nawias mial biale znaki po OBU swoich stronach, zdjecie samego znaku
 // nawiasu (albo pary myslnik+spacja) sklejalo dwie sasiadujace spacje w jedno
 // DWUZNAKOWE „spoiwo" — lamiac wlasny kontrakt funkcji „wraca DOKLADNIE JEDEN
 // separator". Ten sam brak normalizacji wystepowal rowniez bez zadnego nawiasu,

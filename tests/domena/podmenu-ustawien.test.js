@@ -6,9 +6,9 @@ const aktywne = (sciezka, opcje = { admin: true }) => grupyUstawien(sciezka, opc
   .flatMap((g) => g.pozycje).filter((p) => p.aktywna).map((p) => p.klucz);
 
 describe('podmenu Ustawień', () => {
-  // PRZ-101.01 (właściciel 18.10): poziomy pasek nie mieścił się w wierszu — menu z lewej, w pięciu grupach.
+  // Poziomy pasek nie mieścił się w wierszu — menu z lewej, w pięciu grupach.
   // „Firma” i „Role i uprawnienia” mieszkają w tej samej liście, nie są doklejane w nawigacja.js.
-  // PRZ-108.06 (właściciel 21.10): „Automatyzacje” w grupie Sprzedaż zaraz po „Statusy zamówień”, tylko dla admina.
+  // „Automatyzacje” w grupie Sprzedaż zaraz po „Statusy zamówień”, tylko dla admina.
   it('administrator dostaje pięć grup w kolejności planu, pozycje w kolejności planu', () => {
     expect(uklad(grupyUstawien('/ustawienia/integracje', { admin: true }))).toEqual([
       ['Firma', ['Dane firmy', 'Użytkownicy', 'Role i uprawnienia']],
@@ -31,7 +31,7 @@ describe('podmenu Ustawień', () => {
     });
   });
 
-  // PRZ-102.01: Powiadomienia są działającym ustawieniem osobistym, nie atrapą.
+  // Powiadomienia są działającym ustawieniem osobistym, nie atrapą.
   it('„wkrótce” mają dokładnie cztery atrapy, reszta to działające ekrany', () => {
     const menu = podmenuUstawien('/ustawienia', { admin: true });
     expect(menu.filter((p) => p.wkrotce).map((p) => p.klucz)).toEqual(['import-eksport', 'api']);
@@ -76,9 +76,9 @@ describe('podmenu Ustawień', () => {
     ['/ustawienia/lacznosc', 'diagnostyka'],
     ['/ustawienia/aktualizacje/sprawdz', 'aktualizacje'],
     ['/ustawienia/kopie', 'kopie'],
-    ['/ustawienia/szablony-wiadomosci', 'szablony-wiadomosci'], // PRZ-101.03
-    ['/ustawienia/statusy', 'statusy'], // PRZ-101.02
-    // PRZ-108.06: ekran i jego zapis; stary adres zapisu automatu KSeF (400 renderuje ekran Automatyzacji).
+    ['/ustawienia/szablony-wiadomosci', 'szablony-wiadomosci'],
+    ['/ustawienia/statusy', 'statusy'],
+    // Ekran i jego zapis; stary adres zapisu automatu KSeF (400 renderuje ekran Automatyzacji).
     ['/ustawienia/automatyzacje', 'automatyzacje'],
     ['/ustawienia/automatyzacje/ksef', 'automatyzacje'],
     ['/ustawienia/integracje/infakt/ksef-automat', 'automatyzacje'],
@@ -93,7 +93,7 @@ describe('podmenu Ustawień', () => {
 
   // Wykonawcy 02 i 03 dopisują swoje pozycje NA KOŃCU tablicy — tylko {klucz, etykieta, href, grupa}.
   it('obca pozycja dopisana na końcu trafia do swojej grupy, statusy i szablony na miejsce z planu', () => {
-    // PRZ-101.03 jest już w liście — tu sprawdzamy mechanizm dopisania, więc bez niej w bazie.
+    // Szablony wiadomości są już w liście — tu sprawdzamy mechanizm dopisania, więc bez nich w bazie.
     const pozycje = [...POZYCJE_USTAWIEN.filter((p) => !['szablony-wiadomosci', 'statusy'].includes(p.klucz)),
       { klucz: 'statusy', etykieta: 'Statusy zamówień', href: '/ustawienia/statusy', grupa: 'sprzedaz' },
       { klucz: 'szablony-wiadomosci', etykieta: 'Szablony wiadomości', href: '/ustawienia/szablony-wiadomosci', grupa: 'komunikacja' },

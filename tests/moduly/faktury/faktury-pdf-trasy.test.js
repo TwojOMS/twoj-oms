@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 
 const PDF = Buffer.from('%PDF-1.4 test');
@@ -13,7 +13,7 @@ function serwer(infakt) {
 }
 
 describe('GET /faktury/:uuid/pdf', () => {
-  // PRZ-122.B10b: pobranie PDF zamyka fakturę TwojeFaktury — HEAD (domyślnie handler GET w Fastify) nie woła programu.
+  // Pobranie PDF zamyka fakturę TwojeFaktury — HEAD (domyślnie handler GET w Fastify) nie woła programu.
   it('HEAD nie pobiera PDF-u (404, program niewołany)', async () => {
     let wolane = 0;
     const app = serwer({ pobierzPdf: async () => { wolane += 1; return PDF; }, pobierzPdfKorekty: async () => { wolane += 1; return PDF; } });
@@ -31,7 +31,7 @@ describe('GET /faktury/:uuid/pdf', () => {
     expect(wolane).toEqual(['vat', 'u1']);
   });
 
-  // ⚠️ KOREKTA TO INNY ZASÓB — ten sam uuid pod /invoices/ oddaje 404 (sprawdzone 2026-08-01).
+  // ⚠️ KOREKTA TO INNY ZASÓB — ten sam uuid pod /invoices/ oddaje 404.
   // Rozstrzyga JAWNY parametr, nigdy zgadywanie po napisie „KOR" w numerze: numer generuje
   // ktoś inny i wolno mu zmienić format bez uprzedzenia.
   it('korekta idzie po zasób /corrective_invoices/', async () => {
@@ -51,7 +51,7 @@ describe('GET /faktury/:uuid/pdf', () => {
     expect(r.headers['content-disposition']).not.toContain('/');
   });
 
-  // ⚠️ BIALA LISTA, A NIE „wszystko, co nie jest korekta" (recenzja Zadania 8). Do tej pory
+  // ⚠️ BIALA LISTA, A NIE „wszystko, co nie jest korekta". Do tej pory
   // literowka w adresie (`?rodzaj=vt`) albo nowy, nieznany rodzaj dokumentu z inFaktu jechal
   // po zasob /invoices/ i konczyl sie surowym 404 z API — czyli komunikatem o cudzym systemie
   // zamiast zdaniem, ktore operator rozumie. Ta sama zasada, co przy `pole` w tym samym pliku

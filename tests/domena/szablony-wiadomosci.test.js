@@ -4,7 +4,7 @@ import {
   szablonDoEdycji, rodzajSzablonu, DOMYSLNE, MAKS, KLUCZ_USTAWIEN, POLA,
 } from '../../src/domena/szablony-wiadomosci.js';
 
-// PRZ-101.03: szablony wiadomości — reguły zapisu i składanie treści (czysta domena).
+// Szablony wiadomości — reguły zapisu i składanie treści (czysta domena).
 
 const PUSTY = { wbudowane: {}, wlasne: [], licznik: 0 };
 const zam = (nad = {}) => ({
@@ -51,7 +51,7 @@ describe('odmowy zapisu', () => {
     expect(sprawdzSzablon('wlasny', { nazwa: 'A', temat: 'T', tresc: 'x {zamkniecie}' }).ok).toBe(false);
   });
 
-  // Recenzja 18.10: klamra, która nie tworzy znanego pola, trafiłaby do klienta dosłownie — każda ma dać odmowę.
+  // Klamra, która nie tworzy znanego pola, trafiłaby do klienta dosłownie — każda ma dać odmowę.
   it('długa klamra (ponad 40 znaków) — odmowa z fragmentem tekstu', () => {
     const w = sprawdzSzablon('wlasny', { nazwa: 'A', temat: 'T', tresc: 'Numer: {tu wpisz numer zamówienia, który podał klient}.\n\n{podpis}' });
     expect(w.ok).toBe(false);
@@ -78,7 +78,7 @@ describe('odmowy zapisu', () => {
     expect(polaSzablonu('wlasny').find((p) => p.nazwa === 'kwota').opis).toMatch(/nie kwota do zapłaty/);
   });
 
-  // PRZ-101.06: maile do zespołu (zaproszenie, reset hasła) — bez linku pracownik nie ustawi hasła.
+  // Maile do zespołu (zaproszenie, reset hasła) — bez linku pracownik nie ustawi hasła.
   it.each(['zaproszenie', 'reset'])('%s bez {link} — odmowa z nazwą pola', (id) => {
     const w = sprawdzSzablon(rodzajSzablonu(id), { temat: 'Witaj {imie}', tresc: 'Cześć {imie}, link jest ważny {waznosc}.' });
     expect(w.ok).toBe(false);
@@ -170,7 +170,7 @@ describe('składanie treści', () => {
     expect(zlozTemat('Dla {imie}: zamówienie {numer_zamowienia}', { numer_zamowienia: '7' })).toBe('Dla: zamówienie 7');
   });
 
-  // PRZ-108.01: szablony zaproszenia i resetu mają „Dzień dobry, {imie}!" — bez imienia wychodziło „Dzień dobry,!".
+  // Szablony zaproszenia i resetu mają „Dzień dobry, {imie}!" — bez imienia wychodziło „Dzień dobry,!".
   it('puste pole między znakami interpunkcji: znika razem z odstępem i znakiem po sobie', () => {
     expect(zlozTresc('Dzień dobry, {imie}!\nDalej.', { pola: {} }).tekst).toBe('Dzień dobry,\nDalej.');
     expect(zlozTresc('Dzień dobry,{imie}!', { pola: {} }).tekst).toBe('Dzień dobry,');

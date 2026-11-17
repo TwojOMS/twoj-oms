@@ -3,9 +3,9 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie, pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { fakturaSkasowanaWInfakcie } from '../../../src/moduly/faktury/db/faktury.js';
 import { createFakturaAllegro } from '../../../src/moduly/faktury/services/faktura-allegro.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
-// ⚠️⚠️ WYJSCIA ZE STANOW LANCUCHA KSEF → ALLEGRO (Plan B, Zadanie 11; niezmiennik 4.9).
+// ⚠️⚠️ WYJSCIA ZE STANOW LANCUCHA KSEF → ALLEGRO.
 //
 // Dwie rzeczy naraz, bo sa dwiema stronami tej samej granicy:
 // 1. dokument JUZ u kupujacego zamyka „odnotuj skasowanie w inFakcie" — skasowanie faktury
@@ -89,7 +89,7 @@ describe('„skasowałem fakturę w inFakcie" po wysłaniu do Allegro', () => {
 
 // ---------------------------------------------------------------------------------
 // SEKCJE 2 i 3 (trasa `/faktura-allegro-bez-ksef` i przycisk furtki na karcie) ZNIKNELY
-// 01.09.2026 razem z sama furtka — decyzja właściciela: „fv ida zawsze z ksef", a dokument bez
+// Razem z sama furtka — reguła produktu: „fv ida zawsze z ksef", a dokument bez
 // numeru wysyla sie recznie z panelu Allegro albo zakladka „Wiadomosci".
 //
 // Czego pilnuje dzis i GDZIE: `tests/oms/faktura-allegro.test.js` — „trasy «bez numeru

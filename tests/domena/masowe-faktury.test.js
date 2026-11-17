@@ -4,7 +4,7 @@ import {
   powodZaDuzegoDruku, SUFIT_SPECYFIKACJI_DRUKU,
 } from '../../src/domena/masowe.js';
 
-// ⚠️ FIXTURE MA POZYCJE SUMUJACA SIE DO KWOTY ZAMOWIENIA — od 12.08.2026 (recenzja).
+// ⚠️ FIXTURE MA POZYCJE SUMUJACA SIE DO KWOTY ZAMOWIENIA — od 12.08.2026.
 // Do tego dnia stalo tu `pozycje: []` przy `kwota_brutto: '100.00'`, czyli zamowienie
 // ARYTMETYCZNIE NIEMOZLIWE: taki wiersz nie przeszedlby przez bariere w `wystaw()` nigdy.
 // Wszystkie testy podzialu chodzily wiec po danych, ktorych panel w zyciu nie zobaczy —
@@ -62,7 +62,7 @@ describe('podzial zaznaczenia do faktur hurtem', () => {
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // BARIERA ARYTMETYCZNA — szosta bariera, dolozona 12.08.2026 (recenzja koncowa).
+  // BARIERA ARYTMETYCZNA — szosta bariera, dolozona 12.08.2026.
   //
   // ⚠️ CO DOKLADNIE PSULO SIE BEZ NIEJ: zamowienie z rozjechana suma stawalo na ekranie
   // podgladu w sekcji „Pójdzie do inFaktu", operator je zatwierdzal, a ono ladowalo w „Nie
@@ -168,7 +168,7 @@ describe('sufit partii', () => {
   });
 });
 
-// Sufit partii DRUKU specyfikacji — dołożony 12.08.2026 (recenzja). Uzasadnienie, dlaczego
+// Sufit partii DRUKU specyfikacji — dołożony 12.08.2026. Uzasadnienie, dlaczego
 // w ogóle istnieje mimo tego, że rysowanie jest lokalne, stoi przy stałej w domain/masowe.js:
 // lista nie ma stronicowania, „zaznacz wszystkie" zaznacza całą bazę, a rysowanie jest
 // synchroniczne — czyli jedno pomyłkowe kliknięcie zatrzymuje panel dla wszystkich.

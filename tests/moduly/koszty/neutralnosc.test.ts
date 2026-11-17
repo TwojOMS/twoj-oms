@@ -19,7 +19,7 @@ afterEach(() => {
     rmSync(cel, { recursive: true, force: true });
   }
 });
-describe('PRZ-025 neutralna inicjalizacja danych kosztów', () => {
+describe('neutralna inicjalizacja danych kosztów', () => {
   it('świeża baza nie narzuca NIP ani firm, udostępnia 11 neutralnych kategorii', () => {
     const db = open();
     try {

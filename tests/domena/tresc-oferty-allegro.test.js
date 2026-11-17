@@ -1,6 +1,6 @@
-// PRZ-160.04a (E1.04 cz. 1) — czysta funkcja: odpowiedź `GET /sale/product-offers/{id}` + opis kategorii z pamięci
+// Czysta funkcja: odpowiedź `GET /sale/product-offers/{id}` + opis kategorii z pamięci
 // → pola karty, sekcje opisu, zdjęcia i dane kanału. Fixture: zmyślona lampa „Pracowni Półcień” w pełnym kształcie
-// odpowiedzi (pomiar P8), bez danych prawdziwych ofert.
+// odpowiedzi, bez danych prawdziwych ofert.
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { opisKategorii, trescOfertyAllegro, PARAMETR_EAN, PROG_SLOWNIKA } from '../../src/domena/tresc-oferty-allegro.js';
@@ -61,8 +61,8 @@ describe('opis kategorii do pamięci podręcznej', () => {
   });
 });
 
-// PRZ-160.E3.05 — opis kategorii v2: wymagalność parametrów i to, czy w kategorii można tworzyć produkt.
-// Fixture: kształt odpowiedzi z pomiaru P9 (12.11), nazwy zmyślone, słownik marek skrócony do 262 wartości.
+// Opis kategorii v2: wymagalność parametrów i to, czy w kategorii można tworzyć produkt.
+// Fixture: kształt odpowiedzi z pomiaru P9, nazwy zmyślone, słownik marek skrócony do 262 wartości.
 const P9 = JSON.parse(readFileSync(new URL('../fixtures/allegro/e3-pomiar-p9-kategoria.json', import.meta.url), 'utf8'));
 
 describe('opis kategorii v2 (E3.05, fixture P9)', () => {

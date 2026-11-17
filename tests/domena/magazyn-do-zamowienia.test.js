@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   cennikDlaZamowienia, nazwaPozycji, pozycjaZProduktu, rozmiarDoPokazania, KANALY_CENNIKA, CENNIK_DOMYSLNY,
-} from '../pomoc/cenniki-historyczne-fixture.js';
+} from '../pomoc/przykladowe-cenniki-sklepow.js';
 
 const produkt = (nad = {}) => ({
   kanal: 'swietlik', produkt_id: '28040', wariant_id: '', nazwa: 'Lampa stołowa Grzybek',
@@ -65,7 +65,7 @@ describe('pozycjaZProduktu', () => {
     expect(pozycjaZProduktu(produkt(), '3')).toEqual({
       nazwa: 'Lampa stołowa Grzybek 70x100',
       sku: 'LS-GRZ-70',
-      // ⚠️ CENA KATALOGOWA JEDZIE ZAWSZE, takze przy rabacie zerowym (21.08.2026) — pozycja
+      // ⚠️ CENA KATALOGOWA JEDZIE ZAWSZE, takze przy rabacie zerowym — pozycja
       // bez niej jest niewidzialna dla przeliczenia rabatem, wiec rabat wpisany na karcie
       // PO dodaniu towaru nie mialby czego dotknac.
       cena_katalogowa: '74.90',

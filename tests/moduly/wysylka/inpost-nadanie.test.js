@@ -6,8 +6,8 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie, pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { createNadanie } from '../../../src/moduly/wysylka/services/nadanie.js';
 import { createInpostClient } from '../../../src/oms/kurierzy/inpost.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
-import { zbudujOms } from '../../pomoc/bootstrap-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
+import { zbudujOms } from '../../pomoc/budowa-oms-testowa.ts';
 import { stanPrzesylki, sprawyPrzesylki, mozliwaKolejnaPaczka } from '../../../src/domena/przesylka-stan.js';
 import { powodBrakuGotowosciNadania } from '../../../src/domena/gotowosc-nadania.js';
 
@@ -96,7 +96,7 @@ describe('nadanie paczkomatowe — podpięcie klienta InPostu', () => {
     expect(wiersz(db, id).kurier).toBe('inpost');
   });
 
-  // Kontrakt klienta (Zadanie 5) sprawdzony NA PRAWDZIWYM kliencie z atrapa `fetch`:
+  // Kontrakt klienta sprawdzony NA PRAWDZIWYM kliencie z atrapa `fetch`:
   // gdyby usluga nadania czytala inne pola, niz klient oddaje, atrapy nigdy by tego
   // nie wykryly — obie strony klamalyby zgodnie.
   it('prawdziwy klient ShipX (atrapa fetch) domyka nadanie: numer, identyfikator i etykiety', async () => {
@@ -334,7 +334,7 @@ describe('„Sprawdź ponownie"', () => {
   it('dobiera numer listu i etykiety, przesyłka staje się nadana', async () => {
     const { db, nadanie, id, przesylkaId, sprawdzPrzesylke, woo } = await wStanieTworzenia();
     expect(await nadanie.sprawdzPonownie(przesylkaId)).toEqual({ numerListu: NUMER });
-    // ⚠️ DRUGIM ARGUMENTEM idzie ZAMOWIENIE (11.08.2026). InPost i DPD je ignoruja, ale
+    // ⚠️ DRUGIM ARGUMENTEM idzie ZAMOWIENIE. InPost i DPD je ignoruja, ale
     // `allegro_wza` bez niego nie wie, KTOREGO KONTA Allegro pytac — kanaly to osobne konta.
     expect(sprawdzPrzesylke).toHaveBeenCalledWith(String(SHIPMENT_ID), expect.objectContaining({ id }));
     const p = wiersz(db, id);
@@ -473,8 +473,8 @@ describe('HTTP — paczkomat na karcie zamówienia', () => {
 });
 
 // ---------------------------------------------------------------------------------
-// ZADANIE 7 — ekran nadania (gabaryt zamiast wymiarów, kod paczkomatu edytowalny)
-// i karta zamówienia (punkt odbioru w „Szczegółach", nazwa metody ze słownika).
+// Ekran nadania (gabaryt zamiast wymiarów, kod paczkomatu edytowalny)
+// i karta zamówienia (punkt odbioru w „Danych do wysyłki”, nazwa metody ze słownika).
 // ---------------------------------------------------------------------------------
 describe('Zadanie 7 — ekran nadania dla paczkomatu', () => {
   const config = { auth: { user: 'adam', pass: 'x' } };
@@ -525,10 +525,10 @@ describe('Zadanie 7 — ekran nadania dla paczkomatu', () => {
     expect(r.body).toContain('Przy myjni bezdotykowej');
   });
 
-  // Plan „ekran nadania" (Zadanie Z1), §2: adres pocztowy NIE WOLNO usunąć z formularza,
-  // nawet przy paczkomacie — `parsujAdresOdbiorcy` (POST) odmawia przy pustej ulicy/
-  // kodzie/mieście dla KAŻDEJ metody. Na makiecie pola schodzą do `<details>` (schowane
-  // z oczu, bo do paczkomatu nie jadą), ale zostają prawdziwymi polami formularza.
+  // Adresu pocztowego nie wolno usunąć z formularza nawet przy paczkomacie:
+  // `parsujAdresOdbiorcy` (POST) odmawia przy pustej ulicy/kodzie/mieście dla KAŻDEJ metody.
+  // Pola schodzą do `<details>` (schowane z oczu, bo do paczkomatu nie jadą),
+  // ale zostają prawdziwymi polami formularza.
   it('adres pocztowy (ulica/kod/miasto) zostaje w formularzu, schowany w <details>', async () => {
     const { app, id } = zestawHttp();
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}/nadaj`, headers: naglowek });
@@ -598,7 +598,7 @@ describe('Zadanie 7 — karta zamówienia pokazuje punkt odbioru', () => {
   let db;
   beforeEach(() => { db = openOmsDb(':memory:'); });
 
-  // PRZ-154.E1.7 (właściciel 06.11): punkt odbioru przeszedł ze „Szczegółów zamówienia” do „Danych do wysyłki”.
+  // Punkt odbioru przeszedł ze „Szczegółów zamówienia” do „Danych do wysyłki”.
   it('sekcja „Dane do wysyłki" pokazuje kod punktu odbioru i opis lokalizacji', async () => {
     const inpost = { nadaj: vi.fn() };
     const katalog = mkdtempSync(join(tmpdir(), 'oms-inpost-'));
@@ -614,9 +614,9 @@ describe('Zadanie 7 — karta zamówienia pokazuje punkt odbioru', () => {
     expect(pole).toContain('Przy myjni bezdotykowej');
   });
 
-  // ⚠️ MUTACJA (c) z briefu Zadania 7: gdyby karta wypisała surową wartość kolumny metody
+  // ⚠️ MUTACJA (c): gdyby karta wypisała surową wartość kolumny metody
   // (`inpost_paczkomat`) zamiast nazwy ze słownika ETYKIETY_WYSYLKI, ten test musi paść.
-  // Dokładnie ta usterka wróciła raz przy przebudowie belki (I5) — patrz komentarz
+  // Dokładnie ta usterka wróciła raz przy przebudowie belki — patrz komentarz
   // w domain/wysylka.js i test-bliźniak w web-zamowienie.test.js dla odbioru osobistego.
   it('nazwa metody na karcie to „InPost Paczkomat”, nie surowa wartość kolumny', async () => {
     const inpost = { nadaj: vi.fn() };
@@ -685,12 +685,12 @@ describe('zbudujOms — InPost w mapie kurierów', () => {
   });
 });
 
-// ——— TARYFA I PACZKOMAT NADAWCZY (2026-08-07) ————————————————————————————————————————
+// ——— TARYFA I PACZKOMAT NADAWCZY ————————————————————————————————————————
 //
 // ⚠️⚠️ TEN BLOK POWSTAL Z PRAWDZIWEJ POMYLKI, KTORA KOSZTOWALA PIENIADZE. Panel wysylal
 // `service: 'inpost_locker_standard'` NA SZTYWNO — poprawnie, dopoki nadawal wylacznie
 // paczkomaty ZE SKLEPU. Pierwszy paczkomat z ALLEGRO pojechal przez to na taryfie
-// standardowej zamiast allegrowej (przesylka 6000000001, zam. 1126, 07.08 o 12:25)
+// standardowej zamiast allegrowej
 // i wlasciciel musial ja anulowac.
 //
 // Sprawdzane NA PRAWDZIWYM KLIENCIE z atrapa `fetch`, a nie na atrapie klienta: cala rzecz

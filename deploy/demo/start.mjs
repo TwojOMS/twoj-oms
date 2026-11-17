@@ -1,10 +1,10 @@
-// Wejście kontenera oms-demo (PRZ-075). Brak bazy = świeże demo: generator (scripts/demo-dane.mjs) na dzisiejszy
+// Wejście kontenera oms-demo. Brak bazy = świeże demo: generator (scripts/demo-dane.mjs) na dzisiejszy
 // dzień, konto gościa z OMS_DEMO_LOGIN/OMS_DEMO_HASLO (jawne — ekran logowania je pokazuje; rola Sprzedaż: bez
-// Ustawień i Finansów) i konto administratora z /konfiguracja/konto.json (hasło zna tylko C:/Users/uzytkownik/.oms/demo.json).
+// Ustawień i Finansów) i konto administratora z /konfiguracja/konto.json (hasło jest w konfiguracji operatora).
 //
-// Reset: co DEMO_RESET_CO_MIN minut (domyślnie 60, o pełnych godzinach czasu polskiego; PRZ-079). Od PRZ-083 bez
+// Reset: co DEMO_RESET_CO_MIN minut (domyślnie 60, o pełnych godzinach czasu polskiego), bez
 // restartu kontenera: następna baza powstaje w tle przed terminem, w terminie proces podmienia pliki i składa panel
-// od nowa (cykl.mjs). Do PRZ-083 kasował bazę i kończył się kodem 0 — 46 s przerwy (pomiar 15.10). Ten tor zostaje
+// od nowa (cykl.mjs). Kasowanie bazy i wyjście kodem 0 powoduje kilkadziesiąt sekund przerwy. Ten tor zostaje
 // awaryjnie, gdy następna baza nie powstanie: wtedy restart: unless-stopped podnosi kontener, a ten plik zakłada demo.
 // Bez harmonogramu Synology i bez sudo — kontener resetuje się sam.
 import fs from 'node:fs';
@@ -43,7 +43,7 @@ if (!fs.existsSync(baza)) {
   console.log(`demo: świeże dane na ${dzis} w ${Date.now() - t0} ms — ${JSON.stringify(wynik)}`);
 }
 
-// PRZ-081: wydanie (nas-demo.sh zbuduj) zakłada bazę NOWYM obrazem w osobnym kontenerze bez sieci, zanim podmieni
+// Wydanie (nas-demo.sh zbuduj) zakłada bazę NOWYM obrazem w osobnym kontenerze bez sieci, zanim podmieni
 // działający — gość od razu ma dane z generatora tego commita, a generator nie wydłuża przerwy. Tu taki przebieg się
 // kończy: baza gotowa, panelu nie stawiamy.
 if (process.env.DEMO_TYLKO_BAZA === '1') {
@@ -54,11 +54,11 @@ if (process.env.DEMO_TYLKO_BAZA === '1') {
 const { msDoResetu, MINUTY_RESETU_DOMYSLNIE } = await import('./reset.mjs');
 const { cyklResetu } = await import('./cykl.mjs');
 const co = process.env.DEMO_RESET_CO_MIN ? Number(process.env.DEMO_RESET_CO_MIN) : MINUTY_RESETU_DOMYSLNIE;
-// demo.env z PRZ-075 na NAS-ie ma jeszcze DEMO_RESET_O=03:00 (wydanie nie przepisuje konfiguracji) — nie steruje już niczym.
+// Starsza konfiguracja demo może mieć DEMO_RESET_O=03:00 (wydanie jej nie przepisuje) — nie steruje już niczym.
 if (process.env.DEMO_RESET_O) console.log(`demo: DEMO_RESET_O=${process.env.DEMO_RESET_O} pomijane od PRZ-079 — reset co DEMO_RESET_CO_MIN`);
 console.log(`demo: reset co ${co} min (Europe/Warsaw)`);
 
-// PRZ-079: OMS z atrapami integracji piaskownicy (deploy/proba/atrapy, PRZ-076) — Faktury i Magazyn mają dane demo,
+// OMS z atrapami integracji piaskownicy (deploy/proba/atrapy) — Faktury i Magazyn mają dane demo,
 // a „Wystaw fakturę”, „Wyślij do KSeF”, „Synchronizuj” działają na atrapie. Zamiast src/oms.js, który składa
 // produkcyjne integracje (bez kluczy: puste zakładki). Sieci kontener i tak nie ma (izolacja wyżej).
 const { uruchomPiaskownice } = await import('../proba/atrapy/index.mjs');

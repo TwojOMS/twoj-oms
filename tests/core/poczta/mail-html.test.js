@@ -2,7 +2,7 @@
 // Treść pozostaje plain-textem zatwierdzonym przez człowieka; renderMailHtml tylko ją
 // opakowuje (wordmark, akapity, tabela wyceny z kanonicznych linii, stopka).
 import { describe, it, expect } from 'vitest';
-import { renderMailHtml } from '../../pomoc/mail-html-parytetu.js';
+import { renderMailHtml } from '../../pomoc/testowy-szablon-maila.js';
 
 describe('renderMailHtml — oprawa', () => {
   it('zawiera wordmark SWIETLIK PRO i kolory identyfikacji', () => {
@@ -104,7 +104,7 @@ describe('renderMailHtml — stopka', () => {
   });
 });
 
-// ⚠️ ZGŁOSZENIE WŁAŚCICIELA (19.08.2026): „gdy nie ma podanej ceny to przygotowanie projektu
+// ⚠️ ZGŁOSZENIE WŁAŚCICIELA: „gdy nie ma podanej ceny to przygotowanie projektu
 // wypada z tabeli tak jak dawniej. Kurier DPD to samo." Wiersz bez kwoty szedł przez obie
 // kolumny (colspan), więc wyglądał jak zdanie wrzucone w środek tabeli.
 describe('dodatki bez kwoty — „w cenie" i „gratis" po prawej, jak kwota', () => {

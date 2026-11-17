@@ -1,4 +1,4 @@
-// PRZ-157.12u: kreator ERLI krok po kroku — jeden rozwinięty krok naraz, ostatni krok „Start”, ekran aktywnego sklepu.
+// Kreator ERLI krok po kroku — jeden rozwinięty krok naraz, ostatni krok „Start”, ekran aktywnego sklepu.
 // Na atrapie ERLI, bez sieci; dane zmyślone (Pracownia Półcień).
 import {afterEach,expect,it} from 'vitest';
 import {zbudujAplikacje,type Aplikacja} from '../../../src/core/aplikacja.ts';

@@ -1,4 +1,4 @@
-// PRZ-091 — stany magazynowe: przełącznik, ruchy ręczne, rozchód wyliczany z zamówień (decyzje właściciela 17.10).
+// Stany magazynowe: przełącznik, ruchy ręczne, rozchód wyliczany z zamówień.
 import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszProduktSklepowy, utworzKarte, powiazProdukt } from '../../../src/oms/db/magazyn.js';
@@ -141,7 +141,7 @@ describe('rozchód z zamówień — od razu, wyliczany', () => {
     expect(stan(karta)).toBe(7);
   });
 
-  // PRZ-152.G2-01 — usunięta pozycja sklepowa nie zdejmuje towaru; przywrócenie znów zdejmuje.
+  // Usunięta pozycja sklepowa nie zdejmuje towaru; przywrócenie znów zdejmuje.
   it('usunięta pozycja sklepowa oddaje towar, przywrócona znów zdejmuje', () => {
     const id = zamowienie('sklep', [{ produkt_id: 10, ilosc: 2 }, { produkt_id: 10, ilosc: 1 }]);
     expect(stan(karta)).toBe(7);

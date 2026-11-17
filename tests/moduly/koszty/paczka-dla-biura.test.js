@@ -45,7 +45,7 @@ describe('paczka dla biura', () => {
     expect(inf.wolan).toEqual({ pdf: 0, kor: 0 });
   });
 
-  // ⚠️⚠️ DWA PLIKI, NIE JEDEN (decyzja wlasciciela 2026-09-02 wieczorem: „podzial — dwa pliki
+  // ⚠️⚠️ DWA PLIKI, NIE JEDEN (reguła produktu: „podzial — dwa pliki
   // do pobrania, jeden kosztowy, drugi przychodowy"). Kazda czesc jest OSOBNYM pobraniem
   // i osobnym plikiem: zestawienie tej czesci + jej dokumenty, stopka liczy strony TEGO pliku.
   it('czesc „sprzedaz": zestawienie sprzedazy + faktury, wlasna nazwa i liczba stron', async () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { diagnozaTerminow, normalizujTelefon, ofertyPodjazdu } from '../../src/domena/podjazdy.js';
 
-// PRZ-055: ten sam numer w dwóch zapisach (9 cyfr i +48) to ten sam kontakt odbioru.
+// Ten sam numer w dwóch zapisach (9 cyfr i +48) to ten sam kontakt odbioru.
 // Porównanie adresu normalizuje telefon TĄ SAMĄ funkcją po obu stronach; każda inna
 // różnica — inny numer, ulica, kod — nadal blokuje ofertę.
 const adres = { name: 'Firma', street: 'Polna 1', postalCode: '32-600', city: 'Warszawa', countryCode: 'PL', email: 'test@example.com', phone: '500600700' };

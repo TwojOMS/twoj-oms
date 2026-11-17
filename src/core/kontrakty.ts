@@ -104,7 +104,7 @@ export type OpisKuriera = {
   umiejetnosci: UmiejetnosciKuriera;
   /** Adapter ma `pobierzEtykiete` (ponowne pobranie etykiety po nadaniu). InPost tak; DPD i WzA nie —
    *  WzA mimo `sprawdzPrzesylke`. Czyta odmowaWProbie w modul.ts wysyłki; zgodność z adapterami DPD i InPost sprawdza
-   *  tests/moduly/wysylka/kurierzy-kontrakt-prz135.test.ts. */
+   *  tests/moduly/wysylka/kurierzy-kontrakt.test.ts. */
   pobieranieEtykiety: boolean;
   kluczeEnv: readonly string[];
   konfigurator: { sciezka: string; etykieta: string; zdanie: string; kroki?: readonly KrokKonfiguratora[] };

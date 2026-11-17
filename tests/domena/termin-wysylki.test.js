@@ -163,7 +163,7 @@ describe('poTerminie / dniRoboczeDoWysylki / tegoSamegoDnia', () => {
     expect(tegoSamegoDnia(z)).toBeNull();
   });
 
-  // ⚠️⚠️ WADA WAŻNA Z RECENZJI 13.09.2026: warunek „wysłane przed wpłatą" porównywał DNI
+  // ⚠️⚠️ WADA WAŻNA: warunek „wysłane przed wpłatą" porównywał DNI
   // warszawskie, a komentarz nad `dniRoboczeDoWysylki` obiecywał CHWILE. Odstęp UJEMNY
   // mieszczący się w jednym dniu przechodził jak normalna, wzorowa wysyłka: `dniRobocze = 0`,
   // `tegoSamegoDnia = true`, `poTerminie = false` — czyli NAJLEPSZY możliwy wynik dla

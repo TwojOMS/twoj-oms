@@ -7,7 +7,7 @@ import { ODSTEP_POLLERA_WIADOMOSCI_MS, ODSTEP_CZUWACZA_FORMULKI_MS } from '../..
 import { utworzZamowienieReczne, przeliczKwoteRecznego } from '../../../src/oms/db/zamowienia-reczne.js';
 import { dodajPozycjeReczna } from '../../../src/oms/db/zamowienia.js';
 
-// PRZ-029: kontrakty konfiguracji i kompozycji wiadomości na RZECZYWISTYM domyślnym bootstrapie.
+// Kontrakty konfiguracji i kompozycji wiadomości na RZECZYWISTYM domyślnym bootstrapie.
 // Atrapą jest wyłącznie SMTP (`createMailer`), a `fetch` odrzuca. Wszystkie pozostałe fabryki
 // są prawdziwe — śledzenie fabryk przez vi.mock ma test źródłowy `okablowanie-wiadomosci`,
 // tutaj sprawdzamy OBIEKTY usług, które bootstrap naprawdę wystawił.
@@ -97,7 +97,7 @@ describe('domyślny bootstrap BEZ SMTP', () => {
   beforeAll(async () => { smtp.wywolania.length = 0; a = await zbuduj(baza); });
   afterAll(() => zamknij(a));
 
-  // PRZ-108.02: usługi powstają zawsze (poczta z Ustawień może dojść po starcie — bez restartu). Mailerem jest
+  // Usługi powstają zawsze (poczta z Ustawień może dojść po starcie — bez restartu). Mailerem jest
   // pośrednik ustawień, który bez zapisu nie jest gotowy; `wiadomosci.gotowe()` = false. Fabryki SMTP nikt nie woła.
   it('bez poczty: mailer to niegotowy pośrednik Ustawień, wiadomości mówią gotowe() = false, fabryka SMTP nie została wywołana', () => {
     const u = (n: string) => a!.usluga<any>('wiadomosci', n);
@@ -117,7 +117,7 @@ describe('domyślny bootstrap BEZ SMTP', () => {
   it('wysyłka z karty mówi wprost 503, zamiast udawać wysłanie', async () => {
     const id = fikcyjneZamowienie(a!);
     const r = await a!.app.inject({ method: 'POST', url: `/zamowienia/${id}/wiadomosc/potwierdzenie`, headers });
-    // PRZ-109.06: to nadal odmowa 503, ale formularz wraca ekranem panelu z drogą na kartę.
+    // To nadal odmowa 503, ale formularz wraca ekranem panelu z drogą na kartę.
     expect(r.statusCode).toBe(503);
     expect(r.headers['content-type']).toContain('text/html');
     expect(r.body).toContain('Poczta nie jest skonfigurowana — wiadomości panel nie wyśle.');

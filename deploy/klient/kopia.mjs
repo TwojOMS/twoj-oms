@@ -1,4 +1,4 @@
-// Kopie OMS u klienta (PRZ-059). WYŁĄCZNIE moduły wbudowane Node — aktualizator uruchamia ten plik
+// Kopie OMS u klienta. WYŁĄCZNIE moduły wbudowane Node — aktualizator uruchamia ten plik
 // także w STARYM obrazie (z katalogu nowego wydania), gdzie nie ma reszty skryptów.
 //
 //   node kopia.mjs petla                       kontener oms-kopia: cykl od razu, potem co godzinę
@@ -11,9 +11,9 @@
 // 1. Baza → <OMS_KOPIE_KATALOG>/oms-RRRR-MM-DD.sqlite (VACUUM INTO do pliku tymczasowego,
 //    integrity_check, dopiero potem zmiana nazwy). Kopia, gdy jej nie ma, gdy najnowsza ma 26 h,
 //    albo gdy jest nowy dzień UTC i minęła 03:00 UTC. Serwer wyłączany na noc dostaje kopię
-//    po włączeniu — pętla PRZ-058 robiła ją tylko, gdy maszyna działała o 03:15.
+//    po włączeniu — kopia nie wymaga, żeby maszyna działała o konkretnej godzinie.
 // 2. Etykiety i proformy → pliki-RRRR-MM-DD.tgz raz na 7 dni, zostają OMS_KOPIE_ARCHIWA_ZACHOWAJ (2).
-//    PRZ-058 wyłączyło archiwum, bo stara pętla nie rotowała archiwów i zapełniała dysk.
+//    Archiwa wymagają rotacji, żeby nie zapełniały dysku.
 // 3. Gdy ustawiono OMS_KOPIA_ZEWNETRZNA (katalog zamontowanego nośnika): najnowsza kopia bazy
 //    (odcisk SHA-256 porównany po skopiowaniu) i lustro etykiet/proform (pliki tylko dopisywane).
 //    Bez pliku .oms-cel-kopii w tym katalogu nic się nie zapisuje — niepodłączony pendrive

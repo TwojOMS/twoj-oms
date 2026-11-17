@@ -1,4 +1,4 @@
-// PRZ-093: dokument, do którego odsyła instrukcja instalacji, musi być w paczce wydania.
+// Dokument, do którego odsyła instrukcja instalacji, musi być w paczce wydania.
 // Zmierzone przed poprawką: docs/instalacja-docker.md odsyłał do docs/kurier-dpd.md, a paczka go nie pakowała.
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
@@ -10,33 +10,33 @@ describe('paczka wydania: dokumenty kurierów', () => {
     expect(w).toEqual(['docs/kurier-dpd.md', 'docs/kurier-inny-1.md', 'docs/kurier-inpost.md', 'src/oms.js']);
   });
 
-  it('PRZ-094.04: docs/poczta-smtp.md (instrukcja poczty wychodzącej) jest w paczce i istnieje w repo', () => {
+  it('docs/poczta-smtp.md (instrukcja poczty wychodzącej) jest w paczce i istnieje w repo', () => {
     expect(plikiPaczki(['docs/poczta-smtp.md', 'docs/poczta-smtp.txt', 'docs/poczta.md'])).toEqual(['docs/poczta-smtp.md']);
     expect(fs.existsSync(new URL('../../docs/poczta-smtp.md', import.meta.url))).toBe(true);
   });
 
-  it('PRZ-132.13: docs/allegro-podlaczenie.md (podłączenie Allegro w panelu) jest w paczce i istnieje w repo', () => {
+  it('docs/allegro-podlaczenie.md (podłączenie Allegro w panelu) jest w paczce i istnieje w repo', () => {
     expect(plikiPaczki(['docs/allegro-podlaczenie.md', 'docs/allegro-podlaczenie.txt'])).toEqual(['docs/allegro-podlaczenie.md']);
     expect(fs.existsSync(new URL('../../docs/allegro-podlaczenie.md', import.meta.url))).toBe(true);
   });
 
-  it('PRZ-160.E3.29: docs/kanal-allegro-oferty.md jest w paczce i istnieje w repo', () => {
+  it('docs/kanal-allegro-oferty.md jest w paczce i istnieje w repo', () => {
     expect(plikiPaczki(['docs/kanal-allegro-oferty.md', 'docs/kanal-allegro-oferty.txt'])).toEqual(['docs/kanal-allegro-oferty.md']);
     expect(fs.existsSync(new URL('../../docs/kanal-allegro-oferty.md', import.meta.url))).toBe(true);
   });
 
-  it('PRZ-121.05a: docs/modul-faktur.md jest w paczce i istnieje w repo', () => {
+  it('docs/modul-faktur.md jest w paczce i istnieje w repo', () => {
     expect(plikiPaczki(['docs/modul-faktur.md', 'docs/modul-faktur.txt'])).toEqual(['docs/modul-faktur.md']);
     expect(fs.existsSync(new URL('../../docs/modul-faktur.md', import.meta.url))).toBe(true);
   });
 
-  it('PRZ-119.09: instrukcja Fakturowni jest w paczce i istnieje w repo', () => {
+  it('instrukcja Fakturowni jest w paczce i istnieje w repo', () => {
     expect(plikiPaczki(['docs/fakturownia.md', 'docs/fakturownia.txt', 'docs/fakturownia-inna.md']))
       .toEqual(['docs/fakturownia.md']);
     expect(fs.existsSync(new URL('../../docs/fakturownia.md', import.meta.url))).toBe(true);
   });
 
-  it('PRZ-123.C10: dokumenty TwojeFaktury obecne w tym drzewie są w paczce', () => {
+  it('dokumenty TwojeFaktury obecne w tym drzewie są w paczce', () => {
     expect(plikiPaczki(['docs/twojefaktury-ksef.md', 'docs/twojefaktury-ksef.txt'])).toEqual(['docs/twojefaktury-ksef.md']);
     // W kopii publicznej dokumenty modułu wycina ta sama lista co kod.
     const dokumenty = fs.readdirSync(new URL('../../docs/', import.meta.url))

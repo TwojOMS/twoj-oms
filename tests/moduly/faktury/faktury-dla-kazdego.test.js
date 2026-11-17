@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
-import { nowyPanel, jako, get, post } from '../../pomoc/konta-prz068.js';
+import { nowyPanel, jako, get, post } from '../../pomoc/panel-konta-testowe.js';
 import { czyFakturaDlaKazdego, zapiszFakturaDlaKazdego, ZDANIE_KASA } from '../../../src/moduly/faktury/db/faktury-dla-kazdego.js';
 import { zapiszKonsumenckie } from '../../../src/moduly/faktury/db/ksef-konsumenckie.js';
 import { szewTwojeFaktury } from '../../../src/moduly/faktury/wczytaj-szew.ts';
@@ -23,7 +23,7 @@ function panel(program = 'brak') {
 }
 afterEach(() => vi.unstubAllGlobals());
 
-describe('PRZ-126.F01 faktury także bez żądania klienta', () => {
+describe('faktury także bez żądania klienta', () => {
   it('magazyn: brak wiersza wyłącza, zapis tak/nie i ponowny odczyt bez pamięci podręcznej', () => {
     const db = openOmsDb(':memory:');
     try {
@@ -117,7 +117,7 @@ describe('PRZ-126.F01 faktury także bez żądania klienta', () => {
   });
 });
 
-describe('PRZ-126.F04 warunek włączenia przy TwojeFaktury', () => {
+describe('warunek włączenia przy TwojeFaktury', () => {
   it.runIf(szewTwojeFaktury).each([undefined, false])('bez konsumenckich odmawia włączenia bez zmiany wiersza (%s)', async (wlaczone) => {
     const { app, db, admin } = panel('twojefaktury');
     try {
@@ -127,13 +127,13 @@ describe('PRZ-126.F04 warunek włączenia przy TwojeFaktury', () => {
       const r = await post(app, ZAPIS, admin, { dlaKazdego: 'tak' });
       expect(r.statusCode).toBe(400);
       expect(ustawieniaProgramu.BLAD_WLACZENIA_BEZ_KSEF).toBeTypeOf('string');
-      // PRZ-126 DRB: zdanie odmowy raz (pas błędów), nie drugi raz pod polem.
+      // Zdanie odmowy raz (pas błędów), nie drugi raz pod polem.
       expect(r.body.split(ustawieniaProgramu.BLAD_WLACZENIA_BEZ_KSEF).length - 1).toBe(1);
       expect(wiersz(db)).toEqual(przed);
     } finally { await app.close(); db.close(); }
   });
 
-  // PRZ-126 DRB (piaskownica): „Zapisz” bez zmian przy opcji już włączonej to nie włączanie — bez 400.
+  // „Zapisz” bez zmian przy opcji już włączonej to nie włączanie — bez 400.
   it.runIf(szewTwojeFaktury)('bez konsumenckich zapis „tak” przy już włączonej opcji przechodzi', async () => {
     const { app, db, admin } = panel('twojefaktury');
     try {

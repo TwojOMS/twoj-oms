@@ -63,7 +63,7 @@ describe('klient KSeF — metadane faktur', () => {
   // pustego wyniku), ALE `hasMore`/`isTruncated` juz NIE. `hasMore: false` to normalny stan
   // koncowy kazdego nocnego przebiegu, a wiele API pomija pole, ktore nie ma zastosowania
   // (`isTruncated` przy `hasMore: false`) — tego nie zmierzono jeszcze na zywym KSeF
-  // (Zadanie 0), wiec dzis nie zaostrzamy kontraktu ponad to, co wiadomo.
+  // Wiec dzis nie zaostrzamy kontraktu ponad to, co wiadomo.
   it('odpowiedz bez tablicy invoices to czytelna odmowa, nie cichy pusty komplet', async () => {
     const fetchImpl = async () => ({ ok: true, status: 200, json: async () => ({}) });
     const klient = createKsefClient({ token: 'T', nip: '1', fetchImpl });
@@ -73,7 +73,7 @@ describe('klient KSeF — metadane faktur', () => {
     expect(e.dlaOperatora).toBe(true);
   });
 
-  // ⚠️⚠️ DEGRADACJA ZOSTAJE, ALE PRZESTAJE BYĆ NIEWIDOCZNA (recenzja, W3). Zejście brakującego
+  // ⚠️⚠️ DEGRADACJA ZOSTAJE, ALE PRZESTAJE BYĆ NIEWIDOCZNA. Zejście brakującego
   // `hasMore` do `false` jest świadome, ale kończy okno pobrania DOKŁADNIE tak samo, jak
   // prawdziwy koniec danych — a jeśli KSeF pomija to pole na stronie MAJĄCEJ następniki, ogon
   // okna nie zostaje przeczytany nigdy, bo kursor przeskakuje go razem z ostatnim oknem.
@@ -112,7 +112,7 @@ describe('klient KSeF — metadane faktur', () => {
     expect(wynik.koniecNiepewny).toBe(false);
   });
 
-  // ⚠️ ELEMENT LISTY, KTÓRY NIE JEST DOKUMENTEM (recenzja, D3). Bez tego strażnika `naWiersz`
+  // ⚠️ ELEMENT LISTY, KTÓRY NIE JEST DOKUMENTEM. Bez tego strażnika `naWiersz`
   // wywala się na nim gołym `TypeError`-em BEZ znacznika `dlaOperatora`, więc kwarantanna go
   // nie przyjmuje, przebieg pada, kursor stoi — i tak co noc, z komunikatem „błąd techniczny
   // panelu", z którego nie wynika nic. Kształt CAŁEJ odpowiedzi jest faktem o odpowiedzi,
@@ -196,7 +196,7 @@ describe('klient KSeF — pobranie XML dokumentu (archiwum)', () => {
     expect(e.dlaOperatora).toBe(true);
   });
 
-  // ⚠️⚠️ HTTP 429 TO PROSBA O PRZERWE, A NIE AWARIA ZRODLA. Zmierzone na produkcji 2026-09-02:
+  // ⚠️⚠️ HTTP 429 TO PROSBA O PRZERWE, A NIE AWARIA ZRODLA. Zmierzone na produkcji:
   // po 16 XML-ach pobranych w ~20 s KSeF odbijal kazde kolejne zadanie zdaniem „Przekroczono
   // limit 16 zadan na minute. Sprobuj ponownie po 54 sekundach", a trzy takie odmowy z rzedu
   // przerywaly archiwizacje jako „martwe zrodlo". Zeby wolajacy mogl POCZEKAC zamiast sie

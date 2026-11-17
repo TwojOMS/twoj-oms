@@ -1,4 +1,4 @@
-// PRZ-123 C06 — strażnik testów (setupFiles w vitest.config.ts): żaden test ani atrapa nie łączy się z MF.
+// Strażnik testów (setupFiles w vitest.config.ts): żaden test ani atrapa nie łączy się z MF.
 // Każde żądanie na `mf.gov.pl` / `*.mf.gov.pl` (KSeF produkcyjny, testowy, przedprodukcyjny) przez poniższe
 // drogi kończy się wyjątkiem „ZABRONIONE: KSeF w teście”, zanim gniazdo wywoła swój lookup:
 //   - `globalThis.fetch` (napis, URL, Request);
@@ -7,7 +7,7 @@
 //     także dla kodu, który zapamiętał `net.connect` przed nami.
 // Czego NIE łapie: bezpośredniego `dns.lookup` / `dns.promises.lookup` (samo zapytanie DNS, bez połączenia)
 // oraz procesów potomnych (spawn, fork, Worker) — setupFiles działa tylko w procesie testu. Tam chroni skan
-// plików w tests/core/straznik-adresow-mf-prz123.test.js: żaden plik w tests/ i deploy/proba/ nie zawiera
+// plików w tests/core/straznik-adresow-mf.test.js: żaden plik w tests/ i deploy/proba/ nie zawiera
 // adresu MF poza atrybutem xmlns UPO i jawną listą wyjątków.
 import { Socket } from 'node:net';
 

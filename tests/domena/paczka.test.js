@@ -68,7 +68,7 @@ describe('parsujPaczke', () => {
   });
 });
 
-// Zadanie 7: paczkomat InPost NIE MA wymiarow, tylko wage i gabaryt (A/B/C) — osobna
+// Paczkomat InPost NIE MA wymiarow, tylko wage i gabaryt (A/B/C) — osobna
 // funkcja od parsujPaczke, zeby sciezka DPD wyzej zostala dotkniecie DOKLADNIE taka,
 // jaka jest dzisiaj.
 describe('parsujPaczkeInpost', () => {
@@ -101,7 +101,7 @@ describe('parsujPaczkeInpost', () => {
     expect(parsujPaczkeInpost({ waga: '-1', gabaryt: 'A' }).blad).toMatch(/waga/i);
   });
 
-  // ⚠️ MUTACJA (a) z briefu Zadania 7: cicha domyślna litera zamiast odmowy musi
+  // ⚠️ MUTACJA (a): cicha domyślna litera zamiast odmowy musi
   // zaczerwienić ten test — nieznany gabaryt jest błędem operatora, nie zgadywaniem.
   it('brak gabarytu → odmowa, NIGDY cicha domyślna litera', () => {
     const wynik = parsujPaczkeInpost({ waga: '1' });

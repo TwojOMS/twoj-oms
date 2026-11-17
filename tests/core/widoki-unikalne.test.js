@@ -1,4 +1,4 @@
-// PRZ-108.06: widoki EJS wszystkich modułów leżą w JEDNEJ płaskiej przestrzeni nazw (core/web/widoki.js —
+// Widoki EJS wszystkich modułów leżą w JEDNEJ płaskiej przestrzeni nazw (core/web/widoki.js —
 // `reply.view('x.ejs')` i `include('x.ejs')` szukają po liście katalogów). Dwa pliki o tej samej nazwie w dwóch
 // modułach to ekran, który przestaje się renderować (sciezkaWidoku: „oczekiwano jednej definicji”) albo — przy
 // `include` — po cichu bierze cudzy plik. Przykład z planu: `ustawienia-automatyzacje.ejs` należy do autorespondera

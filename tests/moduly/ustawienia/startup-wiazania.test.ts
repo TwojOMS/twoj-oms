@@ -56,7 +56,7 @@ it('startup normalizuje plikową starą bazę Woo, zachowuje resztę pól i pona
   try{
     a=await zbudujOms({env:{...envWoo,OMS_DB_PATH:path},log});
     const po=a.db.prepare('SELECT * FROM zamowienia ORDER BY id').all() as any[];
-    // PRZ-101.04: start modułu zamówień wykonuje migrację zamowienia/3 (scalenia), która dokłada dwie
+    // Start modułu zamówień wykonuje migrację zamowienia/3 (scalenia), która dokłada dwie
     // puste kolumny — migawka „przed” to sam rdzeń. Kolumny sprawdzone osobno, reszta pól bez zmian.
     expect(po.every((w)=>w.scalone_do===null&&w.scalenie_json===null)).toBe(true);
     const bezScalen=po.map(({scalone_do:_d,scalenie_json:_j,...w})=>w);

@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { createAllegroClient } from '../../src/oms/allegro/client.js';
 
-// PRZ-055: biała lista pól (userMessage/message/path) nie chroni przed tokenem odbitym
+// Biała lista pól (userMessage/message/path) nie chroni przed tokenem odbitym
 // WEWNĄTRZ dozwolonego pola. Komunikat ląduje w bazie i na ekranie (niezmiennik 4.10).
 const TOKEN = 'eyJhbGciOiJSUzI1NiJ9.eyJ1c2VyX25hbWUiOiJ0ZXN0LTA1NSJ9.c2lnbmF0dXJhLXRlc3Rvd2EtMDU1';
 const sciezka = '/shipment-management/pickup-proposals';

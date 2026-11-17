@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { createHash } from 'node:crypto';
 import { zalozKonto, kontoPoLoginie, listaKont } from '../../../src/core/bezpieczenstwo/konta.js';
 import { pozostanieCzynnyAdmin } from '../../../src/moduly/ustawienia/trasy/konta.js';
-import { nowyPanel, jako, get, post, BASIC } from '../../pomoc/konta-prz068.js';
+import { nowyPanel, jako, get, post, BASIC } from '../../pomoc/panel-konta-testowe.js';
 
 // ⛔ Żadnego prawdziwego SMTP: mailer to wyłącznie atrapa podana nadpisaniem usługi `wiadomosci.mailer`.
 const ADRES = 'https://panel.example.test';
@@ -15,7 +15,7 @@ function panel({ env = {}, mailer = null } = {}) {
 }
 const NOWA = { imie: 'Nowa Osoba', login: 'nowa', email: 'nowa@example.test', rola: 'produkcja' };
 
-describe('PRZ-069 zaproszenia i reset hasła', () => {
+describe('zaproszenia i reset hasła', () => {
   it('„Pokaż link”: konto bez hasła, link widoczny raz, w bazie tylko skrót, nagłówki no-store/strict-origin', async () => {
     const { db, app, admin } = panel();
     const r = await post(app, '/ustawienia/konta/nowe', admin, { ...NOWA, sposob: 'pokaz' });
@@ -34,9 +34,9 @@ describe('PRZ-069 zaproszenia i reset hasła', () => {
     expect(login.statusCode).toBe(401);
   });
 
-  // PRZ-094.10 (decyzja właściciela 18.10): bez OMS_ADRES_PANELU i zapisu mail nie jest już blokowany — link prowadzi pod
+  // Bez OMS_ADRES_PANELU i zapisu mail nie jest już blokowany — link prowadzi pod
   // adres, z którego korzysta admin. Odmowa zostaje tylko przy adresie żądania, który nie przechodzi walidacji
-  // (adres-panelu-domyslny-prz094-10.test.js, „(e)”).
+  // (adres-panelu-domyslny.test.js, „(e)”).
   it('mail bez OMS_ADRES_PANELU i zapisu: link pod adresem żądania admina, komunikat mówi, dokąd prowadzi', async () => {
     const mailer = atrapa();
     const { db, app, admin } = panel({ mailer });
@@ -116,7 +116,7 @@ describe('PRZ-069 zaproszenia i reset hasła', () => {
     expect((await post(app, `/ustawienia/konta/${a}/link`, jako(db, 'ewa'), { sposob: 'pokaz' })).statusCode).toBe(403);
   });
 
-  it('ekran kont nie ma już żadnego pola hasła; stara trasa /nowe z hasłem dalej działa (O6)', async () => {
+  it('ekran kont nie ma już żadnego pola hasła; stara trasa /nowe z hasłem dalej działa', async () => {
     const { db, app, admin } = panel();
     const lista = await get(app, '/ustawienia/konta', admin);
     expect(lista.body).not.toMatch(/name="haslo"/);

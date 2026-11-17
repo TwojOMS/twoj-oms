@@ -61,7 +61,7 @@ describe('dosypPtaszekStatystyk', () => {
     expect(po.size).toBe(przed.length + 1);
   });
 
-  // ⚠️⚠️ REGUŁA „DOSYPUJEMY WYŁĄCZNIE PTASZEK `statystyki`" (recenzja: podmiana ciała pętli na
+  // ⚠️⚠️ REGUŁA „DOSYPUJEMY WYŁĄCZNIE PTASZEK `statystyki`" (mutacja: podmiana ciała pętli na
   // `for (const e of ekranyRoli(k.rola)) wstaw.run(k.id, e)` przywracałaby KAŻDY ptaszek
   // presetu roli, nie tylko `statystyki` — 5/5 zielone bez tego testu). Kontu trzeba odebrać
   // DWA ptaszki: odebranie samego `statystyki` nie odróżnia „dosypujemy jeden ekran" od
@@ -127,7 +127,7 @@ describe('dosypPtaszekStatystyk', () => {
       db2.close();
     });
 
-    // ⚠️⚠️ SKUTEK BRAMKI, NIE JEJ ŚLAD (recenzja: `if (zrobione) return;` → `if (false)
+    // ⚠️⚠️ SKUTEK BRAMKI, NIE JEJ ŚLAD (mutacja: `if (zrobione) return;` → `if (false)
     // return;`, 5/5 zielone — asercja z 7aeb940 dowodzi tylko, że wiersz znacznika powstaje
     // raz, nie że bramka go CZYTA i ZAWRACA). „Role są presetem, ptaszki są prawdą": raz
     // wykonana migracja nie ma prawa cofać decyzji człowieka. Operator odbiera kontu ptaszek

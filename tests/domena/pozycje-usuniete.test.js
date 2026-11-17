@@ -1,6 +1,6 @@
-// PRZ-152.G2-01 — ZŁOTY WYNIK kwot zamówienia z usuniętą pozycją sklepową (Woo i Allegro).
+// ZŁOTY WYNIK kwot zamówienia z usuniętą pozycją sklepową (Woo i Allegro).
 //
-// Usunięcie to znacznik `{ usunieta: true }` w `pozycje_reczne_json` (plan PRZ-152-G2, rozdz. 3.1).
+// Usunięcie to znacznik `{ usunieta: true }` w `pozycje_reczne_json`.
 // Nakładka (`nalozNadpisaniaPozycji`) wiersza nie oddaje, `zLinii` dokłada go do `pozycje_usuniete`,
 // a kwota oczekiwana odejmuje jego sklepową wartość. Ten plik sprawdza całą drogę od bazy:
 // karta (netto / VAT / brutto), kwota oczekiwana, bariera faktury, saldo, opłacenie i grupa scalona.

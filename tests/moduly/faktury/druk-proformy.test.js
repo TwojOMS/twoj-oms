@@ -6,7 +6,7 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { zapiszProforme, uniewaznijPoprzednie } from '../../../src/moduly/faktury/db/proformy.js';
 import { createProforma } from '../../../src/moduly/faktury/services/proforma.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { dodajFaktureDoKolejki } from '../../../src/moduly/faktury/db/kolejka-druku-faktur.js';
 import {
   dodajProformeDoKolejki, proformyDoWziecia, ostatniaPozycjaDlaProformy, ostatniePozycjeDlaProform,
@@ -16,9 +16,9 @@ import { ekranDlaAdresu } from '../../../src/domena/ekrany.js';
 import { modulRdzen } from '../../../src/moduly/rdzen/modul.ts';
 import { migracjaKolejkiDrukuProform } from '../../../src/moduly/rdzen/migracje/0009-kolejka-druku-proform.ts';
 
-// PRZ-152.G10a — druk proformy: osobna tabela `kolejka_druku_proform` (migracja rdzen/0009), czuwacz
+// Druk proformy: osobna tabela `kolejka_druku_proform` (migracja rdzen/0009), czuwacz
 // bez zmian — `/kolejka-druku-faktur` oddaje pozycje faktur i proform razem, proforma ma id „p<n>”.
-// Decyzja właściciela 05.11: drukujemy KAŻDĄ proformę, która nie jest unieważniona (bez „aktualna/rozliczona”).
+// Reguła produktu: drukujemy KAŻDĄ proformę, która nie jest unieważniona (bez „aktualna/rozliczona”).
 
 const config = { auth: { user: 'adam', pass: 'x' } };
 const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64'), origin: 'http://localhost' };
@@ -230,7 +230,7 @@ describe('czuwacz: lista, PDF, potwierdzenie — kontrakt bez zmian', () => {
     });
   });
 
-  // Recenzja G10a: czuwacz drukuje pozycje po kolei (do 120 s każda) — proforma unieważniona PO zajęciu
+  // Czuwacz drukuje pozycje po kolei (do 120 s każda) — proforma unieważniona PO zajęciu
   // pozycji, a PRZED pobraniem PDF, nie może wyjść z drukarki.
   it('unieważniona po zajęciu przez czuwacza → PDF 409 bez pliku, pozycja porzucona', async () => {
     const p = zProforma();
@@ -246,7 +246,7 @@ describe('czuwacz: lista, PDF, potwierdzenie — kontrakt bez zmian', () => {
     });
   });
 
-  // Recenzja 2: PDF wyszedł, gdy proforma była ważna — kartka już jest w drukarce. Potwierdzenie zapisuje
+  // PDF wyszedł, gdy proforma była ważna — kartka już jest w drukarce. Potwierdzenie zapisuje
   // prawdę (wydrukowano) z notatką, a nie odmawia.
   it('PDF oddany ważnej, unieważnienie w trakcie druku → …/wydrukowano 200, status wydrukowano z notatką', async () => {
     const p = zProforma();
@@ -284,7 +284,7 @@ describe('czuwacz: lista, PDF, potwierdzenie — kontrakt bez zmian', () => {
     expect(ostatniaPozycjaDlaProformy(db, p.id)).toMatchObject({ status: 'wydrukowano', ostatni_blad: null });
   });
 
-  // Recenzja 2: czuwacz-faktur.ps1 po 409 z PDF woła /blad z tekstem wyjątku — nie może nadpisać porzucenia.
+  // Czuwacz-faktur.ps1 po 409 z PDF woła /blad z tekstem wyjątku — nie może nadpisać porzucenia.
   it('PDF 409 → czuwacz woła /blad → powód i status porzucenia bez zmian', async () => {
     const p = zProforma();
     await wyslij(`/proformy/${p.id}/drukuj`);

@@ -494,7 +494,7 @@ app.get('/zamowienia/:id/specyfikacja.pdf', async (req, reply) => {
 // ⚠️ `inline`, nie `attachment`: menu otwiera je w nowej karcie, a kartka ma od razu stac
 // w podgladzie przegladarki z przyciskiem druku — nie w Pobranych. Tak samo
 // specyfikacja i wszystkie PDF-y dla czlowieka: pobranie po `http://` z LAN Chrome blokuje
-// ostrzezeniem „niebezpieczny plik” (tests/moduly/zamowienia/pdf-w-przegladarce-prz162.test.js).
+// ostrzezeniem „niebezpieczny plik” (tests/moduly/zamowienia/pdf-w-przegladarce.test.js).
 // Ekran w straznik trafia przez prefiks `/zamowienia` (domena/ekrany.js), tak samo jak
 // specyfikacja — to kartki do pakowania.
 const wydrukowano = () => fmtDataCzasKrotko(new Date().toISOString());

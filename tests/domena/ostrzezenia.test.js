@@ -49,7 +49,7 @@ describe('ostrzezeniaFaktur — dokument do wysłania do KSeF', () => {
     expect(w.title).toContain('2026-08-29T07:00:00.000Z');
   });
 
-  it('PRZ-168: title mówi, skąd i kiedy wiersz zniknie — odczyt z programu fakturowego, gdy jest podłączony', () => {
+  it('title mówi, skąd i kiedy wiersz zniknie — odczyt z programu fakturowego, gdy jest podłączony', () => {
     const [w] = ostrzezeniaFaktur({ luki: [luka(51)], dzis: DZIS });
     expect(w.title).toBe('Stan z odczytu 2026-08-29T07:00:00.000Z. Wysłana ręcznie w programie fakturowym zniknie stąd'
       + ' przy następnym odczycie z programu fakturowego (co godzinę, gdy program jest podłączony).');
@@ -124,7 +124,7 @@ describe('ostrzezeniaWiadomosci — wątek czeka na odpowiedź', () => {
   // ⚠️ `teraz: TERAZ` NIE JEST OZDOBNIKIEM. Bez niego domyslny `new Date()` bierze
   // PRAWDZIWY dzien, a fikstura ma date 29.08.2026 — test przechodzil, dopoki kalendarz
   // nie wyszedl poza okno swiezosci wiadomosci, i od tej pory swiecil na czerwono bez
-  // zadnej zmiany w kodzie (zlapane 10.09.2026). Pozostale przypadki w tym opisie robily
+// zadnej zmiany w kodzie. Pozostale przypadki w tym opisie robily
   // to poprawnie od poczatku.
   it('ostatnia wiadomość od kupującego alarmuje z loginem', () => {
     const [w] = ostrzezeniaWiadomosci({ watki: [watek()], teraz: TERAZ });
@@ -253,7 +253,7 @@ describe('ostrzezeniaIntegracji — z wyniku ocenZdrowie', () => {
     expect(w.typ).toBe('integracja');
     expect(w.klucz).toBe('integracja:poller:woo_pro');
     expect(w.tekst).toContain('woo_pro');
-    // ⚠️ ZGLOSZENIE WLASCICIELA 10.09.2026: „Poller allegro_polcien2 nie działa: The
+    // ⚠️ ZGLOSZENIE WLASCICIELA „Poller allegro_polcien2 nie działa: The
     // operation was aborted due to timeout". Polska ramka, angielski srodek — bo srodek
     // pisze Node. Wiersz tabelki czyta czlowiek, wiec caly jest po polsku.
     expect(w.tekst).toContain('połączenie nie doszło do skutku');
@@ -283,7 +283,7 @@ describe('ostrzezeniaIntegracji — z wyniku ocenZdrowie', () => {
 
   it('⚠️ CZKNIECIE SIECI NIE MALUJE WIERSZA — usterki, ktora juz przeszla, nie pokazujemy', () => {
     // Dokladnie przypadek ze zgloszenia: jeden przebieg padl na timeout, nastepny (dwie
-    // minuty pozniej) zgasil blad. Do 09.09.2026 tabelka zdazyla w tym oknie krzyknac,
+// minuty pozniej) zgasil blad. Tabelka zdazyla w tym oknie krzyknac,
     // a Ustawienia → Łączność mowily „wszystko ok" — dwie odpowiedzi na jednym panelu.
     const czknieccie = (proby) => ocenZdrowie({
       teraz: TERAZ,
@@ -300,14 +300,14 @@ describe('ostrzezeniaIntegracji — z wyniku ocenZdrowie', () => {
     });
     expect(ostrzezeniaIntegracji({ zdrowie: czknieccie(1) })).toHaveLength(0);
     expect(ostrzezeniaIntegracji({ zdrowie: czknieccie(2) })).toHaveLength(0);
-    // Trzeci nieudany przebieg z rzedu to juz nie czknieccie (decyzja wlasciciela 10.09.2026).
+// Trzeci nieudany przebieg z rzedu to juz nie czknieccie.
     expect(ostrzezeniaIntegracji({ zdrowie: czknieccie(3) })).toHaveLength(1);
   });
 
   it('⚠️ zegar STOJACY ze starym bledem mowi „stoi", a nie cytuje usterki, ktorej juz nie ma', () => {
     // Puls trzyma ostatni slad bledu takze po pozniejszym UDANYM przebiegu. Zdanie
     // „Czuwacz ostrzeżeń nie działa: <blad sprzed doby>" wskazywalo przyczyne nieaktualna
-    // i przemilczalo prawdziwa — ze zegar po prostu stoi (zgloszenie 10.09.2026).
+// i przemilczalo prawdziwa — ze zegar po prostu stoi.
     const zdrowie = ocenZdrowie({
       teraz: TERAZ,
       startAt: '2026-08-20T00:00:00.000Z',
@@ -339,7 +339,7 @@ describe('ostrzezeniaIntegracji — z wyniku ocenZdrowie', () => {
     expect(w.tekst).toMatch(/ostatni przebieg .* temu/);
   });
 
-  // PRZ-168 T1: zdanie każdego zegara zaczyna się nazwą na ekran, nie nazwą techniczną ("Czuwacz ...").
+  // Zdanie każdego zegara zaczyna się nazwą na ekran, nie nazwą techniczną ("Czuwacz ...").
   it.each([
     ['czuwaczKsef', 'integracja:czuwacz-ksef', /^Odczyt numerów KSeF/],
     ['czuwaczPrzesylek', 'integracja:czuwacz-przesylek', /^Śledzenie przesyłek/],
@@ -471,7 +471,7 @@ describe('kluczDozwolony — biała lista prefiksów dla trasy POST', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PACZKA WRÓCIŁA, A FAKTURA ZOSTAŁA (31.08.2026)
+// PACZKA WRÓCIŁA, A FAKTURA ZOSTAŁA
 //
 // ⚠️⚠️ LUKA, KTÓRĄ TO ZAMYKA: czuwacz pobrań domyka pętlę pieniędzy w JEDNĄ stronę —
 // paczka doręczona oznacza fakturę jako zapłaconą. Drugi biegun nie miał nikogo: paczka,
@@ -567,7 +567,7 @@ describe('kluczDozwolony — prefiks pobrania', () => {
   });
 });
 
-// PRZ-122.B16a: kopia bazy w tabelce ostrzeżeń (wynik usługi zdrowie.kopie; zmyślone pliki).
+// Kopia bazy w tabelce ostrzeżeń (wynik usługi zdrowie.kopie; zmyślone pliki).
 describe('ostrzezeniaKopii — stan kopii bazy z usługi zdrowie.kopie', () => {
   const stan = (o) => ({ alarmy: [], uwagi: [], katalogDostepny: true, zewnetrzna: false, ostatnia: null, ...o });
   const PRZYCISK = { href: '/ustawienia/kopie', etykieta: 'Kopie zapasowe' };
@@ -640,7 +640,7 @@ describe('ostrzezeniaKopii — stan kopii bazy z usługi zdrowie.kopie', () => {
   });
 });
 
-describe('PRZ-123 K440c — wpisy wstrzymane: zdanie „co dalej”', () => {
+describe('wpisy wstrzymane: zdanie „co dalej”', () => {
   const POWOD = 'KSeF zgłosił, że faktura FV/9/10/2026 już tam jest (numer KSeF 1234563218-20261027-0B0B0B0B0B0B-0B), '
     + 'ale nie oddał jej treści (kod 404), … Następny krok: znajdź fakturę … potem kliknij „Sprawdź ponownie” …';
   const wpis = { uuid: 'u-9', numer: 'FV/9/10/2026', dzien: '2026-10-28', kod: 'duplikat-niesprawdzony', wersja: 1, powod: POWOD };

@@ -38,7 +38,7 @@ describe('parsowanie zwrotu', () => {
   });
 
   // ⚠️ `pozycja_kwota` MUSI byc zgodna z naglowkowa `kwota` (dopisane przy naprawie bariery
-  // spojnosci, 2026-08-15) — inaczej ten test lapalby TA NOWA bariere zamiast bariery
+  // spojnosci) — inaczej ten test lapalby TA NOWA bariere zamiast bariery
   // "przekracza kwote zamowienia", ktora ma izolowac.
   it('odmawia, gdy suma zwrotow przekroczylaby kwote zamowienia', () => {
     const { blad } = parsujZwrot(zam(), cialo({ kwota: '31033', pozycja_kwota: ['31033', '0'] }), { dzis: DZIS });
@@ -59,7 +59,7 @@ describe('parsowanie zwrotu', () => {
     expect(blad).toMatch(/sztuk/i);
   });
 
-  // M1: komunikat MA BYC PO LUDZKU. Do 2026-08-15 stalo tu „Zwrot musi obejmować ani jednej
+  // Komunikat MA BYC PO LUDZKU. Do 2026-08-15 stalo tu „Zwrot musi obejmować ani jednej
   // pozycji mniej niż jedną — albo zwrot samej dostawy." — zdanie niegramatyczne, a jest to
   // JEDYNY komunikat, jaki operator dostaje w tej sytuacji. Test pilnuje TRESCI, nie tylko
   // faktu odmowy: sama odmowa byla i wczesniej.
@@ -98,12 +98,12 @@ describe('parsowanie zwrotu', () => {
   // odczyt (grosze()) albo się rozjeżdżał, albo po prostu przepuszczał śmieć. `parsujZwrot`
   // ma być JEDYNĄ barierą — `dodajZwrot` zapisuje bez pytania — więc to TU musi być pewność,
   // że każda kwota na wyjściu jest wynikiem zl(grosze(...)), nigdy odbitką surowego body.
-  // ⚠️ `pozycja_kwota` dopasowana do naglowkowej kwoty (bariera spojnosci, 2026-08-15) — ten
+  // ⚠️ `pozycja_kwota` dopasowana do naglowkowej kwoty (bariera spojnosci) — ten
   // test ma izolowac konwersje typu, nie zderzac sie z NOWA barierą.
   it('kwota jako wartosc logiczna (true) trafia do wyniku przez grosze()/zl(), nie jako surowy "true"', () => {
     const { zwrot, blad } = parsujZwrot(zam(), cialo({ kwota: true, pozycja_kwota: ['1.00', '0'] }), { dzis: DZIS });
     expect(blad).toBeNull();
-    // grosze(true) === 100 (Number(true) = 1 zl), a NIE String(true) = "true" — luka z Zadania 1
+    // grosze(true) === 100 (Number(true) = 1 zl), a NIE String(true) = "true" — luka
     // zapisywałaby literalny napis "true", ktorego zaden pozniejszy grosze() juz nie sparsuje.
     expect(zwrot.kwota).toBe('1.00');
     expect(zwrot.kwota).not.toBe('true');
@@ -150,7 +150,7 @@ describe('parsowanie zwrotu', () => {
   // NIE zadziala — dopiero ta linia ma odmowic, bo naglowkowa kwota zwrotu to '0'.
   //
   // ⚠️ Fikstura ma TERAZ takze `pozycja_kwota: ['0', '0']` (dopisane przy naprawie bariery
-  // spojnosci, 2026-08-15): domyslne `cialo()` niesie pozycje na 99.00, ktore z naglowkowa
+  // spojnosci): domyslne `cialo()` niesie pozycje na 99.00, ktore z naglowkowa
   // kwota '0' rozjezdzalyby sie tez o NOWA bariere spojnosci — a ten test ma izolowac
   // WYLACZNIE bariere "kwota i dostawa zerowe", nie obie naraz.
   it('odmawia zwrotu z pozycja, gdy kwota i dostawa sa zerowe', () => {
@@ -159,7 +159,7 @@ describe('parsowanie zwrotu', () => {
   });
 });
 
-// ⚠️⚠️ WADA Z RECENZJI (znalezisko przeoczone przy poprzedniej fali napraw, 2026-08-15):
+// ⚠️⚠️ WADA (znalezisko przeoczone przy poprzedniej fali napraw):
 // `parsujZwrot` NIE SPRAWDZAŁ ŻADNEJ relacji między `kwota` (kwota łączna zwrotu za pozycje)
 // a sumą kwot wpisanych przy poszczególnych pozycjach (`pozycja_kwota`) — obie liczby operator
 // wpisuje RĘCZNIE, niezależnie od siebie, i pomyłka jest naturalna, nie egzotyczna (formularz
@@ -171,7 +171,7 @@ describe('parsowanie zwrotu', () => {
 // z `zwroty_pozycje.kwota`, czyli na 99,00 zł. Rozjazd między KPiR a rejestrem VAT, niewidoczny
 // na żadnym ekranie panelu.
 //
-// ⚠️⚠️ ZMIANA ROLI, NIE ZNIESIENIE (przebudowa ekranu na dwa kroki, 2026-08-15). Kwoty łącznej
+// ⚠️⚠️ ZMIANA ROLI, NIE ZNIESIENIE (przebudowa ekranu na dwa kroki). Kwoty łącznej
 // operator już NIE WPISUJE — liczy ją serwer (`przygotujKrok2` w domain/zwrot-formularz.js),
 // więc ta bariera przestała kogokolwiek odrzucać przy normalnej pracy. ZOSTAJE jako STRAŻNIK
 // i to jest świadoma decyzja: między krokiem 2 a zapisem obie liczby jadą w POLACH UKRYTYCH,
@@ -191,7 +191,7 @@ describe('bariera SPÓJNOŚCI: kwota łączna musi zgadzać się z sumą kwot pr
     expect(blad).toMatch(/nie zgadza się/i);
   });
 
-  // ⚠️ KWOTA ZOSTAJE EDYTOWALNA (decyzja właściciela: „kwotę przepisujesz z Allegro i to ONA
+  // ⚠️ KWOTA ZOSTAJE EDYTOWALNA (Reguła produktu: „kwotę przepisujesz z Allegro i to ONA
   // jest prawdą"). Bariera nie narzuca arytmetyki — pilnuje wyłącznie spójności: gdy operator
   // POPRAWI kwoty przy pozycjach tak, żeby suma zgodziła się z nagłówkową kwotą z Allegro,
   // zwrot przechodzi bez przeszkód.
@@ -235,7 +235,7 @@ describe('bariera SPÓJNOŚCI: kwota łączna musi zgadzać się z sumą kwot pr
   });
 });
 
-// ⚠️⚠️ I3 (recenzja 2026-08-15): BARIERA KWOTY CZYTALA `kwota_brutto`, czyli DRUGA definicje
+// ⚠️⚠️ I3: BARIERA KWOTY CZYTALA `kwota_brutto`, czyli DRUGA definicje
 // „kwoty zamowienia". Panel ma na to JEDNA funkcje — `kwotaOczekiwanaGrosze`
 // (domain/suma-pozycji.js) — i komentarz w domain/pozycje-faktury.js opisuje wprost, dlaczego
 // porownanie z sama kolumna „kazaloby barierze odmawiac KAZDEMU zamowieniu z dopisana pozycja".
@@ -281,7 +281,7 @@ describe('bariera kwoty czyta kwote OCZEKIWANA, nie sama kolumne kwota_brutto', 
   });
 });
 
-// ⚠️⚠️ SUFIT ZWROTU DOSTAWY (drobiazg 4 z recenzji 2026-08-15). `kwota_dostawy` nie miala
+// ⚠️⚠️ SUFIT ZWROTU DOSTAWY. `kwota_dostawy` nie miala
 // ZADNEGO ogranicznika od gory: recznie sklecony POST zapisywal zwrot dostawy 139,00 zl przy
 // dostawie 19,00 zl. Bariera laczna („suma zwrotów przekracza kwotę zamówienia") tego nie
 // lapie, bo kwota zamowienia jest duzo wieksza — a `paryKorekty` (domain/korekta-pozycje.js)
@@ -325,7 +325,7 @@ describe('sufit zwrotu dostawy', () => {
   });
 });
 
-// ⚠️ ODMOWA DLA CALEGO ZAMOWIENIA MA JEDNEGO AUTORA (drobiazg 2 z recenzji 2026-08-15). Do tego
+// ⚠️ ODMOWA DLA CALEGO ZAMOWIENIA MA JEDNEGO AUTORA. Do tego
 // dnia zdanie o anulowanym zamowieniu zylo WYLACZNIE wewnatrz `parsujZwrot`, wiec ekran nowego
 // zwrotu rysowal pelny, wypelniony formularz i odmawial dopiero PO kliknieciu „Zarejestruj
 // zwrot". Regula stoi teraz osobno i czytaja ja OBA miejsca — ekran (krok 1) i zapis.
@@ -342,7 +342,7 @@ describe('powod odmowy rejestracji zwrotu (regula dla calego zamowienia)', () =>
   });
 });
 
-// ⚠️ I4 (recenzja 2026-08-15): to jest ekran, na ktorym operator PRZEPISUJE KWOTE Z ALLEGRO,
+// ⚠️ To jest ekran, na ktorym operator PRZEPISUJE KWOTE Z ALLEGRO,
 // a tam kwota stoi Z PRZECINKIEM. `parsujWplate` (domain/platnosci.js) normalizuje przecinek
 // z komentarzem, ze „odrzucanie go tutaj byloby niespojnoscia w obrebie jednego panelu";
 // tak samo robi koszt reczny i dane miesieczne. Zmierzone przed poprawka: `kwota: '310,33'`
@@ -371,7 +371,7 @@ describe('przecinek dziesietny — ta sama normalizacja, co przy wplacie', () =>
   // zamienia przecinek na kropke `replace`-em (pierwsze wystapienie) — pilnujemy WYNIKU, nie
   // sposobu: „1,2,3" ma sie odbic o `grosze()`, a nie zapisac jako 1,20 zl albo 12,30 zl.
   //
-  // ⚠️ SZCZEROSC O SILE TEGO TESTU (weryfikacja mutacyjna, 2026-08-15): mutant
+  // ⚠️ SZCZEROSC O SILE TEGO TESTU: mutant
   // `replace` → `replaceAll` PRZEZYWA i przezyje takze ten test — bo obie postaci daja
   // wynik nieliczbowy („1.2,3" i „1.2.3" to dla `Number()` tak samo `NaN`), wiec zaden
   // przypadek testowy ich nie rozroznia. To jest mutant ROWNOWAZNY, a nie luka w barierze.
@@ -386,7 +386,7 @@ describe('przecinek dziesietny — ta sama normalizacja, co przy wplacie', () =>
   });
 });
 
-// ⚠️ I6 (recenzja 2026-08-15): tozsamosc zwrotu — po niej `dodajZwrot` poznaje POWTORNE
+// ⚠️ Tozsamosc zwrotu — po niej `dodajZwrot` poznaje POWTORNE
 // WYSLANIE tego samego formularza (back+resubmit, dwuklik, dwie karty). Regula mieszka
 // w domenie, bo baza nie liczy regul; baza tylko jej UZYWA wewnatrz transakcji.
 describe('tozsamosc zwrotu (obrona przed powtornym wyslaniem)', () => {
@@ -448,7 +448,7 @@ describe('kasowanie zwrotu', () => {
     expect(powodOdmowyUsunieciaZwrotu({ korekta_zlecona_at: '2026-08-15T09:00:00Z' })).toMatch(/korekt/i);
   });
 
-  // ⚠️ LUKA OTWARTA PRZEZ RECZNY NUMER KOREKTY (C2, 2026-08-15). Do tego dnia niezmiennik
+  // ⚠️ LUKA OTWARTA PRZEZ RECZNY NUMER KOREKTY. Dawniej niezmiennik
   // „numer korekty istnieje TYLKO tam, gdzie istnieje `korekta_zlecona_at`" trzymal sie sam
   // (numer zapisywala wylacznie sciezka przez rezerwacje). „Korektę wystawiłem ręcznie"
   // zapisuje numer BEZ rezerwacji — bez tego warunku taki zwrot dalej dalby sie skasowac,
@@ -459,7 +459,7 @@ describe('kasowanie zwrotu', () => {
   });
 });
 
-// ⚠️⚠️ C2 (recenzja 2026-08-15): ZLECENIE KOREKTY, KTORE PRZEPADLO, BYLO STANEM BEZ WYJSCIA.
+// ⚠️⚠️ C2: ZLECENIE KOREKTY, KTORE PRZEPADLO, BYLO STANEM BEZ WYJSCIA.
 // `201` z inFaktu nie dowodzi, ze tresc byla poprawna (pomiar 2026-08-14) — po progu ekran
 // pisal „zlecenie zostało odrzucone" i na tym sie konczylo: przycisku „Wystaw korektę" juz
 // nie bylo, kasowania zwrotu odmawial `powodOdmowyUsunieciaZwrotu`, a zwrot zostawal
@@ -509,7 +509,7 @@ describe('reczny numer korekty („Korektę wystawiłem ręcznie")', () => {
     expect(blad).toMatch(/KOR 1\/08\/2026/);
   });
 
-  // ⚠️⚠️ K2 (recenzja kontrolna 2026-08-15): TA DROGA OBCHODZILA PROG, KTOREGO PILNUJE
+  // ⚠️⚠️ K2: TA DROGA OBCHODZILA PROG, KTOREGO PILNUJE
   // ODBLOKOWANIE. Zmierzone: rezerwacja sprzed minuty (prog 15 minut niewyczerpany), POST
   // `/korekta/reczna` → 302 i numer zapisany, a `korekta_zlecona_at` ZOSTAJE. Gdy zlecenie
   // panelu jeszcze sie przetwarza, a czlowiek w miedzyczasie wystawi korekte recznie, powstaja
@@ -574,7 +574,7 @@ describe('zlecenie korekty, ktore przepadlo', () => {
 });
 
 /**
- * ⚠️⚠️ WARUNEK Z RECENZJI 2026-08-15: EKRAN NIE MA PRAWA ORZEKAC O DOKUMENCIE, KTOREGO
+ * ⚠️⚠️ WARUNEK: EKRAN NIE MA PRAWA ORZEKAC O DOKUMENCIE, KTOREGO
  * SWIADOMIE NIE SPRAWDZIL. `doczytaj` (services/korekta.js) wychodzi PRZED zapytaniem do
  * inFaktu, gdy zamowienie ma wiecej niz jeden zwrot z otwarta sprawa korekty (sito W3) — to
  * jest SWIADOMA DECYZJA i ma zostac. Ale widok czytal WYLACZNIE `korektaPrzepadla` (proba

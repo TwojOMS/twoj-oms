@@ -32,7 +32,7 @@ function stronyZPdf(buf) {
 const wiersz = { numer_dokumentu:'FV/FIXTURE',sprzedawca_nazwa:'Dostawca fixture',
   sprzedawca_nip:'1111111111',data_wystawienia:'2026-06-05',netto:'100.00',vat:'23.00',
   brutto:'123.00',waluta:'PLN',rodzaj:'Vat',ksef_number:'K-FIXTURE' };
-describe('PRZ-025 neutralność wydruku kosztu', () => {
+describe('neutralność wydruku kosztu', () => {
   it('jedna strona zawiera neutralną stopkę bez Pracownia Świetlik', async () => {
     const strony = stronyZPdf(await zbudujKosztPdf({wiersz,pozycje:[]}));
     expect(strony).toHaveLength(1);

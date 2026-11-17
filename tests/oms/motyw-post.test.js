@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../src/oms/db/zamowienia.js';
-import { buildOmsServer } from '../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../pomoc/serwer-testowy-oms.ts';
 
 const AUTH = {
   authorization: `Basic ${Buffer.from('adam:x').toString('base64')}`,
@@ -199,7 +199,7 @@ describe('menu motywu na ekranach renderowanych przez POST', () => {
     expect(powrotZMenu(odmowa.body)).toBe('/');
   });
 
-  // ⚠️ FASTIFY 5 (2026-09-29): `app.hasRoute` porownuje WZORZEC definicji trasy
+  // ⚠️ FASTIFY 5: `app.hasRoute` porownuje WZORZEC definicji trasy
   // (`/zamowienia/:id`), a nie konkretna sciezke. Adres karty z numerem przestal pasowac
   // i powrot po cichu spadal na liste — bez bledu i bez sladu w logu. Trzy przypadki nizej
   // rozdzielaja: karta z Referer, karta z pola `powrot`, adres o ksztalcie karty, ktory

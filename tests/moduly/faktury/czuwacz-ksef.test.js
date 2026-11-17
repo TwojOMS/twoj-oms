@@ -5,7 +5,7 @@ import { zapiszNumerKsef } from '../../../src/moduly/faktury/db/faktury.js';
 import { createCzuwaczKsef, LIMIT_PRZEBIEGU, PODLOGA_DNI } from '../../../src/moduly/faktury/services/czuwacz-ksef.js';
 import { zajmijWysylkeKsef } from '../../../src/moduly/faktury/db/wysylki-ksef.js';
 
-// Czuwacz KSeF (Plan B, Zadanie 7). Panel do KSeF NIGDY nie wysyla — wlasciciel robi to sam,
+// Czuwacz KSeF. Panel do KSeF NIGDY nie wysyla — wlasciciel robi to sam,
 // recznie, w ciagu dnia. Ten przebieg WYLACZNIE PYTA inFakt, czy juz wyslal, bo do Allegro ma
 // pojsc dokument, ktory numer KSeF juz niesie.
 //
@@ -178,7 +178,7 @@ describe('czuwacz KSeF — zakres pytania', () => {
     db.close();
   });
 
-  // ⚠️ W5. Zamowienie ANULOWANE po wystawieniu faktury ma juz swoja wlasna blokade na karcie.
+  // ⚠️ Zamowienie ANULOWANE po wystawieniu faktury ma juz swoja wlasna blokade na karcie.
   // Numer KSeF nie zmieni tu niczego: do Allegro i tak nie pojedzie faktura zamowienia, ktorego
   // nikt nie kupil — a pytanie o nia zostawaloby w przebiegu co godzine, na zawsze.
   it('nie pyta o zamówienie ANULOWANE', async () => {
@@ -217,7 +217,7 @@ describe('czuwacz KSeF — zakres pytania', () => {
     db.close();
   });
 
-  // PRZ-126.F03: faktura do zamówienia, przy którym klient NIE prosił o fakturę, wysłana do KSeF
+  // Faktura do zamówienia, przy którym klient NIE prosił o fakturę, wysłana do KSeF
   // z panelu — numer musi przyjść, inaczej zakładka „FAKTURY" pokazuje „brak KSeF" na zawsze.
   it('pyta o fakturę bez żądania, której wysyłkę do KSeF zlecił panel', async () => {
     const db = openOmsDb(':memory:');
@@ -542,7 +542,7 @@ describe('czuwacz KSeF — jeden przebieg naraz', () => {
 describe('zapiszNumerKsef', () => {
   // COALESCE, a nie zwykle przypisanie: przebieg, ktory numeru nie dostal, nie ma prawa
   // SKASOWAC numeru zapisanego wczesniej. Numer KSeF jest dowodem, ze dokument juz tam jest —
-  // a to jest warunek wyslania faktury do Allegro (Zadanie 9).
+  // a to jest warunek wyslania faktury do Allegro.
   it('brak numeru NIE kasuje numeru zapisanego wcześniej', () => {
     const db = openOmsDb(':memory:');
     const id = zFaktura(db, { ksefNumer: 'KS-1' });
@@ -557,7 +557,7 @@ describe('zapiszNumerKsef', () => {
   });
 });
 
-// ——— PARTIA 4: AUTOMAT WYSYŁKI FAKTURY DO ALLEGRO (2026-08-07) ——————————————————————
+// ——— PARTIA 4: AUTOMAT WYSYŁKI FAKTURY DO ALLEGRO ——————————————————————
 //
 // Prośba właściciela po pierwszej ręcznej wysyłce: „trzeba to rzeczywiście wrzucić na automat".
 // Do tej pory czuwacz TYLKO zapisywał numer KSeF, a PDF do kupującego szedł przyciskiem.
@@ -625,7 +625,7 @@ describe('automat: faktura do Allegro po pojawieniu się numeru KSeF', () => {
     expect(wolania).toEqual([]);
   });
 
-  // ⚠️ Decyzja właściciela z Planu B: faktura idzie TYLKO na żądanie kupującego
+  // ⚠️ Reguła produktu: faktura idzie TYLKO na żądanie kupującego
   // (`invoice.required`). Dokument wysłany komuś, kto o niego nie prosił, jest tak samo
   // nieodwracalny jak każdy inny.
   it('kupujący nie prosił o fakturę → automat milczy', async () => {
@@ -686,7 +686,7 @@ describe('automat: faktura do Allegro po pojawieniu się numeru KSeF', () => {
     expect(wolania).toEqual([]);
   });
 
-  // PRZ-126.F03: zakres czuwacza poszerzył się o faktury bez żądania zlecone przez panel. Numer KSeF
+  // Zakres czuwacza poszerzył się o faktury bez żądania zlecone przez panel. Numer KSeF
   // dostaje także zamówienie z Allegro, ale do Allegro NIE jedzie — kupujący o fakturę nie prosił
   // (`wolnoWyslacDoAllegro`, domain/allegro-faktura.js). To jest ta „druga siatka" z komentarza wyżej.
   it('Allegro bez żądania, zlecone przez panel: numer KSeF zapisany, do Allegro nie jedzie', async () => {

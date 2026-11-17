@@ -9,7 +9,7 @@ const ZPL = Buffer.from('^XA^FO20,20^FDTEST^FS^XZ');
 
 const propozycja = () => ({
   suggestedInput: {
-    deliveryMethodId: null, // ⚠️ Allegro ZAWSZE oddaje tu null — zmierzone 10.08.2026.
+    deliveryMethodId: null, // ⚠️ Allegro ZAWSZE oddaje tu null.
     sender: { company: 'Pracownia Świetlik', street: 'ul. Przykładowa 1', postalCode: '00-950', city: 'Warszawa' },
     receiver: { name: 'Kupujący', street: 'Polna 1', postalCode: '00-001', city: 'Warszawa', email: 'abc+1@allegromail.pl' },
     packages: [{ type: 'PACKAGE', length: 120, width: 80, height: 55, weight: 0.5 }],
@@ -351,7 +351,7 @@ describe('kurier allegro_wza — sprawdzenie ponowne', () => {
   });
 });
 
-// ⚠️⚠️ KSZTAŁT ZMIERZONY NA PIERWSZEJ PRAWDZIWEJ PACZCE (11.08.2026, `AD0LHNWJ8L661FQRL`).
+// ⚠️⚠️ KSZTAŁT ZMIERZONY NA PIERWSZEJ PRAWDZIWEJ PACZCE (`AD0LHNWJ8L661FQRL`).
 //
 // Pierwsza wersja szukała numeru listu w `shipment.waybill` / `waybill` odpowiedzi KOMENDY —
 // pól, których Allegro nie zwraca nigdzie. Skutek na produkcji: paczka kupiona i opłacona
@@ -419,11 +419,11 @@ describe('kształt odpowiedzi Allegro — przepisany z pomiaru, nie założony',
 
 // ⚠️⚠️ TYPY MUSZĄ PASOWAĆ DO KOLUMN — awaria PO ZAKUPIE jest najdroższa z możliwych.
 //
-// 11.08.2026, zamówienia 1142 i 1145: adapter oddawał `surowa` jako OBIEKT, a kolumna
+// Zamówienia 1142 i 1145: adapter oddawał `surowa` jako OBIEKT, a kolumna
 // `przesylki.odpowiedz_surowa` jest tekstowa. `node:sqlite` rzucił „Provided value cannot be
 // bound to SQLite parameter 4" — DOPIERO PO tym, jak przewóz u Allegro powstał i kosztował.
 // Na karcie stanęło „błąd techniczny panelu", a paczka była kupiona. Ta sama rodzina co
-// pułapka z `ksef_data` (notatka 2026-08-05, §1.2).
+// pułapka z `ksef_data`.
 describe('wynik nadania nadaje się do zapisania w bazie', () => {
   const POLA_TEKSTOWE = ['numerListu', 'shipmentId', 'surowa', 'numerPrzewoznika'];
 
@@ -452,7 +452,7 @@ describe('wynik nadania nadaje się do zapisania w bazie', () => {
   });
 });
 
-// ⚠️⚠️ W KOLUMNIE `id_przesylki_kuriera` ŻYJĄ DWA RÓŻNE IDENTYFIKATORY (zam. 1145, 11.08.2026).
+// ⚠️⚠️ W KOLUMNIE `id_przesylki_kuriera` ŻYJĄ DWA RÓŻNE IDENTYFIKATORY (zam. 1145).
 //
 // Droga udana zapisuje `shipmentId`, droga awaryjna zapisuje to, co niósł wyjątek — raz
 // `commandId`, raz `shipmentId`. „Sprawdź ponownie" pytało zawsze jak o `commandId`, więc
@@ -534,7 +534,7 @@ describe('„Sprawdź ponownie" przyjmuje OBA identyfikatory', () => {
   });
 });
 
-// ⚠️⚠️ POBRANIE OD STRONY ADAPTERA (Zadanie 6, 11.08.2026). Zmierzone na zamówieniu #1148.
+// ⚠️⚠️ POBRANIE OD STRONY ADAPTERA. Zmierzone na zamówieniu #1148.
 describe('kurier allegro_wza — pobranie', () => {
   const DPD_POBRANIE = '13f26351-26fb-48d4-b5dd-f2c599280e3c';
   const KONTO = { nazwa: 'Pracownia Półcień Anna Wzorcowa', rachunek: '34109010140000000000000000' };
@@ -566,7 +566,7 @@ describe('kurier allegro_wza — pobranie', () => {
     return { k, wolania };
   };
 
-  // ⚠️⚠️ BEZ NASZEGO KONTA. Zgłoszenie właściciela 11.08.2026: „pobranie idzie na konto
+  // ⚠️⚠️ BEZ NASZEGO KONTA. Zgłoszenie właściciela: „pobranie idzie na konto
   // allegro a nie na nasze" — potwierdzone pomiarem (`WALLET_TRANSFER`, `forceRequireIban:
   // false`) i dokumentacją Allegro: „środki w ramach pobrania (COD) otrzymasz na swoje
   // subkonto w Allegro". Pierwsza wersja wysyłała tam nasz IBAN.
@@ -610,7 +610,7 @@ describe('kurier allegro_wza — pobranie', () => {
     expect(input.cashOnDelivery).toBeNull();
   });
 
-  // ⚠️⚠️ PRZ-142.02: kwota pobrania nalezy do ZAMOWIENIA, nie do paczki. Podpowiedz Allegro
+  // ⚠️⚠️ kwota pobrania nalezy do ZAMOWIENIA, nie do paczki. Podpowiedz Allegro
   // niesie ja przy KAZDYM zapytaniu, takze przy dosylce — bez warunku na numer paczki
   // klient placilby drugi raz. Wzor: dpd.js i inpost.js (`pobranieNaTejPaczce`).
   describe('dosyłka (paczka nr 2) — pobranie tylko z jawnej decyzji', () => {

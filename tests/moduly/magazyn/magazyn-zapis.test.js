@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { createWooClient } from '../../../src/oms/woo/client.js';
 import { utworzKarte, zapiszProduktSklepowy, powiazProdukt } from '../../../src/oms/db/magazyn.js';
 import { wyslijDoSklepow } from '../../../src/moduly/magazyn/services/magazyn-zapis.js';
@@ -192,7 +192,7 @@ describe('rodzic vs wariant — atrapa zachowująca się jak WooCommerce', () =>
 });
 
 // ================================================================================
-// BARIERA NIE MA PRAWA ZAWIESC OTWARCIE (recenzja 2026-08-12, Critical)
+// BARIERA NIE MA PRAWA ZAWIESC OTWARCIE
 // ================================================================================
 //
 // ⚠️⚠️ ZNALEZISKO: „nieudany odczyt = odmowa" bylo prawda WYLACZNIE dla odczytow, ktore

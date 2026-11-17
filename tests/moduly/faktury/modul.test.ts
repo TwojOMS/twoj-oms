@@ -43,7 +43,7 @@ describe('manifest faktury', () => {
   });
 });
 
-// PRZ-076: piaskownica (deploy/proba/start.mjs) podaje atrapę inFaktu i VIES fabrykami — bez klucza, bo
+// Piaskownica (deploy/proba/start.mjs) podaje atrapę inFaktu i VIES fabrykami — bez klucza, bo
 // OMS_TRYB=proba odmawia startu z kluczem. ⛔ Ta sama droga na produkcji ma być odmową startu, nie atrapą.
 describe('fabryki inFaktu i VIES (atrapy piaskownicy)', () => {
   const usluga = <T>(m: string, n: string) => {

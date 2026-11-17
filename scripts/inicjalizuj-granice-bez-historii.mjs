@@ -16,7 +16,7 @@ export function wykonaj(argv, env) {
   const [plik,kanal,dzien]=argv;
   if (!existsSync(plik)) throw new Error('Baza musi już istnieć');
   const {regulySprzedazy}=wczytajRaporty(env);
-  // PRZ-062 (recenzja D8 r1, P2-1): granica w dniu <P>_OD kanału albo później po cichu i bez odwrotu wycina
+  // Granica w dniu <P>_OD kanału albo później po cichu i bez odwrotu wycina
   // z raportu zamówienia pobrane od OD — przed pierwszym przebiegiem pollera nic innego tego nie złapie.
   for (const d of definicjeKanalow(env)) {
     const od=String(env[`${d.prefiks}_OD`] ?? '').trim();

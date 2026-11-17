@@ -100,7 +100,7 @@ it('pauza w trakcie HTTP nie zapisuje zamówień ani stanu zamkniętego przebieg
  const p=u.poller.przebieg();await wszedl;ok(s.ustawPobieranie(k,false,wersja(k),a));zwolnij();
  await expect(p).resolves.toBeUndefined();expect(db.prepare('SELECT * FROM zamowienia').all()).toEqual([]);expect(db.prepare('SELECT * FROM stan_pollera').all()).toEqual([]);
 });
-// PRZ-132.09c: sklep z panelu nie przyjmuje odpowiedzi ani nie wysyła zapisu po przekierowaniu na inny origin.
+// Sklep z panelu nie przyjmuje odpowiedzi ani nie wysyła zapisu po przekierowaniu na inny origin.
 function przekierowanieNa(fetchImpl:any,cel:string,status=302){
  const zapytania:{url:URL;init:RequestInit}[]=[];
  fetchImpl.mockImplementation(async(...args:unknown[])=>{

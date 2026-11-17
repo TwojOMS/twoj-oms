@@ -1,7 +1,7 @@
-// Harmonogram resetu demo (PRZ-075, od PRZ-079 co N minut). Osobny moduł, żeby test nie uruchamiał start.mjs.
-// PRZ-079 (decyzja właściciela 14.10): gość ma czynne przyciski na atrapach (faktury, KSeF, magazyn), a stan jest wspólny
-// dla wszystkich gości — stąd reset co godzinę zamiast raz na dobę o 03:00. Każdy reset to ~30 s przerwy i wylogowanie.
-// PRZ-082: liczba minut i jej sprawdzenie mieszkają w src/core/demo.ts — stamtąd bierze ją też napis na ekranie logowania.
+// Harmonogram resetu demo co N minut. Osobny moduł, żeby test nie uruchamiał start.mjs.
+// Gość ma czynne przyciski na atrapach (faktury, KSeF, magazyn), a stan jest wspólny
+// dla wszystkich gości — stąd domyślny reset co godzinę. Reset wymienia dane i wylogowuje gości.
+// Liczba minut i jej sprawdzenie mieszkają w src/core/demo.ts — stamtąd bierze ją też napis na ekranie logowania.
 import { MINUTY_RESETU_DOMYSLNIE, sprawdzMinutyResetu } from '../../src/core/demo.ts';
 
 export { MINUTY_RESETU_DOMYSLNIE };

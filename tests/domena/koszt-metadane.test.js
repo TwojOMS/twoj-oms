@@ -55,7 +55,7 @@ describe('metadane KSeF → wiersz panelu', () => {
     expect(grosze(w.netto, 'netto')).toBe(gr);
   });
 
-  // ⚠️⚠️ BRAK KWOTY MA BYĆ GŁOŚNY — i to jest najdroższa usterka tej warstwy (recenzja, K1).
+  // ⚠️⚠️ BRAK KWOTY MA BYĆ GŁOŚNY — i to jest najdroższa usterka tej warstwy.
   //
   // `Number(null)` i `Number('')` dają `0`, więc samo `Number(n).toFixed(2)` zamieniało brak
   // kwoty w napis `'0.00'`: faktura bez kwoty lądowała w bazie jako koszt ZEROWY, wyglądała
@@ -87,7 +87,7 @@ describe('metadane KSeF → wiersz panelu', () => {
       .toMatchObject({ netto: '0.00', vat: '0.00', brutto: '0.00' });
   });
 
-  // NIP wchodzi do bazy ZNORMALIZOWANY (recenzja, D3). Kategoria dobiera się po NIP-ie, więc
+  // NIP wchodzi do bazy ZNORMALIZOWANY. Kategoria dobiera się po NIP-ie, więc
   // '525-267-47-98' z jednego dokumentu i '5252674798' z drugiego to dziś DWA różne klucze —
   // nietrafiony odczyt kategorii wygląda wtedy na „brak kategorii", a nie na rozjazd zapisu.
   it('NIP sprzedawcy normalizuje sie u zrodla', () => {
@@ -135,7 +135,7 @@ describe('suma miesiaca — grosze kontra floaty', () => {
     expect(sumaGroszy(KWOTY_MAJA)).toBe(sumaGroszy(INNA_KOLEJNOSC));
   });
 
-  // ⚠️ TEST PONIŻEJ NIE JEST STRAŻNIKIEM NASZEGO KODU I NIE MA UDAWAĆ, ŻE JEST (recenzja, D2).
+  // ⚠️ TEST PONIŻEJ NIE JEST STRAŻNIKIEM NASZEGO KODU I NIE MA UDAWAĆ, ŻE JEST.
   // Nie dotyka `naWiersz` ani `grosze()` — mierzy arytmetykę silnika JS, która nie zmieni się
   // od żadnej naszej edycji, więc nie ma mutacji w `src/`, która by go zapaliła. Zostaje
   // WYŁĄCZNIE jako dokumentacja tego, przed czym broni decyzja o TEXT-cie i groszach; asercja

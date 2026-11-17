@@ -48,7 +48,7 @@ describe('faktyDlaStatusu — wybor statusu zapisuje FAKTY, nie etykiete', () =>
     expect(fakty).toEqual({ w_realizacji_at: null, wyslane_at: null, zwrot_at: null, zwrot_powod: null, anulowane_recznie: 0 });
   });
 
-  // ⚠️ 08.2026 (Zadanie 3): „zwrot" ZNIKLO z STATUSY_RECZNE, wiec straznik na gorze
+  // ⚠️ 08.2026: „zwrot" ZNIKLO z STATUSY_RECZNE, wiec straznik na gorze
   // `faktyDlaStatusu` rzuca ZANIM dojdzie do galezi 'zwrot' w switchu — ten test byl
   // „«zwrot» zapisuje powod razem z data" i sprawdzal wlasnie ta galaz. Galaz zostala w
   // kodzie (zeby nie zmieniac zachowania starego `zwrot_at`), ale jest juz NIEOSIAGALNA
@@ -77,7 +77,7 @@ describe('faktyDlaStatusu — wybor statusu zapisuje FAKTY, nie etykiete', () =>
 });
 
 describe('powodOdmowyStatusu', () => {
-  // ⚠️ ZMIANA 2026-07-31: „wyslane" JEST teraz do ustawienia ręcznie. Do tej pory
+  // ⚠️ ZMIANA: „wyslane" JEST teraz do ustawienia ręcznie. Do tej pory
   // wynikało z istnienia nadanej paczki i było odmawiane — ale etykieta powstaje przy
   // pakowaniu, a paczka wyjeżdża dopiero z kurierem, więc panel nie zna momentu wyjazdu.
   // Zna go człowiek, więc to on go zapisuje (fakt `wyslane_at`).
@@ -93,7 +93,7 @@ describe('powodOdmowyStatusu', () => {
 
   // Anulowanie dziala TYLKO w jedna strone: pozwolenie na odanulowanie otworzyloby droge
   // do nadania paczki do zamowienia, ktore klient anulowal.
-  // ⚠️ 08.2026: 'zwrot' zastapione 'wyslane' — 'zwrot' zniknelo z STATUSY_RECZNE (Zadanie 3),
+  // ⚠️ 08.2026: 'zwrot' zastapione 'wyslane' — 'zwrot' zniknelo z STATUSY_RECZNE,
   // wiec dla niego `powodOdmowyStatusu` zwraca dzis „Nieznany status", NIEZALEZNIE od
   // anulowania (patrz test nizej „nieznany status dostaje odmowe"). Uzycie go tutaj
   // sprawdzaloby wiec zla galaz kodu, a nie te, ktora ten test ma chronic.

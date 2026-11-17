@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { otworzBaze, wykonajMigracje } from '../../src/core/baza.ts';
-import { rdzen as modulRdzen, zalozKontoZPtaszkami as zalozKonto } from '../pomoc/bezpieczenstwo-prz-007.ts';
+import { rdzen as modulRdzen, zalozKontoZPtaszkami as zalozKonto } from '../pomoc/bezpieczenstwo-typowane.ts';
 import { kontoPoLoginie, zmienHaslo, uprawnieniaKonta } from '../../src/core/bezpieczenstwo/konta.js';
 import { zgodneHaslo } from '../../src/domena/hasla.js';
 

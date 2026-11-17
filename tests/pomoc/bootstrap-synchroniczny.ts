@@ -20,8 +20,8 @@ import {createModulMarketing} from '../../src/moduly/marketing/modul.ts';
 import {konfiguracjaMarketingu} from '../../src/moduly/marketing/konfiguracja.ts';
 import {utworzUslugiMarketingu} from '../../src/moduly/marketing/uslugi.ts';
 import { modulUstawienia } from '../../src/moduly/ustawienia/modul.ts';
-import { loadOmsConfig } from './konfiguracja-parytetu.ts';
-import { buildOmsServer } from './serwer-parytetu.ts';
+import { loadOmsConfig } from './konfiguracja-testowej-instalacji.ts';
+import { buildOmsServer } from './serwer-testowy-oms.ts';
 
 /** Jawne tłumaczenie historycznych nazw env i wstrzykniętych fabryk. Logika usług pozostaje produkcyjna. */
 export function zbudujOms(o:any) {

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { ocenZdrowie } from '../../src/domena/zdrowie.js';
 
-// DLAWIENIE POJEDYNCZEJ WPADKI POLLERA (08.09.2026).
+// DLAWIENIE POJEDYNCZEJ WPADKI POLLERA.
 //
 // ⚠️ POWSTALO PO FALSZYWYM ALARMIE. 08.09.2026 o 19:05:32 jeden przebieg pollera `pro`
 // padl na `Sklep nieosiągalny: fetch failed`; czujka monitoring odpytala /health
@@ -17,7 +17,7 @@ import { ocenZdrowie } from '../../src/domena/zdrowie.js';
 //
 // ⚠️ PROG JEST LITERALEM, NIE importem stalej — test liczacy fiksture od PROG_BLEDU_POLLERA_S
 // przezylby kazda zmiane progu (ta sama zasada, co przy progach w zdrowie-domena.test.js).
-// Prog to UMOWA Z CZUJKA i decyzja wlasciciela z 09.09.2026: 10 minut, czyli piec nieudanych
+// Prog to UMOWA Z CZUJKA i reguła produktu: 10 minut, czyli piec nieudanych
 // przebiegow z rzedu. Najdluzsza seria w tamtych 4,4 doby miala DLUGOSC JEDEN.
 
 const TERAZ = new Date('2026-09-09T12:00:00.000Z');
@@ -74,7 +74,7 @@ describe('ocenZdrowie — blad pollera typu „awaria" (siec, sklep, timeout)', 
   it('DRUGA wpadka z rzedu jeszcze milczy, TRZECIA zapala wiersz w panelu', () => {
     // ⚠️ PROG JEST LITERALEM (3), nie importem `PROB_BLEDU_NA_EKRAN` — test liczacy
     // fiksture od stalej przezylby kazda jej zmiane. „Trzy nieudane przebiegi z rzedu"
-    // to decyzja wlasciciela z 10.09.2026, a nie szczegol implementacji.
+    // to reguła produktu, a nie szczegol implementacji.
     const wierszZ = (proby) => ({
       sklep: 'pro',
       ostatni_przebieg_at: iso(30),

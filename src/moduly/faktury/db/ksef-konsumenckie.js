@@ -16,7 +16,7 @@ export function zapiszKonsumenckie(db, wlaczone) {
 // dopiero z numerem KSeF (KOD I). Przy wyłączonym przełączniku konsumencka do KSeF nie idzie, więc numeru nie dostanie.
 // Ten sam przełącznik (klucz `ksef.konsumenckie`) stoi na DWÓCH ekranach, zależnie od programu:
 // - inFakt: ekran inFaktu (ustawienia-infakt.ejs, id="ksef-konsumenckie"), Ustawienia → Integracje → inFakt
-//   (/ustawienia/integracje/infakt, wejście z „Moje połączenia” albo „Dodaj integrację”); nazwa ekranu ze wspólnej odmiany (strażnik nazw w tests/core/straznik-programu-fakturowego-prz118.test.js);
+//   (/ustawienia/integracje/infakt, wejście z „Moje połączenia” albo „Dodaj integrację”); nazwa ekranu ze wspólnej odmiany (strażnik nazw w tests/core/straznik-programu-fakturowego.test.js);
 // - TwojeFaktury: Ustawienia → Faktury i podatki → KSeF (ustawienia-ksef-sprzedazy.ejs,
 //   id="ksef-konsumenckie"; zmienia tylko administrator) — zdanie KONSUMENCKIE_POZA_KSEF_TF.
 // Zdanie mówi, gdzie włączyć: odmowa pobrania PDF w adapterze TwojeFaktury (wersja TF), podgląd maila „Faktura”

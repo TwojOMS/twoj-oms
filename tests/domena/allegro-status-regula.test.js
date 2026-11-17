@@ -82,7 +82,7 @@ describe('statusDlaAllegro', () => {
     expect(statusDlaAllegro(z({ sklep: 'reczne' }), 'NEW')).toBeNull();
   });
 
-  // ⚠️ TEST DOPISANY PO WŁASNEJ MUTACJI (Zadanie 2, trzecia mutacja): usunięcie warunku
+  // ⚠️ TEST DOPISANY PO WŁASNEJ MUTACJI: usunięcie warunku
   // `!z.zrodlo_id` PRZEŻYŁO całą suitę z planu. `zrodlo_id` to identyfikator zamówienia
   // w Allegro i jedyne, z czego wołający buduje ścieżkę `PUT /order/checkout-forms/{id}/
   // fulfillment`. Bez tego warunku reguła oddaje „wyślij PROCESSING" dla zamówienia, którego
@@ -102,7 +102,7 @@ describe('statusDlaAllegro', () => {
   });
 });
 
-// ⚠️ K2 (recenzja Partii 1). `statusDlaAllegro` oddaje `null` z sześciu różnych powodów
+// ⚠️ `statusDlaAllegro` oddaje `null` z sześciu różnych powodów
 // i tylko JEDEN z nich cokolwiek dowodzi. Ta funkcja odpowiada wyłącznie na pytanie
 // „czy świeży odczyt DOWODZI, że rozjazdu nie ma" — bo tylko wtedy wolno zdjąć z karty
 // ślad po nieudanej synchronizacji (usługa: services/sync-sklep.js).

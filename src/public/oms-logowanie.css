@@ -58,7 +58,7 @@ html:has(.lg-ekran) { scrollbar-gutter: auto; }
 
 /* ── formularz (lewa połowa) ─────────────────────────────────────────── */
 /* Kolumna logo / formularz / stopka wyśrodkowana siatką (justify-items), bez `margin: auto` — reguła szerokości
-   panelu (tests/core/szerokosci-prz154.test.js) zostaje bez wyjątków. */
+   panelu (tests/core/szerokosc-glownej-tresci.test.js) zostaje bez wyjątków. */
 .lg-strona-formularza { grid-area: formularz; display: grid; grid-template-rows: auto 1fr auto; justify-items: center; padding: 48px clamp(24px, 5vw, 72px) 32px; }
 .lg-logo-formularza { width: 100%; max-width: 380px; margin: 0 0 40px; }
 .lg-logo { display: block; height: 40px; width: auto; }

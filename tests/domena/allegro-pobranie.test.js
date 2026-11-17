@@ -88,7 +88,7 @@ describe('pobranie przez Wysyłam z Allegro — pieniądze kupującego', () => {
   });
 
   // Bez tych dwoch pieniadze z pobrania nie maja dokad wrocic.
-  // ⚠️ Te asercje przeniosly sie ZA warunek `wymaganeKonto` (11.08.2026). Przy uslugach
+  // ⚠️ Te asercje przeniosly sie ZA warunek `wymaganeKonto`. Przy uslugach
   // `WALLET_TRANSFER` brak konta NIE JEST bledem — jest poprawnym stanem.
   it('przy usłudze wymagającej konta: zły IBAN to odmowa, spacje są normalizowane', () => {
     const zKontem = (n) => wolaj({ wymaganeKonto: true, ...n });

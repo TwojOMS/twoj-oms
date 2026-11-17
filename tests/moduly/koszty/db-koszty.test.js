@@ -97,7 +97,7 @@ describe('tabela kosztow', () => {
     expect(kosztyMiesiaca(db, '2026-06').map((w) => w.ksef_number)).toEqual(['K-1']);
   });
 
-  // ⚠️ `INSERT OR IGNORE` POŁYKA TAKŻE NARUSZENIE `NOT NULL` (recenzja, W1). Wiersz odrzucony
+  // ⚠️ `INSERT OR IGNORE` POŁYKA TAKŻE NARUSZENIE `NOT NULL`. Wiersz odrzucony
   // przez bazę oddawał `changes: 0`, czyli DOKŁADNIE to samo, co dokument widziany drugi raz —
   // `zapiszKoszt` mówiło wtedy „już był", czuwacz liczył zero nowych, kursor jechał dalej,
   // a dokumentu nie ma i nigdy nie będzie. Sprawdzamy każdą kolumnę `NOT NULL`, którą podaje
@@ -120,7 +120,7 @@ describe('tabela kosztow', () => {
     expect(zapiszKoszt(db, wiersz())).toBe(false);
   });
 
-  // ⚠️ ZŁY MIESIĄC MA ODMÓWIĆ, A NIE ODDAĆ PUSTĄ LISTĘ (recenzja, W2). Pusta lista czyta się
+  // ⚠️ ZŁY MIESIĄC MA ODMÓWIĆ, A NIE ODDAĆ PUSTĄ LISTĘ. Pusta lista czyta się
   // jak „nie było kosztów", więc literówka w adresie ekranu pokazywałaby zero złotych kosztów
   // miesiąca — liczbę, której nikt nie ma jak zakwestionować. Ta sama zasada i ten sam
   // komunikat, co przy `dokumenty()`/`proformy()` w services/faktury-widok.js.
@@ -172,7 +172,7 @@ describe('tabela kosztow', () => {
   });
 
   // ⚠️ BŁĄD BEZ ZNACZNIKA CZASU NIE MÓWI, CZY AWARIA JEST SPRZED GODZINY, CZY SPRZED TRZECH
-  // TYGODNI (recenzja, D4) — a to jest cała różnica między „KSeF miał chwilową czkawkę"
+  // TYGODNI — a to jest cała różnica między „KSeF miał chwilową czkawkę"
   // a „panel nie pobiera kosztów od miesiąca". Znacznik gaśnie razem z błędem.
   it('blad pobrania niesie znacznik czasu, i gasnie razem z bledem', () => {
     const db = openOmsDb();
@@ -185,7 +185,7 @@ describe('tabela kosztow', () => {
   });
 
   // `stanKosztow` czyta ekran zakładki (pasek „ostatnie pobranie / ostatni błąd"). Bez tego
-  // testu funkcja nie miała ANI JEDNEGO wywołania — także w testach (recenzja, D1).
+  // testu funkcja nie miała ANI JEDNEGO wywołania — także w testach.
   it('stanKosztow oddaje NULL przed pierwszym przebiegiem, potem komplet stanu', () => {
     const db = openOmsDb();
     expect(stanKosztow(db)).toBeNull();
@@ -208,7 +208,7 @@ describe('tabela kosztow', () => {
   });
 });
 
-// ⚠️⚠️ ZMIANA TYPU KOLUMNY NIE DOCIERA PRZEZ `CREATE TABLE IF NOT EXISTS` (recenzja, W3).
+// ⚠️⚠️ ZMIANA TYPU KOLUMNY NIE DOCIERA PRZEZ `CREATE TABLE IF NOT EXISTS`.
 //
 // Poprzedni commit tej gałęzi zakładał `koszty` z kwotami REAL. Baza, która raz odpaliła
 // tamten commit — a odpaliła go maszyna, na której gałąź testowano — zostaje z REAL-em
@@ -286,7 +286,7 @@ describe('migracja kwot kosztow REAL → TEXT', () => {
     db2.close();
   });
 
-  // ⚠️⚠️ U1 (druga runda recenzji): `printf('%.2f', …)` NIE PROTESTUJE przy kwocie, ktora
+  // ⚠️⚠️ U1: `printf('%.2f', …)` NIE PROTESTUJE przy kwocie, ktora
   // nie jest liczba — `printf('%.2f', NULL)` i `printf('%.2f', 'NaN')` OBA daja '0.00'. Kod
   // sprzed poprawki K1 (koszt-metadane.js) zapisywal dla brakujacej kwoty doslowny napis
   // 'NaN', a kolumna REAL przyjmuje go jako TEXT bez slowa protestu. Taki wiersz po
@@ -335,7 +335,7 @@ describe('migracja kwot kosztow REAL → TEXT', () => {
     });
   });
 
-  // ⚠️ U3 (druga runda recenzji): `koszty_przed_przebudowa` zalegajaca w bazie (mozliwe
+  // ⚠️ `koszty_przed_przebudowa` zalegajaca w bazie (mozliwe
   // wylacznie po recznej ingerencji) ma dac czytelny blad, a nie surowe „there is already
   // another table or index with this name" z SQLite, z ktorego nie wynika ani ze to migracja
   // kosztow, ani co zrobic.
@@ -406,7 +406,7 @@ describe('kategorie kosztow', () => {
     expect(kategoriaDlaNip(db, '9999999999')).toEqual({ kategoria: 'Materiały', typ: 'zmienny' });
   });
 
-  // ⚠️ NIP NORMALIZUJE SIĘ PO OBU STRONACH (recenzja, D3). `nip` jest tu KLUCZEM GŁÓWNYM, więc
+  // ⚠️ NIP NORMALIZUJE SIĘ PO OBU STRONACH. `nip` jest tu KLUCZEM GŁÓWNYM, więc
   // '525-267-47-98' i '5252674798' zakładałyby DWA wiersze dla jednego podatnika — a chybiony
   // odczyt nie wygląda na rozjazd zapisu, tylko na „ten NIP nie ma jeszcze kategorii".
   // Ta sama funkcja, co przy GUS-ie (`znormalizujNip` w domain/gus.js), nie druga kopia reguły.
@@ -429,7 +429,7 @@ describe('kategorie kosztow', () => {
   });
 
   // `wszystkieKategorie` zasila podpowiedzi przy przypinaniu. Bez tego testu nie miała ANI
-  // JEDNEGO wywołania — także w testach (recenzja, D1).
+  // JEDNEGO wywołania — także w testach.
   it('wszystkieKategorie oddaje pary (kategoria, typ) bez powtorzen, po nazwie', () => {
     const db = openOmsDb();
     const lista = wszystkieKategorie(db);
@@ -444,7 +444,7 @@ describe('kategorie kosztow', () => {
     expect(wszystkieKategorie(db).filter((k) => k.kategoria === 'Kurierzy')).toHaveLength(2);
   });
 
-  // ⚠️⚠️ U2 (druga runda recenzji): `znormalizujNip` woloane BEZ `|| null` w obu funkcjach
+  // ⚠️⚠️ U2: `znormalizujNip` woloane BEZ `|| null` w obu funkcjach
   // ponizej zamienia „brak NIP-u" w pusty napis, a pusty napis JEST KLUCZEM GLOWNYM tabeli
   // `kategorie_kosztow` — sklejalby wiec ze soba WSZYSTKICH sprzedawcow bez NIP-u (`null`,
   // `undefined`, smiec bez cyfr) w jedna, wspolna kategorie.
@@ -578,7 +578,7 @@ describe('migracja: „Hosting" → „Hosting i domeny"', () => {
   });
 });
 
-// ⚠️⚠️ KWARANTANNA MUSI MIEĆ WYJŚCIE (recenzja, W4). Do tej pory był tylko zapis i dwa odczyty:
+// ⚠️⚠️ KWARANTANNA MUSI MIEĆ WYJŚCIE. Do tej pory był tylko zapis i dwa odczyty:
 // dokument raz odłożony zostawał tam NA ZAWSZE, także wtedy, gdy panel zapisał go już poprawnie
 // (spotkanie ponowne w oknie zachodzącym albo poprawka mapowania). Panel twierdziłby wtedy
 // bez końca, że w sumie miesiąca brakuje dokumentu, który w niej JEST — czyli dokładnie ten

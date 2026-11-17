@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { pobierzZamowienie, dodajPozycjeReczna, zapiszFaktyStatusu } from '../../../src/oms/db/zamowienia.js';
 import { przeliczKwoteRecznego } from '../../../src/oms/db/zamowienia-reczne.js';
 import { zalozZamowienieReczne } from '../../../src/moduly/zamowienia/services/zamowienie-reczne.js';
@@ -41,8 +41,7 @@ beforeEach(() => zbuduj());
 const post = (url, payload) => app.inject({ method: 'POST', url, headers: naglowek, payload });
 const get = (url) => app.inject({ method: 'GET', url, headers: naglowek });
 
-// Kontrahent — klient z prawdziwego zgloszenia (21.08.2026): zamowienie mailem, wysylka gratis,
-// FV przelew 14 dni, kanal B2B.
+// Kontrahent testowy: zamówienie mailem, wysyłka gratis, FV przelew 14 dni, kanał B2B.
 const Kontrahent = {
   nazwa: 'Wzorowy Kontrahent', klucz: 'kontrahent', nip: '123-45-00-028',
   f_firma: 'Wzorowy Kontrahent', f_ulica: 'ul. Testowa 7', f_kod: '00-950', f_miasto: 'Warszawa',
@@ -100,8 +99,7 @@ describe('baza stałych klientów', () => {
     expect(odp.body).toContain('Wzorowy Kontrahent');
   });
 
-  // ⚠️ EKRAN ISTNIEJE PO TO, ZEBY ZOBACZYC BAZE (21.08.2026, prosba wlasciciela: „na gorze
-  // strony lista klientow + przycisk Dodaj nowego klienta"). Formularz jest tu czynnoscia
+  // ⚠️ EKRAN ISTNIEJE PO TO, ZEBY ZOBACZYC BAZE. Formularz jest tu czynnoscia
   // rzadka — klient dopisuje sie zwykle przyciskiem na karcie zamowienia.
   it('lista jest od razu, a formularza domyślnie NIE MA', async () => {
     await dopisz();
@@ -149,7 +147,7 @@ describe('baza stałych klientów', () => {
     expect((await get('/klienci')).body).toContain('wygaszony');
   });
 
-  // ⚠️ PRZ-180. Test wyżej wysyła `aktywny: ''` — przeglądarka tak NIGDY nie robi: odznaczony
+  // ⚠️ ''` — przeglądarka tak NIGDY nie robi: odznaczony
   // checkbox po prostu nie trafia do formularza. Ten test składa żądanie tak jak przeglądarka,
   // z pól WYRENDEROWANEGO formularza edycji: ukryte zawsze, checkbox tylko zaznaczony.
   const wyslanePrzezPrzegladarke = (html, odznaczone) => {
@@ -168,7 +166,7 @@ describe('baza stałych klientów', () => {
     return pola;
   };
 
-  it('odznaczenie „Aktywny” w formularzu edycji wygasza klienta (PRZ-180)', async () => {
+  it('odznaczenie „Aktywny” w formularzu edycji wygasza klienta', async () => {
     await dopisz();
     const { id } = wszyscyKlienci(db)[0];
     const formularz = (await get(`/klienci/${id}`)).body;
@@ -180,7 +178,7 @@ describe('baza stałych klientów', () => {
     expect(wszyscyKlienci(db, { tylkoAktywni: false })[0].aktywny).toBe(0);
   });
 
-  it('zapis edycji z zaznaczonym „Aktywny” zostawia klienta aktywnym (PRZ-180)', async () => {
+  it('zapis edycji z zaznaczonym „Aktywny” zostawia klienta aktywnym', async () => {
     await dopisz();
     const { id } = wszyscyKlienci(db)[0];
     const pola = wyslanePrzezPrzegladarke((await get(`/klienci/${id}`)).body, []);
@@ -194,7 +192,7 @@ describe('baza stałych klientów', () => {
     expect(wszyscyKlienci(db)).toHaveLength(1);
   });
 
-  it('odmowa przy edycji pamięta odznaczone „Aktywny” (PRZ-180)', async () => {
+  it('odmowa przy edycji pamięta odznaczone „Aktywny”', async () => {
     await dopisz();
     const { id } = wszyscyKlienci(db)[0];
     const pola = wyslanePrzezPrzegladarke((await get(`/klienci/${id}`)).body, ['aktywny']);
@@ -207,7 +205,7 @@ describe('baza stałych klientów', () => {
 
   // Nowy klient startuje z zaznaczonym „Aktywny”; odznaczony i odbity odmową nie może wrócić
   // zaznaczony — człowiek poprawiłby literówkę i zapisał aktywnego, nie wiedząc o tym.
-  it('odmowa przy NOWYM kliencie pamięta odznaczone „Aktywny” (PRZ-180)', async () => {
+  it('odmowa przy NOWYM kliencie pamięta odznaczone „Aktywny”', async () => {
     const pola = wyslanePrzezPrzegladarke((await get('/klienci/nowy')).body, ['aktywny']);
     expect(pola).toHaveProperty('aktywny_w_formularzu');
     const odp = await post('/klienci', { ...Kontrahent, ...pola, rabat_procent: '150' });
@@ -433,9 +431,8 @@ describe('zmiana ustaleń na karcie', () => {
   });
 });
 
-// ——— POBIERZ Z GUS I SKOPIUJ DO WYSYLKI (21.08.2026, prosba wlasciciela: „przy dodawaniu
-// nowego klienta zrob wyszukiwanie w GUS po NIP tak jak jest w karcie zamowienia
-// + przycisk skopiuj dane do wysylki").
+// POBIERZ Z GUS I SKOPIUJ DO WYSYŁKI: wyszukiwanie po NIP przy dodawaniu klienta
+// oraz kopiowanie danych do wysyłki.
 describe('pobierz z GUS na ekranie klientów', () => {
   const FIRMA = {
     firma: '„Kontrahent" SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ',
@@ -526,9 +523,9 @@ describe('skopiuj dane do wysyłki na ekranie klientów', () => {
     expect(body).toContain('name="w_telefon" value="600100200"');
   });
 
-  // PRZ-180: formularz wraca ze znacznikiem, więc odznaczone „Aktywny” zostaje odznaczone —
+  // Formularz wraca ze znacznikiem, więc odznaczone „Aktywny” zostaje odznaczone —
   // inaczej zapis po skopiowaniu adresu przywracałby wygaszonego klienta.
-  it('odznaczone „Aktywny” wraca odznaczone (PRZ-180)', async () => {
+  it('odznaczone „Aktywny” wraca odznaczone', async () => {
     const body = (await post('/klienci/kopiuj-do-wysylki', { ...FORMULARZ, aktywny_w_formularzu: '1' })).body;
     const pole = body.match(/<input[^>]*name="aktywny"[^>]*>/)?.[0];
     expect(pole).toBeDefined();
@@ -541,9 +538,8 @@ describe('skopiuj dane do wysyłki na ekranie klientów', () => {
   });
 });
 
-// ——— KARTA KLIENTA (21.08.2026, prosba wlasciciela) ——————————————————————————————
-// „Klikniecie w nazwe klienta otwiera strone z jego danymi oraz historia zamowien",
-// „zamiast «popraw» to przycisk «edytuj»", „«Dodaj nowego klienta» — niech sie wyroznia".
+// KARTA KLIENTA: kliknięcie nazwy otwiera dane i historię zamówień; przyciski
+// „Edytuj” i wyróżniony „Dodaj nowego klienta”.
 describe('karta stałego klienta', () => {
   const dopiszIWez = async (nad = {}) => {
     await dopisz(nad);

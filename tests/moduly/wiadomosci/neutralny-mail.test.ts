@@ -5,7 +5,7 @@ import { zbudujOms } from '../../../src/oms/bootstrap.ts';
 import { utworzZamowienieReczne, przeliczKwoteRecznego } from '../../../src/oms/db/zamowienia-reczne.js';
 import { dodajPozycjeReczna } from '../../../src/oms/db/zamowienia.js';
 
-// PRZ-029 RED: mail do klienta składany przez RZECZYWISTE usługi domyślnego bootstrapu nie może
+// Mail do klienta składany przez RZECZYWISTE usługi domyślnego bootstrapu nie może
 // nieść marki ani stopki konkretnej firmy zaszytej w kodzie. Proponowana umowa (bez rozszerzeń):
 //   OMS_MAIL_MARKA  — podpis pod mailem; brak → neutralne „Obsługa sklepu”,
 //   OMS_MAIL_STOPKA — stopka maila; brak → bez stopki.

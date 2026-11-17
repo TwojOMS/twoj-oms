@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import {
   MAPOWANIE_SKLEPOW, metodaZLinii, metodaZPozycji, metodaWysylkiZamowienia,
-} from '../pomoc/mapowanie-sklepow-historyczne-fixture.js';
+} from '../pomoc/przykladowe-mapowanie-wysylki.js';
 import { METODY_WYSYLKI } from '../../src/domena/wysylka.js';
 import { mapujZamowienie } from '../../src/domena/mapowanie.js';
 
 const SWIETLIK = MAPOWANIE_SKLEPOW.swietlik;
 
-// Ksztalty ODWZOROWANE Z ZYWEGO SKLEPU (odczyt 2026-08-01), nie zmyslone.
+// Ksztalty ODWZOROWANE Z ZYWEGO SKLEPU, nie zmyslone.
 const zLinia = (instanceId, methodId, tytul) => ({
   id: 1, number: '28079', total: '212.90', status: 'processing',
   shipping_lines: [{ instance_id: instanceId, method_id: methodId, method_title: tytul }],
@@ -44,7 +44,7 @@ describe('metodaZLinii — droga główna, po instance_id', () => {
       .toEqual({ metoda: 'dpd' });
   });
 
-  // Od 2026-08-01 (Etap 2) panel umie paczkomaty — instancja 12 przestala byc „nieznana".
+  // Od 2026-08-01 panel umie paczkomaty — instancja 12 przestala byc „nieznana".
   // ⚠️ BEZ pobrania: sklep nie sprzedaje dzis paczkomatu za pobraniem. Pelny komplet
   // testow paczkomatowych siedzi w tests/oms/paczkomat.test.js.
   it('paczkomat (instancja 12) to InPost Paczkomat, bez pobrania', () => {

@@ -28,7 +28,7 @@ describe('inFakt: numer KSeF pojedynczej faktury', () => {
     expect((await k2.pobierzFakture('uuid-3')).ksefNumer).toBeNull();
   });
 
-  // ⚠️ Zadanie 8: services/korekta.js buduje korekte z TEGO odczytu, nie z zamowienia —
+  // ⚠️ Services/korekta.js buduje korekte z TEGO odczytu, nie z zamowienia —
   // faktura mogla zostac poprawiona recznie w inFakcie. Bez tych pol korekta zawsze
   // odmawialaby ("Faktura z inFaktu nie ma ani jednej pozycji"), bo `paryKorekty` czyta
   // `faktura.services`.
@@ -45,7 +45,7 @@ describe('inFakt: numer KSeF pojedynczej faktury', () => {
     expect(wynik.services).toEqual(dane.services);
   });
 
-  // ⚠️⚠️ PRZYPIĘCIE KSZTAŁTU NA WEJŚCIU ŚCIEŻKI PIENIĘDZY (recenzja poprawkowa 28.08.2026, W2).
+  // ⚠️⚠️ PRZYPIĘCIE KSZTAŁTU NA WEJŚCIU ŚCIEŻKI PIENIĘDZY.
   // Usunięcie `status` i `left_to_pay` z `pobierzFakture` dawało CAŁĄ SUITĘ ZIELONĄ (zmierzone:
   // 9759/9759), a zmieniało zachowanie tak, że czuwacz pobrań przestawał rozpoznawać dokumenty
   // JUŻ OPŁACONE i wysyłał `POST /paid.json` do każdego doręczonego pobrania — także tych
@@ -105,7 +105,7 @@ const json = (dane, status = 200) => ({ ok: status < 400, status, json: async ()
 
 describe('KSeF w kliencie inFaktu', () => {
   // ⚠️ TU STAL TEST `statusKsef` — metody, ktorej NIKT nigdy nie zawolal. Usunieta razem
-  // z metoda 06.08.2026 (recenzja calosci, M1); uzasadnienie stoi w komentarzu w miejscu,
+  // z metoda 06.08.2026; uzasadnienie stoi w komentarzu w miejscu,
   // z ktorego zniknela (src/oms/infakt/client.js, przy `pobierzFakture`).
 
   // ⚠️⚠️ WYSYLKA JEST PER DOKUMENT — SPROSTOWANIE Z 07.08.2026. Do tego dnia testy tutaj

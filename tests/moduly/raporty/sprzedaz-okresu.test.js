@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { openOmsDb } from '../../pomoc/dane-miesieczne-parytetu.js';
+import { openOmsDb } from '../../pomoc/testowe-dane-miesieczne.js';
 import { zapiszHistorie, ustawGranice } from '../../../src/oms/db/historia-sprzedazy.js';
-import { KANALY } from '../../pomoc/raporty-historyczne-fixture.js';
-import { sprzedazWOkresie } from '../../pomoc/raporty-parytetu.js';
+import { KANALY } from '../../pomoc/przykladowe-dane-raportow.js';
+import { sprzedazWOkresie } from '../../pomoc/testowe-reguly-raportow.js';
 
 let db;
 let licznik = 0;
@@ -30,7 +30,7 @@ const wOms = (utworzone, kwota = '100.00', sklep = 'swietlik') => {
   ).run(sklep, licznik, `O${licznik}`, kwota, utworzone);
 };
 
-// ⚠️ Osobny pomocnik od wOms wyzej (Zadanie 4, recenzja) — zamowienie OMS z prawdziwym
+// ⚠️ Osobny pomocnik od wOms wyzej — zamowienie OMS z prawdziwym
 // klient_json i/albo pozycjami. Zaden dotychczasowy test tego nie zakladal: caly komplet
 // fikstur mial klient_json = NULL i pusta liste pozycji, wiec regula wykluczen po stronie
 // OMS-u (klient.imie/nazwisko/firma) i pozycjeOms nie mialy czego oznaczyc. wOms ZOSTAJE
@@ -151,11 +151,11 @@ describe('netto i wykluczenia', () => {
     expect(suma('2026-07-10', '2026-07-10')).toBe(0);
   });
 
-  // ⚠️ Zadanie 4, recenzja — dziura w pokryciu: zaden test wyzej nie zaklada zamowienia
+  // ⚠️ dziura w pokryciu: zaden test wyzej nie zaklada zamowienia
   // OMS-u z wypelnionym klient_json ani z pozycjami. Kolumny sa dobre (klient_json +
   // klient_reczny_json), ale klucze wewnatrz maja byc kompletem Woo billing: first_name,
-  // last_name, company, email — tak samo jak w domain/mapowanie.js (surowe.billing),
-  // domain/allegro-mapowanie.js (adresPanelu) i domain/nowe-zamowienie.js (rozbijNazwe +
+  // last_name, company, email — tak samo jak w src/domena/mapowanie.js (surowe.billing),
+  // src/domena/allegro-mapowanie.js (adresPanelu) i src/domena/nowe-zamowienie.js (rozbijNazwe +
   // company). Ponizsze testy padaly na kodzie SPRZED poprawki: sklejony napis czytal
   // klient.imie/nazwisko/firma, ktore w tym ksztalcie sa ZAWSZE undefined.
   it('OMS: firma "Pracownia Półcień…" w klient_json wypada ze sprzedazy', () => {
@@ -234,14 +234,12 @@ const zeSklepuZNadpisaniem = (utworzone, {
   return zamowienieId;
 };
 
-// RAPORT MA LICZYĆ TO SAMO, CO FAKTURA (23.08.2026).
+// RAPORT MA LICZYĆ TO SAMO, CO FAKTURA.
 //
 // ⚠️ POWÓD ISTNIENIA TEGO BLOKU: raport brał kolumnę `kwota_brutto` — kwotę ZE SKLEPU, która
 // z założenia nie rośnie od naszych dopisków — a faktura liczy `kwotaOczekiwanaGrosze`.
-// Zmierzone na produkcji: zamówienie 28171 z 3.08 ma na fakturze 654,00 zł, a w raporcie
-// miało 429,00 zł, bo dopisana ręcznie pozycja za 225,00 zł nie podnosiła tamtej kolumny.
-// ⚠️ Na 23.08.2026 poprawka rusza dokładnie JEDNO zamówienie (+225,00 zł) — dwa pozostałe
-// rozjazdy w bazie to zamówienia własne, wykluczone z raportu przez `czyTestowe`.
+// Dopisana ręcznie pozycja może zwiększyć fakturę o setki złotych, nie podnosząc kwoty ze sklepu.
+// ⚠️ Zamówienia własne są wykluczone z raportu przez `czyTestowe`.
 describe('raport liczy zamówienie tak samo jak faktura', () => {
   it('pozycja dopisana ręcznie podnosi sprzedaż — tak jak podnosi fakturę', () => {
     wOmsZKlientem('2026-08-03 12:00:00', {
@@ -272,7 +270,7 @@ describe('raport liczy zamówienie tak samo jak faktura', () => {
     expect(suma('2026-08-03', '2026-08-03')).toBe(15000);
   });
 
-  // Wysylka jest edytowalna tak samo jak pozycje (07.08.2026, prosba wlasciciela) i ma
+  // Wysylka jest edytowalna tak samo jak pozycje i ma
   // w `kwotaOczekiwanaGrosze` WLASNY czlon roznicowy. Dwie paczki zamiast jednej to realna
   // doplata klienta, wiec raport ma ja widziec — a bez kolumny `koszt_dostawy_brutto`
   // w zapytaniu cena sklepowa czyta sie jako brak i cala roznica wychodzi zerowa.
@@ -288,7 +286,7 @@ describe('raport liczy zamówienie tak samo jak faktura', () => {
     expect(suma('2026-08-03', '2026-08-03')).toBe(13800);
   });
 
-  // ⚠️ STRAŻNIKI, nie nowa funkcja: oba przypadki dzialaly przed 23.08 i maja dzialac dalej.
+  // ⚠️ STRAŻNIKI, nie nowa funkcja: oba przypadki dzialaly przed dodaniem tej funkcji i maja dzialac dalej.
   // Pierwszy pilnuje galezi `sklep === 'reczne'` w kwotaOczekiwanaGrosze (zamowienie reczne
   // nie ma pozycji sklepowych, wiec czlon roznicowy policzylby kazda pozycje DRUGI RAZ),
   // drugi — zamowienia swiezo pobranego, ktoremu poller nie zdazyl jeszcze wstawic pozycji.
@@ -325,7 +323,7 @@ describe('raport liczy zamówienie tak samo jak faktura', () => {
     }]);
   });
 
-  // PRZ-152.G2-01 — usunięta pozycja ze sklepu znika z faktury, więc i z raportu: kwota
+  // Usunięta pozycja ze sklepu znika z faktury, więc i z raportu: kwota
   // spada o jej SKLEPOWĄ wartość, a ranking jej nie pokazuje.
   it('usunieta pozycja ze sklepu obniza sprzedaz i znika z rankingu', () => {
     const id = zeSklepuZNadpisaniem('2026-08-03 12:00:00', {

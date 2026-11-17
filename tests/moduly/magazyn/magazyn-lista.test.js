@@ -1,16 +1,16 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import {
   zapiszProduktSklepowy, utworzKarte, powiazProdukt, SORTOWANIE_KART,
 } from '../../../src/oms/db/magazyn.js';
 
 
-// EKRAN MAGAZYNU — pierwsza rzecz z tej partii, ktora czlowiek zobaczy na ekranie.
+// EKRAN MAGAZYNU — pierwsza rzecz widoczna pozycja modułu.
 //
 // ⚠️ Ten test pilnuje TRZECH rzeczy, ktore odrozniaja ten ekran od „tabelki z bazy":
 //   (1) awaria kanalu i liczba znikniętych sa WIDOCZNE — bez tego hamulec pustego odczytu
-//       (Zadanie 7) i licznik ubytku roznia sie od stanu sprzed poprawki wylacznie wpisem
+// i licznik ubytku roznia sie od stanu sprzed poprawki wylacznie wpisem
 //       w `docker logs`;
 //   (2) nazwa sortowania z adresu HTTP przechodzi przez BIALA LISTE — `?sort=constructor`
 //       byl realna pieciusetka na glownym ekranie panelu;
@@ -66,7 +66,7 @@ function uzupelnijTresc(db, id) {
  * WIERSZ TABELY KART o tej nazwie — sam wiersz, bez reszty strony.
  *
  * ⚠️⚠️ TO NIE JEST WYGODA, TYLKO WARUNEK NOSNOSCI ASERCJI. Nad tabela stoi pasek filtrow
- * (Zadanie 10) z listami wyboru kanalu i paczkomatu, ktore renderuja DOKLADNIE te same
+ * z listami wyboru kanalu i paczkomatu, ktore renderuja DOKLADNIE te same
  * napisy, co komorki tabeli, i w tej samej kolejnosci: `<option value="tak">tak</option>`,
  * `…>nie<…`, `…>nieoznaczone<…` oraz cztery etykiety kanalow. Asercja na golym napisie
  * albo na kolejnosci przez `indexOf` jest wiec spelniona przez SAM PASEK FILTROW —
@@ -75,7 +75,7 @@ function uzupelnijTresc(db, id) {
  * Wszystko, co dotyczy zawartosci wiersza, ma przechodzic przez te funkcje.
  */
 function wierszKarty(body, nazwa) {
-  // ⚠️ NAZWA JEST ODNOSNIKIEM NA KARTE PRODUKTU (Zadanie 11) — samo `<div>nazwa</div>` juz
+  // ⚠️ NAZWA JEST ODNOSNIKIEM NA KARTE PRODUKTU — samo `<div>nazwa</div>` juz
   // w tej kolumnie nie stoi, wiec wzorzec, ktory tego nie widzi, nie znajdzie ANI JEDNEGO
   // wiersza i cala suita padnie na „nie ma wiersza" zamiast na tresci asercji.
   const wiersz = body.split('<tr>').find((w) => w.includes(`>${nazwa}</a></div>`));
@@ -112,7 +112,7 @@ describe('GET /magazyn — tabela kart', () => {
       [{ kanal: 'pro', produkt_id: '944', cena_gr: 7490 }],
     );
     const app = serwer();
-    // ⚠️ KOLUMNY CEN ZYJA W TRYBIE KATALOGOWYM (przebudowa 2026-08-25, Zadanie 5) — ekran
+    // ⚠️ KOLUMNY CEN ZYJA W TRYBIE KATALOGOWYM — ekran
     // domyslny pomija kolumny cen kanalow. Zmienil sie ADRES, nie
     // asercja: wszystko ponizej pilnuje dokladnie tego samego, co przed przebudowa.
     const r = await get(app, '/magazyn?widok=katalog');
@@ -140,13 +140,13 @@ describe('GET /magazyn — tabela kart', () => {
 
   it('cztery osobne kolumny kanalow, Allegro rozbite na dwa konta', async () => {
     kartaZProduktem({ nazwa: 'Kandelabr' }, []);
-    // ⚠️ TRYB KATALOGOWY — kolumny kanalow zeszly z ekranu domyslnego (Zadanie 5).
+    // ⚠️ TRYB KATALOGOWY — kolumny kanalow zeszly z ekranu domyslnego.
     const r = await get(serwer(), '/magazyn?widok=katalog');
     // ⚠️ ETYKIETY W NAGLOWKACH TABELI, nie „gdziekolwiek na stronie". Pasek filtrow
-    // (Zadanie 10) ma pole wyboru `name="kanal"` z DOKLADNIE tymi czterema etykietami, wiec
+    // ma pole wyboru `name="kanal"` z DOKLADNIE tymi czterema etykietami, wiec
     // petla po `toContain` byla spelniona bez udzialu tabeli: mutacja `naglowkiKanalow
     // .slice(0, 3)` razem z `w.kanaly.slice(0, 3)` zdejmowala kanal z ekranu, a suita szla
-    // 4413/4413 na zielono. Etykiety ida z `domain/kanaly.js` (adresKanalu) — druga mapa
+    // 4413/4413 na zielono. Etykiety ida z `src/domena/kanaly.js` (adresKanalu) — druga mapa
     // nazw rozjechalaby sie z kolumna „Kanal sprzedazy" na liscie zamowien.
     const naglowki = [...r.body.matchAll(/<th class="magazyn-kanal">([^<]*)<\/th>/g)].map((m) => m[1].trim());
     expect(naglowki).toEqual([
@@ -165,7 +165,7 @@ describe('GET /magazyn — tabela kart', () => {
       { kanal: 'allegro_swietlik', produkt_id: 'a1', cena_gr: 11100 },
       { kanal: 'allegro_polcien2', produkt_id: 'b1', cena_gr: 22200 },
     ]);
-    // ⚠️ TRYB KATALOGOWY — to on niesie ceny kanalow po przebudowie (Zadanie 5).
+    // ⚠️ TRYB KATALOGOWY — to on niesie ceny kanalow po przebudowie.
     const r = await get(serwer(), '/magazyn?widok=katalog');
 
     expect(komorkiKanalow(wierszKarty(r.body, 'Kandelabr')))
@@ -214,11 +214,11 @@ describe('GET /magazyn — tabela kart', () => {
     }
   });
 
-  // ⚠️⚠️ SEDNO POPRAWKI Z 2026-08-12, PRZYPIETE WPROST: adres miniatury na liscie POCHODZI
+  // ⚠️⚠️ ADRES MINIATURY, PRZYPIETY WPROST: adres miniatury na liscie POCHODZI
   // Z LUSTRA (kolumna `miniatura`, wypelniona ze Store API sklepu), a NIE z reguly opartej
   // na nazwie pliku oryginalu. Adresy dobrane tak, zeby oba zrodla dawaly ROZNY wynik:
   // Sklep A skaluje miniatury do 247x296, wiec zgadywanie skleiloby `-150x150`, ktorego
-  // pod zadnym zdjeciem tego sklepu NIE MA (zmierzone: 608 z 684 adresow = 404).
+  // pod zadnym zdjeciem tego sklepu NIE MA (zgadywane adresy często kończą się 404).
   it('miniatura idzie z lustra, a nie z reguly po nazwie pliku, i wczytuje sie leniwie', async () => {
     kartaZProduktem({ nazwa: 'Kandelabr' }, [{
       kanal: 'swietlik',
@@ -260,7 +260,7 @@ describe('GET /magazyn — tabela kart', () => {
       { kanal: 'swietlik', produkt_id: '55', cena_gr: 9900, adres: 'javascript:alert(1)' },
     ]);
     // ⚠️ Odnosniki do sklepow siedza w komorkach kanalow, czyli w TRYBIE KATALOGOWYM
-    // (Zadanie 5) — bariera adresu jest ta sama, zmienil sie wylacznie ekran, na ktorym stoi.
+    // — bariera adresu jest ta sama, zmienil sie wylacznie ekran, na ktorym stoi.
     const r = await get(serwer(), '/magazyn?widok=katalog');
 
     expect(r.body).toContain('https://pro.sklep-polcien.example.invalid/produkt/kandelabr');
@@ -277,7 +277,7 @@ describe('GET /magazyn — tabela kart', () => {
   });
 
   it('pusta lista MOWI, ze jest pusta', async () => {
-    // ⚠️ TRYB KATALOGOWY, bo to jego zestaw kolumn liczy `colspan` ponizej (Zadanie 5);
+    // ⚠️ TRYB KATALOGOWY, bo to jego zestaw kolumn liczy `colspan` ponizej;
     // wariant porzadkow ma wlasna asercje w opisie „dwa tryby tabeli".
     const r = await get(serwer(), '/magazyn?widok=katalog');
     expect(r.statusCode).toBe(200);
@@ -288,9 +288,8 @@ describe('GET /magazyn — tabela kart', () => {
     // rozjezdza sie CICHO przy kazdej zmianie zestawu kolumn — komunikat pustej listy
     // przestaje wtedy siegac konca tabeli i wyglada jak polamany render. Cztery kanaly
     // plus zaznaczenie, miniatura, karta, wymiary i kategoria = dziewiec.
-    // (Bylo dziewiec do 2026-08-12; kolumne zaznaczenia dolozyla edycja hurtem.)
-    // PRZ-160.P3a.02: plus kolumna „Kanały”, widoczna zawsze, gdy firma ma kanal = dziesiec.
-    // PRZ-160.P3b.02: + kolumna Marka
+    // plus kolumna „Kanały”, widoczna zawsze, gdy firma ma kanal = dziesiec.
+    // + kolumna Marka
     expect(r.body).toContain('colspan="11"');
   });
 });
@@ -313,7 +312,7 @@ describe('GET /magazyn — sortowanie z adresu', () => {
   it('nazwa sortowania z lancucha prototypow NIE wywala listy i wraca do domyslnej', async () => {
     const app = serwer();
     // ⚠️ `SORTOWANIE[x] ?? domyslne` oddaje TU funkcje z Object.prototype — realna
-    // pieciusetka zlapana na glownym ekranie przy Zadaniu 4.
+    // pieciusetka zlapana na glownym ekranie.
     for (const zly of ['constructor', 'toString', 'hasOwnProperty', 'nazwa; DROP TABLE karty_produktow']) {
       const r = await get(app, `/magazyn?sort=${encodeURIComponent(zly)}`);
       expect(r.statusCode).toBe(200);
@@ -356,7 +355,7 @@ describe('GET /magazyn — sortowanie z adresu', () => {
   });
 });
 
-// PRZ-160 P3b.03b: tabela kanałów i przyciski odczytu zeszły z listy na ekran importu. Na liście
+// Tabela kanałów i przyciski odczytu zeszły z listy na ekran importu. Na liście
 // zostaje pasek `.pasek-odczytu` WYŁĄCZNIE przy trwaniu albo błędzie — te testy pilnują, że błąd
 // i postęp nadal są widoczne, a spokój nie zostawia żadnego śladu.
 const pasekOdczytu = (html) => /<div class="pasek-odczytu"[\s\S]*?<\/div>/.exec(html)?.[0] ?? '';
@@ -513,9 +512,8 @@ describe('/magazyn bez skonfigurowanych sklepow', () => {
 });
 
 // ⚠️ WYSZUKIWARKA I FILTRY. Trzy rzeczy, ktore ten opis pilnuje i ktorych nie widac
-// z warstwy zapytan (ta byla przypieta juz w Zadaniu 4):
-//   (1) parametry adresu W OGOLE DOCHODZA do zapytania — trasa ignorowala je do konca
-//       Zadania 9, wiec „filtr dziala" znaczylo wylacznie „db go umie";
+// z warstwy zapytan (ta byla sprawdzana osobno):
+//   (1) parametry adresu W OGOLE DOCHODZA do zapytania — trasa ignorowala je wcześniej, wiec „filtr dziala" znaczylo wylacznie „db go umie";
 //   (2) filtry LACZA SIE Z FRAZA i przezywaja klikniecie w naglowek sortujacy — ten
 //       niezmiennik (4.13b) zostal raz zlamany i objawial sie jako „przefiltrowana, ale
 //       ZUPELNIE INNA lista";
@@ -529,11 +527,11 @@ describe('GET /magazyn — wyszukiwarka i filtry', () => {
     kartaZProduktem({ nazwa: 'Szpulka na swietlik' }, [{ kanal: 'swietlik', produkt_id: '2', cena_gr: 3000 }]);
     kartaZProduktem({ nazwa: 'Kandelabr na PRO' }, [{ kanal: 'pro', produkt_id: '3', cena_gr: 9900 }]);
   }
-  // ⚠️ NAZWA JEST ODNOSNIKIEM NA KARTE PRODUKTU (Zadanie 11) — i wzorzec ma tego pilnowac,
+  // ⚠️ NAZWA JEST ODNOSNIKIEM NA KARTE PRODUKTU — i wzorzec ma tego pilnowac,
   // a nie omijac: bez `<a>` w srodku ta funkcja oddaje pusta liste, czyli KAZDE porownanie
   // „lista zawiera dokladnie te karty" przechodziloby na dwoch pustych tablicach.
   //
-  // ⚠️ `(?:\?[^"]*)?` — od Zadania 6 odnosnik niesie DALEJ adres powrotu jako „?wroc=…"
+  // ⚠️ `(?:\?[^"]*)?` — odnosnik niesie DALEJ adres powrotu jako „?wroc=…"
   // (dokladna wartosc ma wlasny test w magazyn-karta.test.js); wzorzec ma tolerowac ten
   // dopisek, a nie przestac widziec wiersza — to, co ten test sprawdza (KTORE karty i w
   // JAKIEJ kolejnosci), z zawartoscia query string nie ma nic wspolnego.
@@ -662,7 +660,7 @@ describe('GET /magazyn — wyszukiwarka i filtry', () => {
   });
 
   it('filtr kategorii jest NADZBIOREM: kategoria glowna karty ALBO kategorie z lustra', async () => {
-    // ⚠️ Rozstrzygniecie z Zadania 4. Karta z RECZNIE ustawiona kategoria glowna, a bez
+    // ⚠️ Karta z RECZNIE ustawiona kategoria glowna, a bez
     // produktu w lustrze, musi sie znalezc — inaczej nie da sie go nawet oznaczyc hurtem
     // przez ten sam filtr, ktorym sie go szuka.
     kartaZProduktem({ nazwa: 'Recznie oznaczony', kategoria_glowna: 'Aplikacje' }, []);
@@ -692,7 +690,7 @@ describe('GET /magazyn — wyszukiwarka i filtry', () => {
     // Taki produkt jest stanem ZWYCZAJNYM, nie krancowym: po „Odczytaj katalogi" lustro ma
     // wszystko, co przyslal sklep, a karty powstaja dopiero z osobnego klikniecia. Czesc
     // z nich nie powstanie NIGDY — ~26 wariantow bez rozmiaru i zaslepki, ktorych
-    // `powodPominiecia` nie powiaze (Zadanie 8). Kategoria wystepujaca tylko u nich bylaby
+    // `powodPominiecia` nie powiaze. Kategoria wystepujaca tylko u nich bylaby
     // martwa pozycja bez konca.
     zapiszProduktSklepowy(db, {
       kanal: 'pro', produkt_id: '99', wariant_id: '', nazwa: 'Swiezo odczytany',
@@ -802,7 +800,7 @@ describe('filtr braków zamiast kafli', () => {
   });
 });
 
-// ⚠️⚠️ DWA TRYBY TABELI (przebudowa 2026-08-25, Zadanie 5). Ekran DOMYSLNY to TRYB
+// ⚠️⚠️ DWA TRYBY TABELI. Ekran DOMYSLNY to TRYB
 // PORZADKOW: bez kolumn cen oraz usunietych kolumn Stan i Paczkomat; dane brakow
 // przy karcie (kolejka roboty). Ceny wracaja o jedno klikniecie — `?widok=katalog`.
 //
@@ -1003,9 +1001,9 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
     // ⚠️ `colspan` liczy sie z zestawu kolumn, wiec rozjezdza sie CICHO przy zmianie trybu:
     // komunikat pustej listy przestaje wtedy siegac konca tabeli i wyglada jak polamany
     // render. Piec kolumn porzadkow i dziewiec katalogu (plus cztery kanaly).
-    // PRZ-160.P3a.02: w obu trybach +1 — kolumna „Kanały” (firma testu ma kanaly).
+    // w obu trybach +1 — kolumna „Kanały” (firma testu ma kanaly).
     const app = serwer();
-    // PRZ-160.P3b.02: + kolumna Marka
+    // + kolumna Marka
     expect((await get(app, '/magazyn')).body).toContain('colspan="7"');
     expect((await get(app, '/magazyn?widok=katalog')).body).toContain('colspan="11"');
   });

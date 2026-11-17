@@ -33,7 +33,7 @@ describe('skroty okresow', () => {
   });
 });
 
-// ——— SKROT „DZISIAJ" (31.08.2026, prosba właściciela) ————————————————————————————————————
+// ——— SKROT „DZISIAJ" ————————————————————————————————————
 describe('skrot „dzisiaj"', () => {
   it('to jeden dzien — obie granice rowne dniu biezacemu', () => {
     expect(zakresSkrotu('dzisiaj', '2026-08-13'))
@@ -138,7 +138,7 @@ describe('nazwy i miesiace', () => {
   });
 });
 
-// ——— ZAKRES „DO DZIŚ", NIE „DO KOŃCA MIESIĄCA" (17.08.2026) —————————————————————————
+// ——— ZAKRES „DO DZIŚ", NIE „DO KOŃCA MIESIĄCA" —————————————————————————
 // ⚠️ POWOD JEST MIERZALNY, NIE ESTETYCZNY. Do 17.08.2026 skrot „Ten miesiac" siegal do
 // KONCA miesiaca, a `poprzedniOkres` rozpoznawal taki zakres jako pelny miesiac i zestawial
 // go z pelnym miesiacem poprzednim. Zmierzone na produkcji 17 sierpnia: panel pokazywal
@@ -200,7 +200,7 @@ describe('poprzedniOkres dla zakresu „od pierwszego do dziś"', () => {
   });
 });
 
-// ⚠️ RACHUNEK ZARZADCZY ZOSTAJE PRZY PELNYCH OKRESACH (decyzja właściciela 17.08.2026: poprawka
+// ⚠️ RACHUNEK ZARZADCZY ZOSTAJE PRZY PELNYCH OKRESACH (poprawka
 // dotyczy zakladki SPRZEDAZ). Tam koszty, ZUS i PIT-5 sa miesieczne, a skroty maja podawac
 // okresy, dla ktorych rachunek w ogole ma sens. Dlatego `zakresSkrotu` przyjmuje `doKonca`.
 describe('zakresSkrotu z opcja doKonca (rachunek zarzadczy)', () => {
@@ -266,7 +266,7 @@ describe('tygodnieOkresu', () => {
   });
 });
 
-// ——— KWARTALY PO NUMERZE (21.08.2026) ————————————————————————————————————————————
+// ——— KWARTALY PO NUMERZE ————————————————————————————————————————————
 // Zakladka FINANSE dostala na zyczenie właściciela pasek „Poprzedni miesiac · Q1 · Q2 · Q3 · Q4 ·
 // Ten rok". Skroty `ten-kwartal`/`poprzedni-kwartal` odpowiadaja na pytanie „ktory to
 // kwartal?", a wlasciciel chce wskazac kwartal WPROST — inaczej zeby zobaczyc Q1 w sierpniu

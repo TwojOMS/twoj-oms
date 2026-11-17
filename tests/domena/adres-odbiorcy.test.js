@@ -14,7 +14,7 @@ describe('adresOdbiorcy', () => {
     expect(adresOdbiorcy(zamowienie()).nazwa).toBe('Jan Kowalski');
   });
 
-  // ⚠️ ZMIENIONE 2026-08-05. Dawniej ta funkcja podstawiała tu imię i nazwisko (DPD wymaga
+  // ⚠️ ZMIENIONE. Dawniej ta funkcja podstawiała tu imię i nazwisko (DPD wymaga
   // niepustego <company>) — i przez to karta oraz ekran nadania pokazywały nazwisko w polu
   // „Firma" przy każdym zamówieniu od osoby prywatnej. Fallback zjechał na GRANICĘ:
   // kurierzy/dpd.js (`a.company ?? a.nazwa`) i domain/adres-formularza.js. Że etykieta DPD

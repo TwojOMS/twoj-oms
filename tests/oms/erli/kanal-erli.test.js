@@ -3,7 +3,7 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszKonfiguracjeIntegracji } from '../../../src/oms/db/konfiguracja-integracji.js';
 import { createFabrykaErli, uwagaToruErli } from '../../../src/moduly/kanaly/services/kanal-erli.ts';
 
-// PRZ-157.04 — fabryka kanału ERLI dla rejestru kanałów: konfiguracja `erli:<klucz>`, tor w diagnostyce.
+// Fabryka kanału ERLI dla rejestru kanałów: konfiguracja `erli:<klucz>`, tor w diagnostyce.
 const TERAZ = new Date('2026-11-13T12:00:00Z');
 const KLUCZ_TESTOWY = 'klucz-testowy-nie-do-logu';
 const polaczenie = { klucz: 'erli_pc', odUtc: null };

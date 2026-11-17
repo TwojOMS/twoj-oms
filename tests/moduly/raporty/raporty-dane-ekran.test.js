@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { openOmsDb } from '../../pomoc/dane-miesieczne-parytetu.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { openOmsDb } from '../../pomoc/testowe-dane-miesieczne.js';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { daneMiesiaca } from '../../../src/oms/db/dane-miesieczne.js';
 
 const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64') };

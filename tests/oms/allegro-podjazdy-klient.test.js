@@ -101,7 +101,7 @@ describe('klient Allegro — podjazdy Wysyłam z Allegro', () => {
     await expect(klient.stanZleceniaPodjazdu('cmd-1'))
       .resolves.toMatchObject({ id: 'cmd-1', status: 'IN_PROGRESS', retryAfterS: 1800 });
   });
-  // PRZ-160 P4.02: przewoźnik bez godzin (np. Allegro One) — zlecenie z samą datą, bez pustych kluczy.
+  // Przewoźnik bez godzin (np. Allegro One) — zlecenie z samą datą, bez pustych kluczy.
   it('zleca podjazd z samą datą: pickupTime = { date } bez minTime/maxTime', async () => {
     const { klient, wolania } = klientZeSzpiegiem([{ ok: true, status: 201, json: async () => ({ status: 'IN_PROGRESS' }) }]);
     await klient.zlecPodjazd({ commandId: 'cmd-data', input: { shipmentIds: ['shipment-1'], pickupTime: { date: '2026-09-23' }, address: adres } });

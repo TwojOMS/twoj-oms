@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { tekstZAllegro } from '../../src/domena/tekst-allegro.js';
 
 // Centrum wiadomosci Allegro oddaje `text` z ENCJAMI HTML. Pomiar na kopii produkcji
-// (14.10.2026): 30 z 85 wiadomosci ma `&oacute;`, jedna `&Oacute;`, do tego `&quot;`
+// 30 z 85 wiadomosci ma `&oacute;`, jedna `&Oacute;`, do tego `&quot;`
 // i `&zwnj;`. Litery spoza Latin-1 (ą, ę, ł, ś…) przychodza jako zwykle znaki — dlatego
 // zepsute wygladalo TYLKO „ó/Ó". Szablon EJS ucieka `&` drugi raz i czlowiek widzial
 // dosłownie „&Oacute;".

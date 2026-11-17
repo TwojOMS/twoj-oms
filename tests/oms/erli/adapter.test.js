@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createErliAdapter, stanErliWPamieci } from '../../../src/oms/erli/adapter.js';
 
-// PRZ-157.04 — adapter kanału ERLI (D1, D6). Klient podstawiony w teście, dane zmyślone.
+// Adapter kanału ERLI (D1, D6). Klient podstawiony w teście, dane zmyślone.
 const TERAZ = new Date('2026-11-13T12:00:00Z');
 
 const zam = (id, zmiany = {}) => ({

@@ -79,7 +79,7 @@ describe('pozycja listy w jednej karcie przeglądarki', () => {
     expect(await odczytajPozycje({ storage, klucz: KLUCZ_A })).toBeNull();
   });
 
-  it('PRZ-100: znacznik skryptu szukany po początku adresu — src ma wersję (?v=…)', async () => {
+  it('znacznik skryptu szukany po początku adresu — src ma wersję (?v=…)', async () => {
     const selektory = [];
     const dokument = { querySelector: (s) => { selektory.push(s); return null; } };
     await uruchomPozycjeListy({ okno: {}, dokument });

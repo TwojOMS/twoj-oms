@@ -1,4 +1,4 @@
-// PRZ-157.11b: kroki 3 (metody dostawy) i 4 (nadawanie Przesyłek Erli) konfiguratora ERLI — na atrapie, bez sieci.
+// Kroki 3 (metody dostawy) i 4 (nadawanie Przesyłek Erli) konfiguratora ERLI — na atrapie, bez sieci.
 import {afterEach,expect,it} from 'vitest';
 import {zbudujAplikacje,type Aplikacja} from '../../../src/core/aplikacja.ts';
 import {openOmsDb} from '../../../src/oms/db/db.ts';
@@ -15,7 +15,7 @@ import {createErliClient} from '../../../src/oms/erli/client.js';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-// Katalog roboczy w os.tmpdir(), nie na jednej maszynie (CI kopii publicznej 12.11.2026).
+// Katalog roboczy w os.tmpdir(), żeby test działał na różnych maszynach.
 const KATALOG_TESTU=fs.mkdtempSync(path.join(os.tmpdir(),'erli-kreator-metody-'));
 const root='/ustawienia/integracje/erli',produkcja='https://erli.pl/svc/shop-api',klucz='atrapa-polcien';
 const OSTRZEZENIE='zamówienia z tą metodą zatrzymają się przed nadaniem';
@@ -165,10 +165,10 @@ it('aktywny sklep sprzed kroku metod pozostaje w stanie, a metody są dostępne 
  expect((await f.post(p,'aktywuj')).statusCode).toBe(303);
  const r=await f.req('GET',p);
  expect(r.statusCode).toBe(200);
- // PRZ-157.12u: aktywny sklep ma ekran zarządzania bez paska kroków; metody czekają w zwiniętej sekcji.
+ // Aktywny sklep ma ekran zarządzania bez paska kroków; metody czekają w zwiniętej sekcji.
  expect(r.body).not.toContain('class="stepper"');
  expect(r.body).toMatch(/<details class="erli-krok" id="erli-krok-metody">\s*<summary>Metody dostawy — nieustawione[\s\S]*?id="erli-metody"[\s\S]*?>Pobierz metody dostawy<\/button>[\s\S]*?<\/details>/);
- // Połączenie jest sprawdzone, więc wskazówka „Najpierw sprawdź połączenie…” znika (punkt D planu).
+ // Połączenie jest sprawdzone, więc wskazówka „Najpierw sprawdź połączenie…” znika.
  expect(r.body).not.toContain('Najpierw sprawdź połączenie');
 });
 

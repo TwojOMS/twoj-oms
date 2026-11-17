@@ -81,7 +81,7 @@ describe('oznaczanie doręczonych pobrań', () => {
     expect(infakt.zlecenia).toEqual([{ uuid: 'u-10', paidDate: '2026-08-27' }]);
   });
 
-  // ⚠️ POMIAR 28.08.2026: `18/08/2026` jest `delivery` I `paid` — właściciel oznacza część
+  // ⚠️ Dokument jest `delivery` I `paid` — właściciel oznacza część
   // pobrań ręcznie. Taki dokument ma wypaść, a nie dostać drugie zlecenie.
   it('faktura już opłacona w inFakcie nie dostaje drugiego zlecenia', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(11), {});
@@ -110,7 +110,7 @@ describe('oznaczanie doręczonych pobrań', () => {
     expect(infakt.zlecenia).toEqual([]);
   });
 
-  // ⚠️⚠️ DWIE PACZKI NA JEDNYM ZAMÓWIENIU — TU BYŁY PIENIĄDZE (recenzja 28.08.2026, K1).
+  // ⚠️⚠️ DWIE PACZKI NA JEDNYM ZAMÓWIENIU — TU BYŁY PIENIĄDZE.
   // `LEFT JOIN przesylki` bez zawężenia dawał DWA wiersze na tę samą fakturę, a reguła chodzi
   // po WIERSZU: wystarczyła jedna doręczona paczka, żeby dokument poszedł do inFaktu jako
   // opłacony. Rozstrzyga PACZKA Z NAJNOWSZYM ZDARZENIEM U KURIERA — jedyna reguła, która
@@ -206,7 +206,7 @@ describe('oznaczanie doręczonych pobrań', () => {
     expect(wynik).toMatchObject({ zlecone: 1, bledy: 1 });
   });
 
-  // ⚠️⚠️⚠️ USTERKA BLOKUJĄCA WDROŻENIE (recenzja całości 28.08.2026, K1). `zapytaj`
+  // ⚠️⚠️⚠️ USTERKA BLOKUJĄCA WDROŻENIE. `zapytaj`
   // (infakt/client.js) oddaje `dane = null` dla KAŻDEJ odpowiedzi 2xx, której ciała nie da się
   // sparsować — `pobierzFakture` składa wtedy dokument z samych `null`-i, a `stanZaplaty` mówi
   // na niego `nieznany`. Dopóki skan sprawdzał wyłącznie `=== 'zaplacona'`, JECHAŁ DALEJ:
@@ -278,7 +278,7 @@ describe('oznaczanie doręczonych pobrań', () => {
     expect(oznaczenieZaplaty(db, 'u-12')).toBeUndefined();
   });
 
-  // ⚠️⚠️ KONTRAKT `dataZaplatyPobrania` OD POPRAWKI 1 (28.08.2026): funkcja MOŻE ODDAĆ `null`
+  // ⚠️⚠️ KONTRAKT `dataZaplatyPobrania`: funkcja MOŻE ODDAĆ `null`
   // — dokładnie wtedy, gdy nie ma ani stempla kuriera, ani poprawnej `invoice_date` z inFaktu.
   // Zmyślona albo pusta data w dokumencie księgowym jest gorsza niż brak oznaczenia, więc
   // wysyłki NIE MA. Rezerwacja jednak ZOSTAJE (powód 'brak_daty'): bez niej skan wracałby tu
@@ -352,7 +352,7 @@ describe('oznaczanie doręczonych pobrań', () => {
     expect(wynik).toMatchObject({ kandydatow: 1, zlecone: 1 });
   });
 
-  // ⚠️⚠️ ODMOWA JEDNOZNACZNA (4xx) ZAMYKA DOKUMENT (recenzja poprawkowa 28.08.2026, W5).
+  // ⚠️⚠️ ODMOWA JEDNOZNACZNA (4xx) ZAMYKA DOKUMENT.
   // Faktura SKASOWANA w inFakcie — przepływ wprost wspierany — oddaje 404 na zawsze. Bez
   // rezerwacji był jeden `GET` na godzinę, jedna linia w logu ZAMÓWIENIA na godzinę i stała
   // lampka w logu procesu: fałszywy alarm, który uczy ignorować tę linię.
@@ -410,7 +410,7 @@ describe('oznaczanie doręczonych pobrań', () => {
     expect(odczyty).toEqual(['u-23', 'u-23']);
   });
 
-  // ⚠️⚠️ SUFIT PRZEBIEGU (recenzja poprawkowa 28.08.2026, W6). Skan chodzi w czuwaczu
+  // ⚠️⚠️ SUFIT PRZEBIEGU. Skan chodzi w czuwaczu
   // przesyłek, który tyka co godzinę i ma strażnik „jeden przebieg naraz": przebieg dłuższy
   // niż odstęp NIE ZGŁASZA BŁĘDU, tylko po cichu zjada kolejne tyknięcia. Obcięcie ma być
   // SŁYCHAĆ — `kandydatow` mówi prawdę o całości, `ponadSufit` o tym, ile czeka.
@@ -449,12 +449,12 @@ describe('oznaczanie doręczonych pobrań', () => {
       .toMatchObject({ kandydatow: 1, obsluzone: 1, ponadSufit: 0 });
   });
 
-  // ⚠️⚠️ AWARIA SPOZA DWÓCH ZNANYCH DRÓG (recenzja 28.08.2026, W1): nie odczyt, nie zlecenie,
+  // ⚠️⚠️ AWARIA SPOZA DWÓCH ZNANYCH DRÓG: nie odczyt, nie zlecenie,
   // tylko `TypeError` z naszego kodu POMIĘDZY nimi. Zewnętrzny `try` wokół całego ciała pętli
   // jest jedyną rzeczą, która trzyma tu obietnicę „żaden dokument nie przerwie przebiegu" —
   // przed nim taki wyjątek WYCHODZIŁ Z FUNKCJI i następny kandydat nie był nawet odpytany.
   //
-  // ⚠️ Dawniej mierzył to `pobierzFakture` oddające `null` — ale od poprawki K1 taki dokument
+  // ⚠️ Dawniej mierzył to `pobierzFakture` oddające `null` — ale po dodaniu bramki taki dokument
   // ma własną, JAWNĄ bramkę (`stanZaplaty === 'nieznany'`) i do zewnętrznego `try` już nie
   // dochodzi. Dlatego wyjątek jest tu wywołany wprost: gdyby ten test dalej opierał się na
   // pustej odpowiedzi, świeciłby na zielono także po usunięciu zewnętrznego `try`.
@@ -483,7 +483,7 @@ describe('oznaczanie doręczonych pobrań', () => {
     expect(logZamowienia(db, a)[0].wynik).toMatch(/awaria panelu/);
   });
 
-  // PRZ-119.05 (recenzja): Fakturownia — status „opłacona” przyjęty, padł sam zapis daty zapłaty (`zaplataOznaczona`).
+  // Fakturownia — status „opłacona” przyjęty, padł sam zapis daty zapłaty (`zaplataOznaczona`).
   it('padł sam zapis daty zapłaty → wpis „już oznaczona jako opłacona — popraw tylko datę zapłaty”, bez „NIEOPŁACONA”', async () => {
     const a = zapiszZamowienie(db, 'pro', zmapowane(19), {});
     zFaktura(db, a, 'u-put-19', { numer: 'F/19' }); paczka(db, a, { opis: 'Przesyłka doręczona' });
@@ -525,7 +525,7 @@ describe('oznaczanie doręczonych pobrań', () => {
     expect(logZamowienia(db, a)[0].wynik).toMatch(/NIEOPŁACONA/);
   });
 
-  // ⚠️ FAŁSZYWA ZIELEŃ (recenzja 28.08.2026, D1): ten test miał PUSTĄ bazę, więc przechodził
+  // ⚠️ FAŁSZYWA ZIELEŃ: ten test miał PUSTĄ bazę, więc przechodził
   // także po usunięciu strażnika — nie było czego zlecić niezależnie od tego, czy strażnik
   // istnieje. Kandydat w bazie jest tu CAŁĄ treścią testu.
   it('bez klienta inFaktu nie robi nic i nie wywala się', async () => {

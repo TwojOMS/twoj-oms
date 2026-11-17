@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { mapujZamowienie } from '../../src/domena/mapowanie.js';
 
-// Od Etapu 2 mapowanie to CALA tablica dostaw sklepu (instancje + reguly zapasowe
-// po pozycji), a nie sama mapa instancji — patrz domain/mapowanie-wysylki.js.
-// Instancja 2 to TEN SAM kurier za pobraniem — od 2026-08-01 pobranie jest flaga obok
+// Mapowanie to CALA tablica dostaw sklepu (instancje + reguly zapasowe
+// po pozycji), a nie sama mapa instancji.
+// Instancja 2 to TEN SAM kurier za pobraniem — pobranie jest flaga obok
 // metody, a nie osobna nazwa metody.
 const mapa = {
   instancje: { 1: { metoda: 'dpd' }, 2: { metoda: 'dpd', pobranie: true }, 3: { metoda: 'dpd' } },
@@ -58,10 +58,9 @@ describe('mapujZamowienie', () => {
     expect(z.nip).toBeNull();
   });
 
-  // Sedno naprawy A. pro.swietlik.example.test (jedyny sklep Etapu 1) NIE ustawia w ogóle
-  // `_billing_faktura` — tylko swietlik.example.test to robi. Bez tego testu fakturowanie jest
-  // martwe na jedynym sklepie, dla którego panel je zbudował. Dane zgodne z prawdziwym
-  // zamówieniem 1267: NIP jest, `_billing_faktura` nie istnieje wcale.
+  // Obecny NIP oznacza prośbę o fakturę także bez pola
+  // `_billing_faktura`. Sam brak tego pola nie wyłącza fakturowania.
+  // Przypadek obejmuje zamówienie z NIP-em i bez flagi prośby o fakturę.
   it('brak _billing_faktura, ale jest NIP → chce faktury (pro.swietlik.example.test)', () => {
     const z = mapujZamowienie({ ...surowe, meta_data: [{ key: '_billing_nip', value: '1200001074' }] }, mapa);
     expect(z.chce_fakture).toBe(1);
@@ -116,20 +115,20 @@ describe('mapujZamowienie', () => {
         // Fikstura nie niesie `product_id`, wiec identyfikator produktu ma byc NULL-em,
         // a nie zerem — patrz osobny test nizej.
         produkt_id: null,
-        // PRZ-091: bez `variation_id` — produkt prosty, wariantu nie ma.
+        // Bez `variation_id` — produkt prosty, wariantu nie ma.
         wariant_id: null,
       },
     ]);
   });
 
-  it('PRZ-091: pozycja wariantu niesie variation_id jako wariant_id (tekst), produkt prosty (0) — null', () => {
+  it('pozycja wariantu niesie variation_id jako wariant_id (tekst), produkt prosty (0) — null', () => {
     const zWariantem = { ...surowe, line_items: [{ ...surowe.line_items[0], product_id: 944, variation_id: 1091 }, { ...surowe.line_items[0], id: 4322, product_id: 945, variation_id: 0 }] };
     const [wariant, prosty] = mapujZamowienie(zWariantem, mapa).pozycje;
     expect(wariant).toMatchObject({ produkt_id: 944, wariant_id: '1091' });
     expect(prosty).toMatchObject({ produkt_id: 945, wariant_id: null });
   });
 
-  // I2. To jest ta sama pozycja, ktora rozbijala fakture: 100,00 zl brutto na 3 sztuki.
+  // To jest ta sama pozycja, ktora rozbijala fakture: 100,00 zl brutto na 3 sztuki.
   // Cena jednostkowa MUSI sie zaokraglic (33,33), ale brutto linii ma zostac DOKLADNE —
   // bo to ono idzie na dokument, a mnozenie 33,33 x 3 dawalo 99,99 i deterministyczna odmowe.
   it('brutto linii jest dokładne, gdy suma nie dzieli się równo przez ilość', () => {
@@ -195,7 +194,7 @@ describe('mapujZamowienie', () => {
     expect(mapujZamowienie(zFallbackiem, mapa).pozycje[0].cena_brutto).toBe('99.00');
   });
 
-  // C3b. Koszt dostawy jest czescia `total`, ale NIE MA GO w `line_items`. Bez tego pola
+  // Koszt dostawy jest czescia `total`, ale NIE MA GO w `line_items`. Bez tego pola
   // faktura wystawiana z panelu byla zanizona o cala wysylke.
   it('zbiera koszt dostawy brutto z shipping_total + shipping_tax', () => {
     expect(mapujZamowienie(surowe, mapa).koszt_dostawy_brutto).toBe('89.90');
@@ -238,7 +237,7 @@ describe('mapujZamowienie', () => {
     expect((sumaPozycji + Number(z.koszt_dostawy_brutto)).toFixed(2)).toBe('212.90');
   });
 
-  // Zadanie D: uwagi klienta z zamówienia. WooCommerce trzyma je w `customer_note` na
+// Uwagi klienta z zamówienia. WooCommerce trzyma je w `customer_note` na
   // poziomie zamówienia (nie w meta_data, jak NIP/faktura) — sprawdzone na produkcji,
   // zamówienia 1267 („moje uwagi") i 1276 („uwagi") mają to pole wypełnione.
   it('mapuje uwagi klienta z customer_note', () => {
@@ -270,7 +269,7 @@ describe('mapujZamowienie', () => {
     expect(z.pozycje[0].produkt_id).toBe(28040);
   });
 
-  // ⚠️ TEN TEST POWSTAL Z RECENZJI GALEZI: mutacja preferujaca `variation_id`, gdy jest
+  // ⚠️ TEN TEST POWSTAL GALEZI: mutacja preferujaca `variation_id`, gdy jest
   // wiekszy od zera, PRZECHODZILA caly pakiet `tests/oms`. Powod byl prosty i latwy do
   // przeoczenia — WSZYSTKIE fikstury (tutaj i w produkt-id-db.test.js) mialy
   // `variation_id: 0`, czyli dokladnie ten ksztalt, w ktorym reguly NIE DA SIE
@@ -290,14 +289,14 @@ describe('mapujZamowienie', () => {
   });
 
   // ⚠️ Brak identyfikatora ma dac NULL, a nie zero: „produkt numer 0" nie istnieje,
-  // a adres do niego prowadzi donikad. Zadanie 9 buduje odnosnik WLASNIE na tej wartosci,
+// a adres do niego prowadzi donikad. Odnośnik budujemy WLASNIE na tej wartosci,
   // wiec zero zamiast NULL-a znaczyloby link na kazdej pozycji — i kazdy zepsuty.
   it('brak product_id daje null, nie zero', () => {
     const z = mapujZamowienie({ ...surowe, line_items: [{ id: 1, name: 'A', quantity: 1 }] }, mapa);
     expect(z.pozycje[0].produkt_id).toBe(null);
   });
 
-  // ===== Zadanie 4: kolumny netto obok istniejących kolumn brutto =====
+// Kolumny netto obok istniejących kolumn brutto.
   //
   // ⚠️ Netto MUSI iść wprost z Woo (total/total_tax), NIGDY dzieleniem brutto przez 1,23 —
   // dokładnie ten błąd zablokował już raz fakturowanie zamówień z rabatem (przewodnik, 4.5).
@@ -351,7 +350,7 @@ describe('mapujZamowienie', () => {
     });
   });
 
-  // Kupony rabatowe (kampania WRZESIEN30, 2026-08-25) — mapowanie przenosi je z coupon_lines
+  // Kupony rabatowe (kampania WRZESIEN30) — mapowanie przenosi je z coupon_lines
   // ta sama reguła, co przeliczenie wstecz (domain/kupony.js). Dane zamówienia 28224.
   describe('kupony', () => {
     it('przenosi kod i rabat brutto z coupon_lines', () => {
@@ -367,7 +366,7 @@ describe('mapujZamowienie', () => {
     });
   });
 
-  // ⚠️ TE ASERCJE POWSTALY PO WERYFIKACJI MUTACYJNEJ (Etap 3): testy widoku podaja
+  // ⚠️ TE ASERCJE POWSTALY PO WERYFIKACJI MUTACYJNEJ: testy widoku podaja
   // `atrybucja` WPROST w atrapie zamowienia, wiec przechodzily takze wtedy, gdy mapowanie
   // gubilo ja calkowicie. Na produkcji znaczyloby to poller, ktory przestaje zapisywac
   // zrodlo NOWYCH zamowien — a stare i tak maja je z przeliczenia wstecz, wiec ekran

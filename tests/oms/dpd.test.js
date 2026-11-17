@@ -20,7 +20,7 @@ const zamowienie = {
 const paczka = { waga: 1, dlugosc: 40, szerokosc: 30, wysokosc: 10 };
 const nadawca = { nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL' };
 
-// Fikstury (v4-ok.xml: <reference>99999999#TEST-OMS-...) pochodzą z Zadania 8, gdzie
+// Fikstury (v4-ok.xml: <reference>99999999#TEST-OMS-...) pochodzą, gdzie
 // login w odpowiedzi serwera byl juz podmieniony na 99999999 — LOGIN tutaj MUSI sie z nim
 // zgadzac, inaczej test "surowa bez poswiadczen" nie sprawdza niczego (login z configu
 // nigdy nie wystapilby w fiksturze i "brak loginu w tekscie" bylby prawdziwy przez przypadek).
@@ -151,7 +151,7 @@ describe('createDpdClient.nadaj', () => {
     expect(fetchImpl.mock.calls[0][1].body).not.toContain('<cod>');
   });
 
-  // ZAMIENNIK PIERWSZEJ PACZKI (04.09.2026, decyzja właściciela po zdarzeniu na zamówieniu
+  // ZAMIENNIK PIERWSZEJ PACZKI (reguła produktu po zdarzeniu na zamówieniu
   // 1385). Klient domówił towar telefonicznie PO wydrukowaniu etykiety, pierwsza etykieta
   // poszła do kosza i paczka nr 1 nigdy nie pojedzie — wygaśnie u DPD. Referencja zamiennika
   // MUSI dostać sufiks („1301/2"), bo gołą DPD już zna (DUPLICATED_PARCEL_SEARCH_KEY) — a
@@ -195,7 +195,7 @@ describe('createDpdClient.nadaj', () => {
     await expect(c.nadaj({ zamowienie, paczka })).rejects.toThrow(/nadawcy/i);
   });
 
-  // Ustalenie z recenzji: e.surowa nie mial ani jednego testu — refaktoryzacja, ktora by
+  // Ustalenie: e.surowa nie mial ani jednego testu — refaktoryzacja, ktora by
   // to zgubila, zostawilaby suite zielona. Sprawdzamy co najmniej dwie sciezki throw.
   it('błąd walidacji V10 → e.surowa niesie pełną odpowiedź serwera', async () => {
     const { c } = klient([odp(200, fixture('v10-blad-walidacji.xml'))]);
@@ -223,7 +223,7 @@ describe('createDpdClient.nadaj', () => {
     expect(blad.message).not.toContain(HASLO);
   });
 
-  // Ustalenie z recenzji: DISALLOWED_FID / ERROR_NO_FID_PERMISSION / ACCESS_DENIED_FOR_FID
+  // Ustalenie: DISALLOWED_FID / ERROR_NO_FID_PERMISSION / ACCESS_DENIED_FOR_FID
   // przenosza FID do komunikatu. '876543' jest dzis maskowany tylko PRZYPADKIEM, bo jest
   // prefiksem loginu '<login>' — przy loginie '99999999' ta przypadkowa oslona znika.
   it('błąd DPD maskuje też FID, nie tylko login i hasło', async () => {
@@ -268,7 +268,7 @@ describe('createDpdClient.nadaj', () => {
     expect(blad.surowa).toContain('1403466702'); // sessionId z fikstury V4
   });
 
-  // Ustalenie z recenzji: kontrola statusu V10 patrzyla tylko na PIERWSZY <Status> w XML-u,
+  // Ustalenie: kontrola statusu V10 patrzyla tylko na PIERWSZY <Status> w XML-u,
   // czyli status SESJI. Sesja moze byc OK, a konkretna PACZKA/PRZESYLKA — DUPLICATED_WAYBILL.
   // Budujemy odpowiedz w pamieci (nie nowa fikstura), zeby dokladnie odtworzyc ten scenariusz:
   // <return><Status>OK</Status>...<Package><Status>DUPLICATED_WAYBILL</Status>...
@@ -297,7 +297,7 @@ describe('createDpdClient.nadaj', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
-  // Ustalenie z recenzji: 'zamowienie.kwota_pobrania' sprawdzane truthy → '0.00' (string!)
+  // Ustalenie: 'zamowienie.kwota_pobrania' sprawdzane truthy → '0.00' (string!)
   // jest truthy i wygenerowaloby <cod><amount>0.00</amount></cod> — pobranie na zero zlotych.
   it('kwota pobrania „0.00” nie generuje elementu <cod> — to nie jest realne pobranie', async () => {
     const { c, fetchImpl } = klient(OK());
@@ -305,7 +305,7 @@ describe('createDpdClient.nadaj', () => {
     expect(fetchImpl.mock.calls[0][1].body).not.toContain('<cod>');
   });
 
-  // Ustalenie z recenzji: nieparsowalna kwota pobrania cicho gubiła <cod> — paczka jechała
+  // Ustalenie: nieparsowalna kwota pobrania cicho gubiła <cod> — paczka jechała
   // jako przedpłacona, kurier nie inkasowałby, i nikt by się nie dowiedział. Zły kierunek
   // awarii: wartość nie do odczytania MUSI rzucać, nie po cichu pomijać COD.
   it.each([
@@ -325,7 +325,7 @@ describe('createDpdClient.nadaj', () => {
     expect(fetchImpl.mock.calls[0][1].body).toContain('<cod><amount>212.90</amount><currency>PLN</currency></cod>');
   });
 
-  // Ustalenie z recenzji: kodPocztowy() wycina wszystkie znaki nie-cyfrowe — brytyjski
+  // Ustalenie: kodPocztowy() wycina wszystkie znaki nie-cyfrowe — brytyjski
   // 'SW1A 1AA' zostalby okaleczony do '11', a sessionType jest zaszyty na DOMESTIC.
   // Zamiast cicho nadac zle zaadresowana paczke, klient ma odmowic czytelnym wyjatkiem.
   it('kraj odbiorcy inny niż PL → czytelny wyjątek, nie nadanie z okaleczonym adresem', async () => {
@@ -335,7 +335,7 @@ describe('createDpdClient.nadaj', () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  // Ustalenie z recenzji: strażnik kraju mylił brak adresu z zagranicą. Zamówienie z pustym
+  // Ustalenie: strażnik kraju mylił brak adresu z zagranicą. Zamówienie z pustym
   // blokiem `shipping` (admin, import) ma country="" i dostawało "przesyłki zagraniczne ()
   // nie są obsługiwane" — operator szukał problemu z zagranicą, ktorego nie bylo. Puste,
   // małe litery i otoczone spacjami MUSZĄ być traktowane jak 'PL', nie jak obcy kraj.
@@ -352,7 +352,7 @@ describe('createDpdClient.nadaj', () => {
     expect(receiver).toContain('<countryCode>PL</countryCode>');
   });
 
-  // Ustalenie z recenzji + sprawdzone na zywym API: powtorzona referencja zwraca
+  // Ustalenie + sprawdzone na zywym API: powtorzona referencja zwraca
   // Status=DUPLICATED_PARCEL_SEARCH_KEY, pusta <Packages/> i ANI JEDNEGO <Info>.
   // Klient sklejajacy wylacznie <Info> pokazywalby operatorowi pusty komunikat.
   it('powtórzona referencja (brak <Info>) → komunikat niesie sam Status, nie pustkę', async () => {
@@ -371,7 +371,7 @@ describe('createDpdClient.nadaj', () => {
     expect(blad.message).toMatch(/nadawcy/i);
   });
 
-  // Ustalenie z recenzji: awaria PO przydzieleniu numeru listu gubila numer, a `e.surowa`
+  // Ustalenie: awaria PO przydzieleniu numeru listu gubila numer, a `e.surowa`
   // niosla odpowiedz V4 — w ktorej <Waybill> W OGOLE NIE MA. Ponowienie z ta sama
   // referencja zostaloby przez DPD odrzucone, wiec numer przepadalby na zawsze.
   describe('awaria po przydzieleniu numeru listu', () => {
@@ -530,7 +530,7 @@ describe('createDpdClient.nadaj — etykieta ZPL nie blokuje nadania', () => {
 describe('createDpdClient — walidacja konfiguracji', () => {
   const pelnaKonfiguracja = { url: 'https://dpd/api', login: LOGIN, haslo: HASLO, fid: FID, nadawca, fetchImpl: vi.fn() };
 
-  // Ustalenie z recenzji: bez tej walidacji brak np. 'nadawcy' wywala sie dopiero przy
+  // Ustalenie: bez tej walidacji brak np. 'nadawcy' wywala sie dopiero przy
   // pierwszym nadaniu niezrozumialym TypeError, zamiast czytelnym bledem konfiguracji
   // w momencie tworzenia klienta.
   it('brak nadawcy → czytelny błąd już przy tworzeniu klienta, nie przy nadaniu', () => {
@@ -541,7 +541,7 @@ describe('createDpdClient — walidacja konfiguracji', () => {
     expect(() => createDpdClient({ ...pelnaKonfiguracja, login: undefined })).toThrow(/login/i);
   });
 
-  // I2. Samo `if (!nadawca)` przepuszczalo obiekt z PUSTYMI polami — a taki wlasnie
+  // Samo `if (!nadawca)` przepuszczalo obiekt z PUSTYMI polami — a taki wlasnie
   // sklada sie z nieustawionych zmiennych srodowiskowych z domyslnymi ''. Kazda paczka
   // jechalaby wtedy z pusta ulica, kodem i miastem nadawcy, a DPD i tak oddawaloby
   // numer listu, wiec nikt by sie nie zorientowal.
@@ -561,7 +561,7 @@ describe('createDpdClient — walidacja konfiguracji', () => {
   });
 });
 
-// M3. Nadanie bylo OSTATNIM wywolaniem zewnetrznym panelu bez jakiegokolwiek limitu czasu:
+// Nadanie bylo OSTATNIM wywolaniem zewnetrznym panelu bez jakiegokolwiek limitu czasu:
 // soapZdarzen mial 5 s, klient inFaktu 60 s, a tu undici czekal na naglowki domyslne
 // 300 000 ms. Przez ten czas wiersz przesylki stoi 'w_trakcie', a przegladarka operatora wisi.
 describe('twardy limit czasu na nadaniu', () => {

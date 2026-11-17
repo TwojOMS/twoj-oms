@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { renderPotwierdzenieHtml } from '../../pomoc/potwierdzenie-html-parytetu.js';
-import { modelPotwierdzenia } from '../../pomoc/potwierdzenie-parytetu.js';
+import { renderPotwierdzenieHtml } from '../../pomoc/testowy-html-potwierdzenia.js';
+import { modelPotwierdzenia } from '../../pomoc/testowe-potwierdzenie-zamowienia.js';
 
-// POTWIERDZENIE PRZYJĘCIA ZAMÓWIENIA — postać HTML (21.08.2026).
+// POTWIERDZENIE PRZYJĘCIA ZAMÓWIENIA — postać HTML.
 //
 // ⚠️ Model budujemy PRAWDZIWĄ funkcją domeny, a nie literałem: test ma pilnować całej drogi
 // „zamówienie → model → tabela", bo właśnie na tej drodze zginęła poprzednia wersja maila
@@ -124,7 +124,7 @@ describe('higiena maila', () => {
     expect(h).toContain('SWIETLIK');
   });
 
-  // ⚠️ Podpisujemy się MARKĄ, nie nazwą podmiotu (decyzja właściciela 21.08.2026).
+  // ⚠️ Podpisujemy się MARKĄ, nie nazwą podmiotu.
   it('podpisuje się Swietlik.example.test', () => {
     const h = html();
     expect(h).toContain('Swietlik.example.test');

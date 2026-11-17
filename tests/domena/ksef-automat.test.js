@@ -1,4 +1,4 @@
-// PRZ-102.12 — reguły automatu wysyłki do KSeF: pora przebiegu (czas Warszawy, zmiana czasu), jedna próba
+// Reguły automatu wysyłki do KSeF: pora przebiegu (czas Warszawy, zmiana czasu), jedna próba
 // na dzień, okno miesięcy, formularz ustawień. Czyste funkcje, czas podawany wprost — zero zegara systemowego.
 import { describe, it, expect } from 'vitest';
 import {
@@ -72,7 +72,7 @@ describe('sprawdzFormularzAutomatu', () => {
     expect(sprawdzFormularzAutomatu({ wlaczony: '1', godzina: '00:00' }).bledy).toEqual([]);
     expect(sprawdzFormularzAutomatu({ wlaczony: '1', godzina: '23:45' }).bledy).toEqual([]);
   });
-  // Poprawka po recenzji (drobne 3): przy 23:59 jedyne tyknięcie po godzinie mogło wypaść już po północy (pierwsze
+  // Przy 23:59 jedyne tyknięcie po godzinie mogło wypaść już po północy (pierwsze
   // tyknięcie 60 s po starcie, zegar dryfuje), a dzień przepadał. Najpóźniej 23:45 — zostaje 15 tyknięć do północy.
   it.each(['23:46', '23:59'])('godzina %s — za blisko północy, błąd z wyjaśnieniem', (godzina) => {
     expect(sprawdzFormularzAutomatu({ wlaczony: '1', godzina }).bledy[0]).toContain('23:45');

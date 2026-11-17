@@ -37,7 +37,7 @@ describe('podsumowanieVat — niezmiennik kolumn', () => {
   });
 
   // ⚠️ TEN TEST ISTNIEJE, BO NIEZMIENNIK PRZY 23% NIE WYSTARCZA — sprawdzone mutacją
-  // (2026-08-04), nie przewidziane na sucho. Podmiana odejmowania na drugie dzielenie
+  // Nie przewidziane na sucho. Podmiana odejmowania na drugie dzielenie
   // (`round(brutto * stawka / (100 + stawka))`) NIE zaczerwieniła niczego: przy stawkach
   // 0/5/8/23% obie formuły dają identyczne liczby na całym zakresie 1–200 000 gr, bo przy
   // tych mianownikach iloraz nigdy nie trafia dokładnie w połowę (dla 23% wymagałoby to

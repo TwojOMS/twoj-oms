@@ -1,10 +1,27 @@
-import { lstatSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { lstatSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 
 const keys = ['TMPDIR', 'TEMP', 'TMP'] as const;
 
+const zaleznePdf = /pdftotext|pdftoppm|PDFTOTEXT|POPPLER/;
+const pomijanie = /\.skip\b|\.skipIf\(/;
+
+// Testy PDF wykrywają poppler same i bez niego po cichu się pomijają; jedna linia na starcie mówi, ile ich jest.
+function ostrzezPrzyBrakuPdftotext() {
+  if (!spawnSync('pdftotext', ['-v'], { stdio: 'ignore' }).error) return;
+  let liczba = 0;
+  for (const wpis of readdirSync('tests', { recursive: true, encoding: 'utf8' })) {
+    if (!/\.test\.(js|ts)$/.test(wpis)) continue;
+    const tresc = readFileSync(join('tests', wpis), 'utf8');
+    if (zaleznePdf.test(tresc) && pomijanie.test(tresc)) liczba += 1;
+  }
+  console.warn(`[vitest] Brak pdftotext (poppler): ${liczba} plików testów PDF pominie testy odczytu tekstu. Doinstaluj poppler-utils.`);
+}
+
 export default function setup() {
+  ostrzezPrzyBrakuPdftotext();
   // tmpdir() czyta bieżące env: zagnieżdżony Vitest dostaje własny podkatalog.
   const parent = realpathSync(tmpdir());
   const previous = keys.map(key => [key, process.env[key]] as const);

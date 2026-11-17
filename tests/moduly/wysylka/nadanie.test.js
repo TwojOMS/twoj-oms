@@ -39,7 +39,7 @@ function zestaw({ dpdNadaj, wooOk = true, wooNotatka, katalogEtykiet } = {}) {
 }
 
 describe('nadanie', () => {
-  // Ustalenie z recenzji: test sprawdzal tylko, ze `etykieta_sciezka` jest NIEPUSTYM
+  // Ustalenie: test sprawdzal tylko, ze `etykieta_sciezka` jest NIEPUSTYM
   // STRINGIEM — usuniecie writeFileSync przechodzilo na zielono, bo pliku nikt nie czytal.
   // Teraz plik musi istniec i naprawde byc PDF-em.
   it('zapisuje numer listu i etykietę, status przesyłki = nadana', async () => {
@@ -54,7 +54,7 @@ describe('nadanie', () => {
     expect(readFileSync(z.przesylki[0].etykieta_sciezka).subarray(0, 4).toString()).toBe('%PDF');
   });
 
-  // ZAMIENNIK WYRZUCONEJ ETYKIETY (04.09.2026, decyzja właściciela po zamówieniu 1385).
+  // ZAMIENNIK WYRZUCONEJ ETYKIETY.
   // Decyzja operatora MUSI dojechać do kuriera — bez niej koperta wyjedzie bez <cod>
   // i kurier nie zainkasuje ani złotówki.
   it('przekazuje kurierowi decyzję o pobraniu na paczce nr 2', async () => {
@@ -93,7 +93,7 @@ describe('nadanie', () => {
     expect(logi(db, 'nadanie.pobranie').map((l) => l.wynik).join(' | ')).not.toMatch(/Ręcznie( \(|:)/);
   });
 
-  // Ustalenie z recenzji: usuniecie WSZYSTKICH wywolan dopiszLog zostawialo suite zielona.
+  // Ustalenie: usuniecie WSZYSTKICH wywolan dopiszLog zostawialo suite zielona.
   it('zapisuje numer listu w logu zamówienia', async () => {
     const { db, nadanie } = zestaw();
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
@@ -121,7 +121,7 @@ describe('nadanie', () => {
     expect(db.prepare('SELECT COUNT(*) c FROM przesylki').get().c).toBe(1);
   });
 
-  // Decyzja wlasciciela (patrz opis w nadanie.js): nadanie odsyla notatke z numerem listu,
+  // Reguła produktu (patrz opis w nadanie.js): nadanie odsyla notatke z numerem listu,
   // ale NIE zmienia statusu zamowienia w sklepie — to ma robic sam sklep.
   it('odsyła numer listu do sklepu notatką, ale NIE zmienia statusu zamówienia', async () => {
     const { db, woo, nadanie } = zestaw();
@@ -141,7 +141,7 @@ describe('nadanie', () => {
     expect(z.przesylki[0].numer_listu).toBe(NUMER_LISTU);
   });
 
-  // Ustalenie z recenzji: test wyzej przechodzil takze wtedy, gdy o awarii sklepu nie
+  // Ustalenie: test wyzej przechodzil takze wtedy, gdy o awarii sklepu nie
   // zostawal ZADEN slad. Fakt nieudanej synchronizacji musi byc zapisany i widoczny.
   it('awaria sklepu zostawia ślad w logu i widoczny przy przesyłce', async () => {
     const { db, nadanie } = zestaw({ wooOk: false });
@@ -159,7 +159,7 @@ describe('nadanie', () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
     await expect(nadanie.nadaj(id)).rejects.toThrow(/Zly FID/);
     expect(pobierzZamowienie(db, id).przesylki).toEqual([]);
-    // Ustalenie z recenzji: bez tej asercji `oznaczBlad(..., '')` przechodzilo na zielono,
+    // Ustalenie: bez tej asercji `oznaczBlad(..., '')` przechodzilo na zielono,
     // a powod awarii ginal — wiersz 'blad' bez opisu nie mowi operatorowi nic.
     const wiersz = db.prepare("SELECT * FROM przesylki WHERE status = 'blad'").get();
     expect(wiersz.blad_opis).toContain('Zly FID');
@@ -284,7 +284,7 @@ describe('nadanie — komentarz (dawny „powód")', () => {
   });
 });
 
-// C1 (recenzja calej galezi). Zamowienie RECZNE nie istnieje w sklepie — jego `zrodlo_id`
+// Zamowienie RECZNE nie istnieje w sklepie — jego `zrodlo_id`
 // to tylko pozycja we WLASNEJ serii numeracji (patrz zamowienia-reczne.js), nie identyfikator
 // zadnego zamowienia Woo. Notatka wyslana pod ten numer trafialaby w zamowienie sklepowe
 // o przypadkowo tym samym `zrodlo_id` (albo w nic) — obcy sklep dostawalby CUDZA notatke,
@@ -319,9 +319,9 @@ describe('nadanie — zamówienie ręczne (sklep = "reczne")', () => {
   });
 });
 
-// C1. Klient moze anulowac dokladnie wtedy, gdy operator ma karte otwarta. Bez odmowy
+// Klient moze anulowac dokladnie wtedy, gdy operator ma karte otwarta. Bez odmowy
 // w nadaj() paczka fizycznie by wyjechala, a Woo nie dostaloby ZADNEGO sygnalu — nadanie
-// nie zmienia statusu zamowienia w sklepie (decyzja wlasciciela). Ukrycie przycisku to
+// nie zmienia statusu zamowienia w sklepie. Ukrycie przycisku to
 // za malo — przycisk pokazuje stan sprzed sekund.
 describe('nadanie — zamówienie anulowane', () => {
   it('anulowane zamówienie → twarda odmowa PRZED dotknięciem DPD', async () => {
@@ -347,7 +347,7 @@ describe('nadanie — zamówienie anulowane', () => {
   });
 });
 
-// I2. DPD odrzuca powtorzona referencje (DUPLICATED_PARCEL_SEARCH_KEY), wiec numer listu
+// DPD odrzuca powtorzona referencje (DUPLICATED_PARCEL_SEARCH_KEY), wiec numer listu
 // raz przydzielony MUSI trafic do bazy — drugiej szansy nie bedzie.
 describe('nadanie — awaria PO przydzieleniu numeru listu', () => {
   const poNumerze = () => {
@@ -401,7 +401,7 @@ describe('nadanie — awaria PO przydzieleniu numeru listu', () => {
     expect(doZrobienia(z)).toBe(true);
   });
 
-  // ⚠️ MUTACJA OBOWIĄZKOWA z briefu (zgłoszenie poprzedniego wykonawcy): DPD przydzieliło
+  // ⚠️ MUTACJA OBOWIĄZKOWA z briefu: DPD przydzieliło
   // numer, więc paczka u kuriera FIZYCZNIE ISTNIEJE i pojechała pod adres użyty w TYM
   // wywołaniu — operator mógł go poprawić na ekranie nadania tuż przed kliknięciem, a adres
   // w zamówieniu ze sklepu od tej chwili może być już inny. Bez zapisu tutaj panel nigdy
@@ -450,7 +450,7 @@ describe('nadanie — plik etykiety', () => {
     expect(logi(db, 'etykieta').map((w) => w.wynik)).toEqual([expect.stringContaining('BŁĄD zapisu')]);
   });
 
-  // I4: `numer` pochodzi WPROST z Woo, a polskie wtyczki numeracji wstawiaja ukosniki
+  // `numer` pochodzi WPROST z Woo, a polskie wtyczki numeracji wstawiaja ukosniki
   // („1301/07/2026"). Bez oczyszczenia plik ladowal poza katalogiem etykiet, a sciezka
   // trafiala do bazy i byla serwowana przez GET /etykieta.
   it.each([

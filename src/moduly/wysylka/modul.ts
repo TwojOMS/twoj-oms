@@ -54,7 +54,7 @@ type Odmowa = (...a: unknown[]) => Promise<never>;
  * Piaskownica bez atrapy kuriera (opis.piaskownica.atrapa) — czytelna odmowa zamiast żądania do
  * kuriera: dane wpisane w piaskownicy nie mogą wyjść do DPD ani InPostu. Metody DOKŁADNIE jak u adaptera — wynikają
  * z umiejętności opisu; dodatkowe sprawdzPrzesylke u DPD przestawiłoby nadanie.js na drogę asynchroniczną.
- * Zgodność z adapterem pilnuje tests/moduly/wysylka/kurierzy-kontrakt-prz135.test.ts.
+ * Zgodność z adapterem pilnuje tests/moduly/wysylka/kurierzy-kontrakt.test.ts.
  */
 export const odmowaWProbie = (opis: OpisKuriera) => (_opcjeKlienta?: unknown) => {
   const odmowa: Odmowa = async () => { throw bladOperatora(opis.piaskownica.komunikat, { status: 400 }); };

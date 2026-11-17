@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import * as nawigacja from '../../../src/domena/podmenu-ustawien.js';
 
 const model = (url, o = { admin: true }) => nawigacja.modelNawigacjiUstawien?.(url, o);
-describe('PRZ-127: działy Ustawień', () => {
+describe('działy Ustawień', () => {
   it('pokazuje dokładnie 10 działów i zakładki wyłącznie bieżącego działu', () => {
     const m = model('/ustawienia/firma');
     expect(m?.dzialy.map(d => d.etykieta)).toEqual(['Firma', 'Integracje', 'Zamówienia i magazyn', 'Wysyłka i druk', 'Faktury i podatki', 'Komunikacja', 'Automatyzacje', 'Zespół i dostęp', 'Kopie zapasowe', 'System']);
@@ -36,9 +36,9 @@ describe('PRZ-127: działy Ustawień', () => {
   });
 });
 
-// PRZ-167 (właściciel 15.11): menu Ustawień ma podmenu — aktywny dział rozwija swoje podstrony w lewym menu
+// Menu Ustawień ma podmenu — aktywny dział rozwija swoje podstrony w lewym menu
 // (np. Wysyłka i druk → Szablony paczek, Koszty dostawy, Etykiety i druk). Poziome zakładki na razie zostają.
-describe('PRZ-167: podmenu działów Ustawień', () => {
+describe('podmenu działów Ustawień', () => {
   it('aktywny dział niesie podstrony z bieżącą zaznaczoną, pozostałe działy — bez podstron', () => {
     const m = model('/ustawienia/wysylka/dostawa');
     const wysylka = m.dzialy.find(d => d.klucz === 'wysylka');

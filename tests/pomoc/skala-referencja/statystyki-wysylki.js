@@ -1,4 +1,4 @@
-// Referencja PRZ-094.13 z 9ccdd75, przed optymalizacją.
+// Referencyjna implementacja sprzed optymalizacji do porównania wyników obliczeń.
 import { uslugaDostawy } from '../../../src/domena/wysylka.js';
 import {
   terminZamowienia, dniRoboczeDoWysylki, poTerminie, tegoSamegoDnia,

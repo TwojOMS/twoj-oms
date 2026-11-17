@@ -45,6 +45,11 @@ export function polaSzukania(z) {
     z?.sklep,
     adres.nazwa, adres.company, adres.email, adres.phone,
     adres.ulica, adres.kod, adres.miasto,
+    // Login kupującego Allegro — ten sam napis, który lista pokazuje w kolumnie Klient
+    // (domena/klient-listy.js). Wpisuje go do bloku `klient` wyłącznie mapowanie Allegro. ⚠️ Zamówienia
+    // zapisane, zanim mapowanie zaczęło zapisywać login w bloku `klient`, mają go tylko w `surowe_json`, którego indeks listy nie czyta — lista
+    // ich loginu nie pokazuje i wyszukiwarka go nie zna, dopóki poller nie zapisze zamówienia ponownie.
+    z?.klient?.login,
     faktura.firma, faktura.nip,
     ...(z?.pozycje ?? []).flatMap((p) => [p.nazwa, p.sku]),
     ...(z?.przesylki ?? []).map((p) => p.numer_listu),

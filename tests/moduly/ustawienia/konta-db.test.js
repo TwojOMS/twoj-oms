@@ -110,7 +110,7 @@ describe('konta', () => {
 });
 
 describe('dziennik logowan', () => {
-  // ⚠️⚠️ DOWOD MUTACYJNY (Zadanie 5, scripts/mutacje-konta-role.mjs, mutacja 17): `login`
+  // ⚠️⚠️ DOWOD MUTACYJNY: `login`
   // w dzienniku pochodzi WPROST z `req.body.uzytkownik`, bez zadnego ograniczenia dlugosci
   // ze strony wolajacego — zmierzone na zywym serwerze: 291 zadan w 2 s po 100 kB kazdy to
   // 29,1 MB w samej tej kolumnie. Ten sam scenariusz stoi juz w tests/oms/logowanie.test.js

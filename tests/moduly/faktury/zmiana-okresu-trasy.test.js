@@ -2,7 +2,7 @@ import {
   describe, it, expect, beforeEach, vi,
 } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { zapewnijOkres, zamknijOkres } from '../../../src/oms/db/okresy.js';
 import { pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { dopiszKlientaZbiorczego } from './_klient-zbiorczy-pomocniki.js';
@@ -13,7 +13,7 @@ const naglowek = {
   origin: 'http://localhost',
 };
 
-// ⚠️ Od 24.08.2026 klient zbiorczy jest WIERSZEM TABELY `klienci`, nie wpisem w konfiguracji.
+// ⚠️ Klient zbiorczy jest WIERSZEM TABELY `klienci`, nie wpisem w konfiguracji.
 const KLIENT = {
   klucz: 'przykladowa', nazwa: 'Pracownia Przykładowa sp. z o.o.', nip: '1234500011',
   rabat_procent: 10, prog_darmowej_dostawy_gr: 30000,
@@ -249,11 +249,11 @@ describe('karta zamowienia — przycisk „Przypisz do okresu”', () => {
   });
 });
 
-// PRZ-101.04 (recenzja, W1): zamówienie SCALONE nie wchodzi do okresu rozliczeniowego. Faktura
+// Zamówienie SCALONE nie wchodzi do okresu rozliczeniowego. Faktura
 // okresu bierze `pobierzZamowienie` (same pozycje głównego), faktura grupy jest wtedy odrzucona
 // (główne „należy do okresu”), dołączone własnej mieć nie może — pozycje dołączonego nie trafiłyby
 // na żaden dokument. Dopisanie dołączonego dałoby jego pozycje na DWÓCH dokumentach.
-describe('POST /zamowienia/:id/okres — zamówienie scalone (PRZ-101.04)', () => {
+describe('POST /zamowienia/:id/okres — zamówienie scalone', () => {
   const scalone = () => {
     const a = dodajZamowienie({ numer: 'R/2026/031', okresId: null });
     const b = dodajZamowienie({ numer: 'R/2026/032', okresId: null });

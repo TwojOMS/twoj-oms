@@ -91,7 +91,7 @@ describe('trasy faktur hurtem', () => {
     expect(dostane.map((z) => z.id)).toEqual(idZPodgladu(podglad.body));
   });
 
-  // ⚠️ BARIERA ARYTMETYCZNA W PODGLADZIE (recenzja 12.08.2026). Do tego dnia zamowienie
+  // ⚠️ BARIERA ARYTMETYCZNA W PODGLADZIE. Do tego dnia zamowienie
   // z rozjechana suma stawalo w sekcji „Pójdzie do inFaktu", operator je zatwierdzal, a ono
   // ladowalo w „Nie udało się" — bo prawdziwa bariera (`sprawdzSumeDokumentu` w `wystaw()`)
   // odmawiala dopiero tam. Zaden dokument nie powstawal, ale EKRAN OBIECYWAL COS, CZEGO
@@ -239,9 +239,9 @@ describe('trasy faktur hurtem', () => {
     expect(r.statusCode).toBe(503);
   });
 
-  // PRZ-126.F02: opcja firmy „faktura także bez prośby klienta”. Podgląd i wykonanie czytają ją
+  // Opcja firmy „faktura także bez prośby klienta”. Podgląd i wykonanie czytają ją
   // tą samą funkcją przy każdym żądaniu — nie mogą się rozjechać.
-  describe('zamowienie bez zadania faktury (PRZ-126)', () => {
+  describe('zamowienie bez zadania faktury', () => {
     function przygotuj() {
       let dostane = null;
       const { app, db } = serwer({

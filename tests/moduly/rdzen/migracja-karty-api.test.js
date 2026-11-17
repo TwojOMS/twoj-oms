@@ -8,7 +8,7 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { modulRdzen } from '../../../src/moduly/rdzen/modul.ts';
 import { migracjaKartApi } from '../../../src/moduly/rdzen/migracje/0011-karty-api.ts';
 
-// PRZ-153.E5.1 — migracja rdzen/0011: pola karty dla API (cena, VAT, EAN, wycofanie) i tabela idempotencji.
+// Migracja rdzen/0011: pola karty dla API (cena, VAT, EAN, wycofanie) i tabela idempotencji.
 // Wyłącznie dokładanie; stare karty dostają `wycofana = 0`, reszta ich danych zostaje bez zmian.
 
 const KORZEN = fileURLToPath(new URL('../../../', import.meta.url));
@@ -22,7 +22,7 @@ function nowyPlik() {
   return join(k, 'oms.sqlite');
 }
 
-// Rdzeń w stanie sprzed tej zmiany: migracje do 10. Po otwarciu — do 11 (późniejsze, np. 0012 PRZ-160, mają własne testy).
+// Rdzeń z migracjami do 10. Po otwarciu — do 11; późniejsze migracje mają własne testy.
 const rdzenBez11 = { ...modulRdzen, migracje: modulRdzen.migracje.filter((m) => m.numer < 11) };
 const rdzenDo11 = { ...modulRdzen, migracje: modulRdzen.migracje.filter((m) => m.numer <= 11) };
 const kolumny = (db, t) => db.prepare(`PRAGMA table_info(${t})`).all();

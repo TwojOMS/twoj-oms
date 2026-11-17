@@ -1,7 +1,7 @@
-// Paczka wydania dla klienta (PRZ-058): tar.gz z plikami WPROST z commita (git show, bez kopii
+// Paczka wydania dla klienta: tar.gz z plikami WPROST z commita (git show, bez kopii
 // roboczej, więc bez CRLF i bez niezacommitowanych zmian), plus:
 //   wydanie.json       — pełny commit i tree (diagnostyka, aktualizator) oraz formatSekretow — format poświadczeń
-//                        w bazie, który zna ten commit (PRZ-182; z pakowanego commita, nie z bieżącego drzewa),
+//                        w bazie, który zna ten commit (z pakowanego commita, nie z bieżącego drzewa),
 //   deploy/klient/.env — OMS_REVISION dla compose (tag obrazu i etykieta revision).
 // Użycie: node scripts/paczka-klienta.mjs --commit <pełny SHA> --wyjscie <nowy katalog bezwzględny>
 // tar.gz, bo czysty Debian ma tar, a nie ma unzip.
@@ -21,21 +21,21 @@ const DOKLADNE = new Set([
   'scripts/backup-db.mjs', 'scripts/paczka-klienta.mjs', 'scripts/backup-rotation.mjs',
   'scripts/produkcja-pierwszy-start.mjs', 'scripts/inicjalizuj-granice-bez-historii.mjs',
   'scripts/link-hasla-admina.mjs',
-  // PRZ-182: narzędzie poświadczeń w bazie (aktualizuj.sh sekrety, klucz przy aktualizacji, powrót do starszego wydania).
+  // Narzędzie poświadczeń w bazie (aktualizuj.sh sekrety, klucz przy aktualizacji, powrót do starszego wydania).
   'scripts/sekrety.mjs',
   'docs/instalacja-klienta.md', 'docs/instalacja-docker.md', 'docs/aktualizacje-klienta.md', 'docs/aktualizacja-klienta-v0.md',
 ]);
-// PRZ-094.21: deploy/drukarka/ — agent druku etykiet i faktur (instrukcja w README.md obok skryptów).
+// deploy/drukarka/ — agent druku etykiet i faktur (instrukcja w README.md obok skryptów).
 const PREFIKSY = ['src/', 'deploy/klient/', 'deploy/drukarka/'];
 // Dokumenty kurierów (docs/kurier-dpd.md, docs/kurier-inpost.md…): instrukcja instalacji odsyła do nich z ekranu Integracji. docs/kurier-jako-modul.md to przewodnik dla programisty — poza paczką.
 const WZORCE = [/^docs\/kurier-(?!jako-modul\.md$)[a-z0-9-]+\.md$/,
-  // PRZ-094.04: instrukcja poczty wychodzącej (Ustawienia → Integracje → Poczta wychodząca).
+  // Instrukcja poczty wychodzącej (Ustawienia → Integracje → Poczta wychodząca).
   /^docs\/poczta-smtp\.md$/,
   /^docs\/modul-faktur\.md$/,
   /^docs\/fakturownia\.md$/,
-  // PRZ-132.13: podłączenie Allegro w panelu (kreator, aplikacja typu urządzenie).
+  // Podłączenie Allegro w panelu (kreator, aplikacja typu urządzenie).
   /^docs\/allegro-podlaczenie\.md$/,
-  // PRZ-160.E3.29: wystawianie ofert Allegro z karty (zgoda, podgląd, hamulce).
+  // Wystawianie ofert Allegro z karty (zgoda, podgląd, hamulce).
   /^docs\/kanal-allegro-oferty\.md$/,
   /^docs\/twojefaktury(?:-ksef)?\.md$/];
 
@@ -126,7 +126,7 @@ export function bajtyZCommita(commit, pliki, wykonaj = git) {
 export const PLIK_FORMATU_SEKRETOW = 'src/core/bezpieczenstwo/format-sekretow.json';
 
 /**
- * Format poświadczeń w bazie, który zna PAKOWANY commit (PRZ-182): plik formatu z tego commita, czytany jako dane —
+ * Format poświadczeń w bazie, który zna PAKOWANY commit: plik formatu z tego commita, czytany jako dane —
  * bez wykonywania jego kodu i bez bieżącego drzewa (generator może być nowszy niż pakowany kod). Brak pliku = 0.
  * Aktualizator decyduje po tym polu o odszyfrowaniu bazy przy powrocie do tego wydania.
  */

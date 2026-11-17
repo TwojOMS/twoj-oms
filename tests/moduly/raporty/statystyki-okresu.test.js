@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { openOmsDb } from '../../pomoc/dane-miesieczne-parytetu.js';
-import { zamowieniaOkresu } from '../../pomoc/raporty-parytetu.js';
+import { openOmsDb } from '../../pomoc/testowe-dane-miesieczne.js';
+import { zamowieniaOkresu } from '../../pomoc/testowe-reguly-raportow.js';
 import { listaZamowien } from '../../../src/oms/db/zamowienia.js';
 
 let db;
@@ -106,7 +106,7 @@ describe('zamowieniaOkresu — nazwy pozycji dla ekspresu', () => {
   });
 });
 
-// ⚠️⚠️ WADA KRYTYCZNA Z RECENZJI 13.09.2026. Statystyka brała `oplacone_at` z SUROWEJ
+// ⚠️⚠️ WADA KRYTYCZNA. Statystyka brała `oplacone_at` z SUROWEJ
 // KOLUMNY, a `startZegara` (domain/termin-wysylki.js) na niej stoi. Tymczasem lista zamówień
 // oddaje `oplacone_at` WYLICZONE z tabeli `platnosci` (progiem jest kwota oczekiwana od
 // klienta), a surową kolumnę wystawia obok jako `oplacone_at_sklep`. Do tego migracja

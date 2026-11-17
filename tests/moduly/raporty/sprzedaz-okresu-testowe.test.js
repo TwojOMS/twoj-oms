@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { czyTestowe } from '../../pomoc/raporty-parytetu.js';
+import { czyTestowe } from '../../pomoc/testowe-reguly-raportow.js';
 
 describe('czyTestowe — adresy własne', () => {
   it('wyklucza zamówienia właściciela', () => {

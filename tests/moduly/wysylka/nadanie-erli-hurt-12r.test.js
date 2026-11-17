@@ -11,9 +11,9 @@ import { createFabrykaErli } from '../../../src/moduly/kanaly/services/kanal-erl
 import { zapiszKonfiguracjeIntegracji } from '../../../src/oms/db/konfiguracja-integracji.js';
 import { createAtrapaErli } from '../../../deploy/proba/atrapy/erli.mjs';
 import { createNadanie } from '../../../src/moduly/wysylka/services/nadanie.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
-// PRZ-157.12r: nadanie HURTEM zamówień ERLI ma iść tą samą drogą co pojedyncze
+// Nadanie HURTEM zamówień ERLI ma iść tą samą drogą co pojedyncze
 // (`metodaNadaniaErli` → `drogaErliDlaZamowienia`): Przesyłki Erli z wymiarami z kroku 4,
 // kurier z umowy według mapy, blokada = pominięte z powodem, ręczna metoda wygrywa.
 const config = { auth: { user: 'adam', pass: 'x' }, klienciZbiorczy: [] };

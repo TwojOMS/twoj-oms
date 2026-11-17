@@ -1,4 +1,4 @@
-// PRZ-099: funkcje ekranu Ustawienia → Aktualizacje — odczyt wydania, porównanie wersji, zapytanie do GitHuba.
+// Funkcje ekranu Ustawienia → Aktualizacje — odczyt wydania, porównanie wersji, zapytanie do GitHuba.
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -24,12 +24,12 @@ function atrapaHttp(odpowiedz: () => Response | Promise<Response>) {
 const json = (cialo: unknown, status = 200) => new Response(JSON.stringify(cialo), { status, headers: { 'content-type': 'application/json' } });
 const WYDANIE_GH = { tag_name: 'v0.3.0', published_at: '2026-10-25T09:00:00Z', body: 'Nowy ekran.', html_url: 'https://github.com/TwojOMS/twoj-oms/releases/tag/v0.3.0' };
 
-describe('PRZ-099 odczytajWydanie', () => {
+describe('odczytajWydanie', () => {
   it('pełny plik → commit, wersja i data paczki', () => {
     expect(odczytajWydanie(plikWydania({ commit: COMMIT, wersja: 'v0.2.0', utworzono: '2026-10-18T12:02:00Z' })))
       .toEqual({ commit: COMMIT, wersja: 'v0.2.0', utworzono: '2026-10-18T12:02:00Z' });
   });
-  it('paczka bez pola wersja (sprzed PRZ-095) → wersja null, commit zostaje', () => {
+  it('paczka bez pola wersja → wersja null, commit zostaje', () => {
     expect(odczytajWydanie(plikWydania({ commit: COMMIT, utworzono: '2026-10-18T12:02:00Z' })))
       .toEqual({ commit: COMMIT, wersja: null, utworzono: '2026-10-18T12:02:00Z' });
   });
@@ -43,7 +43,7 @@ describe('PRZ-099 odczytajWydanie', () => {
   });
 });
 
-describe('PRZ-099 porownajWersje', () => {
+describe('porownajWersje', () => {
   it('porównuje liczbowo, nie jako napisy', () => {
     expect(porownajWersje('v0.10.0', 'v0.9.0')).toBe(1);
     expect(porownajWersje('v0.2.0', 'v0.2.0')).toBe(0);
@@ -52,7 +52,7 @@ describe('PRZ-099 porownajWersje', () => {
   });
 });
 
-describe('PRZ-099 sprawdzNajnowsze', () => {
+describe('sprawdzNajnowsze', () => {
   it('200 → jest; pyta o releases/latest repo produktu z User-Agent i Accept GitHuba', async () => {
     const { http, wywolania } = atrapaHttp(() => json(WYDANIE_GH));
     expect(await sprawdzNajnowsze({ http })).toEqual({

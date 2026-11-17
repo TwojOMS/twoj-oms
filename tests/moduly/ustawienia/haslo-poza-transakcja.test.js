@@ -1,4 +1,4 @@
-// PRZ-068/069, recenzja D8 r1 (P3-8): scrypt NIE liczy się wewnątrz BEGIN IMMEDIATE — inaczej blokada zapisu
+// Scrypt NIE liczy się wewnątrz BEGIN IMMEDIATE — inaczej blokada zapisu
 // całej bazy trwa tyle co haszowanie (dziesiątki ms na każde konto/hasło z linku). Atrapa `zahaszuj` zapisuje,
 // czy w chwili wywołania baza była w transakcji; prawdziwe haszowanie liczy się dalej (oryginał).
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -12,7 +12,7 @@ vi.mock('../../../src/domena/hasla.js', async (oryginal) => {
 const { zalozKonto, kontoPoLoginie } = await import('../../../src/core/bezpieczenstwo/konta.js');
 const { zgodneHaslo } = await import('../../../src/domena/hasla.js');
 const { wydajLink } = await import('../../../src/moduly/ustawienia/linki-hasla.js');
-const { nowyPanel, jako, post } = await import('../../pomoc/konta-prz068.js');
+const { nowyPanel, jako, post } = await import('../../pomoc/panel-konta-testowe.js');
 
 function panel() {
   const p = nowyPanel();

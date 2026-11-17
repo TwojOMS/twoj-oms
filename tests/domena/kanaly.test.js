@@ -1,4 +1,4 @@
-import { definicjeKanalowHistoryczne } from '../pomoc/kanaly-historyczne-fixture.js';
+import { definicjeKanalowHistoryczne } from '../pomoc/przykladowe-definicje-kanalow.js';
 import { describe, it, expect } from 'vitest';
 import { adresKanalu } from '../../src/domena/kanaly.js';
 

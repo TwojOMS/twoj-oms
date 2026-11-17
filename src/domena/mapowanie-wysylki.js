@@ -27,7 +27,7 @@ import { METODY_WYSYLKI } from './wysylka.js';
 // kanału z `OMS_KANALY` (walidowane w moduly/kanaly/konfiguracja.ts), sklep podłączony w panelu — krok
 // „Metody wysyłki” konfiguratora (moduly/kanaly/trasy-woo.ts, `zapiszMapowanie`). Nie jest stałą w kodzie.
 // Dawna mapa wbudowana w kod (z pułapką instancji pobrania o `method_id` odbioru
-// osobistego) żyje już tylko jako fixture zamrożonych testów: tests/pomoc/mapowanie-sklepow-historyczne-fixture.js.
+// osobistego) żyje już tylko jako fixture zamrożonych testów: tests/pomoc/przykladowe-mapowanie-wysylki.js.
 
 const TEKST = (v) => String(v ?? '').trim().toLowerCase();
 

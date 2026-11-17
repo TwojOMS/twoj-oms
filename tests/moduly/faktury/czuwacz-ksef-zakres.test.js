@@ -5,8 +5,7 @@ import { rozpocznijFakture, zakonczFakture } from '../../../src/moduly/faktury/d
 import { zajmijWysylkeKsef } from '../../../src/moduly/faktury/db/wysylki-ksef.js';
 import { createCzuwaczKsef } from '../../../src/moduly/faktury/services/czuwacz-ksef.js';
 
-// Do 06.08.2026 czuwacz pytal WYLACZNIE o faktury z kanalow Allegro — bo tylko one mialy
-// dokad pojechac. Od chwili, gdy panel sam wysyla dokumenty do KSeF (POST /faktury/ksef/wyslij),
+// Panel sam wysyla dokumenty do KSeF (POST /faktury/ksef/wyslij), wiec
 // numer trzeba dociagnac TAKZE dla faktur sklepowych: inaczej `faktury.ksef_numer` zostaje pusty
 // NA ZAWSZE, a zakladka pokazuje „brak KSeF" przy dokumencie, ktory wlasnie stamtad wyszedl.
 //
@@ -83,7 +82,7 @@ describe('zakres czuwacza po dolozeniu wysylki z panelu', () => {
     db.close();
   });
 
-  // PRZ-123.CZUWACZ-NUMER: TwojeFaktury oddaje dokument w ksztalcie v3 (`ksef_number`, nie `ksefNumer`).
+  // TwojeFaktury oddaje dokument w ksztalcie v3 (`ksef_number`, nie `ksefNumer`).
   // Bez odczytu obu pol numer nie trafial do bazy nigdy, a faktura nie szla do Allegro po numerze KSeF.
   it('zapisuje numer KSeF z odczytu TwojeFaktury (`ksef_number`)', async () => {
     const db = openOmsDb(':memory:');
@@ -98,7 +97,7 @@ describe('zakres czuwacza po dolozeniu wysylki z panelu', () => {
     db.close();
   });
 
-  // Recenzja CZUWACZ-NUMER: `null` z programu (TwojeFaktury nie zna id) to blad odczytu ze sladem w historii —
+  // `null` z programu (TwojeFaktury nie zna id) to blad odczytu ze sladem w historii —
   // ani cichy „ok", ani „nieznana" (ta robi na karcie blokade „skasowana" i zwalnia zamowienie).
   it('`null` z programu zapisuje odczyt „blad" i wpis w historii', async () => {
     const db = openOmsDb(':memory:');
@@ -161,7 +160,7 @@ describe('zakres czuwacza po dolozeniu wysylki z panelu', () => {
   // do konca swiata.
   //
   // ⚠️⚠️ ZDARZENIEM WEJSCIOWYM DRUGIEJ GALEZI JEST ZLECENIE WYSYLKI, NIE WYSTAWIENIE DOKUMENTU
-  // (recenzja, K1). Do poprawki stalo tu wylacznie przesuniecie `utworzona_at` — a to znaczylo,
+  // Do poprawki stalo tu wylacznie przesuniecie `utworzona_at` — a to znaczylo,
   // ze podloga liczy sie od zdarzenia, ktore z ta galezia nie ma nic wspolnego. Test przesuwa
   // wiec OBA stemple: dokument wystawiony dawno I wyslany dawno naprawde wypada.
   it('faktura sklepowa wysłana dawniej niż podłoga wypada', async () => {
@@ -195,7 +194,7 @@ describe('zakres czuwacza po dolozeniu wysylki z panelu', () => {
   });
 
   // ⚠️⚠️ PORZADEK PO DACIE OSTATNIEGO PYTANIA — dokladnie ta sama poprawka, ktora dostala juz
-  // druga petla czuwacza (recenzja Partii 3, W6). Wiersz, ktory numeru NIE DOSTANIE, nie wypada
+  // druga petla czuwacza. Wiersz, ktory numeru NIE DOSTANIE, nie wypada
   // ze zbioru az do podlogi, a zakladka wysyla HURTOWO: jedna partia >=50 odrzuconych dokumentow
   // zajmowalaby wszystkie sloty przez 30 dni, a nowsze faktury nie bylyby zapytane ANI RAZU.
   it('dokument już pytany ustępuje miejsca temu, o który nikt nie pytał', async () => {

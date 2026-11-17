@@ -3,9 +3,9 @@ import { zalozKonto, kontoPoLoginie } from '../../../src/core/bezpieczenstwo/kon
 import { trescMaila } from '../../../src/moduly/ustawienia/poczta-kont.js';
 import { ustawEmail } from '../../../src/moduly/ustawienia/konta-dostep.js';
 import { DOMYSLNE } from '../../../src/domena/szablony-wiadomosci.js';
-import { nowyPanel, jako, get, post } from '../../pomoc/konta-prz068.js';
+import { nowyPanel, jako, get, post } from '../../pomoc/panel-konta-testowe.js';
 
-// PRZ-101.06: zaproszenie i reset hasła pracownika jako szablony wbudowane rodzaju „konto".
+// Zaproszenie i reset hasła pracownika jako szablony wbudowane rodzaju „konto".
 // ⛔ Żadnego prawdziwego SMTP: mailer to atrapa podana nadpisaniem usługi `wiadomosci.mailer`.
 
 const ADRES = 'https://panel.example.test';
@@ -32,7 +32,7 @@ describe('domyślny szablon = dzisiejszy mail co do znaku', () => {
   }
 });
 
-// PRZ-108.01: pracownik bez imienia — domyślne „Dzień dobry, {imie}!" dawało „Dzień dobry,!".
+// Pracownik bez imienia — domyślne „Dzień dobry, {imie}!" dawało „Dzień dobry,!".
 describe('pracownik bez imienia', () => {
   for (const cel of ['zaproszenie', 'reset']) {
     for (const imie of ['', '   ', undefined]) {

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import {
   utworzKarte, zapiszProduktSklepowy, powiazProdukt, zajeteSku, produktyKart,
 } from '../../../src/oms/db/magazyn.js';
@@ -9,7 +9,7 @@ import { przejeciaZeSklepu } from '../../../src/domena/przejecie-sku.js';
 // PRZEJECIE NUMERU ZE SKLEPU — krok, ktorego NIE MA w planie, a bez ktorego zapis do sklepow
 // nadpisywalby TOZSAMOSC produktow.
 //
-// PO CO TO ISTNIEJE (zmierzone na produkcji 2026-08-12): 278 kart — czwarta czesc katalogu —
+// PO CO TO ISTNIEJE: 278 kart — czwarta czesc katalogu —
 // nie ma NASZEGO numeru, ale ich produkt ma WLASNY numer w sklepie („LMP-NIEUPOWAZN-168",
 // „PD10"). Generator SKU ich nie przejmuje: poprawnie nie wydaje numeru zajetego, ale zostawia
 // ROZBIEZNOSC — rejestr milczy, sklep ma numer. Gdyby potem pojechal zapis, nadpisalby numer

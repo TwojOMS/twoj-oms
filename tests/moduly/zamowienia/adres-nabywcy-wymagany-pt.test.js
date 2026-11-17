@@ -5,9 +5,9 @@ import { createFaktura } from '../../../src/moduly/faktury/services/faktura.js';
 import { createFakturaHurtem } from '../../../src/moduly/faktury/services/faktura-hurtem.js';
 import { podzielDoFaktury } from '../../../src/domena/masowe.js';
 import { dodajWplateReczna } from '../../../src/oms/db/platnosci.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
-// PRZ-126.PT5: bez adresu nabywcy (ulica, kod dla PL, miasto) nie ma faktury — szary przycisk
+// Bez adresu nabywcy (ulica, kod dla PL, miasto) nie ma faktury — szary przycisk
 // na karcie z powodem i odnośnikiem do „Dane do faktury”, odmowa POST przed rezerwacją numeru
 // i przed programem, odmowa per zamówienie w hurcie. Dane zmyślone. Część TwojeFaktury (licznik
 // serii) jest w tests/integracje/adres-nabywcy-twojefaktury-pt5.test.js — na liście wycięcia.

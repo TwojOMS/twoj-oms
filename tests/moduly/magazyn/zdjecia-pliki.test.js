@@ -8,7 +8,7 @@ import { Readable } from 'node:stream';
 import { request as httpsRequest } from 'node:https';
 import { katalogZdjec, zapiszZdjecie, pobierzZdjecie } from '../../../src/moduly/magazyn/services/zdjecia-pliki.js';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { zalozKonto, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
 import { podpisz, NAZWA_CIASTECZKA_OMS } from '../../../src/core/bezpieczenstwo/sesja.js';
 import { wczytajSekret } from '../../../src/core/bezpieczenstwo/sekret-sesji.js';

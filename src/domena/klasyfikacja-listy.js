@@ -14,7 +14,7 @@
 //
 // To jest poprawne WYŁĄCZNIE dlatego, że obie reguły są monotoniczne w czasie: przy tych
 // samych faktach raz „tak" znaczy „tak" już zawsze (progi „po N minutach/dniach", nigdy
-// „przez N minut"). Pilnuje tego test własności (tests/prz051/klasyfikacja.test.js) na każdym
+// „przez N minut"). Pilnuje tego test własności (tests/moduly/zamowienia/lista/klasyfikacja-zamowien-czas.test.js) na każdym
 // rodzaju zamówienia z zestawu. Reguła, która kiedyś zacznie wygasać z czasem, rozbije ten
 // test — i wtedy trzeba tu przechowywać przedziały, a nie jedną chwilę.
 import { wyliczStatus, doZrobienia } from './status.js';

@@ -9,7 +9,7 @@ import { rozpocznijPrzesylke, zakonczPrzesylke, pobierzPrzesylke } from '../../.
 import { createCzuwaczPrzesylek } from '../../../src/moduly/wysylka/services/czuwacz-przesylek.js';
 import { createErliClient } from '../../../src/oms/erli/client.js';
 import { createAtrapaErli } from '../../../deploy/proba/atrapy/erli.mjs';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
 const z = { sklep: 'erli-polcien' };
 const zamowienie = { zrodlo_id: 'PC-ERLI-0001', numer: 'PC-ERLI-0001', klient: {}, dostawa: {}, pozycje: [],
@@ -23,7 +23,7 @@ function zestaw(status, statusHistory = []) {
   return { erli, erliDla, klient: createErliPrzesylkiClient({ erliDla }) };
 }
 
-describe('PRZ-157.09 anulowanie', () => {
+describe('anulowanie', () => {
   it.each(['preparing', 'readyToSend', 'waitingForCourier'])('%s: sprawdza stan i DELETE raz', async status => {
     const { klient, erli, erliDla } = zestaw(status);
     await klient.anulujPrzesylke('41', z);
@@ -56,7 +56,7 @@ const etapy = { preparing: 'nadana', readyToSend: 'nadana', waitingForCourier: '
   pickupTimeExpired: 'w_drodze', returned: 'zwrot', canceled: 'nadana', claimed: 'w_drodze',
   trackingUnavailable: null, unknown: null, error: 'nadana', deliveryUnsuccessful: 'zwrot',
   redirected: 'w_drodze', technical: null, trackingExpired: null, nowyStatus: null };
-describe('PRZ-157.09 statusy', () => {
+describe('statusy', () => {
   it.each(Object.entries(etapy))('%s → %s', async (status, etap) => {
     const { klient, erliDla } = zestaw(status);
     const wynik = await klient.statusPrzesylki('41', { kanal: z.sklep });
@@ -93,7 +93,7 @@ describe('PRZ-157.09 statusy', () => {
   });
 });
 
-describe('PRZ-157.09 protokół', () => {
+describe('protokół', () => {
   it('zwraca dokument z klienta HTTP i atrapy', async () => {
     const db = openOmsDb(':memory:');
     try {
@@ -134,7 +134,7 @@ describe('PRZ-157.09 protokół', () => {
   });
 });
 
-describe('PRZ-157.09 sprawa zwrotu tylko dla Przesyłek Erli', () => {
+describe('sprawa zwrotu tylko dla Przesyłek Erli', () => {
   const zwrot = { status: 'nadana', etykieta_sciezka: '/p.pdf', status_kuriera: 'Zwrot przesyłki', status_kuriera_at: '2026-11-10T10:00:00Z' };
   it('zwrot InPost/DPD nie daje sprawy (jak przed zmianą)', () => {
     for (const kurier of ['inpost', 'dpd', 'allegro', 'wza']) expect(sprawyPrzesylki({ ...zwrot, kurier })).not.toContain('zwrot przesyłki');

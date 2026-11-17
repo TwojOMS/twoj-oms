@@ -41,7 +41,7 @@ describe('co wolno wysłać do KSeF', () => {
     expect(w.pominiete[0].powod).toMatch(/jest już w KSeF/i);
   });
 
-  // ⚠️⚠️ DOKUMENT, KTOREGO WYSYLKE PANEL JUZ ZLECIL (recenzja calosci, Finding 1). `ksef_number`
+  // ⚠️⚠️ DOKUMENT, KTOREGO WYSYLKE PANEL JUZ ZLECIL. `ksef_number`
   // pojawia sie dopiero po ~70 sekundach, wiec swiezo pobrana lista jest SLEPA na wysylke
   // zlecona przed chwila — bariera musi widziec REZERWACJE, a nie tylko numer. Bez tego ekran
   // podgladu liczyl taki dokument do „Poleci do KSeF" i obiecywal wyslanie czegos, co i tak
@@ -78,7 +78,7 @@ describe('co wolno wysłać do KSeF', () => {
   });
 
   // ⚠️ BIAŁA LISTA TYPU, A NIE BRAK CHECKBOXA W WIDOKU. Widok jest wygodą; bariera musi
-  // stać w domenie, bo formularz można wysłać z ręki. Decyzja właściciela 06.08.2026:
+  // stać w domenie, bo formularz można wysłać z ręki. Reguła produktu:
   // korekty wyłącznie do podglądu.
   it('odrzuca korektę, nawet gdy przyszła w zaznaczeniu', () => {
     const k = { uuid: 'k1', number: '1/KOR/08/2026', rodzaj: 'korekta', ksef_number: null };
@@ -173,7 +173,7 @@ describe('co wolno wysłać do KSeF', () => {
     expect(w.pominiete[0].powod).toMatch(/nieznany rodzaj/i);
   });
 
-  // ⚠️⚠️ KOLEJNOŚĆ SPECYFICZNOŚCI (recenzja całości, Finding A3). Biała lista rodzaju musi być
+  // ⚠️⚠️ KOLEJNOŚĆ SPECYFICZNOŚCI. Biała lista rodzaju musi być
   // sprawdzona PRZED „panel już zlecił": rodzaj dokumentu to powód TRWAŁY (korekta nigdy nie
   // stanie się wysyłalna), a „już zlecił" jest powodem PRZEJŚCIOWYM (sam znika po odpowiedzi
   // inFaktu). Dziś korekta nie ma drogi do bycia „zleconą" (panel jej nie rezerwuje) — ten test
@@ -196,7 +196,7 @@ describe('co wolno wysłać do KSeF', () => {
 // nie ma. Ta jedna miała pole wyboru i była JEDYNĄ czerwcową bez numeru KSeF, więc „zaznacz
 // wszystkie" w czerwcu zaznaczyłoby wyłącznie ją i wysłało — a wysyłki do KSeF nie da się
 // cofnąć. Przepis (Ministerstwo Finansów): faktury B2C w KSeF są DOBROWOLNE.
-// Decyzja właściciela 28.08.2026: blokada twarda, dokładnie jak przy korektach.
+// Reguła produktu: blokada twarda, dokładnie jak przy korektach.
 describe('faktura konsumencka (nabywca bez NIP-u) nie jedzie do KSeF', () => {
   const bezNipu = (nadpisz = {}) => ({ ...dok(30), number: '30/06/2026', ...nadpisz });
 

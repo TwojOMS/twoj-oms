@@ -124,7 +124,7 @@ describe('odpowiedzi i awarie', () => {
     await expect(gus.firmaPoNip('5252248481')).rejects.toThrow(/nie odpowiedział w 10 sekund/);
   });
 
-  // PRZ-102.11: „Sprawdź połączenie” z Ustawień — zawsze świeże logowanie (nie stara sesja), bez pytania o firmę.
+  // „Sprawdź połączenie” z Ustawień — zawsze świeże logowanie (nie stara sesja), bez pytania o firmę.
   it('sprawdzPolaczenie loguje się od nowa i o nic nie pyta; zły klucz = odmowa dla operatora', async () => {
     const { gus, wywolania } = klient([odp(wynikLogowania('SID-1')), odp(wynikLogowania('SID-2')), odp(wynikLogowania(''))]);
     await expect(gus.sprawdzPolaczenie()).resolves.toEqual({ ok: true });

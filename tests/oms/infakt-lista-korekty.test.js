@@ -48,7 +48,7 @@ describe('korekty i nieopłacone', () => {
     expect(wolania[0]).toContain('/v3/corrective_invoices.json');
   });
 
-  // ⚠️ FILTR ZMIERZONY, NIE ZGADNIĘTY (06.08.2026): `q[left_to_pay_gt]=0` oddaje 65 dokumentów
+  // ⚠️ FILTR ZMIERZONY, NIE ZGADNIĘTY: `q[left_to_pay_gt]=0` oddaje 65 dokumentów
   // i w próbce ANI JEDNEGO z `left_to_pay = 0`. Odrzucone alternatywy: `q[status_not_eq]=paid`
   // i `q[paid_date_null]=true` — obie oddają 63 i OBIE przepuszczają dokumenty już opłacone
   // (1 na 10 w próbce), bo panel wystawia faktury przedpłacone z `paid_price`, a ich wewnętrzny
@@ -101,7 +101,7 @@ describe('korekty i nieopłacone', () => {
     await expect(c.listaNieoplaconych()).rejects.toThrow(/zaw[eę]ź|za du[żz]o|sufit/i);
   });
 
-  // ⚠️ INNY ZASÓB. Ten sam uuid pod /invoices/ oddaje 404 — sprawdzone 2026-08-01.
+  // ⚠️ INNY ZASÓB. Ten sam uuid pod /invoices/ oddaje 404 — sprawdzone.
   it('PDF korekty idzie pod /corrective_invoices/, nie pod /invoices/', async () => {
     const pdf = Buffer.from('%PDF-1.4 korekta');
     const { impl, wolania } = fake([['corrective_invoices', {

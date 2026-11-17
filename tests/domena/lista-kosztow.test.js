@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { zlozWidok } from '../../src/domena/lista-kosztow.js';
 
-// ⚠️ KWOTY JAKO NAPISY, nie liczby — brief Zadania 8 zostal napisany PRZED decyzja, ze
+// ⚠️ KWOTY JAKO NAPISY, nie liczby — wczesniejsza wersja zakladala, ze
 // `koszty.netto/vat/brutto` to TEXT (niezmiennik 4.5, docs/oms/PRZEWODNIK.md: arytmetyka
 // pieniedzy WYLACZNIE przez `grosze()`, nigdy na floatach). Wiersze ponizej maja wiec dokladnie
 // taki ksztalt, w jakim `naWiersz` (domain/koszt-metadane.js) faktycznie je produkuje —

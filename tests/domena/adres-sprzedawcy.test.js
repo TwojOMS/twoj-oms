@@ -2,10 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { adresSprzedawcy } from '../../src/domena/adres-sprzedawcy.js';
 
 // `adresSprzedawcy` — wspolna regula adresu wystawcy dla WSZYSTKICH dokumentow panelu
-// (proforma, specyfikacja zamowienia — Zadanie 8). Wyciagnieta z services/proforma.js, gdzie
+// (proforma, specyfikacja zamowienia). Wyciagnieta z services/proforma.js, gdzie
 // byla prywatna funkcja `daneSprzedawcy()`.
 //
-// ⚠️ TREŚĆ KOMUNIKATU JEST TU PRZYPIĘTA CELOWO (recenzja Zadania 8, 12.08.2026). Do tej
+// ⚠️ TREŚĆ KOMUNIKATU JEST TU PRZYPIĘTA CELOWO. Do tej
 // zmiany jedynym testem tego komunikatu byl regex `/sprzedawc/i` w proforma.test.js — a taki
 // regex przepuszcza DOWOLNĄ zmianę treści, więc refaktor tego pliku (wyciągnięcie funkcji
 // z proforma.js) po cichu przestawił słowo „proforma" na „dokument" w zdaniu, i żaden test
@@ -13,7 +13,7 @@ import { adresSprzedawcy } from '../../src/domena/adres-sprzedawcy.js';
 // dokumenty, więc „proforma wyszłaby..." bylo nieprawdą przy specyfikacji) — ale następna
 // zmiana treści ma być widoczna w diffie testu, a nie tylko w diffie kodu.
 //
-// PRZ-093.08 (18.10.2026): treść zmieniona ŚWIADOMIE — adres firmy da się teraz wpisać w panelu, więc odmowa
+// Treść zmieniona ŚWIADOMIE — adres firmy da się teraz wpisać w panelu, więc odmowa
 // wskazuje ekran (Ustawienia → Firma, /ustawienia/firma), a plik konfiguracji podaje jako drugą drogę.
 const KOMUNIKAT = 'Panel nie zna adresu sprzedawcy, więc dokument wyszedłby bez nazwy i adresu wystawcy — '
   + 'takiego dokumentu nie da się wysłać klientowi. Wpisz adres firmy w Ustawienia → Firma '
@@ -46,7 +46,7 @@ describe('adresSprzedawcy', () => {
     expect(() => adresSprzedawcy(undefined)).toThrow(KOMUNIKAT);
   });
 
-  // PRZ-093.08: moduły podają źródło adresu jako funkcję (plik → Ustawienia → brak); ono ma pierwszeństwo przed
+  // Moduły podają źródło adresu jako funkcję (plik → Ustawienia → brak); ono ma pierwszeństwo przed
   // config.nadawca i jest czytane przy KAŻDYM dokumencie — zmiana na ekranie działa bez restartu.
   it('config.adresFirmy() ma pierwszeństwo przed config.nadawca i jest czytane przy każdym wywołaniu', () => {
     let adres = { nazwa: 'Firma A', ulica: 'Pierwsza 1', kod: '00-001', miasto: 'Miasto', kraj: 'PL' };

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../src/oms/db/db.ts';
-import { createImportSklepu } from '../pomoc/import-sklep-parytet.js';
+import { createImportSklepu } from '../pomoc/przykladowy-import-sklepu.js';
 import { zapiszHistorie, historiaWOknie, wczytajKursorImportu } from '../../src/oms/db/historia-sprzedazy.js';
 
 let db;

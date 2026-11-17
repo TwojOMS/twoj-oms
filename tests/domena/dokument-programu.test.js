@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { idDokumentu, programDokumentu, idDokumentuSql } from '../../src/domena/dokument-programu.js';
 
-// PRZ-118.04 — jeden moduł czyta identyfikator dokumentu: `dokument_id` (od rdzen/0008), a gdy go
-// nie ma — `infakt_uuid` (wiersz zapisany przez obraz sprzed PRZ-118 w oknie wycofania).
+// Jeden moduł czyta identyfikator dokumentu: `dokument_id` (od rdzen/0008), a gdy go
+// nie ma — `infakt_uuid` (wiersz zapisany przez starszy obraz w oknie wycofania).
 
 describe('idDokumentu', () => {
   it('dokument_id wygrywa z infakt_uuid', () => {

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import {
   DOSTAWY, parsujNoweZamowienie, skopiujFaktureDoWysylki,
 } from '../../../src/domena/nowe-zamowienie.js';
@@ -11,7 +11,7 @@ import { zapiszUstawienia } from '../../../src/oms/db/ustawienia.js';
 import { zapiszProduktSklepowy } from '../../../src/oms/db/magazyn.js';
 import { dopiszKlienta } from '../../../src/oms/db/klienci.js';
 
-// Poprawki ekranu „Nowe zamówienie" z 07.08.2026 (druga porcja próśb właściciela):
+// Ekran „Nowe zamówienie”:
 //   • paczkomat na liście dostaw + kod punktu odbioru,
 //   • „Skopiuj dane do wysyłki" — ten sam przycisk co na karcie, ale BEZ zapisu,
 //   • koszt dostawy domyślnie 19 zł,
@@ -32,7 +32,7 @@ const ekran = (url = '/zamowienia/nowe') => app.inject({ method: 'GET', url, hea
 const wyslij = (url, payload) => app.inject({ method: 'POST', url, headers: naglowek, payload });
 
 describe('paczkomat na ekranie zakładania', () => {
-  // ⚠️ Metoda istniała w panelu od 01.08, ale ten ekran jej NIE OFEROWAŁ — zamówienie
+  // ⚠️ Metoda istniała w panelu, ale ten ekran jej NIE OFEROWAŁ — zamówienie
   // telefoniczne do paczkomatu trzeba było zakładać jako DPD i poprawiać na karcie.
   it('jest na liście dostaw i widać go w formularzu', async () => {
     expect(DOSTAWY.inpost_paczkomat).toBeTruthy();
@@ -166,7 +166,7 @@ describe('podgląd kwoty jest podpięty do strony', () => {
     expect(body).toContain('data-razem');
     // ⚠️ Z PLIKU, nie ze skryptu w stronie — inaczej test w suma-podglad.test.js pilnowałby
     // kopii reguły zamiast kodu, który naprawdę wykonuje przeglądarka.
-    expect(body).toMatch(/<script type="module" src="\/public\/suma-podglad\.js\?v=[0-9a-f]{10}"><\/script>/); // PRZ-100
+    expect(body).toMatch(/<script type="module" src="\/public\/suma-podglad\.js\?v=[0-9a-f]{10}"><\/script>/);
   });
 
   it('plik podglądu jest naprawdę serwowany', async () => {
@@ -229,8 +229,7 @@ describe('koszt dostawy z ustawień', () => {
   });
 });
 
-// ——— EKRAN NIE SKACZE DO GÓRY (21.08.2026, zgłoszenie właściciela: „bardzo denerwujące przy
-// dodawaniu zamówienia jest to, że ekran co chwilę skacze do góry przy dodaniu jakiejś opcji").
+// ——— EKRAN NIE SKACZE DO GÓRY.
 //
 // ⚠️ PRZYCZYNĄ NIE JEST BRAK SKRYPTÓW, tylko natura tych przycisków: każdy wysyła CAŁY
 // formularz, więc serwer renderuje stronę od nowa i przeglądarka ląduje na jej górze.
@@ -294,9 +293,9 @@ describe('ekran zakładania nie skacze do góry', () => {
   });
 });
 
-// PRZ-105: kolumna „Stawka VAT” między netto a brutto (domyślna z Ustawień), wiersz dostawy nad „Razem”
-// i podsumowanie netto / VAT / brutto pod tabelą (uwagi właściciela 21.10). Zapis niesie stawkę wiersza do bazy.
-describe('ekran zakładania — stawka VAT, dostawa i podsumowanie (PRZ-105)', () => {
+// Kolumna „Stawka VAT” między netto a brutto (domyślna z Ustawień), wiersz dostawy nad „Razem”
+// i podsumowanie netto / VAT / brutto pod tabelą. Zapis niesie stawkę wiersza do bazy.
+describe('ekran zakładania — stawka VAT, dostawa i podsumowanie', () => {
   const tabela = (html) => html.slice(html.indexOf('data-podglad-kwoty'), html.indexOf('</table>', html.indexOf('data-podglad-kwoty')));
 
   it('nagłówek: Cena netto → Stawka VAT → Cena brutto; w wierszu lista z zaznaczoną domyślną z Ustawień', async () => {

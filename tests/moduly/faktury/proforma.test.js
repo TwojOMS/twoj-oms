@@ -10,12 +10,12 @@ import { proformyZamowienia } from '../../../src/moduly/faktury/db/proformy.js';
 import { aktualnaProforma } from '../../../src/domena/proforma-stan.js';
 import { fmtDataCzasKrotko } from '../../../src/domena/format-daty.js';
 import { createProforma } from '../../../src/moduly/faktury/services/proforma.js';
-import { loadOmsConfig } from '../../pomoc/konfiguracja-parytetu.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { loadOmsConfig } from '../../pomoc/konfiguracja-testowej-instalacji.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { zapiszStawkeDomyslna } from '../../../src/moduly/faktury/db/stawka-vat.js';
 
 // Zamowienie ze sklepu: 2 x 61,50 = 123,00 zl, bez dostawy. Te same liczby, co w
-// tests/oms/faktura.test.js — proforma i faktura licza pozycje TA SAMA funkcja
+// tests/moduly/faktury/faktura.test.js — proforma i faktura licza pozycje TA SAMA funkcja
 // (domain/pozycje-faktury.js), wiec dane wejsciowe tez maja byc te same.
 const zmapowane = (nad = {}) => ({
   zrodlo_id: 1301,
@@ -75,8 +75,8 @@ function zestaw(nad = {}, opcje = {}) {
 const logi = (db, id) => db.prepare('SELECT * FROM log WHERE zamowienie_id = ? ORDER BY id').all(id)
   .filter((w) => w.akcja === 'proforma');
 
-// PRZ-105: proforma bierze stawkę domyślną z Ustawień — tę samą, którą dostaje faktura VAT.
-describe('proforma — stawka domyślna z Ustawień (PRZ-105)', () => {
+// Proforma bierze stawkę domyślną z Ustawień — tę samą, którą dostaje faktura VAT.
+describe('proforma — stawka domyślna z Ustawień', () => {
   it('wpis 8 → podsumowanie VAT proformy ma jeden wiersz 8%', () => {
     const budujPdf = vi.fn(() => Buffer.from('%PDF-1.3 atrapa'));
     const { db, id, proforma } = zestaw({}, { budujPdf });
@@ -362,15 +362,15 @@ describe('konfiguracja proformy', () => {
   });
 
   it('zmienne środowiskowe podmieniają NIP, rachunek i bank', () => {
-    // Wyjątek zatwierdzony przez właściciela 2026-09-30: poprawny jawny fixture przy rzeczywistej walidacji NIP/NRB.
+    // Poprawny jawny fixture przy rzeczywistej walidacji NIP/NRB.
     const c = loadOmsConfig({
       ...bazowe, OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000', OMS_BANK: 'Inny',
     });
     expect(c.proforma).toMatchObject({ nip: '1234563218', rachunek: '34109010140000000000000000', bank: 'Inny' });
   });
 
-  // ⚠️ BDO dolozony 12.08.2026 (Zadanie 6, specyfikacja zamowienia): art. 63 ustawy o odpadach
-  // wymaga numeru rejestrowego na dokumentach, a do tego dnia panel go nigdzie nie trzymal.
+  // ⚠️ BDO: art. 63 ustawy o odpadach
+  // wymaga numeru rejestrowego na dokumentach, panel musi go przechowywac.
   // Ta sama zasada, co przy NIP-ie: wartosc jawna (stoi na kazdej fakturze), wiec domyslna
   // produkcyjna, a zmienna sluzy do PODMIANY, nie do wlaczania sekcji.
   it('BDO ma wartość produkcyjną, gdy nikt jej nie podał', () => {
@@ -408,9 +408,9 @@ describe('konfiguracja proformy', () => {
   });
 });
 
-// ⚠️ Zadanie 7 — DWIE TRASY, ktore spinaja usluge z karta zamowienia:
+// ⚠️ DWIE TRASY, ktore spinaja usluge z karta zamowienia:
 // POST /zamowienia/:id/proforma (wystawienie) i GET /proformy/:id/pdf (pobranie).
-// Testy tutaj, a nie w karta-wyglad.test.js, bo dotycza SERWERA HTTP (kody statusu,
+// Testy tutaj dotycza SERWERA HTTP (kody statusu,
 // naglowki, ochrona CSRF), nie samego wygladu HTML-a karty.
 describe('proforma — trasy HTTP', () => {
   const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64'), origin: 'http://localhost' };
@@ -459,8 +459,8 @@ describe('proforma — trasy HTTP', () => {
     expect(r.statusCode).toBe(404);
   });
 
-  // ⚠️ OCHRONA CSRF JEST GLOBALNA (security/csrf.js), ale plan wymaga TESTU, nie zalozenia
-  // — dokladnie ta sama zasada co w tests/security/csrf-integracja.test.js.
+  // ⚠️ OCHRONA CSRF JEST GLOBALNA (security/csrf.js), ale wymaga TESTU, nie zalozenia
+  // — potrzebny jest test przechodzący przez HTTP.
   describe('ochrona CSRF na obu nowych trasach', () => {
     it('POST /zamowienia/:id/proforma z obcej strony kończy się 403', async () => {
       const { app, id } = await zestawHttp();

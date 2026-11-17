@@ -142,11 +142,11 @@ export const KLIENCI = [
   { imie: 'Tymon', nazwisko: 'Uchmanowicz', email: 'tymon.u.090@example.invalid', telefon: '', ulica: 'Ulica Przykładowa 59', miasto: 'Kielce', kod: '25-000' },
 ];
 
-// PRZ-160.demo (właściciel 13.11): cztery firmy rozliczane zbiorczo (indeksy 0, 5, 6, 7), każda z innymi ustaleniami —
+// Cztery firmy rozliczane zbiorczo (indeksy 0, 5, 6, 7), każda z innymi ustaleniami —
 // termin płatności faktury okresu, próg darmowej dostawy, opłata za obsługę własnej etykiety klienta. `null` = „nie ustalono”
 // (próg wyłączony), 0 = ustalone na zero (P2.03, domena/klient-zbiorczy.js: warunkiDostawy). `etykietaKlienta` — firma
 // wysyła na własnej etykiecie (dropshipping): dostawa 0 zł, za to opłata za obsługę (domena/oplata-obslugi.js).
-// Indeksy 1–4 rozliczane pojedynczo — zamówienia ręczne PRZ-082/087 dostają własne faktury, więc nie mogą wejść do okresu.
+// Indeksy 1–4 rozliczane pojedynczo — zamówienia ręczne dostają własne faktury, więc nie mogą wejść do okresu.
 // `okresy` — co generator robi z okresem: `poprzedni` = miesiąc przed bieżącym, `starsze` = wcześniejsze; bieżący zostaje
 // otwarty. 'zamkniety' = zamknięty, faktura jeszcze niewystawiona; 'nieoplacony' / 'oplacony' = faktura okresu wystawiona
 // pierwszego dnia następnego miesiąca z terminem z karty (bez wpłaty albo z wpłatą okresu).
@@ -165,7 +165,7 @@ export const FIRMY_B2B = [
     termin_platnosci: '14', prog_darmowej_dostawy_gr: null, oplata_obslugi_gr: null, koszt_dostawy_gr: 2500, okresy: { poprzedni: 'oplacony', starsze: 'oplacony' } },
 ];
 
-// PRZ-160.demo — zamówienia firm rozliczanych zbiorczo: [indeks FIRMY_B2B, miesiąc wstecz (0 = bieżący), dzień miesiąca —
+// Zamówienia firm rozliczanych zbiorczo: [indeks FIRMY_B2B, miesiąc wstecz (0 = bieżący), dzień miesiąca —
 // dla bieżącego: dni wstecz od `dzis` (najwyżej do 1. dnia), godzina, minuta, koszyk, wysyłka, odbiorca dropshippingu (osoba)].
 // Zamówienie spoza okna 58 dni demo albo po „teraz” generator pomija (miesiąc sprzed dwóch bywa poza oknem).
 export const ZAMOWIENIA_ZBIORCZE = [
@@ -184,12 +184,12 @@ export const ZAMOWIENIA_ZBIORCZE = [
   [7, 0, 4, 11, 30, [['LMP-NOC-003', 2], ['LMP-AKC-002', 2]], 'odbior_osobisty'],
 ];
 
-// PRZ-160.demo — duże koszyki i paczki: [kanał, osoba albo { b2b }, koszyk, wysyłka, nazwa usługi przewoźnika (null =
+// Duże koszyki i paczki: [kanał, osoba albo { b2b }, koszyk, wysyłka, nazwa usługi przewoźnika (null =
 // słownikowa), płatność, dni wstecz, godzina, minuta, kurier paczki, stan paczki, faktura]. Stan: 'utworzona' (etykieta
 // gotowa, kurier nie odebrał — w realizacji), 'w_drodze' (nadana, niedoręczona), 'doreczona'. Faktura: 'nip' (firma
 // jednoosobowa z NIP-em), 'prywatna' (osoba bez NIP-u), 'b2b' (NIP firmy), 'czeka' (chce fakturę z NIP-em, jeszcze
 // niewystawiona — „Wystaw fakturę” do kliknięcia), null — bez faktury.
-// ⚠️ Utworzone i w drodze tylko z 1–2 ostatnich dni: starsza paczka bez ruchu zapala alarm (jedna celowa jest w PRZ-082).
+// ⚠️ Utworzone i w drodze tylko z 1–2 ostatnich dni: starsza paczka bez ruchu zapala alarm (jedna celowa jest w uzupełnieniach demo).
 export const ZAMOWIENIA_PACZEK = [
   ['polcien', 35, [['LMP-WIS-003', 1], ['LMP-AKC-001', 3], ['LMP-ABA-002', 2], ['LMP-KIN-001', 2], ['LMP-AKC-003', 1]], 'dpd', null, 'przelewy24', 6, 18, 20, 'dpd', 'doreczona', 'prywatna'],
   ['polcien', 36, [['LMP-STO-002', 1], ['LMP-STO-006', 1], ['LMP-NOC-003', 2], ['LMP-AKC-002', 4]], 'inpost_paczkomat', null, 'blik', 1, 9, 5, 'inpost', 'w_drodze', null],
@@ -230,8 +230,8 @@ export const KOSZTY = [
   { kategoria: 'Reklama', typ: 'zmienny', sprzedawca: 'Agencja Reklamowa Piksel Sześć (demo)', netto_od_gr: 60000, netto_do_gr: 110000 },
 ];
 
-// PRZ-083 (właściciel 15.10): `zalatwione` — wątek bez odpowiedzi, przeczytany i zamknięty ręcznym „Załatwione”. Strona
-// główna demo pokazywała trzy powiadomienia o wiadomościach; zostaje jedno — reklamacja pękniętego klosza.
+// `zalatwione` — wątek bez odpowiedzi, przeczytany i zamknięty ręcznym „Załatwione”. Strona
+// główna demo nie pokazuje powiadomień o wiadomościach, choć dane zawierają jeden czekający wątek reklamacji.
 export const WATKI_ALLEGRO = [
   { kanal: 'allegro', pytanie: 'Dzień dobry, jaki gwint ma oprawka w lampie Gliwka, E27 czy E14? Chcę kupić do niej żarówkę z waszego sklepu.', odpowiedz: 'Dzień dobry, oprawka jest E27. Można wkręcić żarówkę LED o mocy do 9 W, co odpowiada około 60 W tradycyjnej. Pozdrawiamy, Pracownia Półcień.' },
   { kanal: 'allegro', pytanie: 'Jaka jest maksymalna moc żarówki w lampie wiszącej Kopuła 40 cm? Chciałbym dać jaśniejszą do kuchni.', odpowiedz: 'Dzień dobry, w Kopule 40 cm można użyć żarówki do 12 W LED, najlepiej o barwie 2700 K. Metalowy kloszyk nagrzewa się mniej więcej tak samo jak przy 60 W tradycyjnej. Pozdrawiamy.' },

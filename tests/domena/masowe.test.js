@@ -82,7 +82,7 @@ describe('podzielDoNadania', () => {
     expect(doNadania).toEqual([]);
   });
 
-  // PRZ-070 (właściciel 14.10.2026): pobranie wchodzi do hurtu z kwotą Z ZAMÓWIENIA — kwotę widać
+  // Pobranie wchodzi do hurtu z kwotą Z ZAMÓWIENIA — kwotę widać
   // w uwadze podglądu, a hurt nadaje wyłącznie paczkę nr 1, czyli tę, na której jedzie pobranie.
   it('pobranie z kwotą idzie do nadania, kwota z zamówienia w uwadze', () => {
     const { doNadania, pominiete, uwagi } = podzielDoNadania([
@@ -144,8 +144,8 @@ describe('podzielDoNadania', () => {
     expect(pominiete.map((p) => p.numer)).toEqual(['B']);
   });
 
-  // ⚠️ ZADANIE 8. POWÓD, jaki widzi operator na ekranie podglądu, nie ma prawa kłamać.
-  // PRZ-070 (14.10.2026): paczkomat idzie hurtem, więc pomijany jest już tylko paczkomat BEZ
+  // ⚠️ POWÓD, jaki widzi operator na ekranie podglądu, nie ma prawa kłamać.
+  // Paczkomat idzie hurtem, więc pomijany jest już tylko paczkomat BEZ
   // KODU — z tym samym zdaniem, co na karcie, a nie z „ustaw metodę na karcie zamówienia".
   it('pomija paczkomat bez kodu z WŁASNYM powodem, nie z „nieznana metoda"', () => {
     const { doNadania, pominiete } = podzielDoNadania([
@@ -158,7 +158,7 @@ describe('podzielDoNadania', () => {
     expect(pominiete[0].powod).not.toMatch(/nieznana metoda/i);
   });
 
-  // ⚠️ KANAL ALLEGRO. PRZ-070 (właściciel 14.10.2026): od 11.08 (DPD) i 18.09 (osiem usług) panel
+  // ⚠️ KANAL ALLEGRO. Panel
   // nadaje paczki tego kanalu przez „Wysyłam z Allegro" — hurt idzie ta sama droga, co karta.
   // Zdanie „paczki tego kanału nadajesz w Allegro" przestalo byc prawda i zniknelo.
   it('zamówienie z Allegro idzie drogą „Wysyłam z Allegro”, nie z „nieznana metoda”', () => {
@@ -230,7 +230,7 @@ describe('podzielDoNadania', () => {
     expect(pominiete).toEqual([]);
   });
 
-  // ⚠️⚠️ TEN TEST BRONI PIENIEDZY I JEST SEDNEM POPRAWKI Z 04.08.2026. Do niej odmowa byla
+  // ⚠️⚠️ TEN TEST BRONI PIENIEDZY I JEST SEDNEM POPRAWKI. Do niej odmowa byla
   // kluczowana METODA, a metoda jest EDYTOWALNA z karty zamowienia (wysylka_reczna_json) —
   // i metody sklepowe sa na liscie wyboru. Operator, ktory przestawil zamowienie z Allegro
   // na „dpd", wyprowadzal je z galezi allegrowej WPROST do nadania hurtem, bo ta funkcja
@@ -297,7 +297,7 @@ describe('podzielDoNadania', () => {
     expect(doNadania.map((z) => z.numer)).toEqual(['D']);
     expect(pominiete).toHaveLength(1);
     expect(pominiete[0].numer).toBe('P');
-    // PRZ-070: paczkomat idzie hurtem — ten, z fixture bez kodu, odpada za brak kodu.
+    // Paczkomat idzie hurtem — ten, z fixture bez kodu, odpada za brak kodu.
     expect(pominiete[0].powod).toMatch(/nie ma kodu paczkomatu/);
   });
 });

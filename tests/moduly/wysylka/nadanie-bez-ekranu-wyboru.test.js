@@ -9,9 +9,9 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { createNadanie } from '../../../src/moduly/wysylka/services/nadanie.js';
 import { createDpdClient } from '../../../src/oms/kurierzy/dpd.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
-// EKRAN WYBORU KURIERA ZNIKA Z DROGI (decyzja właściciela 19.09.2026: „lepiej bez ekranu wyboru —
+// EKRAN WYBORU KURIERA ZNIKA Z DROGI (reguła produktu: „lepiej bez ekranu wyboru —
 // niech idzie od razu odpowiednia opcja").
 //
 // Kontekst: do 18.09 każde zamówienie z Allegro trafiało najpierw na osobny ekran „Czym nadać

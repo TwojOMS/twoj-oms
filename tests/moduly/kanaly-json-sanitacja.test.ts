@@ -18,7 +18,7 @@ describe('błędy JSON konfiguracji kanałów bez wartości wejściowej', () => 
     // Parser V8 cytuje fragment wejścia w „Unexpected token” — komunikat OMS-u nie może go powtórzyć.
     expect(m).not.toContain('SYNTHETIC');
   });
-  it('niepoprawny JSON wskazuje numer znaku (od 1), a pusty tekst mówi, co wpisać (PRZ-093.04)', () => {
+  it('niepoprawny JSON wskazuje numer znaku (od 1), a pusty tekst mówi, co wpisać', () => {
     const tekst = '[{"klucz":"a","typ":"woo","prefiks":"A",}]';
     const m = komunikat(() => definicjeKanalow({ OMS_KANALY: tekst }));
     expect(m).toContain(`błąd w znaku nr ${tekst.indexOf('}') + 1}`);
@@ -30,7 +30,7 @@ describe('błędy JSON konfiguracji kanałów bez wartości wejściowej', () => 
   it('definicja nie jest listą: mówi, czego oczekiwano', () => {
     expect(komunikat(() => definicjeKanalow({ OMS_KANALY: '{"klucz":"a"}' }))).toMatch(/oczekiwano listy kanałów w nawiasach \[ \].*sekcja 9/);
   });
-  describe('błąd pozycji wskazuje numer (od 1), klucz kanału i pole (PRZ-093.04)', () => {
+  describe('błąd pozycji wskazuje numer (od 1), klucz kanału i pole', () => {
     const ok = { klucz: 'woo_a', typ: 'woo', prefiks: 'WOO_A' };
     const blad = (...pozycje: unknown[]) => komunikat(() => definicjeKanalow({ OMS_KANALY: JSON.stringify(pozycje) }));
     it('zły typ w drugiej pozycji', () => {
@@ -80,7 +80,7 @@ describe('błędy JSON konfiguracji kanałów bez wartości wejściowej', () => 
     const mapowanie = { instancje: [], poPozycji: [] };
     expect(konfiguracjaKanalow(definicje, { ...env, DEMO_MAPOWANIE: JSON.stringify(mapowanie) }).sklepy.demo.mapowanie).toEqual(mapowanie);
   });
-  describe('PRZ-134: opcjonalne bramkiPobrania w mapowaniu sklepu z pliku', () => {
+  describe('opcjonalne bramkiPobrania w mapowaniu sklepu z pliku', () => {
     const zBramkami = (bramkiPobrania: unknown) => ({ ...env, DEMO_MAPOWANIE: JSON.stringify({ instancje: {}, poPozycji: [], bramkiPobrania }) });
     it('odrzuca wartość, która nie jest tablicą krótkich identyfikatorów, bez przepisywania jej do komunikatu', () => {
       for (const zle of ['cod', null, {}, [1], [''], ['ma spację'], ['a'.repeat(65)], [`${sekret}/`], Array.from({ length: 21 }, (_, i) => `b${i}`)]) {

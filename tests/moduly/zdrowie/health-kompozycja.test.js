@@ -7,7 +7,7 @@ import { zapiszTokeny } from '../../../src/oms/db/tokeny.js';
 const env={OMS_SPRZEDAWCA_NIP:'1234563218',OMS_RACHUNEK:'34109010140000000000000000',
   OMS_USER:'operator',OMS_PASS:'test',OMS_PROFORMY_KATALOG:tmpdir(),OMS_ETYKIETY_KATALOG:tmpdir()};
 afterEach(()=>vi.unstubAllGlobals());
-describe('PRZ-030 health dostępnych usług przez bootstrap',()=>{
+describe('health dostępnych usług przez bootstrap',()=>{
   it('czyta prawdziwy poller: krótka awaria nie alarmuje, trwała alarmuje; wyłączone źródło znika',async()=>{
     vi.stubGlobal('fetch',vi.fn(async()=>{throw Error('Sieć zabroniona');}));
     let chwila=new Date('2026-10-01T12:00:00Z');

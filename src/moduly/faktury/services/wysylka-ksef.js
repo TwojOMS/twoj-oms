@@ -54,7 +54,7 @@ function bezpiecznaTrescOdpowiedzi(dane) {
 // Wysyła PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`) — jego zdolność
 // `wyslijDoKsef`. Program bez niej: `niedostepna` niesie zdanie dla człowieka (trasy podglądu i zatwierdzenia
 // oraz automat KSeF pokazują je zamiast ekranu wysyłki), a `wyslij` odmawia nim, zanim cokolwiek zarezerwuje.
-// Strażnik tests/core/straznik-wysylki-ksef-prz118.test.js: w tym pliku nazwa metody pada dokładnie raz — w wywołaniu.
+// Strażnik tests/core/straznik-wywolan-wysylki-ksef.test.js: w tym pliku nazwa metody pada dokładnie raz — w wywołaniu.
 // `wpisTf` — odczyt wersji z KSeF TwojeFaktury (db/ksef-automat-twojefaktury.js) dla uzgodnienia
 // wstrzymanych automatu; podaje go modul.ts. Bez niego (inFakt, testy) lista wstrzymanych się nie zmienia.
 // Ta sama reguła dla usługi wysyłki i karty okresu (trasy/okresy.js) — czy program wysyła do KSeF z OMS-u.

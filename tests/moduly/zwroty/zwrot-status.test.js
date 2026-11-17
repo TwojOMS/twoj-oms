@@ -56,7 +56,7 @@ describe('lista robocza', () => {
     expect(doZrobienia(pobierzZamowienie(db, id))).toBe(false);
   });
 
-  // ⚠️ Dwa testy nizej NIE SA w briefie (Zadanie 3, Krok 1) — dopisane po tym, jak proba
+  // ⚠️ Dwa testy nizej NIE SA w briefie — dopisane po tym, jak proba
   // zweryfikowania „lista robocza" NA LISCIE (nie tylko na karcie) wykazala rozjazd: brief
   // kazal liscie niesc WYLACZNIE `ma_zwrot` (flaga z jednego zapytania), ale `doZrobienia`
   // liczy `(z.zwroty ?? []).some((w) => !zwrotRozliczony(z, w))` — a bez PELNYCH naglowkow

@@ -1,4 +1,4 @@
-// PRZ-076 — katalog sklepu demo „Pracownia Półcień” w kształcie odpowiedzi API (Woo REST, Allegro /sale/offers).
+// Katalog sklepu demo „Pracownia Półcień” w kształcie odpowiedzi API (Woo REST, Allegro /sale/offers).
 // Jedno źródło dla dwóch odbiorców:
 //   • generator (scripts/demo-dane.mjs) — puszcza go przez PRAWDZIWE odswiezMagazyn, więc lustro magazynu
 //     w bazie demo powstaje tą samą drogą co u klienta po kliknięciu „Synchronizuj”;
@@ -28,7 +28,7 @@ function slug(tekst) {
 }
 const cena = (gr) => (gr / 100).toFixed(2);
 
-// PRZ-087 — zdjęcia produktów: pliki w src/public/demo-produkty (CC0, źródła w ZRODLA.md), serwowane przez sam panel
+// Zdjęcia produktów: pliki w src/public/demo-produkty (CC0, źródła w ZRODLA.md), serwowane przez sam panel
 // pod /public/ (bez logowania). ⚠️ Adres BEZWZGLĘDNY, i to w domenie demo publicznego: ekrany przepuszczają tylko http(s)
 // (domena/miniatura-pozycji.js) — `data:` i ścieżka względna dają pustą miniaturę. Piaskownica i laptop pobierają je
 // więc z demo.twojoms.pl; gdy demo leży, miniatury w piaskownicy znikają, a reszta działa.
@@ -53,7 +53,7 @@ export function zdjecieProduktu(sku) {
   return `${ADRES_ZDJEC_DEMO}/${pula[nr % pula.length]}.jpg`;
 }
 
-// PRZ-160.08 — po dwa celowe braki zdjęć i opisu na kanał: Kinkiet Półksiężyc i Ramię
+// Po dwa celowe braki zdjęć i opisu na kanał: Kinkiet Półksiężyc i Ramię
 // w sklepie i na Allegro oraz dwie pierwsze karty outletu. Miniatury zamówień zostają, więc oferta
 // Allegro z tej listy ma `primaryImage` przy pustym `images` celowo: treść oferty bez galerii.
 const BEZ_TRESCI = new Set(['LMP-KIN-001', 'LMP-KIN-002', 'LMP-STO-002-OUT', 'LMP-STO-005-OUT']);
@@ -79,7 +79,7 @@ function opisKarty(sku, nazwa) {
   ] };
 }
 
-// PRZ-090 — wymiary opakowania (szerokość × wysokość × głębokość w mm) i waga w gramach według kategorii, tak jak
+// Wymiary opakowania (szerokość × wysokość × głębokość w mm) i waga w gramach według kategorii, tak jak
 // sklep podaje je w `dimensions`/`weight` (cm i kg). Kilka produktów celowo bez wymiarów — ekran braków w Magazynie
 // ma co pokazać. Woo: length = wysokość, width = szerokość, height = głębokość (domena/rozmiar.js).
 const WYMIARY_KATEGORII = { 'Lampy stołowe': [300, 450, 300, 1800], 'Lampy wiszące': [450, 400, 450, 2400],
@@ -135,14 +135,14 @@ export function katalogWoo(kanal = kanalyTypu('woo')[0]) {
         image: null, attributes: [{ id: 0, name: w.atrybut, option: w.opcje[sku] }], ...wymiaryWoo(sku, p.kategoria, i) };
     }));
   }
-  // E4.04: jeden wariant dziedziczy stan rodzica (przypadek syntetyczny, niepotwierdzony w P22).
+  // Jeden wariant dziedziczy stan rodzica (przypadek syntetyczny, niepotwierdzony w P22).
   const wariantRodzica = warianty.values().next().value?.[0];
   if (wariantRodzica) Object.assign(wariantRodzica, { manage_stock: 'parent', stock_quantity: null });
   const miniatury = new Map(produkty.map((p) => [String(p.id), p.images[0]?.src ?? null]));
   return { produkty, warianty, miniatury, kategorie };
 }
 
-/** Surowe oferty Allegro (`/sale/offers`) konta `kanal`; primaryImage to zdjęcie demo (adres http, PRZ-087). */
+/** Surowe oferty Allegro (`/sale/offers`) konta `kanal`; primaryImage to zdjęcie demo (adres http). */
 export function ofertyAllegro(kanal) {
   const nr = KANALY.findIndex((k) => k.klucz === kanal);
   return PRODUKTY.filter((p) => p.kanaly.includes(kanal)).map((p, i) => ({
@@ -157,7 +157,7 @@ export function ofertyAllegro(kanal) {
   }));
 }
 
-// PRZ-160.04a — pełna oferta (`GET /sale/product-offers/{id}`), kategoria i jej parametry w kształcie z pomiaru P8.
+// Pełna oferta (`GET /sale/product-offers/{id}`), kategoria i jej parametry w kształcie z pomiaru P8.
 // Drzewo demo: Dom i Ogród → Oświetlenie → Lampy (id jak `category.id` z ofertyAllegro). EAN-y z prefiksu 200
 // (GS1 zostawia 200–299 do użytku wewnętrznego — żaden nie trafi w prawdziwy towar).
 const KATEGORIE_ALLEGRO_DEMO = {
@@ -171,7 +171,7 @@ const parametrDemo = (id, name, type, describesProduct, dodatki = {}) => ({ id, 
 const PARAMETRY_LAMP = [
   parametrDemo('11323', 'Stan', 'dictionary', false, { required: true,
     dictionary: [{ id: '11323_1', value: 'Nowy', dependsOnValueIds: [] }, { id: '11323_2', value: 'Używany', dependsOnValueIds: [] }] }),
-  // PRZ-160.E3.15: słownik marek ponad 200 wartości jak w prawdziwej kategorii — dwie pierwsze bez zmian.
+  // Słownik marek ponad 200 wartości jak w prawdziwej kategorii — dwie pierwsze bez zmian.
   parametrDemo('248811', 'Marka', 'dictionary', true, { dictionary: [
     { id: '248811_9001', value: 'Pracownia Półcień', dependsOnValueIds: [] }, { id: '248811_9002', value: 'bez marki', dependsOnValueIds: [] },
     ...Array.from({ length: 210 }, (_, i) => ({ id: `248811_${9100 + i}`, value: `Marka przykładowa ${String(i + 1).padStart(3, '0')}`,
@@ -200,7 +200,7 @@ export function parametryKategoriiAllegroDemo(id) {
 
 const idProduktuDemo = (nr) => `00000000-0000-4000-8000-${String(nr).padStart(12, '0')}`;
 
-// PRZ-160.E3.15 — dwie oferty wystawione „przez OMS” na koncie allegro dla kart tylko ze sklepu (stan aktywna
+// Dwie oferty wystawione „przez OMS” na koncie allegro dla kart tylko ze sklepu (stan aktywna
 // i nieaktywna w demo). Poza `ofertyAllegro`, żeby lustro magazynu i liczby demo się nie zmieniły.
 const OFERTY_E3_DEMO = { allegro: [['LMP-KIN-004', '17900000001', 'ACTIVE'], ['LMP-NOC-003', '17900000002', 'INACTIVE']] };
 
@@ -291,7 +291,7 @@ export function klienciKataloguDemo() {
 }
 
 /**
- * PRZ-160.E3.15 — stan „firma zaczęła wystawiać z OMS” w bazie demo: mapa kategorii Lampy wiszące → 257, dwie marki
+ * Stan „firma zaczęła wystawiać z OMS” w bazie demo: mapa kategorii Lampy wiszące → 257, dwie marki
  * dopasowane do słownika 248811 i cztery oferty OMS na koncie allegro dla kart tylko ze sklepu (szkic, problem,
  * aktywna, nieaktywna). Aktywna i nieaktywna mają id z `ofertyAllegroDemoE3`, więc atrapa oddaje je po `GET`.
  */

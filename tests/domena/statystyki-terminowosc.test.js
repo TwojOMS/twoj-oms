@@ -30,12 +30,12 @@ describe('terminowosc — procenty i mianownik', () => {
     expect(w.rozklad.map((p) => p.ile)).toEqual([1, 0, 0, 0]);
   });
 
-  // ⚠️ GRANICA 0/1 DNIA W ROZKŁADZIE — dopisane po recenzji 13.09.2026, bo jej brakowało.
+  // ⚠️ GRANICA 0/1 DNIA W ROZKŁADZIE — dopisane, bo jej brakowało.
   // Zamówienie wysłane NAZAJUTRZ ma zero różnicy z zamówieniem wysłanym tego samego dnia
   // w każdym innym wskaźniku (oba są w terminie, oba w mianowniku), więc jedynym miejscem,
   // gdzie się rozchodzą, jest właśnie ten kubełek. Bez tej asercji mutacja `dniRobocze <= 1`
   // → `< 1` przechodziła całą suitę na zielono: rozkład pokazywałby paczkę wysłaną jutro
-  // jako „tego samego dnia", czyli wskaźnik, o który właściciel poprosił wprost, kłamałby
+  // jako „tego samego dnia", czyli wskaźnik, o który poproszono wprost, kłamałby
   // w najlepszą stronę.
   it('wysłane nazajutrz wpada w „1 dzień rob.", nie w „tego samego dnia"', () => {
     const w = terminowosc([z({ wyslane_at: '2026-08-14T07:00:00Z' })]);

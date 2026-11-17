@@ -8,7 +8,7 @@ import { dodajZwrot } from '../../../src/oms/db/zwroty.js';
 import { createNadanie } from '../../../src/moduly/wysylka/services/nadanie.js';
 import { createWooAdapter } from '../../../src/oms/woo/adapter.js';
 import { createPoller } from '../../../src/moduly/kanaly/services/poller.js';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { wyliczStatus } from '../../../src/domena/status.js';
 
 const config = { auth: { user: 'adam', pass: 'x' } };
@@ -58,7 +58,7 @@ describe('POST /zamowienia/:id/status — status zapisuje FAKTY', () => {
     expect(status(id)).toBe('w_realizacji');
   });
 
-  // ⚠️ 08.2026 (Zadanie 3): „zwrot" ZNIKLO z STATUSY_RECZNE — rejestracja idzie teraz
+  // ⚠️ 08.2026: „zwrot" ZNIKLO z STATUSY_RECZNE — rejestracja idzie teraz
   // przez tabele `zwroty` (db/zwroty.js), nie przez ten formularz. Test byl „«zwrot»
   // zapisuje date I powod jednym zapisem" — dzis dokumentuje, ze ta droga jest ZAMKNIETA,
   // niezaleznie od tego, czy pole „powod" przyszlo w zadaniu.
@@ -145,7 +145,7 @@ describe('POST /zamowienia/:id/status — status zapisuje FAKTY', () => {
 });
 
 describe('granice recznej zmiany statusu', () => {
-  // ⚠️ ZMIANA 2026-07-31: „wyslane" JEST juz do ustawienia recznie i zapisuje wlasny fakt
+  // ⚠️ ZMIANA: „wyslane" JEST juz do ustawienia recznie i zapisuje wlasny fakt
   // (`wyslane_at`). Wczesniej wynikalo z istnienia nadanej paczki i bylo odmawiane, ale
   // etykieta powstaje przy PAKOWANIU, a paczka wyjezdza dopiero z kurierem — momentu
   // wyjazdu panel nie zna, zna go czlowiek.
@@ -176,7 +176,7 @@ describe('granice recznej zmiany statusu', () => {
 
   // ⚠️ Anulowanie dziala TYLKO w jedna strone. Odanulowanie zamowienia anulowanego przez
   // klienta w sklepie otworzyloby droge do nadania mu paczki.
-  // ⚠️ 08.2026: 'zwrot' zastapione 'wyslane' — 'zwrot' zniknelo z STATUSY_RECZNE (Zadanie 3),
+  // ⚠️ 08.2026: 'zwrot' zastapione 'wyslane' — 'zwrot' zniknelo z STATUSY_RECZNE,
   // wiec proba ustawienia go dostaje dzis „Nieznany status" NIEZALEZNIE od anulowania
   // (patrz test „nieznany status → 400" nizej) i nie sprawdzalaby juz galezi, ktora ten
   // test ma chronic.
@@ -227,7 +227,7 @@ describe('granice recznej zmiany statusu', () => {
     expect(status(id)).toBe('nowe');
   });
 
-  // ⚠️ ZMIANA 2026-07-31: nadanie paczki NIE PODNOSI juz statusu. Etykieta powstaje przy
+  // ⚠️ ZMIANA: nadanie paczki NIE PODNOSI juz statusu. Etykieta powstaje przy
   // pakowaniu, wiec zamowienie zostaje „w realizacji" i NIE SCHODZI z listy roboczej,
   // dopoki czlowiek nie powie, ze paczka pojechala. O to prosil wlasciciel wprost.
   it('nadanie paczki NIE zmienia statusu na „wyslane"', async () => {
@@ -246,7 +246,7 @@ describe('granice recznej zmiany statusu', () => {
     expect(wpis.wynik).toContain('Anulowane');
   });
 
-  // ⚠️ ZMIANA 2026-08-14 (Zadanie 4, ekran zwrotu): `POST /zamowienia/:id/zwrot` PRZESTAJE
+  // ⚠️ ZMIANA: `POST /zamowienia/:id/zwrot` PRZESTAJE
   // byc 404 — sciezka zostala CELOWO PONOWNIE UZYTA dla nowego ekranu rejestracji zwrotu
   // (routes/zwroty.js), zupelnie innej funkcji niz dawny (dalej nieistniejacy) reczny
   // przelacznik statusu. Test pilnuje teraz drugiej polowy tego samego niezmiennika:
@@ -272,7 +272,7 @@ describe('granice recznej zmiany statusu', () => {
     expect(body).not.toContain('pole-powod');
   });
 
-  // ⚠️ 08.2026 (Zadanie 3): oryginalny test „zmiana statusu BEZ pola «powód» w żądaniu
+  // ⚠️ 08.2026: oryginalny test „zmiana statusu BEZ pola «powód» w żądaniu
   // zachowuje powód już zapisany" sprawdzal galaz 'zwrot' w `faktyDlaStatusu`, ktora jest
   // dzis nieosiagalna przez ten formularz (patrz test wyzej). Przepisany na to, co NADAL
   // jest prawda i wciaz warte ochrony: ODMOWA to CALKOWITY no-op — nie ma prawa ruszyc
@@ -296,7 +296,7 @@ describe('granice recznej zmiany statusu', () => {
 // B. METODA WYSYLKI
 // ---------------------------------------------------------------------------------
 describe('POST /zamowienia/:id/wysylka/metoda', () => {
-  // ⚠️ DWA POLA, NIE JEDNO (2026-08-01): formularz oddaje dostawe i pobranie osobno.
+  // ⚠️ DWA POLA, NIE JEDNO: formularz oddaje dostawe i pobranie osobno.
   it('przelacza na pobranie z kwota i oznacza zmiane na karcie', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1621), {});
     const r = await wyslij(`/zamowienia/${id}/wysylka/metoda`, { metoda: 'dpd', pobranie: '1', kwota_pobrania: '246.00' });
@@ -332,7 +332,7 @@ describe('POST /zamowienia/:id/wysylka/metoda', () => {
     expect(pobierzZamowienie(db, id).metoda_wysylki).toBe('dpd');
   });
 
-  it('pobranie z kwota zero → 400; przecinek dziesietny przyjety i zapisany z kropka (PRZ-145.01: jeden odczyt kwoty z nadaniem)', async () => {
+  it('pobranie z kwota zero → 400; przecinek dziesietny przyjety i zapisany z kropka (jeden odczyt kwoty z nadaniem)', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1623), {});
     expect((await wyslij(`/zamowienia/${id}/wysylka/metoda`, { metoda: 'dpd', pobranie: '1', kwota_pobrania: '0.00' })).statusCode).toBe(400);
     expect(db.prepare('SELECT wysylka_reczna_json FROM zamowienia WHERE id = ?').get(id).wysylka_reczna_json).toBeNull();
@@ -499,7 +499,7 @@ describe('reczne fakty przezywaja PELNY przebieg pollera', () => {
     expect(z.pobranie_sklep).toBe(0);
   });
 
-  // ⚠️ 08.2026 (Zadanie 3): rejestracja zwrotu idzie dzis przez tabele `zwroty`
+  // ⚠️ 08.2026: rejestracja zwrotu idzie dzis przez tabele `zwroty`
   // (db/zwroty.js), nie przez POST /status (patrz testy wyzej — droga jest zamknieta).
   // `dodajZwrot` pisze do WLASNEJ tabeli, ktorej `zapiszZamowienie` (uzywane przez poller
   // do kazdego zapisu synchronizacji) w ogole nie dotyka — wiec to jest test na to samo,
@@ -609,7 +609,7 @@ describe('POST /zamowienia/:id/przesylki/reczna', () => {
     expect(r.body).toContain('Doręczona');
   });
 
-  // ⚠️ LANDMINA DRUGIMI DRZWIAMI (recenzja 2026-08-04). Galaz „paczkomaty" naprawila petle
+  // ⚠️ LANDMINA DRUGIMI DRZWIAMI. Galaz „paczkomaty" naprawila petle
   // odswiezania tak, ze usluge wybiera `p.kurier` — ale ta trasa wpisywala `kurier: 'dpd'`
   // NA SZTYWNO, wiec wiersz byl blednie oznaczony U ZRODLA i poprawny wybor po `p.kurier`
   // niczego nie ratowal. Wlasciciel nadaje paczkomat w Managerze Paczek InPostu i wpisuje

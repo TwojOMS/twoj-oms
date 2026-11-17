@@ -175,9 +175,9 @@ describe('createInpostClient.nadaj — kształt żądania z rozpoznania', () => 
 
   it('prawdziwa firma odbiorcy jedzie jako company_name', async () => {
     const { c, fetchImpl } = klient(OK());
-    const adres = { ...adresOdbiorcy(zamowienie), company: 'Gammatech Sp. z o.o.' };
+    const adres = { ...adresOdbiorcy(zamowienie), company: 'Lustrzanka Sp. z o.o.' };
     await c.nadaj({ zamowienie, paczka, adres });
-    expect(cialoPost(fetchImpl).receiver.company_name).toBe('Gammatech Sp. z o.o.');
+    expect(cialoPost(fetchImpl).receiver.company_name).toBe('Lustrzanka Sp. z o.o.');
   });
 
   // ⚠️ ADRES NADAWCY: konfiguracja ma ulice jako JEDEN napis, a ShipX rozbija adres na
@@ -302,7 +302,7 @@ describe('createInpostClient.nadaj — pobranie', () => {
   });
 });
 
-// ⚠️⚠️ POBRANIE MA WRÓCIĆ Z INPOSTU, A NIE TYLKO DO NIEGO POJECHAĆ (27.08.2026, zam. 1233).
+// ⚠️⚠️ POBRANIE MA WRÓCIĆ Z INPOSTU, A NIE TYLKO DO NIEGO POJECHAĆ.
 //
 // Do tego dnia panel sprawdzał WYŁĄCZNIE, co WYSŁAŁ — testy wyżej oglądają ciało żądania
 // i na tym kończą. To wystarczało, dopóki pobranie jeździło samym DPD. Pierwsze allegrowe
@@ -576,7 +576,7 @@ describe('createInpostClient.nadaj — awarie po utworzeniu przesyłki', () => {
 });
 
 // ⚠️ MUTACJA OBOWIAZKOWA (e): usuniecie maskowania musi zaczerwienic KAZDY z tych testow.
-// W DPD usuniecie maskowania PRZEZYLO mutacje i wyszlo dopiero w recenzji — bo test
+// W DPD usuniecie maskowania PRZEZYLO mutacje i wyszlo dopiero przy przegladzie — bo test
 // sprawdzal '.toContain("<")' zamiast nieobecnosci sekretu.
 describe('createInpostClient — token nigdy nie wycieka', () => {
   it('komunikat awarii sieci nie niesie tokenu', async () => {
@@ -699,7 +699,7 @@ describe('createInpostClient — twarde limity czasu', () => {
 // nie moze odrzucic czegos, czego prawdziwy serwer wymaga. To ta sama lekcja, co przy
 // fakturze w lipcu — „integracja przetestowana na atrapach nie jest przetestowana".
 //
-// ⚠️ ODMOWA, A NIE UBICIE USLUGI (decyzja wlasciciela 05.08). Brak tych pol NIE MOZE
+// ⚠️ ODMOWA, A NIE UBICIE USLUGI. Brak tych pol NIE MOZE
 // przewrocic panelu przy starcie: DPD dziala bez nich, a panel obsluguje wszystkie
 // zamowienia. Dlatego `createInpostClient` wstaje, a odmawia dopiero `nadaj()` — glosno
 // i z nazwa brakujacej zmiennej srodowiskowej.

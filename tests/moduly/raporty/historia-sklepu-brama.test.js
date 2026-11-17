@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { decyzja } from '../../pomoc/import-sklep-parytet.js';
+import { decyzja } from '../../pomoc/przykladowy-import-sklepu.js';
 
 const zam = (nad = {}) => ({
   id: 1, number: '1', status: 'completed',

@@ -3,8 +3,8 @@ import { AUTH, POST, serwer, cialo } from '../faktury/_hurtem-pomocniki.js';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { PDFTOTEXT, pdfNaTekst } from './_pdf-tekst.js';
 
-// „Zestawienie zamówień" (PRZ-084) — wewnetrzny wydruk jak „order-shipping" z Apilo: bloki
-// zamowien CIAGIEM (nie strona na zamowienie), dane wysylki w pelni (decyzja właściciela 15.10),
+// „Zestawienie zamówień" — wewnetrzny wydruk jak „order-shipping" z Apilo: bloki
+// zamowien CIAGIEM (nie strona na zamowienie), dane wysylki w pelni,
 // pozycje z cenami, wysylka jako wiersz, kwota i uwagi klienta. Dane zmyslone.
 
 function zam(db, n = {}) {

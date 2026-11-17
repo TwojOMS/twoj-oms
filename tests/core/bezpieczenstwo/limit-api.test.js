@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { utworzLimitApi } from '../../../src/core/bezpieczenstwo/limit-api.js';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
 import { zalozKluczApi } from '../../../src/core/bezpieczenstwo/klucze-api.js';
 
-// PRZ-153.E1.3b: limit w strażniku przez HTTP (jedna instancja limitu na aplikację, pipeline.js).
+// Limit w strażniku przez HTTP (jedna instancja limitu na aplikację, pipeline.js).
 describe('limit API przez HTTP /api/v1', () => {
   let db;
   let app;

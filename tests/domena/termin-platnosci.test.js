@@ -7,7 +7,7 @@ import {
 // `invoice_date` = „Data wystawienia (RRRR-MM-DD)", `payment_date` = „Termin zapłaty".
 //
 // `sale_date` i `paid_price` NIE są brane z dokumentacji, tylko ZMIERZONE na żywym API
-// 2026-08-04 (notatki/2026-08-04-infakt-daty-i-oplacenie-rozpoznanie.md): osiem faktur
+// 2026-08-04: osiem faktur
 // wystawionych na koncie produkcyjnym, odczytanych z dokumentu i skasowanych.
 //
 // ⚠️ Drugi argument `datyFaktury` to KWOTA W GROSZACH (potrzebna wariantowi „zapłacone"),
@@ -63,7 +63,7 @@ describe('termin płatności — przejścia graniczne w kalendarzu', () => {
     expect(datyFaktury({ dataWystawienia: '2026-12-20', termin: 30 }).payment_date).toBe('2027-01-19');
   });
 
-  // Ostatnia niedziela października (25.10.2026) ma w Warszawie 25 godzin — doba „cofa się"
+  // Ostatnia niedziela października ma w Warszawie 25 godzin — doba „cofa się"
   // o godzinę. To jest dokładnie ten dzień, na którym liczenie milisekundami się przewraca.
   it('przez ostatnią niedzielę października (koniec czasu letniego) — dzień w dzień', () => {
     expect(datyFaktury({ dataWystawienia: '2026-10-24', termin: 1 }).payment_date).toBe('2026-10-25');
@@ -77,7 +77,7 @@ describe('termin płatności — przejścia graniczne w kalendarzu', () => {
     expect(datyFaktury({ dataWystawienia: '2026-10-25', termin: 7 }).payment_date).toBe('2026-11-01');
   });
 
-  // Druga strona tej samej pułapki: ostatnia niedziela marca (29.03.2026) ma 23 godziny.
+  // Druga strona tej samej pułapki: ostatnia niedziela marca ma 23 godziny.
   it('przez ostatnią niedzielę marca (początek czasu letniego)', () => {
     expect(datyFaktury({ dataWystawienia: '2026-03-28', termin: 1 }).payment_date).toBe('2026-03-29');
   });
@@ -191,7 +191,7 @@ describe('termin płatności — śmieć w polu terminu', () => {
 });
 
 // ⚠️ DATA SPRZEDAŻY to nie ozdobnik, tylko obowiązkowy element faktury (art. 106e ust. 1
-// pkt 6). Zmierzone na żywym API 2026-08-04: BRAK `sale_date` w payloadzie daje na dokumencie
+// pkt 6). Zmierzone na żywym API: BRAK `sale_date` w payloadzie daje na dokumencie
 // datę sprzedaży równą dacie wystawienia — czyli każda faktura wystawiona dotąd z panelu dla
 // zamówienia opłaconego wcześniej niosła datę niezgodną z prawem.
 describe('data sprzedaży — sale_date w payloadzie', () => {
@@ -254,7 +254,7 @@ describe('data sprzedaży — sale_date w payloadzie', () => {
   });
 });
 
-// ⚠️ SEDNO WARIANTU „ZAPŁACONE". Zmierzone 2026-08-04 na żywym API:
+// ⚠️ SEDNO WARIANTU „ZAPŁACONE". Zmierzone na żywym API:
 //   - `POST /v3/async/invoices/{uuid}/paid.json` zmienia tylko WEWNĘTRZNY status faktury —
 //     dokument dla klienta dalej mówi „Zapłacono: 0,00 / Pozostało: 123,00". Odpadł.
 //   - `paid_price` W PAYLOADZIE PRZY TWORZENIU daje `left_to_pay: 0` i na dokumencie

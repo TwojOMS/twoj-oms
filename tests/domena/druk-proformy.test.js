@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { czyWolnoDrukowacProforme, rozpoznajPozycjeDruku, idPozycjiProformy } from '../../src/domena/druk-proformy.js';
 
-// PRZ-152.G10a — druk proformy. Decyzja właściciela 05.11: „proforma nie musi być rozliczona ani aktualna.
+// Druk proformy. Reguła produktu: „proforma nie musi być rozliczona ani aktualna.
 // usuń te opcje. po prostu jest proforma.” — drukujemy każdą proformę, która nie jest unieważniona.
 
 const proforma = (nad = {}) => ({ id: 1, numer: 'PF/1/11/2026', uniewazniona_at: null, ...nad });

@@ -6,21 +6,21 @@ import { zapiszWeryfikacjeAllegro } from '../../../src/moduly/faktury/db/faktury
 import {
   createCzuwaczKsef, LIMIT_WERYFIKACJI, PODLOGA_DNI, najdluzszyPrzebiegMs,
 } from '../../../src/moduly/faktury/services/czuwacz-ksef.js';
-import { ODSTEP_CZUWACZA_MS } from '../../pomoc/serwer-parytetu.ts';
+import { ODSTEP_CZUWACZA_MS } from '../../pomoc/serwer-testowy-oms.ts';
 import {
   weryfikacjaNierozstrzygnieta, WARUNEK_WERYFIKACJA_NIEROZSTRZYGNIETA_SQL,
 } from '../../../src/domena/allegro-faktura.js';
 import { sprawyKarty } from '../../../src/domena/sprawy-karty.js';
 
-// Weryfikacja pliku po stronie Allegro (Plan B, Zadanie 10).
+// Weryfikacja pliku po stronie Allegro.
 //
 // ⚠️⚠️ WYSLANIE NIE JEST KONCEM OPERACJI. Allegro sprawdza plik antywirusem:
 // WAITING → ACCEPTED albo REJECTED. `REJECTED` znaczy, ze kupujacy faktury NIE MA,
 // a panel bez tej wiedzy twierdzilby, ze ma.
 //
-// ⚠️ ZRODLO STANU JEST DZIS NIEPEWNE I TO JEST ZMIERZONE (notatka 2026-08-05, §2):
+// ⚠️ ZRODLO STANU JEST DZIS NIEPEWNE I TO JEST ZMIERZONE:
 // `GET .../invoices` oddaje 400 na kazde nasze zamowienie, wiec klient zwraca pusta liste.
-// Pierwszym zrodlem prawdy jest odpowiedz na `PUT .../file` (Zadanie 9), a odpytywanie
+// Pierwszym zrodlem prawdy jest odpowiedz na `PUT .../file`, a odpytywanie
 // nizej jest PROBA: przy pustej liscie nic nie nadpisuje i przebieg idzie dalej.
 
 const GODZINA = 60 * 60 * 1000;
@@ -153,7 +153,7 @@ describe('czuwacz — weryfikacja pliku faktury w Allegro', () => {
   });
 
   // ⚠️⚠️ ACCEPTED I REJECTED SA KONCOWE. Odpytywanie ich w kolko to setki wywolan miesiecznie
-  // bez ani jednej nowej informacji — dokladnie ta klasa kosztu, ktora recenzja Partii 2
+  // bez ani jednej nowej informacji — dokladnie ta klasa kosztu, ktora wczesniejszy przeglad
   // zamknela podloga w pierwszej petli.
   it('faktura już ACCEPTED nie jest odpytywana ponownie', async () => {
     const db = openOmsDb(':memory:');
@@ -190,8 +190,8 @@ describe('czuwacz — weryfikacja pliku faktury w Allegro', () => {
 
   // ⚠️⚠️ BRAK NASZEJ FAKTURY NA LISCIE NIE ZNACZY „NIE MA". Zasob oddaje dzis 400, wiec klient
   // zwraca PUSTA LISTE — nadpisanie tym czegokolwiek skasowaloby jedyna wiedze, jaka panel ma
-  // (zapisana z odpowiedzi na `PUT .../file`). To ta sama klasa usterki, ktora recenzja
-  // Partii 2 nazwala „kolumna write-only", tylko odwrocona.
+  // (zapisana z odpowiedzi na `PUT .../file`). To ta sama klasa usterki, ktora wczesniejszy
+  // przeglad nazwal „kolumna write-only", tylko odwrocona.
   it('brak naszej faktury na liście Allegro NIE KASUJE tego, co wiemy', async () => {
     const db = openOmsDb(':memory:');
     const id = zFaktura(db);
@@ -352,7 +352,7 @@ describe('czuwacz — pętla weryfikacji jest OGRANICZONA', () => {
   });
 
   // ---------------------------------------------------------------------------------
-  // ⚠️⚠️ W6 (recenzja Partii 3): DRUGA PETLA GLODZILA NAJNOWSZE FAKTURY.
+  // ⚠️⚠️ W6: DRUGA PETLA GLODZILA NAJNOWSZE FAKTURY.
   // `ORDER BY allegro_wyslana_at LIMIT 50` zakladalo, ze obsluzone wiersze WYPADAJA ze zbioru.
   // DZIS NIE WYPADAJA: `GET .../invoices` oddaje 400, wiec status zostaje `WAITING`, a wiersz
   // siedzi w zapytaniu az do podlogi — 30 dni. Przy wiecej niz 50 wyslanych fakturach czuwacz
@@ -443,7 +443,7 @@ describe('czuwacz — pętla weryfikacji jest OGRANICZONA', () => {
     db.close();
   });
 
-  // ⚠️⚠️ STRAZNIK „JEDEN PRZEBIEG NARAZ" (recenzja Partii 2, W2) OBEJMUJE OBIE PETLE. Druga
+  // ⚠️⚠️ STRAZNIK „JEDEN PRZEBIEG NARAZ" OBEJMUJE OBIE PETLE. Druga
   // petla dokladana do przebiegu przedluza go — a `setInterval` tyka co godzine niezaleznie
   // od tego, czy poprzedni sie skonczyl. Bez tego przebiegi pietrza sie i wala rownolegle
   // w Allegro.
@@ -521,7 +521,7 @@ describe('pasek „Do załatwienia" — weryfikacja pliku w Allegro', () => {
   //
   // Skutek dla paska bylby wiec dokladnie taki, przed jakim ostrzegal komentarz przy tej
   // sprawie: uwaga zapalalaby sie przy KAZDEJ wyslanej fakturze i na zawsze — czyli
-  // wylaczalaby pasek jako narzedzie. Decyzja wlasciciela: wyciszyc.
+  // wylaczalaby pasek jako narzedzie. Reguła: wyciszyc.
   it('WAITING po dobie NIE zapala już nic na pasku', () => {
     const db = openOmsDb(':memory:');
     const id = zFaktura(db, { wyslanaAt: przedGodzinami(25) });

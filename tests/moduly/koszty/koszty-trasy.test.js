@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
+import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszKoszt, zapiszKursor, zapiszOdrzuconyKoszt } from '../../../src/oms/db/koszty.js';
 import { przypnijKategorie } from '../../../src/oms/db/kategorie-kosztow.js';
@@ -84,7 +84,7 @@ describe('GET /koszty', () => {
     expect(r.body).toContain('Brak faktur kosztowych');
   });
 
-  // ⚠️ `kosztyMiesiaca` RZUCA na miesiacu w zlym formacie (db/koszty.js, recenzja W2) — i ma
+  // ⚠️ `kosztyMiesiaca` RZUCA na miesiacu w zlym formacie — i ma
   // rzucac, bo pusta lista znaczylaby „w tym miesiacu nie bylo kosztow". Trasa musi ten wyjatek
   // ZLAPAC: literowka w adresie ma dac zdanie, ktore operator rozumie, a nie piecsetke.
   it('⚠️ zly miesiac w adresie odmawia CZYTELNIE, a nie piecsetka', async () => {
@@ -200,7 +200,7 @@ describe('POST /koszty/odswiez', () => {
   });
 });
 
-// ⚠️ WIZUALIZACJA KOSZTU (Zadanie 12). KSeF oddaje wylacznie XML, wiec PDF rysuje panel —
+// ⚠️ WIZUALIZACJA KOSZTU. KSeF oddaje wylacznie XML, wiec PDF rysuje panel —
 // a XML pobiera NA ZADANIE, bo archiwum na NAS-ie jest dzis wylaczone (`KSEF_ARCHIWUM`
 // nieustawione na produkcji). Trasa nie ma prawa polegac na `sciezka_pdf` w bazie.
 describe('GET /koszty/:ksefNumber/pdf', () => {
@@ -268,7 +268,7 @@ describe('GET /koszty/:ksefNumber/pdf', () => {
   });
 });
 
-// ⚠️⚠️ RĘCZNE FAKTURY KOSZTOWE (2026-08-13). Koszty, których w KSeF NIE MA I NIE BĘDZIE:
+// ⚠️⚠️ RĘCZNE FAKTURY KOSZTOWE. Koszty, których w KSeF NIE MA I NIE BĘDZIE:
 // Facebook, Google, Anthropic, zakupy zagraniczne, paragony. Leżą w TEJ SAMEJ tabeli, co
 // lustro KSeF-u — bo suma miesiąca i rozbicie na kategorie mają mieć jedną prawdę o kosztach.
 //

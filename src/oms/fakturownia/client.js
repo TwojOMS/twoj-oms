@@ -13,7 +13,7 @@ import { PROG_ZAWIESZONEJ_FAKTURY_MS } from '../../domena/faktura-stan.js';
 // WYŁĄCZNIE w `wyslijDokumentDoKsef` na końcu tego pliku. Każde inne żądanie przechodzi przez
 // strażnika w `zapytaj`: w adresie nie ma `send_to_ksef` ani `api_token`, a w treści żadnego
 // z tych kluczy ani żadnego klucza `gov_*` (pola KSeF Fakturowni są tylko do odczytu; tak
-// odpada też parametr wystawienia z wysyłką, którego nazwy nie ma w src/ — strażnik tests/core/straznik-wysylki-ksef-prz118.test.js).
+// odpada też parametr wystawienia z wysyłką, którego nazwy nie ma w src/ — strażnik tests/core/straznik-wywolan-wysylki-ksef.test.js).
 
 // Twardy limit JEDNEGO żądania — ten sam powód co w inFakcie: „rezerwacja starsza od progu”
 // musi znaczyć „nic nie leci”, więc żywe wywołanie nie może dociągnąć do progu zawieszonej faktury.
@@ -374,7 +374,7 @@ export function createFakturowniaClient({ token, domena, fetchImpl, http }) {
 
   /**
    * ⚠️⚠️ JEDYNE MIEJSCE W TYM KLIENCIE, KTÓRE WYSYŁA DO KSeF. Wołane wyłącznie przez adapter (integracje/programy/fakturownia.ts)
-   * z moduly/faktury/services/wysylka-ksef.js (trasa zatwierdzenia albo automat KSeF) — strażnik tests/core/straznik-wysylki-ksef-prz118.test.js pilnuje, żeby nikt inny.
+   * z moduly/faktury/services/wysylka-ksef.js (trasa zatwierdzenia albo automat KSeF) — strażnik tests/core/straznik-wywolan-wysylki-ksef.test.js pilnuje, żeby nikt inny.
    *
    * Dokładnie JEDNO `GET /invoices/{id}.json?send_to_ksef=yes` — GET ze skutkiem ubocznym. Bez
    * ponowienia przy limicie czasu, 429 ani 5xx: brak odpowiedzi znaczy „nie wiadomo”, a drugie
