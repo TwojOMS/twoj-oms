@@ -4,7 +4,8 @@
 #   sudo docker compose run --rm instalacja        # jednorazowo: próba/demo bez kluczy integracji
 #   sudo docker compose up -d                      # panel + kopia; wstają same po restarcie maszyny
 # Katalogi na hoście (właściciel UID 10001, tryb 0700) — układ zgodny z planem aktualizatora:
-#   /opt/oms/config   konfiguracja i poświadczenia (oms.env, dane administratora próby)
+#   /opt/oms/config   konfiguracja (oms.env, dane administratora próby) i klucz.env — klucz poświadczeń integracji
+#                     zapisanych w bazie; NIGDY w data/ ani w kopiach, jego kopia ma być w menedżerze haseł
 #   /opt/oms/data     baza oms.sqlite, proformy/, etykiety/
 #   /opt/oms/backups  kopie bazy (oms-RRRR-MM-DD.sqlite), co 7 dni archiwum etykiet i proform, kopie operacji aktualizatora
 #   /opt/oms/releases rozpakowane paczki wydań (kod tylko do odczytu, ten plik jest w jednej z nich)
@@ -33,10 +34,13 @@ services:
     restart: unless-stopped
     # required: false — inaczej KAŻDE polecenie compose (także build przed instalacją) pada, dopóki pliku nie ma.
     # Bez pliku OMS nie wstanie (brak danych sprzedawcy), a diagnostyka to zgłosi.
+    # klucz.env (OMS_KLUCZ_SEKRETOW) zakłada instalacja; bez niego OMS odmawia startu czytelnym zdaniem.
     env_file:
       - path: /opt/oms/config/oms.env
         required: false
       - path: /opt/oms/config/kopia.env
+        required: false
+      - path: /opt/oms/config/klucz.env
         required: false
     # Ścieżki danych i port wewnątrz kontenera są stałe: baza nie może trafić poza wolumen,
     # nawet gdy ktoś wpisze w oms.env inną ścieżkę (wtedy zniknęłaby przy odtworzeniu kontenera).
@@ -47,7 +51,8 @@ services:
       OMS_ETYKIETY_KATALOG: /opt/oms/data/etykiety
       OMS_ETYKIETY_DIR: /opt/oms/data/etykiety
       # PRZ-094.29: klucze reklam z ekranu Ustawienia → Integracje → Meta Ads, Google Analytics 4 albo Google Ads. Domyślny /data-oms/… nie jest tu
-      # zamontowany (zapis padał na mkdir u UID 10001), więc katalog leży w wolumenie danych (i w jego kopii).
+      # zamontowany (zapis padał na mkdir u UID 10001), więc katalog leży w wolumenie danych. Kopia (kopia.mjs) go NIE
+      # obejmuje — tylko bazę, etykiety i proformy; klucze nie są szyfrowane; po odtworzeniu reklamy podłącza się ponownie.
       OMS_REKLAMY_SEKRETY_DIR: /opt/oms/data/reklamy-sekrety
       # PRZ-059: /health alarmuje, gdy najnowsza kopia ma 48 h albo nośnika kopii zewnętrznej nie ma.
       OMS_KOPIE_KATALOG: /opt/oms/backups

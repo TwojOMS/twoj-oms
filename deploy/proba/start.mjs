@@ -8,6 +8,9 @@ import fs from 'node:fs';
 const baza = process.env.OMS_DB_PATH;
 if (process.env.OMS_TRYB !== 'proba') throw new Error('Piaskownica startuje wyłącznie z OMS_TRYB=proba');
 if (!baza) throw new Error('Brak OMS_DB_PATH');
+// Klucz poświadczeń przed resetem i przed założeniem bazy — reset kasuje bazę, więc niezgodny klucz musi odmówić wcześniej.
+const { sejfZEnv } = await import('../../src/core/bezpieczenstwo/sejf-sekretow.js');
+const sejf = sejfZEnv(process.env);
 // Kanały, sprzedawca i podłoga raportu z generatora — JEDNO źródło. Kopia w proba.env rozjechała się
 // z zamówieniami przy pierwszej zmianie kanałów demo (14.10: „nieznany sklep OMS: allegro”).
 const { ENV_DEMO } = await import('../../scripts/demo-dane.mjs');
@@ -36,7 +39,7 @@ const { wykonajZlecenieResetu } = await import('../../src/oms/db/reset-demo.js')
 // PRZ-149.01: reset z panelu i `nas-proba.sh reset` zachowują aplikację i konta rzeczywistego Allegro Sandbox z panelu.
 // PRZ-119.11a: z plikiem profilu próby Fakturowni także wiersz `fakturownia` (domena i token z ekranu) — w logu tylko nazwa.
 const { SCIEZKA_PROFILU_FAKTUROWNI } = await import('./atrapy/fakturownia-proba.ts');
-const reset = await wykonajZlecenieResetu({ baza, utworzBaze, zachowajSandbox: true,
+const reset = await wykonajZlecenieResetu({ baza, utworzBaze, sejf, zachowajSandbox: true,
   zachowajFakturownie: fs.existsSync(SCIEZKA_PROFILU_FAKTUROWNI) });
 if (reset) console.log(`piaskownica: reset (zlecił ${reset.zlecenie?.login ?? '?'}), zachowane: ${reset.zachowane.join(', ')}, numeracja: ${reset.numeracja}, Allegro Sandbox: ${JSON.stringify(reset.sandbox)}, Fakturownia: ${reset.fakturownia.join(', ') || 'brak'}`);
 if (!fs.existsSync(baza)) await utworzBaze();
@@ -51,14 +54,14 @@ if (fs.existsSync('/konfiguracja/allegro-sandbox.json')) {
   try { dane = JSON.parse(fs.readFileSync('/konfiguracja/allegro-sandbox.json', 'utf8')); }
   catch { throw new Error('Nie można odczytać prywatnej konfiguracji Allegro Sandbox.'); }
   const { przygotujUruchomienieSandbox } = await import('./sandbox-uruchomienie.ts');
-  const { openOmsDb } = await import('../../src/oms/db/db.ts');
+  const { otworzBazeStartu } = await import('../../src/oms/db/db.ts');
   const { uruchomAplikacje } = await import('../../src/core/uruchomienie.ts');
   const { sprawdzKonfiguracjeModulow } = await import('../../src/core/aplikacja.ts');
   const { uruchomPulsPollerow } = await import('./atrapy/pollery.mjs');
   const { definicjeKanalow } = await import('../../src/moduly/kanaly/konfiguracja.ts');
   const plan = przygotujUruchomienieSandbox(process.env, dane);
   sprawdzKonfiguracjeModulow(plan.moduly, process.env);
-  const db = openOmsDb(baza, { moduly: plan.moduly });
+  const db = otworzBazeStartu(process.env, baza, { moduly: plan.moduly, bezKataloguBazy: true });
   const zatrzymajPuls = uruchomPulsPollerow({ db, env: process.env, zrodla: definicjeKanalow(process.env).map(d => d.klucz) });
   const wynik = await uruchomAplikacje({ moduly: plan.moduly, env: process.env, db, host: '0.0.0.0', port: Number(process.env.OMS_PORT || 3001), nadpisania: plan.nadpisania(db) });
   zamknij = async () => { zatrzymajPuls(); return wynik.zamknij(); };

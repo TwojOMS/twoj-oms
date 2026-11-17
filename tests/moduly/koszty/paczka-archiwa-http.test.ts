@@ -12,6 +12,7 @@ import { createModulKoszty } from '../../../src/moduly/koszty/modul.ts';
 import { zapiszKoszt, zapiszSciezki } from '../../../src/oms/db/koszty.js';
 import { zapiszWiersz } from '../../../src/moduly/faktury/db/archiwum-sprzedazy.js';
 import { odciskDokumentu } from '../../../src/domena/archiwum-sprzedazy.js';
+import { jawnyTestowy } from '../../pomoc/sejf-testowy.ts';
 
 const env = {OMS_USER:'operator',OMS_PASS:'fixture',OMS_SPRZEDAWCA_NIP:'1234563218',
   OMS_RACHUNEK:'34109010140000000000000000',OMS_PROFORMY_KATALOG:tmpdir(),INFAKT_API_KEY:'fixture',
@@ -81,7 +82,8 @@ describe('PRZ-025 HTTP paczki z rzeczywistymi archiwami i wizualizacją', () => 
       expect(klient.zaloguj).toHaveBeenCalledTimes(1);
       expect(klient.pobierzXml).toHaveBeenCalledTimes(1);
       expect(klient.pobierzXml).toHaveBeenCalledWith({accessToken:'fixture-access',ksefNumber:'K-ARCHIWUM'});
-      expect(z.db.prepare('SELECT access_token FROM tokeny_ksef WHERE id=1').get()?.access_token).toBe('fixture-access');
+      const zapis = (z.db.prepare('SELECT access_token FROM tokeny_ksef WHERE id=1').get() as { access_token: string } | undefined)?.access_token ?? null;
+      expect(jawnyTestowy(z.db, 'tokeny_ksef', 'access_token', 1, zapis)).toBe('fixture-access');
       expect(infakt.pobierzPdf).not.toHaveBeenCalled();
     });
   });

@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { BladSekretow, doZapisu, zOdczytu } from '../../core/bezpieczenstwo/sejf-sekretow.js';
 
 // Sesja tokenów KSeF (tabela `tokeny_ksef`).
 //
@@ -26,12 +27,18 @@ export function odciskTokenuKsef({ token, nip }) {
 }
 const KLUCZ_ODCISKU = 'ksef.sesja.odcisk';
 
+// Oba tokeny leżą w bazie zaszyfrowane kluczem poświadczeń (src/core/bezpieczenstwo/sejf-sekretow.js).
+const miejsce = (kolumna) => ({ tabela: 'tokeny_ksef', kolumna, id: '1' });
+const odszyfrowany = (db, w) => w && { ...w,
+  access_token: zOdczytu(db, miejsce('access_token'), w.access_token),
+  refresh_token: zOdczytu(db, miejsce('refresh_token'), w.refresh_token) };
+
 /** @param {{ db: any, klient: any, teraz?: () => Date, odcisk?: string }} opcje */
 export function createSesjaKsef({ db, klient, teraz = () => new Date(), odcisk = undefined }) {
   const odciskPary = () => db.prepare('SELECT wartosc FROM ustawienia WHERE klucz = ?').get(KLUCZ_ODCISKU)?.wartosc ?? null;
   const wczytaj = () => {
     const w = db.prepare('SELECT * FROM tokeny_ksef WHERE id = 1').get() ?? null;
-    return w && (odcisk === undefined || odciskPary() === odcisk) ? w : null;
+    return w && (odcisk === undefined || odciskPary() === odcisk) ? odszyfrowany(db, w) : null;
   };
 
   // ⚠️ OBA TOKENY JEDNYM ZAPISEM. Zapis samego access tokena
@@ -44,7 +51,8 @@ export function createSesjaKsef({ db, klient, teraz = () => new Date(), odcisk =
         access_token = excluded.access_token, access_do = excluded.access_do,
         refresh_token = excluded.refresh_token, refresh_do = excluded.refresh_do,
         ostatni_blad = NULL, zaktualizowane_at = excluded.zaktualizowane_at
-    `).run(accessToken, accessDo, refreshToken, refreshDo, teraz().toISOString());
+    `).run(doZapisu(db, miejsce('access_token'), accessToken), accessDo, doZapisu(db, miejsce('refresh_token'), refreshToken), refreshDo,
+      teraz().toISOString());
     // Odcisk PO parze: przerwa między zapisami zostawia nową parę ze starym odciskiem = brak pary (ponowne logowanie),
     // nigdy starą parę z nowym odciskiem.
     if (odcisk !== undefined) {
@@ -58,9 +66,22 @@ export function createSesjaKsef({ db, klient, teraz = () => new Date(), odcisk =
   // go nie oddaje), wiec zapis nie ma go czym nadpisac.
   // Tylko do TEJ pary, którą odświeżaliśmy — w trakcie `odswiez` inny zestaw (nowy token) mógł zapisać
   // własną parę, a access token starego tokenu wpisany do niej zostałby przejęty przez nowy.
+  // Szyfrogram jest za każdym zapisem inny, więc „ta sama para” to porównanie ODSZYFROWANEGO tokenu odświeżającego —
+  // krótka transakcja już PO odpowiedzi HTTP (blokady zapisu nie trzymamy w trakcie żądania sieciowego).
   function zapiszAccess({ accessToken, accessDo }, refreshToken) {
-    db.prepare('UPDATE tokeny_ksef SET access_token = ?, access_do = ?, ostatni_blad = NULL, zaktualizowane_at = ? WHERE id = 1 AND refresh_token = ?')
-      .run(accessToken, accessDo, teraz().toISOString(), refreshToken);
+    const wlasna = !db.isTransaction;
+    if (wlasna) db.exec('BEGIN IMMEDIATE');
+    try {
+      const w = db.prepare('SELECT refresh_token FROM tokeny_ksef WHERE id = 1').get();
+      if (w && zOdczytu(db, miejsce('refresh_token'), w.refresh_token) === refreshToken) {
+        db.prepare('UPDATE tokeny_ksef SET access_token = ?, access_do = ?, ostatni_blad = NULL, zaktualizowane_at = ? WHERE id = 1')
+          .run(doZapisu(db, miejsce('access_token'), accessToken), accessDo, teraz().toISOString());
+      }
+      if (wlasna) db.exec('COMMIT');
+    } catch (e) {
+      if (wlasna && db.isTransaction) db.exec('ROLLBACK');
+      throw e;
+    }
   }
 
   // Trwały ślad awarii logowania; udany zapis pary albo access tokena go czyści.
@@ -105,7 +126,10 @@ export function createSesjaKsef({ db, klient, teraz = () => new Date(), odcisk =
         const swiezy = await klient.odswiez(w.refresh_token);
         zapiszAccess(swiezy, w.refresh_token);
         return swiezy.accessToken;
-      } catch {
+      } catch (e) {
+        // Nieczytelny wiersz (klucz, uszkodzenie) to nie awaria sieci: pełne logowanie zapisałoby nową parę
+        // na miejsce poświadczeń, których nie umiemy odczytać — błąd sejfu wychodzi na wierzch.
+        if (e instanceof BladSekretow) throw e;
         // Nieudane odswiezenie NIE moze zostawic sesji martwej do naturalnego uplywu
         // refresh_do (to potrafi byc kwestia dni). Zamiast czekac, probujemy RAZ pelnego
         // logowania. Celowo tylko raz — pelne logowanie zuzywa jednorazowy

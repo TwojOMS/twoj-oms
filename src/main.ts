@@ -1,18 +1,17 @@
 import type { Srodowisko } from './core/kontrakty.ts';
-import { openOmsDb } from './oms/db/db.ts';
+import { otworzBazeStartu } from './oms/db/db.ts';
 import { uruchomAplikacje } from './core/uruchomienie.ts';
 import { modulyDla } from './moduly/lista.ts';
 import { efektywnyTryb } from './core/tryb.ts';
 import { sprawdzKonfiguracjeModulow } from './core/aplikacja.ts';
 import { BladKonfiguracji, komunikatKonfiguracji } from './core/blad-konfiguracji.ts';
-import { sprawdzKatalogBazy } from './core/katalog-bazy.ts';
 
 export async function uruchomOms(env: Srodowisko = process.env, host = '0.0.0.0') {
   const moduly = modulyDla(env);
   sprawdzKonfiguracjeModulow(moduly, env);
   const sciezkaBazy = env.OMS_DB_PATH || '/data-oms/oms.sqlite';
-  sprawdzKatalogBazy(sciezkaBazy);
-  const db = openOmsDb(sciezkaBazy, { moduly, log: console.log });
+  // Klucz poświadczeń, katalog bazy i kontrola poświadczeń — zanim migracje dotkną bazy.
+  const db = otworzBazeStartu(env, sciezkaBazy, { moduly, log: console.log });
   const port = Number(env.OMS_PORT || 3001);
   return uruchomAplikacje({ moduly, env, db, host, port });
 }

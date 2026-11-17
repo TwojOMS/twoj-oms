@@ -279,7 +279,7 @@ export function ocenZapis(karta, produkty, jednostki, kanalySklepow) {
 
 /**
  * Sama lista zmian do wyslania — ta sama regula, co `ocenZapis`, bez powodow wstrzymania.
- * Interfejs z planu (Zadanie 14); wolaja go testy i te miejsca, ktorych powody nie obchodza.
+ * Wołają go testy i te miejsca, których powody nie obchodzą.
  */
 export function zmianyDoWyslania(karta, produkty, jednostki, kanalySklepow) {
   return ocenZapis(karta, produkty, jednostki, kanalySklepow).zmiany;

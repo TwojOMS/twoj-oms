@@ -5,6 +5,7 @@ import { beforeEach, afterEach, it, expect, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
 import { definicjeKanalowHistoryczne } from '../../pomoc/kanaly-historyczne-fixture.js';
+import { szyfrTestowy } from '../../pomoc/sejf-testowy.ts';
 import { utworzKarte } from '../../../src/oms/db/magazyn.js';
 import { wstawOferte, zmienOferte, ofertaPoId } from '../../../src/oms/db/oferty-kanalow.ts';
 import { BRAK_ZGODY_OFERT } from '../../../src/moduly/kanaly/services/oferty-allegro-ustawienia.ts';
@@ -32,7 +33,8 @@ const atrapa = () => ({
   komendaIlosci: vi.fn(), komendaCeny: vi.fn(), pobierzOferte: vi.fn(), wgrajZdjecie: vi.fn(),
 });
 const tokeny = (kanal, scope) => db.prepare(`INSERT OR REPLACE INTO tokeny_kanalu (kanal, access_token, refresh_token, wygasa_at, refresh_wygasa_at, zaktualizowane_at)
-  VALUES (?, ?, 'REFRESH-ATRAPA', '2026-11-14T11:00:00Z', '2027-01-01T00:00:00Z', '2026-11-14T10:00:00Z')`).run(kanal, jwt(scope));
+  VALUES (?, ?, ?, '2026-11-14T11:00:00Z', '2027-01-01T00:00:00Z', '2026-11-14T10:00:00Z')`).run(kanal,
+  szyfrTestowy(db, 'tokeny_kanalu', 'access_token', kanal, jwt(scope)), szyfrTestowy(db, 'tokeny_kanalu', 'refresh_token', kanal, 'REFRESH-ATRAPA'));
 const karta = n => utworzKarte(db, { nazwa: `Lampa stołowa Gliwka ${n}`, sku: `GLW-${n}`, cena_gr: 9900, stawka_vat: '23', marka: 'Pracownia Półcień' });
 const oferta = (kanal, { stan = 'problem', kartaId = karta(kanal), id = `TEST-${kanal}`, ...zmiany } = {}, teraz = T0) => {
   const o = wstawOferte(db, { kartaId, kanal, idZewnetrzne: id, stan, pochodzenie: 'oms', tryb: 'zarzadzana' }, { teraz });

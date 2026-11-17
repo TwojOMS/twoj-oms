@@ -16,6 +16,7 @@ import {migracjaTypuKanaluISklepow} from '../../../src/moduly/kanaly/migracje/00
 import {zbudujUslugiKanalow} from '../../../src/moduly/kanaly/services/kompozycja-kanalow.ts';
 import {konfiguracjaKanalow} from '../../../src/moduly/kanaly/konfiguracja.ts';
 import {createAutoryzacjaAllegro} from '../../../src/moduly/kanaly/services/autoryzacja-allegro.ts';
+import {konfiguracjeJawne} from '../../pomoc/sejf-testowy.ts';
 
 // PRZ-160 E3.02 (D42): zgoda na wystawianie ofert. Zakresy ofert są opcjonalne; konto bez nich
 // działa jak dziś. Ponowna zgoda tylko na żądanie: „Sprawdź uprawnienia aplikacji” (zapisuje sam
@@ -191,7 +192,7 @@ it('panel: aplikacja bez znacznika ofert → zapytanie bez zakresów ofert; ze z
  const k2=daneAllegro(p.repozytoriumKanalow.utworzSzkic({nazwa:'Półcień 2',odUtc:'2026-10-31T23:00:00Z',srodowisko:'produkcja'},aktorAllegro));
  daneAllegro(await p.autoryzacjaAllegro.rozpocznijDevice(k2.klucz,aktorAllegro,'A'));
  expect(scopeStartu(p.calls)).toEqual([...UPRAWNIENIA_NOWEGO_POLACZENIA,...UPRAWNIENIA_OFERT]);
- expect(JSON.stringify(p.db.prepare('SELECT * FROM konfiguracja_integracji').all())).not.toContain('polcien-device-id');
+ expect(JSON.stringify(konfiguracjeJawne(p.db))).not.toContain('polcien-device-id');
 });
 
 it('panel: zmiana Client ID kasuje znacznik ofert (nowa aplikacja nie dziedziczy zgody)',async()=>{

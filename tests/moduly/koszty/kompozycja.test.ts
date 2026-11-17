@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os';
 import { zbudujOms } from '../../../src/oms/bootstrap.ts';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { wczytajSekret } from '../../../src/core/bezpieczenstwo/sekret-sesji.js';
+import { konwertujSekrety } from '../../../src/core/bezpieczenstwo/konwersja-sekretow.js';
+import { sejfBazy } from '../../../src/core/bezpieczenstwo/sejf-sekretow.js';
 import { modulRdzen } from '../../../src/moduly/rdzen/modul.ts';
 import { modulWeb } from '../../../src/core/web/modul.ts';
 import { modulKanaly } from '../../../src/moduly/kanaly/modul.ts';
@@ -20,6 +22,8 @@ describe('PRZ-025 rzeczywista kompozycja bootstrapu', () => {
     const moduly = [modulRdzen, modulWeb, modulKanaly, modulFaktury, modulKoszty];
     const db = openOmsDb(':memory:', { moduly: moduly as any });
     wczytajSekret(db);
+    // Baza przygotowana przez pierwszy start ma już znacznik formatu poświadczeń — kolejny start nic nie zapisuje.
+    konwertujSekrety(db, sejfBazy(db));
     const zapis = vi.fn(() => { throw new Error('SQLITE_FULL: database or disk is full'); });
     const bazaBezZapisow = {
       prepare(sql: string) {

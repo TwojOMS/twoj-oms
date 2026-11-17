@@ -20,6 +20,7 @@ import { ENV_DEMO } from '../../../scripts/demo-dane.mjs';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { szyfrTestowy } from '../../pomoc/sejf-testowy.ts';
 
 // E3.09b: pętla Allegro bez zmian zachowania — tylko podglądamy, z czym moduł ją buduje.
 vi.mock('../../../src/moduly/magazyn/services/petla-ofert-allegro.js', async orig => {
@@ -65,8 +66,10 @@ function zbuduj({ repozytorium = true, zablokowane = false, env = {} as Record<s
     zapisyZablokowane: vi.fn(() => zablokowane), konfliktKlucza: vi.fn(() => false), zwolnijOperacje: vi.fn(() => 1) };
   if (opcjeAllegro) {
     db.prepare(`INSERT INTO tokeny_kanalu (kanal, access_token, refresh_token, wygasa_at, refresh_wygasa_at, zaktualizowane_at)
-      VALUES ('allegro-polcien', ?, 'REFRESH-ATRAPA', '2026-11-14T11:00:00Z', '2027-01-01T00:00:00Z', '2026-11-14T10:00:00Z')`)
-      .run(jwt(['allegro:api:orders:read', ...(opcjeAllegro.zgoda === false ? [] : ['allegro:api:sale:offers:write', 'allegro:api:sale:settings:read'])]));
+      VALUES ('allegro-polcien', ?, ?, '2026-11-14T11:00:00Z', '2027-01-01T00:00:00Z', '2026-11-14T10:00:00Z')`)
+      .run(szyfrTestowy(db, 'tokeny_kanalu', 'access_token', 'allegro-polcien',
+        jwt(['allegro:api:orders:read', ...(opcjeAllegro.zgoda === false ? [] : ['allegro:api:sale:offers:write', 'allegro:api:sale:settings:read'])])),
+      szyfrTestowy(db, 'tokeny_kanalu', 'refresh_token', 'allegro-polcien', 'REFRESH-ATRAPA'));
   }
   const log = vi.fn();
   for (const [id, sku] of [[1, 'LMP-01'], [2, 'LMP-02']] as const) {

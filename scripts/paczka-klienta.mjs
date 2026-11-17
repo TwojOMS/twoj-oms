@@ -1,6 +1,7 @@
 // Paczka wydania dla klienta (PRZ-058): tar.gz z plikami WPROST z commita (git show, bez kopii
 // roboczej, więc bez CRLF i bez niezacommitowanych zmian), plus:
-//   wydanie.json       — pełny commit i tree (diagnostyka, przyszły aktualizator),
+//   wydanie.json       — pełny commit i tree (diagnostyka, aktualizator) oraz formatSekretow — format poświadczeń
+//                        w bazie, który zna ten commit (PRZ-182; z pakowanego commita, nie z bieżącego drzewa),
 //   deploy/klient/.env — OMS_REVISION dla compose (tag obrazu i etykieta revision).
 // Użycie: node scripts/paczka-klienta.mjs --commit <pełny SHA> --wyjscie <nowy katalog bezwzględny>
 // tar.gz, bo czysty Debian ma tar, a nie ma unzip.
@@ -20,6 +21,8 @@ const DOKLADNE = new Set([
   'scripts/backup-db.mjs', 'scripts/paczka-klienta.mjs', 'scripts/backup-rotation.mjs',
   'scripts/produkcja-pierwszy-start.mjs', 'scripts/inicjalizuj-granice-bez-historii.mjs',
   'scripts/link-hasla-admina.mjs',
+  // PRZ-182: narzędzie poświadczeń w bazie (aktualizuj.sh sekrety, klucz przy aktualizacji, powrót do starszego wydania).
+  'scripts/sekrety.mjs',
   'docs/instalacja-klienta.md', 'docs/instalacja-docker.md', 'docs/aktualizacje-klienta.md', 'docs/aktualizacja-klienta-v0.md',
 ]);
 // PRZ-094.21: deploy/drukarka/ — agent druku etykiet i faktur (instrukcja w README.md obok skryptów).
@@ -120,6 +123,21 @@ export function bajtyZCommita(commit, pliki, wykonaj = git) {
   return mapa;
 }
 
+export const PLIK_FORMATU_SEKRETOW = 'src/core/bezpieczenstwo/format-sekretow.json';
+
+/**
+ * Format poświadczeń w bazie, który zna PAKOWANY commit (PRZ-182): plik formatu z tego commita, czytany jako dane —
+ * bez wykonywania jego kodu i bez bieżącego drzewa (generator może być nowszy niż pakowany kod). Brak pliku = 0.
+ * Aktualizator decyduje po tym polu o odszyfrowaniu bazy przy powrocie do tego wydania.
+ */
+export function formatSekretowZCommita(commit, wykonaj = git) {
+  if (!wykonaj(['ls-tree', '--full-tree', '--name-only', commit, '--', PLIK_FORMATU_SEKRETOW]).trim()) return 0;
+  let format;
+  try { format = JSON.parse(bajtyZCommita(commit, [PLIK_FORMATU_SEKRETOW], wykonaj).get(PLIK_FORMATU_SEKRETOW).toString('utf8')).format; } catch { format = undefined; }
+  if (!Number.isInteger(format) || format < 0) throw Error('PACZKA_ZLY_FORMAT_SEKRETOW');
+  return format;
+}
+
 function main() {
   const { commit, wyjscie } = opcje(process.argv.slice(2));
   if (fs.existsSync(wyjscie)) throw Error('PACZKA_WYJSCIE_ISTNIEJE');
@@ -140,7 +158,8 @@ function main() {
   const nazwa = `oms-${commit.slice(0, 12)}`;
   const zawartosc = bajtyZCommita(commit, pliki);
   const odciski = pliki.map(plik => ({ plik, sha256: sha256(zawartosc.get(plik)), bajty: zawartosc.get(plik).length }));
-  const wydanie = { commit, tree, rodzaj: 'klient-docker', node: '24', utworzono: new Date().toISOString(), plikow: pliki.length, podpisane: false };
+  const wydanie = { commit, tree, rodzaj: 'klient-docker', node: '24', utworzono: new Date().toISOString(), plikow: pliki.length, podpisane: false,
+    formatSekretow: formatSekretowZCommita(commit) };
   const wpisyArchiwum = new Map(pliki.map(plik => [`${nazwa}/${plik}`, zawartosc.get(plik)]));
   wpisyArchiwum.set(`${nazwa}/wydanie.json`, Buffer.from(JSON.stringify(wydanie, null, 2) + '\n'));
   wpisyArchiwum.set(`${nazwa}/deploy/klient/.env`, Buffer.from(

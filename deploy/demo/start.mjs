@@ -15,6 +15,9 @@ const baza = process.env.OMS_DB_PATH;
 if (process.env.OMS_TRYB !== 'proba') throw new Error('Demo startuje wyłącznie z OMS_TRYB=proba');
 if (!baza) throw new Error('Brak OMS_DB_PATH');
 if (!process.env.OMS_DEMO_LOGIN || !process.env.OMS_DEMO_HASLO) throw new Error('Demo wymaga OMS_DEMO_LOGIN i OMS_DEMO_HASLO');
+// Klucz poświadczeń przed czymkolwiek innym: bez niego generator nie zapisze sekretów demo, a panel ich nie odczyta.
+const { sejfZEnv } = await import('../../src/core/bezpieczenstwo/sejf-sekretow.js');
+sejfZEnv(process.env);
 // Bezpiecznik izolacji: Docker na DSM puszcza z sieci internal ruch do usług samego NAS-a; odcinają go dopiero
 // reguły deploy/demo/nas-izolacja.sh, które nie przeżywają restartu NAS-a. Gdy którykolwiek cel odpowie —
 // odmowa startu (kontener restartuje się w kółko, tunel daje 502), zamiast publicznego demo obok produkcji.

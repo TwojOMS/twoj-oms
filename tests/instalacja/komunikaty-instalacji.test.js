@@ -102,6 +102,16 @@ describe('powód błędu etapu potomnego', () => {
     expect(sekretyKatalogu(path.join(p, 'brak'))).toEqual([]);
   });
 
+  it('klucz poświadczeń (PRZ-182) też jest na liście wycinanych — z katalogu albo ze wskazanego pliku', () => {
+    const p = katalog();
+    const klucz = Buffer.alloc(32, 7).toString('base64url');
+    fs.writeFileSync(path.join(p, 'klucz.env'), `# opis\nOMS_KLUCZ_SEKRETOW=${klucz}\n`);
+    expect(sekretyKatalogu(p)).toContain(klucz);
+    const inny = path.join(katalog(), 'config-klucz.env');
+    fs.writeFileSync(inny, `OMS_KLUCZ_SEKRETOW=${klucz}\n`);
+    expect(sekretyKatalogu(path.join(p, 'brak'), inny)).toEqual([klucz]);
+  });
+
   it('demo przy zajętym porcie pokazuje kod etapu i powód, bez haseł', async () => {
     const port = 39391;
     const serwer = await zajmijPort(port);
@@ -152,5 +162,9 @@ describe('„co dalej” po udanej instalacji', () => {
     expect(tekst).toContain('sudo docker compose down');
     expect(tekst).toContain(':3001/login');
     expect(tekst).toContain(path.join('/opt/oms/config', 'administrator-proby.env'));
+    const zKluczem = coDalejKontener({ konfiguracja: '/opt/oms/config', port: 3001, klucz: '/opt/oms/config/klucz.env', idKlucza: 'abcd1234' }).join('\n');
+    expect(zKluczem).toContain('/opt/oms/config/klucz.env');
+    expect(zKluczem).toContain('abcd1234');
+    expect(zKluczem).toContain('Zapisz zawartość tego pliku w menedżerze haseł. Bez niego kopia bazy nie odda podłączonych integracji.');
   });
 });

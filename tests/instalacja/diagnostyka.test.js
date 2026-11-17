@@ -221,6 +221,30 @@ describe('diagnostyka klienta PRZ-058', () => {
     expect(t).not.toContain(k.znacznik);
   });
 
+  it('PRZ-182: klucz.env — właściciel i tryb bez wartości klucza; zły tryb i brak pliku zgłoszone', () => {
+    const k = przygotuj();
+    const plikKlucza = path.join(k.oms, 'config/klucz.env');
+    const klucz = `${k.znacznik}${randomBytes(16).toString('base64url')}`;
+    fs.writeFileSync(plikKlucza, `# Klucz poświadczeń\nOMS_KLUCZ_SEKRETOW=${klucz}\n`, { mode: 0o600 });
+    fs.chmodSync(plikKlucza, 0o600);
+    fs.appendFileSync(path.join(k.baza, 'wartosci.txt'), `${klucz}\n`); // atrapa wypisze go w środowisku kontenera i w dzienniku
+    const odNowa = () => { fs.rmSync(k.wynik, { force: true }); const r = uruchom(k); expect(r.status, r.stderr).toBe(0); return fs.readFileSync(k.wynik, 'utf8'); };
+    const t = odNowa();
+    expect(t).not.toContain(k.znacznik);
+    expect(t).not.toContain(klucz.slice(-16));
+    expect(t).toMatch(/^klucz\.env \(600 uid=\d+\): OMS_KLUCZ_SEKRETOW $/m);
+    if (process.platform !== 'win32') {
+      const uid = process.getuid();
+      expect(t).toContain(uid === 10001 ? 'klucz.env: jest, właściciel 10001, tryb 600' : `UWAGA: klucz.env: właściciel uid=${uid}, tryb 600 — ma być uid=10001, tryb 600`);
+      fs.chmodSync(plikKlucza, 0o644);
+      expect(odNowa()).toMatch(/UWAGA: klucz\.env: właściciel uid=\d+, tryb 644 — ma być uid=10001, tryb 600/);
+    }
+    fs.rmSync(plikKlucza);
+    const bez = odNowa();
+    expect(bez).toContain('BRAK klucz.env');
+    expect(bez).not.toContain(k.znacznik);
+  });
+
   it('maskuje wartości z samych plików konfiguracji (cudzysłowy, CRLF), gdy środowisko kontenera jest niedostępne', () => {
     const k = przygotuj();
     const r = uruchom(k, { TEST_BEZ_ENV: '1' });

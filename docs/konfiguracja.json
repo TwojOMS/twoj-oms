@@ -46,11 +46,11 @@
     "plikiKodowe": 428,
     "bledyParsera": 0,
     "odczytyProduktu": 142,
-    "dynamiczneOdczytyProduktu": 34,
-    "zmienneProduktu": 78,
+    "dynamiczneOdczytyProduktu": 37,
+    "zmienneProduktu": 80,
     "rodzinyDynamiczne": 11,
     "declaracjeGuardOnly": 7,
-    "zmienneNarzedziISystemu": 13,
+    "zmienneNarzedziISystemu": 14,
     "nieprzypisaneOdczytyProduktu": 0
   },
   "kompozycje": [
@@ -252,7 +252,7 @@
         {
           "id": "AST-106",
           "path": "src/main.ts",
-          "line": 13,
+          "line": 12,
           "expression": "env.OMS_DB_PATH",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -268,7 +268,7 @@
         {
           "id": "AST-112",
           "path": "src/oms/bootstrap.ts",
-          "line": 13,
+          "line": 14,
           "expression": "o.env.OMS_DB_PATH",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -300,9 +300,9 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/main.ts:13",
+        "src/main.ts:12",
         "src/moduly/kanaly/scripts/import-sklep.mjs:60",
-        "src/oms/bootstrap.ts:13",
+        "src/oms/bootstrap.ts:14",
         "scripts/oms-import-istniejacy-podjazd-dpd.mjs:14",
         "scripts/oms-import-istniejacy-podjazd-dpd.mjs:29",
         "src/moduly/magazyn/services/zdjecia-pliki.js:14"
@@ -325,7 +325,7 @@
         {
           "id": "AST-107",
           "path": "src/main.ts",
-          "line": 16,
+          "line": 15,
           "expression": "env.OMS_PORT",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -333,7 +333,7 @@
         {
           "id": "AST-108",
           "path": "src/main.ts",
-          "line": 22,
+          "line": 21,
           "expression": "process.env.OMS_PORT",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -341,8 +341,8 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/main.ts:16",
-        "src/main.ts:22"
+        "src/main.ts:15",
+        "src/main.ts:21"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -372,7 +372,7 @@
         {
           "id": "AST-086",
           "path": "src/moduly/zdrowie/modul.ts",
-          "line": 15,
+          "line": 16,
           "expression": "env.OMS_TRYB",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -381,7 +381,7 @@
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
         "src/core/tryb.ts:6",
-        "src/moduly/zdrowie/modul.ts:15"
+        "src/moduly/zdrowie/modul.ts:16"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -666,6 +666,82 @@
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
       "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a"
+    },
+    {
+      "nazwa": "OMS_KLUCZ_SEKRETOW",
+      "wlasciciel": "rdzen / bezpieczeństwo",
+      "sekcja": "Rdzeń i uruchomienie",
+      "zakres": "produkt",
+      "sekret": true,
+      "decyzja": "PRZ-182",
+      "wywolaniaPosrednie": [],
+      "aktywacja": "zawsze — każda ścieżka startu otwiera bazę z kluczem",
+      "wlaczoneWMainNaPinie": true,
+      "sourceReviewCommit": "PRZ-182",
+      "opis": "Klucz, którym OMS szyfruje w bazie hasła i tokeny integracji; sekret — trzymaj kopię w menedżerze haseł.",
+      "przyklad": "43 znaki z pliku klucz.env (instalacja tworzy go sama)",
+      "wymagalnosc": "wymagana zawsze (main, zbudujOms, generator demo, piaskownica, narzędzie sekrety)",
+      "wymagalnoscPoLudzku": "wymagana — bez niej OMS się nie uruchomi",
+      "domyslna": null,
+      "domyslnaPoLudzku": "brak — instalacja zakłada osobny plik klucz.env z nowym kluczem",
+      "skutekBraku": "BladKonfiguracji przed migracjami: sejfZEnv odmawia startu (brak albo zła postać klucza); nigdy klucz zastępczy ani pusta konfiguracja. Klucz niezgodny z bazą (szyfrogramy pod innym id) = odmowa przed migracjami. Instalatory (scripts/instalacja-*.mjs, uruchom-lokalnie) czytają go z pliku klucz.env (OMS_KLUCZ_SEKRETOW_PLIK albo <katalog>/klucz.env), compose klienta — z env_file /opt/oms/config/klucz.env.",
+      "skutekBrakuPoLudzku": "Bez niej OMS odmawia startu i mówi, którego pliku brakuje. Zgubiony klucz oznacza ponowne podłączenie integracji — dane zamówień zostają.",
+      "walidacja": "Kanoniczny base64url 32 bajtów (43 znaki, ponowne kodowanie identyczne z wejściem); trim. Id klucza (8 znaków skrótu) wolno pokazać, wartości nigdy.",
+      "odczyty": [
+        {
+          "id": "AST-164",
+          "path": "src/core/bezpieczenstwo/sejf-sekretow.js",
+          "line": 151,
+          "expression": "env?.[ZMIENNA_KLUCZA]",
+          "kind": "dynamiczny",
+          "via": "zamknięta mapa helpera"
+        },
+        {
+          "id": "AST-165",
+          "path": "src/core/bezpieczenstwo/sejf-sekretow.js",
+          "line": 191,
+          "expression": "env?.[ZMIENNA_KLUCZA]",
+          "kind": "dynamiczny",
+          "via": "zamknięta mapa helpera"
+        }
+      ],
+      "sciezkaOdczytu": [
+        "src/core/bezpieczenstwo/sejf-sekretow.js:151",
+        "src/core/bezpieczenstwo/sejf-sekretow.js:191"
+      ]
+    },
+    {
+      "nazwa": "OMS_KLUCZ_SEKRETOW_POPRZEDNI",
+      "wlasciciel": "rdzen / bezpieczeństwo",
+      "sekcja": "Rdzeń i uruchomienie",
+      "zakres": "produkt",
+      "sekret": true,
+      "decyzja": "PRZ-182",
+      "wywolaniaPosrednie": [],
+      "aktywacja": "zawsze — każda ścieżka startu otwiera bazę z kluczem",
+      "wlaczoneWMainNaPinie": true,
+      "sourceReviewCommit": "PRZ-182",
+      "opis": "Dotychczasowy klucz poświadczeń na czas wymiany klucza; po przeszyfrowaniu bazy usuń go z konfiguracji.",
+      "wymagalnosc": "opcjonalna — wyłącznie przy wymianie klucza",
+      "wymagalnoscPoLudzku": "opcjonalna — tylko na czas wymiany klucza",
+      "domyslna": null,
+      "domyslnaPoLudzku": "brak — bez wymiany klucza niepotrzebna",
+      "skutekBraku": "Bez niej szyfrogramy pod poprzednim kluczem są nieczytelne (odmowa startu z id wymaganego klucza). Z nią start przeszyfrowuje je bieżącym kluczem w jednej transakcji (konwersja-sekretow.js) i oznacza sprzątanie pliku bazy.",
+      "skutekBrakuPoLudzku": "Potrzebna tylko przy wymianie klucza: bez niej OMS nie odczyta haseł zapisanych starym kluczem i odmówi startu.",
+      "walidacja": "Ten sam format co OMS_KLUCZ_SEKRETOW; zła postać = odmowa startu.",
+      "odczyty": [
+        {
+          "id": "AST-166",
+          "path": "src/core/bezpieczenstwo/sejf-sekretow.js",
+          "line": 157,
+          "expression": "env?.[ZMIENNA_POPRZEDNIEGO]",
+          "kind": "dynamiczny",
+          "via": "zamknięta mapa helpera"
+        }
+      ],
+      "sciezkaOdczytu": [
+        "src/core/bezpieczenstwo/sejf-sekretow.js:157"
+      ]
     },
     {
       "nazwa": "OMS_KANALY",
@@ -1737,7 +1813,7 @@
         {
           "id": "AST-017",
           "path": "src/domena/klient-zbiorczy.js",
-          "line": 101,
+          "line": 116,
           "expression": "env?.OMS_KLIENCI_ZBIORCZY",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -1745,7 +1821,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/domena/klient-zbiorczy.js:101"
+        "src/domena/klient-zbiorczy.js:116"
       ],
       "wlaczoneWMainNaPinie": true,
       "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a"
@@ -4667,6 +4743,30 @@
       "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a"
     },
     {
+      "nazwa": "OMS_KLUCZ_SEKRETOW_PLIK",
+      "wlasciciel": "instalatory",
+      "sekcja": "Środowisko narzędzi i testów",
+      "opis": "Ścieżka pliku z kluczem poświadczeń dla instalatora; w Dockerze plik w katalogu konfiguracji, poza katalogiem danych.",
+      "zakres": "tooling",
+      "wymagalnosc": "opcjonalna — czytają ją tylko instalatory (scripts/instalacja-*.mjs), nie program",
+      "wymagalnoscPoLudzku": "nie dotyczy pliku konfiguracji — ustawia ją sama instalacja w Dockerze",
+      "domyslna": "<katalog instalacji>/klucz.env",
+      "domyslnaPoLudzku": "plik klucz.env w katalogu próby, obok bazy",
+      "skutekBraku": "Instalator zakłada i czyta klucz.env w katalogu instalacji (próba lokalna). instalacja-kontener.mjs zawsze podaje etapom /opt/oms/config/klucz.env; etapy dostają wyłącznie tę zmienną.",
+      "skutekBrakuPoLudzku": "Bez niej instalacja na własnym komputerze trzyma klucz w katalogu próby, obok bazy — kopia tego katalogu nie jest chroniona.",
+      "walidacja": "Ścieżka; względna rozwiązywana od katalogu roboczego. Istniejący plik nigdy nie jest nadpisywany.",
+      "sekret": false,
+      "decyzja": "PRZ-182",
+      "odczyty": [],
+      "wywolaniaPosrednie": [],
+      "sciezkaOdczytu": [
+        "scripts/instalacja-wspolne.mjs"
+      ],
+      "aktywacja": "tooling",
+      "wlaczoneWMainNaPinie": false,
+      "sourceReviewCommit": "PRZ-182"
+    },
+    {
       "nazwa": "OMS_KOPIE_KATALOG",
       "wlasciciel": "zdrowie",
       "sekcja": "Instalacja klienta (Docker)",
@@ -4682,7 +4782,7 @@
         {
           "id": "AST-128",
           "path": "src/moduly/zdrowie/modul.ts",
-          "line": 15,
+          "line": 16,
           "expression": "env.OMS_KOPIE_KATALOG",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -4690,7 +4790,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/zdrowie/modul.ts:15"
+        "src/moduly/zdrowie/modul.ts:16"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -4712,7 +4812,7 @@
         {
           "id": "AST-129",
           "path": "src/moduly/zdrowie/modul.ts",
-          "line": 15,
+          "line": 16,
           "expression": "env.OMS_KOPIA_ZEWNETRZNA",
           "kind": "statyczny",
           "via": "bezpośrednio"
@@ -4720,7 +4820,7 @@
       ],
       "wywolaniaPosrednie": [],
       "sciezkaOdczytu": [
-        "src/moduly/zdrowie/modul.ts:15"
+        "src/moduly/zdrowie/modul.ts:16"
       ],
       "aktywacja": "włączenie właściciela w kompozycji",
       "wlaczoneWMainNaPinie": true,
@@ -5397,6 +5497,33 @@
         "APILO_CREDENTIALS_PATH",
         "META_TOKEN",
         "GA4_KLUCZ"
+      ],
+      "reason": "Zamknięta mapa dynamicznego czytnika, przypięta pełnym SHA LF pliku."
+    },
+    {
+      "path": "src/core/bezpieczenstwo/sejf-sekretow.js",
+      "line": 151,
+      "expression": "env?.[ZMIENNA_KLUCZA]",
+      "names": [
+        "OMS_KLUCZ_SEKRETOW"
+      ],
+      "reason": "Zamknięta mapa dynamicznego czytnika, przypięta pełnym SHA LF pliku."
+    },
+    {
+      "path": "src/core/bezpieczenstwo/sejf-sekretow.js",
+      "line": 157,
+      "expression": "env?.[ZMIENNA_POPRZEDNIEGO]",
+      "names": [
+        "OMS_KLUCZ_SEKRETOW_POPRZEDNI"
+      ],
+      "reason": "Zamknięta mapa dynamicznego czytnika, przypięta pełnym SHA LF pliku."
+    },
+    {
+      "path": "src/core/bezpieczenstwo/sejf-sekretow.js",
+      "line": 191,
+      "expression": "env?.[ZMIENNA_KLUCZA]",
+      "names": [
+        "OMS_KLUCZ_SEKRETOW"
       ],
       "reason": "Zamknięta mapa dynamicznego czytnika, przypięta pełnym SHA LF pliku."
     },
@@ -6336,7 +6463,7 @@
     },
     {
       "path": "src/domena/klient-zbiorczy.js",
-      "line": 101,
+      "line": 116,
       "expression": "env?.OMS_KLIENCI_ZBIORCZY",
       "key": "OMS_KLIENCI_ZBIORCZY",
       "id": "AST-017",
@@ -7529,41 +7656,6 @@
       "call": "efektywnyTryb(env)"
     },
     {
-      "path": "src/core/aplikacja.ts",
-      "line": 21,
-      "expression": "env",
-      "callee": "zaufaneProxy",
-      "call": "zaufaneProxy(env)"
-    },
-    {
-      "path": "src/core/aplikacja.ts",
-      "line": 24,
-      "expression": "env",
-      "callee": "sprawdzTrybProby",
-      "call": "sprawdzTrybProby(env, [...new Set(kolejnosc.flatMap((m) => m.kluczeIntegracji ?? []))])"
-    },
-    {
-      "path": "src/core/aplikacja.ts",
-      "line": 31,
-      "expression": "env",
-      "callee": "m.konfiguracja",
-      "call": "m.konfiguracja(env)"
-    },
-    {
-      "path": "src/core/aplikacja.ts",
-      "line": 51,
-      "expression": "env",
-      "callee": "przygotujModuly",
-      "call": "przygotujModuly(moduly, env)"
-    },
-    {
-      "path": "src/core/aplikacja.ts",
-      "line": 64,
-      "expression": "o.env",
-      "callee": "przygotujModuly",
-      "call": "przygotujModuly(o.moduly, o.env)"
-    },
-    {
       "path": "src/core/demo.ts",
       "line": 46,
       "expression": "env",
@@ -8047,27 +8139,6 @@
       "call": "userAgentAllegro(env)"
     },
     {
-      "path": "src/main.ts",
-      "line": 11,
-      "expression": "env",
-      "callee": "modulyDla",
-      "call": "modulyDla(env)"
-    },
-    {
-      "path": "src/main.ts",
-      "line": 12,
-      "expression": "env",
-      "callee": "sprawdzKonfiguracjeModulow",
-      "call": "sprawdzKonfiguracjeModulow(moduly, env)"
-    },
-    {
-      "path": "src/main.ts",
-      "line": 32,
-      "expression": "process.env",
-      "callee": "efektywnyTryb",
-      "call": "efektywnyTryb(process.env)"
-    },
-    {
       "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
       "line": 49,
       "expression": "process.env",
@@ -8164,6 +8235,97 @@
       "expression": "env",
       "callee": "adresFirmyZEnv",
       "call": "adresFirmyZEnv(env)"
+    },
+    {
+      "path": "src/core/aplikacja.ts",
+      "line": 23,
+      "expression": "env",
+      "callee": "zaufaneProxy",
+      "call": "zaufaneProxy(env)"
+    },
+    {
+      "path": "src/core/aplikacja.ts",
+      "line": 26,
+      "expression": "env",
+      "callee": "sprawdzTrybProby",
+      "call": "sprawdzTrybProby(env, [...new Set(kolejnosc.flatMap((m) => m.kluczeIntegracji ?? []))])"
+    },
+    {
+      "path": "src/core/aplikacja.ts",
+      "line": 33,
+      "expression": "env",
+      "callee": "m.konfiguracja",
+      "call": "m.konfiguracja(env)"
+    },
+    {
+      "path": "src/core/aplikacja.ts",
+      "line": 53,
+      "expression": "env",
+      "callee": "przygotujModuly",
+      "call": "przygotujModuly(moduly, env)"
+    },
+    {
+      "path": "src/core/aplikacja.ts",
+      "line": 66,
+      "expression": "o.env",
+      "callee": "przygotujModuly",
+      "call": "przygotujModuly(o.moduly, o.env)"
+    },
+    {
+      "path": "src/core/aplikacja.ts",
+      "line": 70,
+      "expression": "o.env",
+      "callee": "sejfDlaStartu",
+      "call": "sejfDlaStartu(o.env)"
+    },
+    {
+      "path": "src/oms/db/db.ts",
+      "line": 75,
+      "expression": "env",
+      "callee": "sejfDlaStartu",
+      "call": "sejfDlaStartu(env)"
+    },
+    {
+      "path": "src/main.ts",
+      "line": 10,
+      "expression": "env",
+      "callee": "modulyDla",
+      "call": "modulyDla(env)"
+    },
+    {
+      "path": "src/main.ts",
+      "line": 11,
+      "expression": "env",
+      "callee": "sprawdzKonfiguracjeModulow",
+      "call": "sprawdzKonfiguracjeModulow(moduly, env)"
+    },
+    {
+      "path": "src/main.ts",
+      "line": 14,
+      "expression": "env",
+      "callee": "otworzBazeStartu",
+      "call": "otworzBazeStartu(env, sciezkaBazy, { moduly, log: console.log })"
+    },
+    {
+      "path": "src/main.ts",
+      "line": 31,
+      "expression": "process.env",
+      "callee": "efektywnyTryb",
+      "call": "efektywnyTryb(process.env)"
+    },
+    {
+      "path": "src/oms/bootstrap.ts",
+      "line": 14,
+      "expression": "o.env",
+      "callee": "otworzBazeStartu",
+      "call": "otworzBazeStartu(o.env,o.env.OMS_DB_PATH??':memory:',{moduly,teraz:o.teraz,bezKataloguBazy:true})"
+    },
+    {
+      "path": "src/core/bezpieczenstwo/sejf-sekretow.js",
+      "line": 192,
+      "expression": "env",
+      "callee": "sejfZEnv",
+      "call": "sejfZEnv(env)"
     }
   ],
   "prefiksy": {
@@ -8503,7 +8665,7 @@
     },
     {
       "path": "src/domena/klient-zbiorczy.js",
-      "sha256": "b87c3bcb31f8f7491ecf41b26f3595219bda7cfa38f9eb44ba28b2b04823d711",
+      "sha256": "b3717976598283ad725b0b89bcd2688449ef6a47e8393c572439944e17140e6c",
       "normalizacja": "LF"
     },
     {
@@ -8548,7 +8710,7 @@
     },
     {
       "path": "src/moduly/zdrowie/modul.ts",
-      "sha256": "33250524a553f8355eaa264efe9fc063b5936e68a15073422047c38b947b85ae",
+      "sha256": "ae6a75e13038931c52a93379b6066b420c624257c53153fce4964d150b9d2016",
       "normalizacja": "LF"
     },
     {
@@ -8563,7 +8725,7 @@
     },
     {
       "path": "src/main.ts",
-      "sha256": "7858266d78f990278ba12bd8e75d672036dfbced106faed4cf9cb577894bbabc",
+      "sha256": "e65e8794ec1495f1177c68ad50c21913a15ad966be79f7e11bd6ecc82bbbb512",
       "normalizacja": "LF"
     },
     {
@@ -8573,7 +8735,7 @@
     },
     {
       "path": "src/oms/bootstrap.ts",
-      "sha256": "9cfde5572f3ab5758128aa42bdf6c0df6692e15b5d404694485cffbaf9991035",
+      "sha256": "43fe658b0730f85a197ca07b21070a3c8c4c427626237cce40c136b32fb20c58",
       "normalizacja": "LF"
     },
     {
@@ -8605,12 +8767,17 @@
       "path": "src/core/adres-firmy.ts",
       "sha256": "582149dd1913f9af4dab4a7808f7ed644da1ffd7d5ffe3e0939d64512ab4d88e",
       "normalizacja": "LF"
+    },
+    {
+      "path": "src/core/bezpieczenstwo/sejf-sekretow.js",
+      "sha256": "07f0f7cb560bd2e158c06630c53cff5fe0b05ede9c9c1e11b8d81ad522ecf49c",
+      "normalizacja": "LF"
     }
   ],
   "dodatkoweDowody": [
     {
       "path": "src/core/aplikacja.ts",
-      "sha256": "6bef60cd7adba99812ffc0376b1e3eda58c1260de4d1cdc00101c00bbabcf022",
+      "sha256": "b7c87b26cbe6bc704c8cc957eadfb484585d16f665cb86fe92040952ba26bdb0",
       "normalizacja": "LF"
     },
     {
@@ -8635,7 +8802,7 @@
     },
     {
       "path": "src/oms/bootstrap.ts",
-      "sha256": "9cfde5572f3ab5758128aa42bdf6c0df6692e15b5d404694485cffbaf9991035",
+      "sha256": "43fe658b0730f85a197ca07b21070a3c8c4c427626237cce40c136b32fb20c58",
       "normalizacja": "LF"
     },
     {
@@ -8645,12 +8812,12 @@
     },
     {
       "path": "src/moduly/zdrowie/modul.ts",
-      "sha256": "33250524a553f8355eaa264efe9fc063b5936e68a15073422047c38b947b85ae",
+      "sha256": "ae6a75e13038931c52a93379b6066b420c624257c53153fce4964d150b9d2016",
       "normalizacja": "LF"
     },
     {
       "path": "src/main.ts",
-      "sha256": "7858266d78f990278ba12bd8e75d672036dfbced106faed4cf9cb577894bbabc",
+      "sha256": "e65e8794ec1495f1177c68ad50c21913a15ad966be79f7e11bd6ecc82bbbb512",
       "normalizacja": "LF"
     },
     {
@@ -9025,22 +9192,40 @@
           }
         ],
         "review": "PRZ-053 propozycja: jeden dynamiczny odczyt; d.prefiks pochodzi z jawnie walidowanej definicji OMS_KANALY. Nie jest odbiorem."
+      },
+      {
+        "path": "src/core/bezpieczenstwo/sejf-sekretow.js",
+        "sha256": "07f0f7cb560bd2e158c06630c53cff5fe0b05ede9c9c1e11b8d81ad522ecf49c",
+        "odczyty": [
+          {
+            "expression": "env?.[ZMIENNA_KLUCZA]",
+            "names": [
+              "OMS_KLUCZ_SEKRETOW"
+            ]
+          },
+          {
+            "expression": "env?.[ZMIENNA_POPRZEDNIEGO]",
+            "names": [
+              "OMS_KLUCZ_SEKRETOW_POPRZEDNI"
+            ]
+          }
+        ]
       }
     ],
     "przekazania": [
       {
         "path": "src/core/aplikacja.ts",
-        "sha256": "6bef60cd7adba99812ffc0376b1e3eda58c1260de4d1cdc00101c00bbabcf022",
+        "sha256": "b7c87b26cbe6bc704c8cc957eadfb484585d16f665cb86fe92040952ba26bdb0",
         "expression": "sprawdzTrybProby(env, [...new Set(kolejnosc.flatMap((m) => m.kluczeIntegracji ?? []))])"
       },
       {
         "path": "src/core/aplikacja.ts",
-        "sha256": "6bef60cd7adba99812ffc0376b1e3eda58c1260de4d1cdc00101c00bbabcf022",
+        "sha256": "b7c87b26cbe6bc704c8cc957eadfb484585d16f665cb86fe92040952ba26bdb0",
         "expression": "m.konfiguracja(env)"
       },
       {
         "path": "src/moduly/faktury/modul.ts",
-        "sha256": "30f448e97039ca3fd5c378013c5b627b309f4ffdd2f1b500ce83c28d8df4b15e",
+        "sha256": "c7ca22f92811b96c1282028b5770890a19fad57ccae6dde3a1bb80cf72a17dc4",
         "expression": "wczytajSprzedawce(env)"
       },
       {
@@ -9070,42 +9255,42 @@
       },
       {
         "path": "src/moduly/koszty/modul.ts",
-        "sha256": "662d6467bb05f3e5582785d1ebbb7ed59f10a2c147c6364133a82c97e6f6b14e",
+        "sha256": "f209cd0ef2dac7ced4a6ec631d68e680752e77ee7d1866d36d7e8133b2e3f60d",
         "expression": "wczytajSprzedawce(env)"
       },
       {
         "path": "src/moduly/raporty/konfiguracja.ts",
-        "sha256": "466b98dee7509e00b68e5a3559c900e5875b504be4421d47084c5a4552dada30",
+        "sha256": "cc479f561ac84f811eb655cfe660e3ec53232e0478d489e9507b483f75380e18",
         "expression": "regulyHistorii(env)"
       },
       {
         "path": "src/moduly/rdzen/modul.ts",
-        "sha256": "7177bba909d8c7d9a51ecf9e5813cf8868f6ac12de3b6cd5e353e5b17cc8b718",
+        "sha256": "58fc6383e656dcb9ad7b14e3e61b1d05b31d2243b5a442230dadc23d261d4528",
         "expression": "wczytajSprzedawce(env)"
       },
       {
         "path": "src/moduly/wysylka/modul.ts",
-        "sha256": "63f0a67c1226a47be3a25f5ea3eb072bffe3760efb5519f7acbb513b651b8dab",
+        "sha256": "352d6cc874bfdb3e0e12d53b5934cbb676165094e58a1a789b41abb4f29a7b40",
         "expression": "wczytajKurierow(env)"
       },
       {
         "path": "src/moduly/zamowienia/konfiguracja.ts",
-        "sha256": "b9712960919b3ee6f835525b8a4d1e7bce99cc16998619e620cdc601756a42c8",
+        "sha256": "97be61bd00a1560381b220d6047345ceef071718085ce95155e858513cdf0c79",
         "expression": "wczytajKlientowWdt(env)"
       },
       {
         "path": "src/moduly/zamowienia/konfiguracja.ts",
-        "sha256": "b9712960919b3ee6f835525b8a4d1e7bce99cc16998619e620cdc601756a42c8",
+        "sha256": "97be61bd00a1560381b220d6047345ceef071718085ce95155e858513cdf0c79",
         "expression": "wczytajSprzedawce(env)"
       },
       {
         "path": "src/oms/bootstrap.ts",
-        "sha256": "9cfde5572f3ab5758128aa42bdf6c0df6692e15b5d404694485cffbaf9991035",
+        "sha256": "43fe658b0730f85a197ca07b21070a3c8c4c427626237cce40c136b32fb20c58",
         "expression": "sprawdzKonfiguracjeModulow(moduly,o.env)"
       },
       {
         "path": "src/oms/db/klienci.js",
-        "sha256": "8f58be5da89b0a96601931db140564466cfea6c92b3744464cf15df7fa235872",
+        "sha256": "7d4fe231718582a95c144ecc742ae4fa42e5553de75c7e1b93a171d7a2364e8d",
         "expression": "parsujKlientowZbiorczych(env)"
       }
     ],
@@ -11275,7 +11460,7 @@
     "wykluczenia": [
       {
         "nazwa": "OMS_KLIENCI_ZBIORCZY",
-        "powod": "Reader w src/domena/klient-zbiorczy.js:101 jest w statycznym domknięciu importów main (np. wiadomosci/modul.ts -> trasy/klienci.js -> oms/db/klienci.js). Jedyne wywołanie parsera w src jest w wgrajUmowyZbiorczeZKonfiguracji (oms/db/klienci.js:155-159); ten helper nie ma wywołania w src, wywołują go tylko tests/moduly/wiadomosci/umowa-zbiorcza-na-karcie.test.js. To jawne wykluczenie nieużywanego w domyślnym main historycznego importera, zgodne z D06."
+        "powod": "Reader w src/domena/klient-zbiorczy.js:116 jest w statycznym domknięciu importów main (np. wiadomosci/modul.ts -> trasy/klienci.js -> oms/db/klienci.js). Jedyne wywołanie parsera w src jest w wgrajUmowyZbiorczeZKonfiguracji (oms/db/klienci.js:155-159); ten helper nie ma wywołania w src, wywołują go tylko tests/moduly/wiadomosci/umowa-zbiorcza-na-karcie.test.js. To jawne wykluczenie nieużywanego w domyślnym main historycznego importera, zgodne z D06."
       }
     ],
     "zmienne": [
@@ -11501,7 +11686,7 @@
       {
         "nazwa": "OMS_KLIENCI_ZBIORCZY",
         "sciezkaOdczytu": [
-          "src/domena/klient-zbiorczy.js:101"
+          "src/domena/klient-zbiorczy.js:116"
         ]
       },
       {

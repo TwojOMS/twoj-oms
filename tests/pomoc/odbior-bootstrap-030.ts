@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { uruchomOms } from '../../src/main.ts';
 import { zbudujOms } from '../../src/oms/bootstrap.ts';
 import * as tokeny from '../../src/oms/allegro/tokeny.js';
+import { KLUCZ_TESTOWY } from './sejf-testowy.ts';
 
 export const OCZEKIWANE_ZEGARY = [
   ['poller', 120000], ['czuwaczKsef', 3600000], ['czuwaczArchiwumSprzedazy', 3600000],
@@ -103,7 +104,8 @@ export async function wykonajWejscie() {
       const port = (probe.address() as { port: number }).port;
       await new Promise<void>((resolve, reject) => probe!.close(e => e ? reject(e) : resolve()));
       lifecycle.signal.throwIfAborted();
-      const env = { ...lokalneEnv(), OMS_PORT: String(port) };
+      // Proces potomny nie ma sejfu domyślnego z pliku przygotowawczego vitest — klucz idzie w env jak na instalacji.
+      const env = { ...lokalneEnv(), OMS_PORT: String(port), OMS_KLUCZ_SEKRETOW: KLUCZ_TESTOWY };
       const preload = new URL('./blokada-sieci-entrypoint.mjs', import.meta.url).href;
       child = spawn(process.execPath, ['--import', preload, 'src/oms.js'], {
         cwd: process.cwd(), stdio: ['ignore', 'pipe', 'pipe'], env,

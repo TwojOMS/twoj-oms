@@ -13,6 +13,7 @@ import { createRepozytoriumKanalow } from '../../../src/moduly/kanaly/repozytori
 import { modulMagazyn } from '../../../src/moduly/magazyn/modul.ts';
 import * as karta from '../../../src/moduly/magazyn/karta.js';
 import * as lista from '../../../src/moduly/magazyn/lista.js';
+import { szyfrTestowy } from '../../pomoc/sejf-testowy.ts';
 
 vi.mock('../../../src/moduly/magazyn/karta.js', async orig => {
   const m = await orig<typeof import('../../../src/moduly/magazyn/karta.js')>();
@@ -39,7 +40,8 @@ function zbuduj({ repozytorium = true } = {}) {
     definicjeEnv: [{ klucz: 'allegro-polcien', typ: 'allegro', etykieta: 'Półcień (plik)' }] as any,
     konfiguracjaEnv: { 'allegro-polcien': { api: 'https://api.allegro.pl', od: '2026-10-01T00:00:00Z' } }, teraz: () => new Date('2026-11-14T10:00:00Z') });
   const tokeny = (kanal: string, scope: string[]) => db.prepare(`INSERT INTO tokeny_kanalu (kanal, access_token, refresh_token, wygasa_at, refresh_wygasa_at, zaktualizowane_at)
-    VALUES (?, ?, 'REFRESH-ATRAPA', '2026-11-14T11:00:00Z', '2027-01-01T00:00:00Z', '2026-11-14T10:00:00Z')`).run(kanal, jwt(scope));
+    VALUES (?, ?, ?, '2026-11-14T11:00:00Z', '2027-01-01T00:00:00Z', '2026-11-14T10:00:00Z')`).run(kanal,
+    szyfrTestowy(db, 'tokeny_kanalu', 'access_token', kanal, jwt(scope)), szyfrTestowy(db, 'tokeny_kanalu', 'refresh_token', kanal, 'REFRESH-ATRAPA'));
   const panel = (nazwa: string, srodowisko: 'produkcja' | 'sandbox', zmiana: string) => {
     const w = repo.utworzSzkic({ nazwa, odUtc: '2026-10-31T23:00:00Z', srodowisko }, aktor);
     if (!w.ok) throw new Error(w.komunikat);

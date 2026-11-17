@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { openOmsDb } from '../../src/oms/db/db.ts';
 import { createSesjaKsef } from '../../src/oms/ksef/sesja.js';
+import { jawnyTestowy } from '../pomoc/sejf-testowy.ts';
 
 const klientAtrapa = (slad) => ({
   zaloguj: async () => { slad.push('zaloguj'); return { accessToken: 'A1', accessDo: '2026-08-12T21:00:00Z', refreshToken: 'R1', refreshDo: '2026-09-12T21:00:00Z' }; },
@@ -29,7 +30,7 @@ describe('sesja KSeF', () => {
     expect(await sesja.accessToken()).toBe('A1');
     expect(slad).toEqual(['zaloguj']);
     const w = db.prepare('SELECT * FROM tokeny_ksef WHERE id = 1').get();
-    expect(w.refresh_token).toBe('R1');
+    expect(jawnyTestowy(db, 'tokeny_ksef', 'refresh_token', 1, w.refresh_token)).toBe('R1');
   });
 
   it('odswiezenie starego tokenu nie wpisuje access tokena do pary nowego, zapisanej w trakcie odswiezania', async () => {
@@ -42,7 +43,9 @@ describe('sesja KSeF', () => {
     expect(await createSesjaKsef({ db, klient: nowyKlient, teraz, odcisk: 'B' }).accessToken()).toBe('B1');
     zwolnij();
     expect(await odswiezanie).toBe('A-ODSWIEZONY');
-    expect(db.prepare('SELECT access_token, refresh_token FROM tokeny_ksef WHERE id = 1').get()).toEqual({ access_token: 'B1', refresh_token: 'RB' });
+    const w = db.prepare('SELECT access_token, refresh_token FROM tokeny_ksef WHERE id = 1').get();
+    expect({ access_token: jawnyTestowy(db, 'tokeny_ksef', 'access_token', 1, w.access_token),
+      refresh_token: jawnyTestowy(db, 'tokeny_ksef', 'refresh_token', 1, w.refresh_token) }).toEqual({ access_token: 'B1', refresh_token: 'RB' });
   });
 
   it('wazny access token uzywa sie ponownie, bez ani jednego wywolania sieci', async () => {

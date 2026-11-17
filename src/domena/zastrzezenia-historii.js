@@ -1,7 +1,7 @@
 // Zdania, ktore raport MUSI powiedziec o okresie siegajacym przed ere Apilo.
 //
-// ⚠️ TO NIE JEST OZDOBNIK. Raport za 2016 rok pokazuje 2 395 zamowien — i bez tych zdan
-// czyta sie je jako „tyle sprzedalismy". A to jest WYLACZNIE sklep A: Allegro
+// ⚠️ TO NIE JEST OZDOBNIK. Raport za rok sprzed Apilo pokazuje tysiące zamówień — i bez tych zdań
+// czyta się je jako „tyle sprzedaliśmy”. A to jest WYŁĄCZNIE jeden sklep: Allegro
 // tamtych lat nie da sie odzyskac (REST API Allegro oddaje ostatnie 12 miesiecy), hurtu
 // i telefonu nikt wtedy systemowo nie zapisywal.
 

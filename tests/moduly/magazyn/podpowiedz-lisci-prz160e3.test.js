@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
 import { definicjeKanalowHistoryczne } from '../../pomoc/kanaly-historyczne-fixture.js';
+import { szyfrTestowy } from '../../pomoc/sejf-testowy.ts';
 
 const fixture = JSON.parse(readFileSync(new URL('../../fixtures/allegro/e3-dok-slowniki.json', import.meta.url), 'utf8'));
 const adres = `/magazyn/kategorie/${encodeURIComponent('Lampy')}/allegro`;
@@ -27,7 +28,8 @@ beforeEach(async () => {
   await app.ready();
   const jwt = ['e323', Buffer.from(JSON.stringify({ scope: ['allegro:api:sale:offers:read'] })).toString('base64url'), 'atrapa'].join('.');
   db.prepare(`INSERT INTO tokeny_kanalu (kanal, access_token, refresh_token, wygasa_at, refresh_wygasa_at, zaktualizowane_at)
-    VALUES (?, ?, 'ATRAPA', '2027-01-01T00:00:00Z', '2027-01-01T00:00:00Z', '2026-11-14T10:00:00Z')`).run('allegro-polcien', jwt);
+    VALUES (?, ?, ?, '2027-01-01T00:00:00Z', '2027-01-01T00:00:00Z', '2026-11-14T10:00:00Z')`).run('allegro-polcien',
+    szyfrTestowy(db, 'tokeny_kanalu', 'access_token', 'allegro-polcien', jwt), szyfrTestowy(db, 'tokeny_kanalu', 'refresh_token', 'allegro-polcien', 'ATRAPA'));
   db.prepare('INSERT INTO kategorie_kart (nazwa, utworzona_at) VALUES (?, ?)').run('Lampy', '2026-11-14T10:00:00Z');
 });
 afterEach(async () => { await app?.close(); db?.close(); });

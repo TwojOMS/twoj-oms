@@ -84,7 +84,7 @@ export function metodaWysylkiZamowienia(surowe, mapowanie) {
   if (mapowanie && !('instancje' in mapowanie) && Object.keys(mapowanie).some((k) => /^\d+$/.test(k))) {
     throw new Error(
       'mapowanie wysyłki: podano samą mapę instancji zamiast tablicy dostaw '
-      + '({ instancje, poPozycji }) — patrz domain/mapowanie-wysylki.js',
+      + '({ instancje, poPozycji }) — patrz src/domena/mapowanie-wysylki.js',
     );
   }
   const wpis = metodaZLinii(surowe, mapowanie?.instancje)

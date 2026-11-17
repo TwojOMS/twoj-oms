@@ -13,14 +13,20 @@ Narzędzie: `deploy/klient/aktualizuj.sh` (w każdej paczce), na serwerze jako `
 | preflight | odcisk paczki = podany, treść paczki (jeden katalog, bez `..`, ścieżek absolutnych i dowiązań), `wydanie.json`, aktualizator z tej paczki, bieżące wydanie zgodne z działającym kontenerem, wersja inna niż bieżąca, miejsce na dysku, `$` w konfiguracji (ostrzeżenie) | działa |
 | `zablokowane` | trwała blokada jednej operacji (`/opt/oms/update-state/blokada`) | działa |
 | `rozpakowane` | paczka w nowym `/opt/oms/releases/oms-<12>` z odciskami plików | działa |
-| `zbudowane` | obraz `oms:<commit>`, etykieta revision = commit z `wydanie.json` | działa |
+| `zbudowane` | obraz `oms:<commit>`, etykieta revision = commit z `wydanie.json`; gdy nowe wydanie szyfruje poświadczenia w bazie — obraz nowego wydania zapewnia plik klucza `/opt/oms/config/klucz.env` i sprawdza go z bazą (odmowa `KLUCZ_POSWIADCZEN_ODMOWA` = stare wydanie pracuje dalej) | działa |
 | `zatrzymane` | `oms` i `oms-kopia` zatrzymane — żadnych zapisów | **stoi** |
-| `kopia` | kopia operacji w `/opt/oms/backups/operacje/<operacja>/`: baza (VACUUM INTO, `integrity_check`), lista migracji, `oms.env`, `kopia.env`, etykiety, proformy, `kopia.sha256` | **stoi** |
+| `kopia` | kopia operacji w `/opt/oms/backups/operacje/<operacja>/`: baza (VACUUM INTO, `integrity_check`), lista migracji, `config/nazwy-zmiennych.txt` (same nazwy zmiennych z `oms.env` i `kopia.env`, bez wartości), etykiety, proformy, `kopia.sha256`. `klucz.env` nie trafia tam nigdy | **stoi** |
 | `uruchomione` | nowe wydanie wstaje na swoim obrazie; `/health` 200, wersja w `/health` i `/app/wydanie.json` = commit | **stoi** do zdrowego startu |
 | `czeka_na_akceptacje` | `NEEDS_ACCEPT` — nowe wydanie pracuje, blokada trzyma | działa (nowe) |
 
 Błąd przed zatrzymaniem: blokada zdjęta, nic się nie zmieniło. Błąd w kopii: stare wydanie wraca
 samo, blokada zdjęta, baza nietknięta. Błąd od startu nowego wydania: blokada zostaje — `recover`.
+
+Konfiguracji kopia operacji nie przechowuje — `recover` jej nie przywraca. Kopie operacji zrobione
+starszym aktualizatorem (sprzed `nazwy-zmiennych.txt`) mają jeszcze w katalogu `config/` pełne pliki
+`oms.env` i `kopia.env`. Nic ich nie przepisuje: znikają z retencją, po dwóch kolejnych
+zaakceptowanych aktualizacjach (kopia z odłożoną bazą `po-kandydacie-*` zostaje do ręcznego usunięcia).
+Do tego czasu katalog `/opt/oms/backups/operacje` traktuj jak katalog z hasłami.
 
 ⚠️ **Ograniczenie V0:** nowe wydanie startuje z działającymi integracjami (pollery Allegro/sklepów,
 czuwacze). Podczas odbioru może pobrać zamówienia i zapisać je w bazie.
@@ -84,7 +90,8 @@ Zapisz `operacja` — `accept` i `recover` przyjmują wyłącznie ją.
    obrazie, `revision` = nowy commit, `zdrowie: HTTP=200 wersja=<nowy commit>`.
 2. `/health` w przeglądarce (`http://adres:3001/health`): `alarmy` — te same co przed aktualizacją
    (alarm kopii lub kanału, który był wcześniej, nie jest winą wydania); nowy alarm = STOP.
-3. Logowanie własnym kontem; lista zamówień — ta sama liczba co przed (plus nowe z pollerów);
+3. Logowanie własnym kontem (po pierwszej aktualizacji do wydania szyfrującego poświadczenia każdy loguje
+   się od nowa — to oczekiwane); lista zamówień — ta sama liczba co przed (plus nowe z pollerów);
    karta jednego zamówienia; podgląd istniejącej proformy i etykiety; Ustawienia → Zespół i dostęp → Użytkownicy.
 4. `sudo sh /opt/oms/aktualizuj.sh compose logs --since 15m oms` — brak nowych błędów.
 5. Gdy coś budzi wątpliwość: `cd ~ && sudo sh /opt/oms/releases/oms-<12>/deploy/klient/diagnostyka.sh`
@@ -95,7 +102,7 @@ Zapisz `operacja` — `accept` i `recover` przyjmują wyłącznie ją.
 | decyzja | polecenie | skutek |
 |---|---|---|
 | zostaje nowe | `sudo sh /opt/oms/aktualizuj.sh accept <operacja>` | wskaźnik bieżącego wydania przesunięty (zmiana nazwy pliku — atomowa), blokada zdjęta; zostają 2 poprzednie wydania i 2 ostatnie kopie operacji, starsze obrazy i cache budowania starszy niż 7 dni usunięte |
-| powrót | `sudo sh /opt/oms/aktualizuj.sh recover <operacja>` | poprzednie wydanie na swoim obrazie, ta sama baza; jeśli nowe wydanie wykonało migracje, aktualizator to wypisuje (`MIGRACJE kandydat zmienił listę migracji`) |
+| powrót | `sudo sh /opt/oms/aktualizuj.sh recover <operacja>` | poprzednie wydanie na swoim obrazie, ta sama baza; jeśli nowe wydanie wykonało migracje, aktualizator to wypisuje (`MIGRACJE kandydat zmienił listę migracji`); gdy poprzednie wydanie nie zna szyfrowania poświadczeń, najpierw je odszyfrowuje (sekcja „Poświadczenia szyfrowane w bazie”) |
 | powrót z bazą sprzed aktualizacji | `sudo sh /opt/oms/aktualizuj.sh recover <operacja> --przywroc-baze` | jak wyżej + baza z kopii operacji (konfiguracja zostaje — aktualizacja jej nie zmienia); **gubi wszystko zapisane po zatrzymaniu** (zamówienia pobrane w czasie odbioru, nadania, faktury). Obecna baza zostaje w `…/operacje/<operacja>/po-kandydacie-<czas>/`; powtórzony `--przywroc-baze` jej nie rusza |
 
 Dlaczego domyślnie bez przywracania bazy: migracje od 0002 są wyłącznie addytywne (kontrola
@@ -128,9 +135,66 @@ zatrzymany przez aktualizację OMS stoi, dopóki operator nie zdecyduje.
 | `blokada: BEZ STANU` | przerwanie w chwili zakładania blokady | `recover nieznana` |
 | `proces … aktualizatora DZIAŁA` | deploy jeszcze pracuje (np. build) | czekać; `recover` w tym czasie odmawia |
 | `UWAGA: działa inny obraz niż bieżące wydanie` | ktoś uruchomił `docker compose` w katalogu starego wydania | `sudo sh /opt/oms/aktualizuj.sh compose up -d` |
+| `KLUCZ_POSWIADCZEN_ODMOWA` | przed zatrzymaniem: brak pliku klucza przy zaszyfrowanej bazie, plik pusty albo ucięty, klucz niezgodny z bazą | blokady nie ma, działa stare wydanie; przyczyna w wierszu nad odmową; klucz z menedżera haseł — `docs/instalacja-docker.md`, rozdział „Klucz poświadczeń” |
+| `ODSZYFROWANIE_NIEUDANE` | `recover` na wydanie sprzed szyfrowania nie odszyfrował bazy | blokada zostaje, stare wydanie nie startuje; popraw klucz w `/opt/oms/config/klucz.env` i `recover <op>` jeszcze raz, albo `recover <op> --przywroc-baze` (gubi zapisy z okna odbioru) |
+| `BRAK_KONWERTERA`, `FORMAT_BEZ_KONWERTERA` | obraz nowego wydania zniknął albo baza ma format, którego poprzednie wydanie nie zna i nie ma do niego konwertera | nic nie zatrzymano; `recover <op> --przywroc-baze` (gubi zapisy z okna odbioru) |
+| `typ=sekrety` w stanie blokady | przerwane polecenie `aktualizuj.sh sekrety …` zmieniające bazę; OMS stoi | ponów to polecenie albo `recover <op>` (zdejmuje tylko blokadę), potem `compose up -d` |
 
 ⛔ Nie usuwać ręcznie `/opt/oms/update-state/blokada`, nie zmieniać `biezace`, nie wybierać obrazu po
 nazwie. Ręczna zmiana stanu to ostateczność po `status` i `diagnostyka.sh`, nie decyzja na ślepo.
+
+## Poświadczenia szyfrowane w bazie
+
+Od wydania z polem `formatSekretow` w `wydanie.json` poświadczenia integracji są szyfrowane w bazie
+kluczem z `/opt/oms/config/klucz.env`. Opis klucza, kopii i odtwarzania: `docs/instalacja-docker.md`,
+rozdział „Klucz poświadczeń”.
+
+**Pierwsza aktualizacja do wydania szyfrującego.** Na etapie `zbudowane`, gdy stare wydanie jeszcze
+pracuje, `deploy` zakłada klucz (`KLUCZ_UTWORZONY id …`). Przy istniejącym pliku sprawdza go z bazą
+(`KLUCZ_ZGODNY id …`); odmowa = stare wydanie pracuje dalej. Nowe wydanie przy pierwszym starcie:
+
+- szyfruje poświadczenia zapisane w bazie jawnie, jedną transakcją;
+- wymienia sekret sesji — wszyscy logują się od nowa;
+- przepakowuje plik bazy, żeby nie zostały w nim stare wartości (baza 1 GB: 12,6 s, pomiar 17.11.2026;
+  potrzeba wolnego miejsca do dwóch rozmiarów bazy — bez niego start trwa dalej, a `/health` ma uwagę).
+
+Po udanym starcie wynik ma wiersz `KLUCZ_POSWIADCZEN /opt/oms/config/klucz.env id …`. Zapisz zawartość
+tego pliku w menedżerze haseł, z id i datą, jeszcze przed `accept`. Kopie zrobione przed tą
+aktualizacją (dzienne, na nośniku, kopia operacji) mają poświadczenia jawne i znikają z retencją:
+dzienne po 14 dniach, na nośniku po 30 kopiach, kopie operacji po dwóch kolejnych aktualizacjach.
+
+**Powrót a format danych.** `recover` decyduje po stanie bazy, nie po numerach wydań:
+
+- poprzednie wydanie nie zna szyfrowania, baza zostaje (bez `--przywroc-baze`) — po zatrzymaniu OMS-u
+  obraz nowego wydania odszyfrowuje poświadczenia (`ODSZYFROWANE wartości: N`), potem startuje stare
+  wydanie. Odszyfrowanie można powtarzać: powtórny `recover` po przerwaniu jest bezpieczny;
+- `ODSZYFROWANIE_NIEUDANE` — blokada zostaje, stare wydanie nie startuje (nie odczytałoby bazy).
+  Popraw przyczynę (zwykle klucz w `klucz.env`) i `recover <op>` jeszcze raz; albo
+  `recover <op> --przywroc-baze`, który gubi zapisy z okna odbioru;
+- `--przywroc-baze` — baza wraca z kopii operacji, w formacie poprzedniego wydania; odszyfrowanie
+  nie jest potrzebne;
+- baza w formacie, którego poprzednie wydanie nie zna, a konwertera nie ma (`FORMAT_BEZ_KONWERTERA`)
+  — odmowa, zanim cokolwiek się zatrzyma.
+
+`klucz.env` po powrocie zostaje na miejscu. Następna aktualizacja do wydania szyfrującego go użyje
+i znów zaszyfruje bazę — znów z wymianą sekretu sesji.
+
+**Polecenia `aktualizuj.sh sekrety …`** (pełna tabela: `docs/instalacja-docker.md`, rozdział
+„Klucz poświadczeń”):
+
+- odczyt — `stan`, `sprawdz`, `porzuc` bez potwierdzenia: bez blokady i bez zatrzymywania OMS-u;
+- zapis bazy — `odszyfruj`, `sprzataj`, `porzuc --potwierdz …`, `porzuc --potwierdz-wszystkie`,
+  `porzuc --nowy-klucz …`: tylko przy zatrzymanym OMS-ie. Przy pracującym — odmowa `SEKRETY_OMS_DZIALA`
+  z podpowiedzią: `sudo sh /opt/oms/aktualizuj.sh compose stop oms kopia`, polecenie,
+  `sudo sh /opt/oms/aktualizuj.sh compose up -d`;
+- ścieżkę pliku klucza ustala aktualizator (`--plik` jest odrzucane); `--baza` tylko przy odczycie —
+  plik spoza `/opt/oms/data` jest montowany tylko do odczytu;
+- przy niezamkniętej operacji polecenie używa obrazu nowego wydania zapisanego w stanie operacji:
+  po nieudanej aktualizacji wskaźnik pokazuje stare wydanie, które narzędzia może nie mieć.
+  `NARZEDZIE_SEKRETOW_NIEDOSTEPNE` — obraz nie ma narzędzia (wydanie sprzed szyfrowania).
+
+`diagnostyka.sh` ma wiersz o `klucz.env`: czy jest, czy należy do użytkownika 10001 i ma tryb 600 —
+bez wartości klucza.
 
 ## Czego V0 nie ma
 

@@ -9,6 +9,8 @@
 #                                                  config/produkcja.env do uzupełnienia, drugi raz przełącza
 #   sudo sh /opt/oms/aktualizuj.sh zdrowie        pełna odpowiedź /health (alarmy z nazwami zmiennych, bez wartości)
 #   sudo sh /opt/oms/aktualizuj.sh link-hasla [LOGIN]   odzyskanie hasła administratora (bez loginu: lista)
+#   sudo sh /opt/oms/aktualizuj.sh sekrety <polecenie> [arg…]   narzędzie poświadczeń w bazie (scripts/sekrety.mjs):
+#                                                  stan, sprawdz [--baza <plik>], klucz-zapewnij, odszyfruj, porzuc, sprzataj
 # Instrukcja: docs/aktualizacja-klienta-v0.md. Semantyka według docs/prz050-aktualizator-plan.md
 # i runnera produkcji deploy/nas/oms-release-remote.sh (deploy → NEEDS_ACCEPT → accept | recover).
 #
@@ -16,9 +18,12 @@
 #   /opt/oms/update-state/biezace   nazwa bieżącego wydania (oms-<12 znaków commita>), zmiana przez mv
 #   /opt/oms/update-state/blokada/  blokada JEDNEJ operacji (mkdir jest atomowy), w niej plik stan
 #   /opt/oms/update-state/historia  dziennik operacji (bez sekretów)
-#   /opt/oms/backups/operacje/<op>/ kopia operacji: baza (VACUUM INTO), lista migracji, oms.env, pliki
+#   /opt/oms/backups/operacje/<op>/ kopia operacji: baza (VACUUM INTO), lista migracji, NAZWY zmiennych konfiguracji
+#                                   (bez wartości), pliki. Klucz poświadczeń (config/klucz.env) nie trafia tam nigdy.
 # Etapy deploy: zablokowane → rozpakowane → zbudowane → zatrzymane → kopia → uruchomione → czeka_na_akceptacje.
 # Do etapu „zbudowane” pracuje stare wydanie (przerwy nie ma); od „zatrzymane” do zdrowego kandydata panel stoi.
+# Wydanie znające poświadczenia szyfrowane w bazie (wydanie.json: formatSekretow ≥ 1): na etapie „zbudowane”, zanim
+# stare stanie, obraz kandydata zapewnia plik klucza i sprawdza go z bazą — odmowa = stare wydanie pracuje dalej.
 set -eu
 umask 022
 
@@ -40,6 +45,9 @@ RELEASES="$OMS/releases"
 OPERACJE="$OMS/backups/operacje"
 PRODUKCJA_ENV="$OMS/config/produkcja.env"
 ARCHIWA="$OMS/proba-archiwum"
+# Klucz poświadczeń w bazie: osobny plik, ten sam dla próby i pracy; nie jest przenoszony, archiwizowany ani kopiowany.
+KLUCZ_ENV="$OMS/config/klucz.env"
+NARZEDZIE=/app/scripts/sekrety.mjs
 SKRYPT=$0
 
 fail() { echo "$1" >&2; exit 1; }
@@ -138,6 +146,66 @@ ostrzez_dolar() {
 
 wymagaj_roota() {
   [ "$(id -u)" = 0 ] || [ -n "${OMS_AKT_BEZ_ROOTA:-}" ] || fail 'URUCHOM_PRZEZ_SUDO'
+}
+
+# --- poświadczenia w bazie (PRZ-182) ------------------------------------------------------------
+
+# Format poświadczeń w bazie, który zna wydanie: pole formatSekretow w jego wydanie.json (paczka zapisuje je z pakowanego
+# commita); brak pola = 0, wydanie sprzed szyfrowania.
+format_wydania() {
+  fw=$(sed -n 's/.*"formatSekretow": *\([0-9]\{1,\}\).*/\1/p' "$RELEASES/$1/wydanie.json" 2>/dev/null | head -n 1)
+  echo "${fw:-0}"
+}
+
+# Obraz istnieje i ma narzędzie poświadczeń.
+ma_narzedzie() {
+  [ -n "$1" ] && [ -n "$(id_obrazu "$1")" ] \
+    && "$DOCKER" run --rm --network none --entrypoint test "$1" -f "$NARZEDZIE" >/dev/null 2>&1
+}
+
+# Plik klucza: właściciel 10001, tryb 600. Sam tryb nie wystarczy — plik wstawiony przez roota byłby nieczytelny dla OMS-u.
+popraw_plik_klucza() {
+  [ -f "$KLUCZ_ENV" ] || return 0
+  chown "$UID_OMS:$UID_OMS" "$KLUCZ_ENV" 2>/dev/null || [ "$(id -u)" != 0 ] || return 1
+  chmod 600 "$KLUCZ_ENV"
+}
+
+# Narzędzie poświadczeń: sekrety_w_obrazie <obraz> <config 0|1> <polecenie> [arg…]. Bez sieci, jako 10001. Klucz przez
+# --env-file (czyta go Docker jako root — działa bez względu na właściciela pliku). Katalog danych bez :ro: zmierzone
+# 17.11 (node:sqlite, Node 24) — zamknięta baza WAL bez plików -wal/-shm w katalogu tylko do odczytu nie otwiera się
+# nawet w trybie readOnly, a polecenia odczytu chodzą też przy zatrzymanym OMS-ie; narzędzie w poleceniach odczytu
+# samo otwiera bazę tylko do odczytu. config=1 — katalog konfiguracji do zapisu pliku klucza. SW_KATALOG — katalog
+# sprawdzanego pliku spoza danych (kopia do odtworzenia), tylko do odczytu, w kontenerze /sprawdzana.
+sekrety_w_obrazie() {
+  sw_obraz=$1; sw_config=$2; shift 2
+  set -- --entrypoint node "$sw_obraz" "$NARZEDZIE" "$@"
+  if [ -n "${SW_KATALOG:-}" ]; then set -- -v "$SW_KATALOG:/sprawdzana:ro" "$@"; fi
+  if [ "$sw_config" = 1 ]; then set -- -v "$OMS/config:/opt/oms/config" "$@"; fi
+  if [ -f "$KLUCZ_ENV" ]; then set -- --env-file "$KLUCZ_ENV" "$@"; fi
+  "$DOCKER" run --rm --network none --user "$UID_OMS:$UID_OMS" -v "$OMS/data:/opt/oms/data" "$@"
+}
+
+# Plik klucza obrazem $1 (klucz-zapewnij: istniejący — walidacja, brak — nowy, odmowa przy szyfrogramach bez pliku),
+# a przy istniejącym pliku — sprawdz z bazą (sama obecność pliku to za mało). Ustawia KLUCZ_ID i KLUCZ_NOWY.
+zapewnij_klucz() {
+  popraw_plik_klucza || { echo "KLUCZ_PLIK_NIEPOPRAWIONY: $KLUCZ_ENV (chown $UID_OMS, chmod 600)" >&2; return 1; }
+  zk_wynik=$(sekrety_w_obrazie "$1" 1 klucz-zapewnij --plik /opt/oms/config/klucz.env --baza /opt/oms/data/oms.sqlite 2>&1) \
+    || { printf '%s\n' "$zk_wynik" >&2; return 1; }
+  popraw_plik_klucza || { echo "KLUCZ_PLIK_NIEPOPRAWIONY: $KLUCZ_ENV (chown $UID_OMS, chmod 600)" >&2; return 1; }
+  KLUCZ_ID=$(printf '%s\n' "$zk_wynik" | sed -n -e 's/^KLUCZ_ISTNIEJE id \([0-9a-f]\{8\}\).*/\1/p' -e 's/^KLUCZ_UTWORZONY id \([0-9a-f]\{8\}\).*/\1/p' | head -n 1)
+  [ -n "$KLUCZ_ID" ] || { printf '%s\n' "$zk_wynik" >&2; echo 'KLUCZ_BEZ_ID: narzędzie nie podało id klucza' >&2; return 1; }
+  KLUCZ_NOWY=0
+  case "$zk_wynik" in *KLUCZ_UTWORZONY*) KLUCZ_NOWY=1; echo "KLUCZ_UTWORZONY id $KLUCZ_ID" ;; esac
+  if [ "$KLUCZ_NOWY" = 0 ]; then
+    zk_wynik=$(sekrety_w_obrazie "$1" 0 sprawdz --baza /opt/oms/data/oms.sqlite 2>&1) || { printf '%s\n' "$zk_wynik" >&2; return 1; }
+    echo "KLUCZ_ZGODNY id $KLUCZ_ID"
+  fi
+}
+
+# Żywy proces aktualizatora o tym pid (inny niż bieżący).
+proces_aktualizatora() {
+  [ -n "$1" ] && [ "$1" != "$$" ] && kill -0 "$1" 2>/dev/null \
+    && tr '\0' ' ' < "/proc/$1/cmdline" 2>/dev/null | grep -q aktualizuj
 }
 
 # Bieżące wydanie: wskaźnik, a bez niego (instalacja sprzed aktualizatora) — etykieta działającego kontenera.
@@ -285,6 +353,18 @@ deploy() {
   stan_ustaw etap zbudowane
   echo "ZBUDOWANE obraz=$CEL_OBRAZ"
 
+  # Klucz poświadczeń obrazem kandydata, gdy stare wydanie jeszcze pracuje: odmowa = przerwy nie ma.
+  CEL_FORMAT=$(format_wydania "$CEL_WYD")
+  stan_ustaw cel_format "$CEL_FORMAT"
+  stan_ustaw baza_format "$(format_wydania "$BAZA_WYD")"
+  KLUCZ_ID=
+  if [ "$CEL_FORMAT" -ge 1 ]; then
+    ma_narzedzie "$CEL_OBRAZ" || fail "NARZEDZIE_SEKRETOW_BRAK_W_OBRAZIE: $CEL_WYD zna format poświadczeń $CEL_FORMAT, a obraz nie ma $NARZEDZIE"
+    zapewnij_klucz "$CEL_OBRAZ" || fail "KLUCZ_POSWIADCZEN_ODMOWA — $BAZA_WYD pracuje dalej. Plik klucza: $KLUCZ_ENV (docs/instalacja-docker.md, rozdział „Klucz poświadczeń”)"
+    stan_ustaw klucz_id "$KLUCZ_ID"
+    stan_ustaw klucz_nowy "$KLUCZ_NOWY"
+  fi
+
   # Okno przerwy: OMS i pętla kopii stoją — żadnych zapisów do bazy.
   t_stop=$(date +%s)
   stan_ustaw etap zatrzymane
@@ -308,8 +388,11 @@ deploy() {
   for k in proformy etykiety; do
     if [ -d "$OMS/data/$k" ]; then cp -a "$OMS/data/$k" "$OPDIR/pliki/" || fail "KOPIA_OPERACJI_PLIKI_NIEUDANA: $k"; fi
   done
+  # Konfiguracji nie kopiujemy (recover jej nie przywraca) — tylko nazwy zmiennych, bez wartości. klucz.env nigdy.
   for f in oms.env kopia.env; do
-    if [ -f "$OMS/config/$f" ]; then cp -p "$OMS/config/$f" "$OPDIR/config/$f" || fail "KOPIA_OPERACJI_KONFIGURACJA_NIEUDANA: $f"; fi
+    [ -f "$OMS/config/$f" ] || continue
+    sed -e 's/\r$//' -n -e "s/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/$f \1/p" "$OMS/config/$f" >> "$OPDIR/config/nazwy-zmiennych.txt" \
+      || fail "KOPIA_OPERACJI_KONFIGURACJA_NIEUDANA: $f"
   done
   (cd "$OPDIR" && find . -type f ! -name kopia.sha256 -exec sha256sum {} + | sort -k 2 > kopia.sha256)
   stan_ustaw etap kopia
@@ -324,6 +407,10 @@ deploy() {
   trap - EXIT INT TERM HUP
   historia "$OP NEEDS_ACCEPT $CEL_WYD obraz=$CEL_OBRAZ przerwa=${przerwa}s"
   echo "zdrowie: $ZDROWIE"
+  if [ -n "$KLUCZ_ID" ]; then
+    echo "KLUCZ_POSWIADCZEN $KLUCZ_ENV id $KLUCZ_ID — zapisz zawartość tego pliku w menedżerze haseł (sudo cat $KLUCZ_ENV), z id i datą. Bez niego kopia bazy nie odda podłączonych integracji."
+    [ "$KLUCZ_NOWY" != 1 ] || echo "  Klucz utworzony przy tej aktualizacji. Nie kasuj go razem z konfiguracją; kopie bazy od teraz go wymagają."
+  fi
   echo "NEEDS_ACCEPT operacja=$OP cel=$CEL_COMMIT obraz=$CEL_OBRAZ przerwa_s=$przerwa"
   echo "Odbiór: docs/aktualizacja-klienta-v0.md. Potem: sudo sh $SKRYPT accept $OP  albo  sudo sh $SKRYPT recover $OP"
 }
@@ -361,6 +448,11 @@ accept() {
   ustaw_wskaznik "$CEL_WYD"
   historia "$OP ACCEPT $BAZA_WYD -> $CEL_WYD obraz=$CEL_OBRAZ"
   retencja "$CEL_WYD"
+  if [ "$(stan_pole typ)" = produkcja ] && [ -n "$(stan_pole archiwum)" ]; then
+    # Kopia produkcja.env w archiwum służy tylko powrotowi do próby (recover); po accept powrotu nie ma, a ta sama
+    # treść pracuje jako config/oms.env. Konfiguracja próby (config/oms.env archiwum) zostaje do decyzji operatora.
+    rm -f "$(stan_pole archiwum)/config/produkcja.env"
+  fi
   zdejmij_blokade
   echo "ACCEPTED operacja=$OP wydanie=$CEL_WYD obraz=$CEL_OBRAZ"
 }
@@ -391,6 +483,30 @@ retencja() {
 
 # --- recover -----------------------------------------------------------------------------------
 
+# Powrót a format poświadczeń w bazie — po stanie bazy, nie po różnicy wersji: kandydat mógł nie zdążyć skonwertować
+# bazy, a odszyfrowanie mogło się już udać przed przerwaniem. Baza z kopii operacji ma format wydania bazowego.
+# Wydanie bazowe zna format 0 → odszyfrowanie obrazem kandydata (ODSZYFRUJ=1; idempotentne). Wydanie bazowe zna
+# format ≥ 1, a baza ma wyższy → odmowa: konwerter jest tylko do formatu 0 (przyszłe 2 → 1 wymaga konwertera do
+# formatu 1, nie zamiany bazy na tekst jawny).
+decyzja_formatu() {
+  if [ -n "$PRZYWROC" ] || [ "$(stan_pole baza_przywrocona)" = 1 ]; then return 0; fi
+  bf=$(format_wydania "$BAZA_WYD"); cf=$(format_wydania "$CEL_WYD")
+  CEL_OBRAZ=$(stan_pole cel_obraz)
+  zostaje="zapisy po $(stan_pole zatrzymane_czas) (zamówienia, nadania, faktury z okna odbioru) znikną z OMS"
+  if [ "$bf" -eq 0 ]; then
+    if ma_narzedzie "$CEL_OBRAZ"; then ODSZYFRUJ=1; return 0; fi
+    [ "$cf" -ge 1 ] || return 0 # oba wydania sprzed szyfrowania
+    fail "BRAK_KONWERTERA: obraz kandydata ${CEL_OBRAZ:-?} niedostępny albo bez $NARZEDZIE — $BAZA_WYD nie odczyta bazy zapisanej przez $CEL_WYD. Nic nie zatrzymano. Powrót z kopią operacji: sudo sh $SKRYPT recover $OP --przywroc-baze — UWAGA: $zostaje"
+  fi
+  [ "$cf" -gt "$bf" ] || return 0
+  ma_narzedzie "$CEL_OBRAZ" || fail "FORMAT_BEZ_KONWERTERA: nie da się odczytać formatu bazy (obraz kandydata ${CEL_OBRAZ:-?} bez $NARZEDZIE). Nic nie zatrzymano. Powrót z kopią operacji: sudo sh $SKRYPT recover $OP --przywroc-baze — UWAGA: $zostaje"
+  df_stan=$(sekrety_w_obrazie "$CEL_OBRAZ" 0 stan --baza /opt/oms/data/oms.sqlite 2>&1) \
+    || { printf '%s\n' "$df_stan" >&2; fail "FORMAT_BEZ_KONWERTERA: nie odczytano formatu bazy. Nic nie zatrzymano. Powrót z kopią operacji: sudo sh $SKRYPT recover $OP --przywroc-baze — UWAGA: $zostaje"; }
+  fb=$(printf '%s\n' "$df_stan" | sed -n 's/^format: \([0-9]\{1,\}\) .*/\1/p' | head -n 1)
+  [ "${fb:-0}" -gt "$bf" ] || return 0
+  fail "FORMAT_BEZ_KONWERTERA: baza w formacie poświadczeń $fb, $BAZA_WYD zna format $bf; aktualizator ma konwerter tylko do formatu 0. Nic nie zatrzymano. Powrót z kopią operacji: sudo sh $SKRYPT recover $OP --przywroc-baze — UWAGA: $zostaje"
+}
+
 recover() {
   OP=$1; PRZYWROC=${2:-}
   wymagaj_roota
@@ -403,6 +519,15 @@ recover() {
   valid_op "$OP" || fail 'NIEPRAWIDLOWA_OPERACJA'
   wymagaj_operacji "$OP"
   etap=$(stan_pole etap)
+  if [ "$(stan_pole typ)" = sekrety ]; then
+    # Przerwane polecenie narzędzia poświadczeń: transakcja w bazie albo się zapisała, albo nie — zostaje sama blokada.
+    [ -z "$PRZYWROC" ] || fail 'OPCJA_NIE_DOTYCZY_NARZEDZIA — recover narzędzia poświadczeń zdejmuje tylko blokadę'
+    pol=$(stan_pole polecenie)
+    zdejmij_blokade
+    historia "$OP RECOVER narzędzie poświadczeń (polecenie $pol) — blokada zdjęta"
+    echo "RECOVERED operacja=$OP — blokada narzędzia poświadczeń zdjęta; stan bazy: sudo sh $SKRYPT sekrety stan; OMS jest zatrzymany: sudo sh $SKRYPT compose up -d"
+    return 0
+  fi
   BAZA_WYD=$(stan_pole baza_wydanie); BAZA_COMMIT=$(stan_pole baza_commit); BAZA_OBRAZ=$(stan_pole baza_obraz)
   if [ "$(stan_pole typ)" = produkcja ]; then
     [ "$PRZYWROC" != --przywroc-baze ] || fail 'PRZYWROC_BAZE_NIE_DOTYCZY_PRZEJSCIA — recover przejścia zawsze wraca do bazy próby z archiwum'
@@ -415,6 +540,10 @@ recover() {
     fail "AKCEPTACJA_JUZ_ZAPISANA — bieżące jest $CEL_WYD; dokończ: sudo sh $SKRYPT accept $OP"
   fi
   [ -n "$(id_obrazu "$BAZA_OBRAZ")" ] || fail "BRAK_OBRAZU_POPRZEDNIEGO_WYDANIA $BAZA_OBRAZ"
+  # Poświadczenia w bazie: decyzja po stanie bazy, sprawdzona ZANIM cokolwiek się zatrzyma.
+  ODSZYFRUJ=0
+  if [ "$etap" = przywracanie ]; then przed=$(stan_pole etap_przed); else przed=$etap; fi
+  case "$przed" in zablokowane|rozpakowane|zbudowane) ;; *) decyzja_formatu ;; esac
   stan_ustaw pid "$$"
   [ "$etap" = przywracanie ] || stan_ustaw etap_przed "$etap"
   przed=$(stan_pole etap_przed)
@@ -463,6 +592,15 @@ recover() {
           # Konfiguracji nie przywracamy: aktualizacja jej nie zmienia, a poprawka z okna odbioru by zniknęła.
           historia "$OP PRZYWROCONO_BAZE z $OPDIR (obecna w $odlozona)"
         fi
+      fi
+      if [ "$ODSZYFRUJ" = 1 ]; then
+        # Idempotentne: baza bez szyfrogramów i bez znacznika = sukces bez zmian, więc powtórny recover jest bezpieczny.
+        wynik=$(sekrety_w_obrazie "$CEL_OBRAZ" 0 odszyfruj --baza /opt/oms/data/oms.sqlite 2>&1) || {
+          printf '%s\n' "$wynik" >&2
+          fail "ODSZYFROWANIE_NIEUDANE — blokada zostaje, $BAZA_WYD nie startuje (nie odczyta poświadczeń zaszyfrowanych przez $CEL_WYD). Popraw przyczynę (klucz w $KLUCZ_ENV) i ponów: sudo sh $SKRYPT recover $OP. Albo powrót z kopią operacji: sudo sh $SKRYPT recover $OP --przywroc-baze — UWAGA: zapisy po $(stan_pole zatrzymane_czas) (zamówienia, nadania, faktury z okna odbioru) znikną z OMS."
+        }
+        echo "$wynik"
+        historia "$OP ODSZYFROWANO poświadczenia obrazem $CEL_OBRAZ ($(printf '%s' "$wynik" | tail -n 1))"
       fi
       uruchom_wydanie "$BAZA_WYD" "$BAZA_COMMIT" "$BAZA_OBRAZ" || fail "POWROT_NIEUDANY — blokada zostaje (etap przywracanie); sprawdź dziennik i ponów recover $OP" ;;
   esac
@@ -794,7 +932,9 @@ status() {
       echo "  proces $pid aktualizatora DZIAŁA — operacja w toku, poczekaj"
     else
       echo "  proces aktualizatora nie działa (zakończony, przerwany albo restart maszyny) — nic nie wznowi się samo"
-      if [ "$(stan_pole typ)" = produkcja ]; then
+      if [ "$(stan_pole typ)" = sekrety ]; then
+        echo "  dalej: ponów \`sekrety $(stan_pole polecenie) …\` (narzędzie poświadczeń, przerwane) albo zdejmij blokadę: recover $op; OMS jest zatrzymany"
+      elif [ "$(stan_pole typ)" = produkcja ]; then
         case "$(stan_pole etap)" in
           czeka_na_akceptacje) echo "  dalej: odbiór pracy, potem accept $op albo powrót do próby: recover $op" ;;
           akceptowanie) echo "  dalej: accept $op (dokończenie)" ;;
@@ -830,6 +970,123 @@ compose_biezace() {
   compose_w "$w" "$@"
 }
 
+# --- sekrety: narzędzie poświadczeń w bazie (scripts/sekrety.mjs) --------------------------------
+# Odczyt (stan, sprawdz, podgląd porzuc): bez blokady, bez migracji, bez usług Compose.
+# Zapis bazy (odszyfruj, sprzataj, porzuc --potwierdz… / --potwierdz-wszystkie / --nowy-klucz): pod blokadą operacji
+# i przy zatrzymanym OMS-ie — pracujący OMS = odmowa, bez opcji wymuszenia (transakcja narzędzia nie chroni przed
+# spóźnionym zapisem pollera po jej zakończeniu); kontener kopii zatrzymuje zatrzymaj_oms. Trwająca operacja
+# aktualizatora (np. nieudany deploy) — polecenie idzie pod jej blokadą; bez operacji — pod własną (typ=sekrety).
+# Plik klucza zawsze $KLUCZ_ENV (klucz-zapewnij, porzuc --nowy-klucz), właściciel 10001, tryb 600.
+# Obraz: trwająca operacja → kandydat ze stanu (po nieudanej aktualizacji wskaźnik pokazuje wydanie bez narzędzia),
+# inaczej bieżące wydanie. Obraz i narzędzie sprawdzane, zanim cokolwiek się zatrzyma.
+UZYCIE_SEKRETY='Uzycie: aktualizuj.sh sekrety stan | sprawdz [--baza <plik kopii>] | klucz-zapewnij | odszyfruj | porzuc [--potwierdz <nazwa>… | --potwierdz-wszystkie] [--nowy-klucz] | sprzataj'
+
+obraz_narzedzia() {
+  if [ -d "$BLOKADA" ] && [ -s "$STAN" ]; then
+    on=$(stan_pole cel_obraz); [ -n "$on" ] || on=$(stan_pole baza_obraz)
+    echo "$on"; return 0
+  fi
+  if [ -s "$WSKAZNIK" ]; then
+    ow=$(cat "$WSKAZNIK")
+    on=$(cat "$RELEASES/$ow/.obraz" 2>/dev/null || true)
+    [ -n "$on" ] || on=$(id_obrazu "oms:$(commit_wydania "$ow")")
+    echo "$on"; return 0
+  fi
+  on=$(obraz_kontenera oms)
+  if [ -z "$on" ]; then
+    # Instalacja bez wskaźnika i kontenera (np. odtwarzanie na pustym serwerze): tylko gdy wydanie jest jedno.
+    ow=$(ls -1 "$RELEASES" 2>/dev/null | grep '^oms-' || true)
+    if [ "$(printf '%s\n' "$ow" | grep -c .)" -eq 1 ]; then on=$(id_obrazu "oms:$(commit_wydania "$ow")"); fi
+  fi
+  echo "$on"
+}
+
+sekrety_narzedzie() {
+  wymagaj_roota
+  [ "$#" -ge 1 ] || fail "$UZYCIE_SEKRETY"
+  pol=$1; shift
+  rodzaj=odczyt; config=0
+  case "$pol" in
+    stan|sprawdz|porzuc) ;;
+    odszyfruj|sprzataj) rodzaj=zapis ;;
+    klucz-zapewnij) rodzaj=plik; config=1 ;;
+    *) fail "$UZYCIE_SEKRETY" ;;
+  esac
+  # Argumenty: --plik ustala aktualizator; --baza (tylko odczyt) może wskazać plik kopii spoza katalogu danych.
+  SW_KATALOG=; baza=0; nastepna=0; n=$#
+  for a in "$@"; do
+    if [ "$nastepna" = 1 ]; then
+      nastepna=0
+      [ "$rodzaj" = odczyt ] || fail "SEKRETY_BAZA_TYLKO_ODCZYT: polecenia zapisu działają na bazie OMS-u ($OMS/data/oms.sqlite)"
+      [ -f "$a" ] || fail "SEKRETY_BRAK_PLIKU_BAZY: $a"
+      kat=$(cd "$(dirname "$a")" && pwd -P)
+      if [ "$kat/$(basename "$a")" = "$(cd "$OMS/data" 2>/dev/null && pwd -P)/oms.sqlite" ]; then a=/opt/oms/data/oms.sqlite
+      else SW_KATALOG=$kat; a="/sprawdzana/$(basename "$a")"; fi
+    else
+      case "$a" in
+        --plik) fail "SEKRETY_PLIK_KLUCZA_STALY: plik klucza to zawsze $KLUCZ_ENV — opcji --plik nie podawaj" ;;
+        --baza) baza=1; nastepna=1 ;;
+        --potwierdz|--potwierdz-wszystkie) if [ "$pol" = porzuc ]; then rodzaj=zapis; fi ;;
+        --nowy-klucz) if [ "$pol" = porzuc ]; then rodzaj=zapis; config=1; fi ;;
+      esac
+    fi
+    set -- "$@" "$a"
+  done
+  shift "$n"
+  [ "$nastepna" = 0 ] || fail "$UZYCIE_SEKRETY"
+  if [ "$baza" = 0 ]; then set -- "$@" --baza /opt/oms/data/oms.sqlite; fi
+  [ "$rodzaj" = odczyt ] || [ "$baza" = 0 ] || fail "SEKRETY_BAZA_TYLKO_ODCZYT: polecenia zapisu działają na bazie OMS-u ($OMS/data/oms.sqlite)"
+  if [ "$config" = 1 ]; then set -- "$@" --plik /opt/oms/config/klucz.env; fi
+
+  obraz=$(obraz_narzedzia)
+  ma_narzedzie "$obraz" || fail "NARZEDZIE_SEKRETOW_NIEDOSTEPNE: obraz ${obraz:-?} nie istnieje albo nie ma $NARZEDZIE (wydanie sprzed szyfrowania poświadczeń) — najpierw aktualizacja: docs/aktualizacja-klienta-v0.md"
+
+  wlasna=0
+  if [ "$rodzaj" = zapis ]; then
+    if dziala oms; then
+      fail "SEKRETY_OMS_DZIALA: \`sekrety $pol\` zmienia bazę — tylko przy zatrzymanym OMS-ie (bez wymuszenia: pracujący OMS mógłby zapisać bazę po transakcji narzędzia). Zatrzymaj: sudo sh $SKRYPT compose stop oms kopia ; ponów polecenie ; potem start: sudo sh $SKRYPT compose up -d"
+    fi
+    if [ -d "$BLOKADA" ]; then
+      [ -s "$STAN" ] || fail "BLOKADA_BEZ_STANU — najpierw: sudo sh $SKRYPT recover nieznana"
+      ! proces_aktualizatora "$(stan_pole pid)" || fail "OPERACJA_W_TOKU_PROCES $(stan_pole pid) — poczekaj na jej koniec"
+      if [ "$(stan_pole typ)" = sekrety ]; then
+        wlasna=1; OP=$(stan_pole operacja)
+        stan_ustaw pid "$$"; stan_ustaw polecenie "$pol"
+        historia "$OP SEKRETY ponowienie $pol"
+      else
+        echo "Pod blokadą trwającej operacji $(stan_pole operacja) (etap $(stan_pole etap)), obraz $obraz"
+      fi
+    else
+      mkdir -p "$STAN_DIR"; chmod 700 "$STAN_DIR"
+      mkdir "$BLOKADA" 2>/dev/null || fail 'ODMOWA_TRWA_OPERACJA (blokada założona równolegle)'
+      OP=$(date -u +%Y%m%d-%H%M%S)-$(od -An -N2 -tx1 /dev/urandom | tr -d ' \n')
+      printf 'operacja=%s\ntyp=sekrety\netap=sekrety\npid=%s\nstart=%s\npolecenie=%s\ncel_obraz=%s\n' "$OP" "$$" "$(teraz)" "$pol" "$obraz" > "$BLOKADA/stan.tmp.$$"
+      mv "$BLOKADA/stan.tmp.$$" "$STAN"
+      sync "$STAN" "$BLOKADA" 2>/dev/null || true
+      wlasna=1
+      historia "$OP SEKRETY $pol obraz=$obraz"
+    fi
+    zatrzymaj_oms || fail "NIE_ZATRZYMANO_OMS — blokada zostaje; ponów polecenie albo: sudo sh $SKRYPT recover $(stan_pole operacja)"
+  fi
+
+  popraw_plik_klucza || fail "KLUCZ_PLIK_NIEPOPRAWIONY: $KLUCZ_ENV (chown $UID_OMS, chmod 600)"
+  rc=0
+  sekrety_w_obrazie "$obraz" "$config" "$pol" "$@" || rc=$?
+  popraw_plik_klucza || fail "KLUCZ_PLIK_NIEPOPRAWIONY: $KLUCZ_ENV (chown $UID_OMS, chmod 600)"
+
+  if [ "$rodzaj" = zapis ]; then
+    if [ "$wlasna" = 1 ]; then
+      # Narzędzie zapisuje bazę jedną transakcją — po jego końcu (sukces czy odmowa) nie ma czego dokańczać.
+      historia "$OP SEKRETY $pol kod=$rc"
+      zdejmij_blokade
+      echo "OMS zatrzymany. Start: sudo sh $SKRYPT compose up -d"
+    else
+      echo "Blokada operacji $(stan_pole operacja) zostaje — dalej: sudo sh $SKRYPT status"
+    fi
+  fi
+  exit "$rc"
+}
+
 case "${1:-}" in
   status) [ "$#" -eq 1 ] || fail 'Uzycie: aktualizuj.sh status'; status ;;
   deploy) [ "$#" -eq 3 ] || fail 'Uzycie: aktualizuj.sh deploy <paczka.tar.gz> <sha256>'; deploy "$2" "$3" ;;
@@ -843,5 +1100,6 @@ case "${1:-}" in
     wymagaj_roota
     shift
     "$DOCKER" exec oms node /app/scripts/link-hasla-admina.mjs "$@" ;;
-  *) fail 'Uzycie: aktualizuj.sh status|deploy|accept|recover|compose|produkcja|zdrowie|link-hasla' ;;
+  sekrety) shift; sekrety_narzedzie "$@" ;;
+  *) fail 'Uzycie: aktualizuj.sh status|deploy|accept|recover|compose|produkcja|zdrowie|link-hasla|sekrety' ;;
 esac

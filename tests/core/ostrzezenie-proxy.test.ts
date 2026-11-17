@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { openOmsDb } from '../../src/oms/db/db.ts';
+import { KLUCZ_TESTOWY } from '../pomoc/sejf-testowy.ts';
 
 describe('ostrzeżenie proxy raz na proces', () => {
   it.each(['x-forwarded-for', 'cf-connecting-ip'])('%s ostrzega raz także dla dwóch aplikacji, bez wartości nagłówka', async (naglowek) => {
@@ -11,7 +12,8 @@ describe('ostrzeżenie proxy raz na proces', () => {
     const aplikacje = [];
     try {
       for (let i = 0; i < 3; i++) aplikacje.push(await zbudujAplikacje({
-        db: bazy[i], moduly: [], env: i === 0 ? { OMS_TRUST_PROXY: '127.0.0.1' } : {}, log,
+        // Po resetModules nowy moduł sejfu nie ma sejfu domyślnego testów — klucz jak w prawdziwym procesie, z env.
+        db: bazy[i], moduly: [], env: { OMS_KLUCZ_SEKRETOW: KLUCZ_TESTOWY, ...(i === 0 ? { OMS_TRUST_PROXY: '127.0.0.1' } : {}) }, log,
       }));
       await aplikacje[0].app.inject({ url: '/', headers: { 'x-forwarded-for': 'tajna-wartosc' } });
       expect(log).not.toHaveBeenCalled();

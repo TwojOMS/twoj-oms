@@ -63,6 +63,11 @@ describe('scripts/uruchom-lokalnie.mjs — OMS na laptopie wykonawcy', () => {
     // Baza i logi WYŁĄCZNIE w katalogu tymczasowym — nic w kopii roboczej repo.
     expect(fs.existsSync(path.join(katalog, 'oms.sqlite'))).toBe(true);
     expect(path.resolve(w.log).startsWith(path.resolve(katalog))).toBe(true);
+    // PRZ-182: klucz poświadczeń z pliku klucz.env w katalogu próby (trwały, nie losowany w pamięci); nie na ekranie.
+    const klucz = /^OMS_KLUCZ_SEKRETOW=([A-Za-z0-9_-]{43})$/m.exec(fs.readFileSync(path.join(katalog, 'klucz.env'), 'utf8'))?.[1];
+    expect(klucz).toBeTruthy();
+    expect(start.stdout + start.stderr).not.toContain(klucz);
+    expect(fs.readFileSync(w.log, 'utf8')).not.toContain(klucz);
 
     const zdrowie = await fetch(`${w.adres}/health`);
     expect(zdrowie.status).toBeLessThan(500);
@@ -104,6 +109,19 @@ describe('scripts/uruchom-lokalnie.mjs — OMS na laptopie wykonawcy', () => {
     expect(zyje(w.pid)).toBe(false);
     expect(await portZajety(port)).toBe(false);
     expect(fs.existsSync(katalog)).toBe(false);
+  }, 180000);
+
+  it('klucz poświadczeń przeżywa ponowny start w tym samym katalogu (świeża baza, ten sam plik klucza)', async () => {
+    const katalog = nowyKatalog();
+    const pierwszy = skrypt('start', '--port', String(await wolnyPort()), '--katalog', katalog);
+    expect(pierwszy.kod, pierwszy.stderr + pierwszy.stdout).toBe(0);
+    const plik = path.join(katalog, 'klucz.env');
+    const przed = fs.readFileSync(plik);
+    expect(skrypt('stop', '--zostaw', '--katalog', katalog).kod).toBe(0);
+    const drugi = skrypt('start', '--port', String(await wolnyPort()), '--katalog', katalog);
+    expect(drugi.kod, drugi.stderr + drugi.stdout).toBe(0);
+    expect(fs.readFileSync(plik)).toEqual(przed);
+    expect(skrypt('stop', '--katalog', katalog).kod).toBe(0);
   }, 180000);
 
   it('zaloguj: jednorazowy link loguje bez hasła w wyjściu; drugi użytek i wygasły link nie wpuszczają', async () => {

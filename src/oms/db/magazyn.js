@@ -1081,7 +1081,7 @@ export function utworzKartyZNiepowiazanych(db, { teraz: kiedy = teraz, kanalySkl
  * Oferty Allegro, ktore nie maja jeszcze karty — material ekranu powiazan.
  *
  * ⚠️ Kolejnosc ALFABETYCZNA i nieczula na wielkosc liter, a nie „po id". Czlowiek przeglada
- * 447 wierszy wzrokiem i szuka po nazwie; kolejnosc odczytu z Allegro nie znaczy dla niego
+ * setki wierszy wzrokiem i szuka po nazwie; kolejnosc odczytu z Allegro nie znaczy dla niego
  * nic. `p.id` na koncu daje rozstrzygniecie powtarzalne przy dwoch ofertach o tej samej nazwie.
  */
 // Pusta lista niczego nie wybiera; nazwy kanałów wiążemy parametrami SQL.

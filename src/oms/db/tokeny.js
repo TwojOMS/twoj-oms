@@ -4,9 +4,20 @@
 // bledu i nie oddajemy na ekran (reguła: sekrety nie wychodzą). `wczytajTokeny`
 // oddaje CALY wiersz, wiec kazdy jego czytelnik odpowiada za to sam — do widoku sluzy
 // `stanDlaEkranu()` z allegro/tokeny.js.
+//
+// Oba tokeny leżą w bazie zaszyfrowane kluczem poświadczeń (src/core/bezpieczenstwo/sejf-sekretow.js);
+// `wczytajTokeny` oddaje wiersz tego samego kształtu z odszyfrowanymi polami. Wiersz nieczytelny = BladSekretow.
+
+import { doZapisu, zOdczytu } from '../../core/bezpieczenstwo/sejf-sekretow.js';
+
+const miejsce = (kanal, kolumna) => ({ tabela: 'tokeny_kanalu', kolumna, id: kanal });
 
 export function wczytajTokeny(db, kanal) {
-  return db.prepare('SELECT * FROM tokeny_kanalu WHERE kanal = ?').get(kanal) ?? null;
+  const w = db.prepare('SELECT * FROM tokeny_kanalu WHERE kanal = ?').get(kanal);
+  if (!w) return null;
+  return { ...w,
+    access_token: zOdczytu(db, miejsce(kanal, 'access_token'), w.access_token),
+    refresh_token: zOdczytu(db, miejsce(kanal, 'refresh_token'), w.refresh_token) };
 }
 
 // Brak tabeli oznacza starszego konsumenta/CLI. Po migracji trwała blokada obowiązuje
@@ -42,7 +53,8 @@ export function zapiszTokeny(db, kanal, { accessToken, refreshToken, wygasaAt, r
       refresh_wygasa_at = excluded.refresh_wygasa_at,
       ostatni_blad = NULL,
       zaktualizowane_at = excluded.zaktualizowane_at
-  `).run(kanal, accessToken, refreshToken, wygasaAt, refreshWygasaAt, new Date().toISOString());
+  `).run(kanal, doZapisu(db, miejsce(kanal, 'access_token'), accessToken), doZapisu(db, miejsce(kanal, 'refresh_token'), refreshToken),
+    wygasaAt, refreshWygasaAt, new Date().toISOString());
 }
 
 // Slad po nieudanej probie — jedyna rzecz, ktora czlowiek zobaczy, zanim kanal zamilknie.

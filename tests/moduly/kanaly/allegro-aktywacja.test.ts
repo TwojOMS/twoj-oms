@@ -3,6 +3,7 @@ import {fixtureAllegro,daneAllegro,aktorAllegro,callbackAllegro} from '../../pom
 import {createRejestrKanalow} from '../../../src/moduly/kanaly/services/rejestr-kanalow.ts';
 import {createZarzadzanieAllegro} from '../../../src/moduly/kanaly/services/zarzadzanie-allegro.ts';
 import {poczatekDniaWarszawa,poprawnaDataStartu} from '../../../src/moduly/kanaly/zakres-importu-allegro.ts';
+import {wczytajTokeny} from '../../../src/oms/db/tokeny.js';
 const bazy:ReturnType<typeof fixtureAllegro>[]=[];afterEach(()=>{for(const f of bazy.splice(0))f.db.close();});
 function setup(){const f=fixtureAllegro();bazy.push(f);const rejestr=createRejestrKanalow({repozytorium:f.repo,fabryki:()=>({klient:{},poller:{stan:()=>null,przebieg:async()=>{}}})});const zarzadzanie=createZarzadzanieAllegro({db:f.db,repozytorium:f.repo,autoryzacja:f.auth,rejestr,teraz:f.teraz});return {...f,rejestr,zarzadzanie};}
 async function kandydat(f:ReturnType<typeof setup>,k=f.szkic()){
@@ -21,7 +22,7 @@ describe('aktywacja zatwierdzonego konta',()=>{
  it('dopiero aktywacja zapisuje parę tokenów i udostępnia kanał; podwójny POST nie dubluje',async()=>{
   const f=setup(),{k,p,konto}=await kandydat(f);expect(f.db.prepare('SELECT * FROM tokeny_kanalu').all()).toEqual([]);
   const w=daneAllegro(await f.zarzadzanie.aktywuj(k.klucz,p.probaId,konto.wersja,true,aktorAllegro,'sesja-A'));expect(w).toMatchObject({kontoId:'123',login:'konto-123',autoryzacja:'polaczone',pobieranie:'wlaczone'});
-  expect(f.db.prepare('SELECT kanal,access_token,refresh_token FROM tokeny_kanalu').all()).toEqual([{kanal:k.klucz,access_token:'ACCESS-WABIK',refresh_token:'REFRESH-WABIK'}]);expect(f.rejestr.definicje()).toHaveLength(1);
+  expect(f.db.prepare('SELECT kanal FROM tokeny_kanalu').all()).toEqual([{kanal:k.klucz}]);expect(wczytajTokeny(f.db,k.klucz)).toMatchObject({access_token:'ACCESS-WABIK',refresh_token:'REFRESH-WABIK'});expect(f.rejestr.definicje()).toHaveLength(1);
   expect(await f.zarzadzanie.aktywuj(k.klucz,p.probaId,konto.wersja,true,aktorAllegro,'sesja-A')).toEqual({ok:true,dane:w});
  });
  it.each(['sesja','aktor','wersja'])('blokuje niezgodność: %s',async mode=>{const f=setup(),{k,p,konto}=await kandydat(f);const w=await f.zarzadzanie.aktywuj(k.klucz,p.probaId,konto.wersja+(mode==='wersja'?1:0),true,mode==='aktor'?{id:2,login:'inny'}:aktorAllegro,mode==='sesja'?'B':'sesja-A');expect(w.ok).toBe(false);expect(f.db.prepare('SELECT * FROM tokeny_kanalu').all()).toEqual([]);});

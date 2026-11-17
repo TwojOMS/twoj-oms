@@ -40,6 +40,19 @@ zgłasza zmienne czytane w kodzie, których tam brakuje.
   `rg -n "konfiguracja_integracji|wczytajKonfiguracjeIntegracji" src` — zapis w bazie i trasy ekranów (`ustawienia-*.js`
   w `trasy/` modułów `wysylka`, `faktury`, `koszty`; poczta w `ustawienia/trasy/poczta.js`); reguła „plik konfiguracji wygrywa” jest przy budowie klienta (zwykle `modul.ts`, dla poczty `uslugi.ts` modułu).
 
+## Od poświadczeń integracji do kodu
+
+- Poświadczenia zapisane w bazie są szyfrowane kluczem `OMS_KLUCZ_SEKRETOW`. Sejf, format zapisu i klasy wartości:
+  `src/core/bezpieczenstwo/sejf-sekretow.js`; kontrola przed startem, konwersja i sprzątanie pliku:
+  `konwersja-sekretow.js` obok. Które kolumny: `rg -n "MIEJSCA_SEKRETOW" src`.
+- Kto przypina sejf do uchwytu bazy i kto go używa: `rg -n "przypnijSejf|sejfBazy" src scripts deploy`. Uchwyt bez
+  przypiętego sejfu odmawia odczytu sekretu — to zamierzone, nie omijaj tego.
+- Narzędzie operatora: `scripts/sekrety.mjs` (polecenia w nagłówku pliku), u klienta przez
+  `deploy/klient/aktualizuj.sh sekrety …`. Testy: `rg -l "sekrety|sejf" tests`.
+- Zasady dla agenta: klucza nie wypisuj, nie generuj zastępczego przy zaszyfrowanej bazie, nie kopiuj go razem
+  z bazą, nie czyść katalogu konfiguracji hurtem. Odmowa startu przez klucz = zatrzymaj się i zapytaj człowieka
+  ([AGENTS.md](../../AGENTS.md), sekcja „Granice”).
+
 ## Od kodu do testu
 
 Testy leżą zwykle lustrzanie (wyjątki znajdzie `rg -l nazwaFunkcji tests`): `src/moduly/zwroty/...` → `tests/moduly/zwroty/`, `src/domena/vat.js` → `tests/domena/vat*.test.js`.

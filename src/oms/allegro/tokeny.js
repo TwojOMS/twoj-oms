@@ -101,16 +101,15 @@ export function createTokeny({ db, kanal, ustawienia, fetchImpl, http = transpor
     Authorization: `Basic ${basic()}`,
     'Content-Type': 'application/x-www-form-urlencoded',
     Accept: 'application/json',
-    // ⚠️ OAUTH TO TEZ SA ZADANIA DO ALLEGRO. Kusi, zeby liczyc naglowek zgodnosci wylacznie
-    // przy API zamowien — ale `/auth/oauth/device` i `/auth/oauth/token` ida na te sama
-    // aplikacje i na ten sam klucz, ktory Allegro grozi zablokowac. Gorzej: to wlasnie one
-    // ida PIERWSZE, wiec kanal niezgodny zatrzymalby sie na wiazaniu i na odswiezeniu
-    // tokenu, czyli w miejscu, z ktorego panel SAM NIE WYJDZIE (potrzebny czlowiek przy
-    // przegladarce). Wartosc pochodzi z `ALLEGRO_USER_AGENT` (walidowana przy starcie).
+    // ⚠️ OAUTH TO TEŻ SĄ ŻĄDANIA DO ALLEGRO. Kusi, żeby liczyć nagłówek zgodności wyłącznie
+    // przy API zamówień — ale `/auth/oauth/token` idzie na tę samą aplikację i na ten sam
+    // klucz, który Allegro grozi zablokować. Gorzej: kanał niezgodny zatrzymałby się na
+    // odświeżeniu tokenu, czyli w miejscu, z którego panel SAM NIE WYJDZIE (potrzebny człowiek
+    // przy przeglądarce). Wartość pochodzi z `ALLEGRO_USER_AGENT` (walidowana przy starcie).
     //
-    // ⚠️ JEDNO ZRODLO DLA WSZYSTKICH TRZECH ZADAN TEGO MODULU (odswiezenie, `/device`,
-    // dokonczenie wiazania). Trzy kopie naglowkow rozjechalyby sie przy pierwszej poprawce
-    // jednej z nich, a rozjazd byloby widac dopiero w panelu zgodnosci Allegro.
+    // Ten moduł robi już tylko odświeżenie. Wiązanie kanału (device flow, kod autoryzacji)
+    // wysyła własne żądania w `moduly/kanaly/services/autoryzacja-allegro.ts` i tam dokleja
+    // nagłówek zgodności — poprawka nagłówka tutaj go nie zmieni.
     'User-Agent': ustawienia.userAgent,
   });
   const wiersz = () => wczytajTokeny(db, kanal);
@@ -166,8 +165,7 @@ export function createTokeny({ db, kanal, ustawienia, fetchImpl, http = transpor
     };
   }
 
-  // Zapis pary po KAZDEJ udanej odpowiedzi (odswiezenie i device flow) — jedno miejsce,
-  // zeby liczenie dat nie rozjechalo sie miedzy dwiema sciezkami.
+  // Zapis pary po KAŻDEJ udanej odpowiedzi odświeżenia — jedno miejsce liczenia dat terminu.
   function zapiszPare(d, generacja) {
     // ⚠️ `expires_in` bywa stringiem („43199”) — `Number` to prostuje, a `Number.isFinite`
     // odsiewa `undefined`, `null` i smiec. BEZ tego `new Date(NaN).toISOString()` RZUCA

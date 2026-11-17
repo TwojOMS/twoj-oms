@@ -8,6 +8,9 @@ import { uzupelnijDaneZamowien } from './uzupelnienia-zamowien.js';
 import { przygotujKoszty } from './przygotowanie-kosztow.js';
 import { sledzZmianyListy } from './sledzenie-listy.js';
 import { maTabeleStatusow } from './statusy.js';
+import { przypnijSejf, sejfDlaStartu, type sejfZEnv } from '../../core/bezpieczenstwo/sejf-sekretow.js';
+import { kontrolaPrzedOtwarciem } from '../../core/bezpieczenstwo/konwersja-sekretow.js';
+import { sprawdzKatalogBazy } from '../../core/katalog-bazy.ts';
 
 export const MIGRACJA_PTASZEK_STATYSTYKI = 'ptaszek-statystyki-2026-09-13';
 
@@ -34,12 +37,14 @@ export function dosypPtaszekStatystyk(db: Parameters<typeof oznaczKluczeZamrozen
     .run(MIGRACJA_PTASZEK_STATYSTYKI, teraz().toISOString());
 }
 
-/** Fabryka produkcyjna; schemat pochodzi z migracji modułów, bez firmowych seedów. */
+/** Fabryka produkcyjna; schemat pochodzi z migracji modułów, bez firmowych seedów.
+ * `sejf` przypina klucz poświadczeń do uchwytu zaraz po otwarciu — przed migracjami i uzupełnieniami. */
 export function openOmsDb(path = ':memory:', {
-  moduly = [modulRdzen as unknown as ModulOms], teraz = () => new Date(), log,
-}: { moduly?: readonly ModulOms[]; teraz?: () => Date; log?: (linia: string) => void } = {}) {
+  moduly = [modulRdzen as unknown as ModulOms], teraz = () => new Date(), log, sejf,
+}: { moduly?: readonly ModulOms[]; teraz?: () => Date; log?: (linia: string) => void; sejf?: Sejf } = {}) {
   const db = otworzBaze(path);
   try {
+    if (sejf) przypnijSejf(db, sejf);
     wykonajMigracje(db, moduly, teraz);
     maTabeleStatusow(db); // przygotowanie zapytania schematu, współdzielone przez odczyty listy
     // Przed uzupełnieniami niżej — one też zmieniają zamówienia.
@@ -55,4 +60,21 @@ export function openOmsDb(path = ':memory:', {
     return db;
   }
   catch (error) { db.close(); throw error; }
+}
+
+type Sejf = ReturnType<typeof sejfZEnv>;
+
+/**
+ * Wspólne wejście każdej ścieżki startu: klucz ze środowiska (brak albo zła postać = odmowa, bazy nikt jeszcze nie
+ * otworzył) → katalog bazy → kontrola poświadczeń połączeniem tylko do odczytu → `openOmsDb` z przypiętym sejfem.
+ * Odmowa z powodu klucza albo formatu następuje przed jakąkolwiek migracją, uzupełnieniem danych, resetem i zapisem.
+ */
+export function otworzBazeStartu(env: Record<string, string | undefined>, path: string, opcje: {
+  moduly?: readonly ModulOms[]; teraz?: () => Date; log?: (linia: string) => void; bezKataloguBazy?: boolean;
+} = {}) {
+  const sejf = sejfDlaStartu(env);
+  if (!opcje.bezKataloguBazy && path !== ':memory:') sprawdzKatalogBazy(path);
+  kontrolaPrzedOtwarciem(path, sejf);
+  const { bezKataloguBazy: _, ...reszta } = opcje;
+  return openOmsDb(path, { ...reszta, sejf });
 }

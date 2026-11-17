@@ -1,5 +1,7 @@
 import fs from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
+import { doZapisu, klasyfikuj, przypnijSejf, sejfDlaStartu } from '../../core/bezpieczenstwo/sejf-sekretow.js';
+import { kontrolaPrzedOtwarciem } from '../../core/bezpieczenstwo/konwersja-sekretow.js';
 import { KLUCZ_ZLECENIA_RESETU, ZACHOWANE_PRZY_RESECIE, ZACHOWANE_SANDBOX_ALLEGRO, ZACHOWANE_PROBA_FAKTUROWNIA } from '../../domena/reset-demo.js';
 
 const maTabele = (db, nazwa) => Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(nazwa));
@@ -27,8 +29,41 @@ function odczytajSandbox(db) {
   return { konfiguracja, kanaly, tokeny };
 }
 
+// Kolumny z poświadczeniami w wierszach przenoszonych przez reset (przypięcie szyfrogramu: tabela, kolumna, klucz główny).
+const SEKRETY_RESETU = { konfiguracja_integracji: { id: 'integracja', kolumny: ['sekrety_json'], json: true },
+  tokeny_kanalu: { id: 'kanal', kolumny: ['access_token', 'refresh_token'] } };
+
+// Kontrola pliku resetu PRZED skasowaniem bazy: każdy szyfrogram musi się odszyfrować bieżącym kluczem (albo poprzednim).
+// Niezgodność = odmowa — baza i plik resetu zostają. Wartości jawne (plik sprzed szyfrowania) przejdą przez import niżej.
+export function sprawdzSekretyResetu(dane, sejf) {
+  const wiersze = [...(dane?.sandbox?.konfiguracja ?? []).map(w => ['konfiguracja_integracji', w]),
+    ...(dane?.sandbox?.tokeny ?? []).map(w => ['tokeny_kanalu', w]), ...(dane?.fakturownia ?? []).map(w => ['konfiguracja_integracji', w])];
+  for (const [tabela, w] of wiersze) {
+    const o = SEKRETY_RESETU[tabela];
+    for (const kolumna of o.kolumny) {
+      const klasa = klasyfikuj(w[kolumna], { json: o.json });
+      if (klasa === 'pusty' || klasa === 'jawny') continue;
+      sejf.odszyfruj(w[kolumna], { tabela, kolumna, id: w[o.id] });
+    }
+  }
+}
+
+// Import zachowanych wierszy do nowej bazy — jawnie wydzielona ścieżka: szyfrogram przechodzi bajt w bajt (klucze główne
+// te same, więc przypięcie do miejsca się zgadza), wartość jawna ze starego pliku resetu jest szyfrowana przed zapisem.
+function doImportu(db, tabela, wiersz) {
+  const o = SEKRETY_RESETU[tabela];
+  if (!o) return wiersz;
+  const wynik = { ...wiersz };
+  for (const kolumna of o.kolumny) {
+    if (!(kolumna in wynik) || klasyfikuj(wynik[kolumna], { json: o.json }) !== 'jawny') continue;
+    wynik[kolumna] = doZapisu(db, { tabela, kolumna, id: wynik[o.id] }, wynik[kolumna]);
+  }
+  return wynik;
+}
+
 // Kolumny wspólne starego wiersza i nowej tabeli — nowa baza po migracjach może mieć ich więcej (DEFAULT) albo mniej.
-function wstaw(db, tabela, wiersz, konflikt) {
+function wstaw(db, tabela, surowy, konflikt) {
+  const wiersz = doImportu(db, tabela, surowy);
   const kolumny = new Set(db.prepare(`PRAGMA table_info(${tabela})`).all().map(k => k.name));
   const pola = Object.keys(wiersz).filter(k => kolumny.has(k));
   return db.prepare(`INSERT OR ${konflikt} INTO ${tabela} (${pola.map(p => `"${p}"`).join(',')}) VALUES (${pola.map(() => '?').join(',')})`)
@@ -144,7 +179,14 @@ function przyjmijZnacznikProby(baza) {
   fs.rmSync(znacznik, { force: true });
 }
 
-export async function wykonajZlecenieResetu({ baza, utworzBaze, zachowajSandbox = false, zachowajFakturownie = false }) {
+// `sejf` — klucz poświadczeń ścieżki startu; bez niego sejfDlaStartu({}) odmawia (w programie nie ma sejfu domyślnego).
+export async function wykonajZlecenieResetu({ baza, utworzBaze, sejf = sejfDlaStartu({}), zachowajSandbox = false, zachowajFakturownie = false }) {
+  // Baza musi być czytelna tym kluczem, zanim cokolwiek ją zmieni albo skasuje: znacznik resetu zapisuje do niej zlecenie,
+  // a reset bez zachowanych poświadczeń skasowałby bazę zaszyfrowaną innym kluczem bez odmowy.
+  if (fs.existsSync(baza)) {
+    // Odmowa tylko z powodu klucza albo formatu; plik, który nie jest bazą, idzie dawną drogą (świeże demo).
+    try { kontrolaPrzedOtwarciem(baza, sejf); } catch (e) { if (e?.name === 'BladKonfiguracji') throw new Error('Nie udało się wykonać resetu demo', { cause: e }); }
+  }
   przyjmijZnacznikProby(baza);
   const kopia = kopiaResetu(baza);
   if (!fs.existsSync(baza) && !fs.existsSync(kopia)) return null;
@@ -155,12 +197,15 @@ export async function wykonajZlecenieResetu({ baza, utworzBaze, zachowajSandbox 
       const db = new DatabaseSync(baza, { readOnly: true });
       try { dane = odczytajZlecenieResetu(db, { zachowajSandbox, zachowajFakturownie }); } finally { db.close(); }
       if (!dane) return null;
+      sprawdzSekretyResetu(dane, sejf);
       fs.writeFileSync(`${kopia}.tmp`, JSON.stringify(dane), { mode: 0o600 });
       fs.renameSync(`${kopia}.tmp`, kopia);
     }
+    // Wznowienie z pliku: ta sama kontrola, zanim cokolwiek zniknie.
+    if (zKopii) sprawdzSekretyResetu(dane, sejf);
     for (const plik of [baza, `${baza}-wal`, `${baza}-shm`]) fs.rmSync(plik, { force: true });
     await utworzBaze();
-    const nowa = new DatabaseSync(baza);
+    const nowa = przypnijSejf(new DatabaseSync(baza), sejf);
     let numeracja; const stan = {};
     try { numeracja = przywrocPoResecie(nowa, dane, stan); } finally { nowa.close(); }
     fs.rmSync(kopia, { force: true });

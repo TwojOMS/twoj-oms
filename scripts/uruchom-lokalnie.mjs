@@ -55,7 +55,7 @@ function opcje(argv) {
 }
 
 const pliki = (k) => ({ baza: path.join(k, 'oms.sqlite'), stan: path.join(k, 'stan.json'), konto: path.join(k, 'konto.json'),
-  wejscie: path.join(k, 'wejscie.json'),
+  wejscie: path.join(k, 'wejscie.json'), klucz: path.join(k, 'klucz.env'),
   log: path.join(k, 'serwer.log'), proformy: path.join(k, 'proformy'), etykiety: path.join(k, 'etykiety') });
 const wypisz = (obiekt) => console.log(JSON.stringify(obiekt));
 const czytajJson = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; } };
@@ -82,6 +82,13 @@ async function odpowiada(adres) {
 function usunKatalog(k) {
   fs.rmSync(k, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 }
+// Świeże demo przy każdym starcie, ale klucz poświadczeń (klucz.env) zostaje — jest trwały, nie losowany od nowa.
+function wyczyscBezKlucza(k) {
+  if (!fs.existsSync(k)) return;
+  for (const wpis of fs.readdirSync(k)) {
+    if (wpis !== 'klucz.env') fs.rmSync(path.join(k, wpis), { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+  }
+}
 function srodowisko(p, port) {
   const env = {};
   for (const k of ZMIENNE_SYSTEMU) if (process.env[k] !== undefined) env[k] = process.env[k];
@@ -102,13 +109,17 @@ async function start(o) {
   const port = o.port ?? await wolnyPort();
   if (!await portWolny(port)) throw new Error(`port ${port} zajęty — wybierz inny (--port) albo pomiń --port`);
   const t0 = Date.now();
-  usunKatalog(o.katalog); // resztki po poprzednim przebiegu (proces nie żyje) — zawsze świeże demo
+  wyczyscBezKlucza(o.katalog); // resztki po poprzednim przebiegu (proces nie żyje) — zawsze świeże demo
   for (const k of [p.proformy, p.etykiety]) fs.mkdirSync(k, { recursive: true });
 
+  // PRZ-182: klucz poświadczeń z pliku klucz.env w katalogu próby — ten sam dla generatora demo i serwera.
+  // Istniejący plik jest tylko sprawdzany (pusty albo ucięty = odmowa); brak — nowy klucz. Wartość nie trafia na ekran.
+  const { zapewnijKlucz } = await import('./instalacja-wspolne.mjs');
+  const { tekst: klucz } = await zapewnijKlucz(p.klucz, p.baza);
   const { ENV_DEMO, utworzBazeDemo } = await import('./demo-dane.mjs');
   const { zalozKonto } = await import('../src/core/bezpieczenstwo/konta.js');
   const { DatabaseSync } = await import('node:sqlite');
-  const env = { ...srodowisko(p, port), ...ENV_DEMO };
+  const env = { ...srodowisko(p, port), ...ENV_DEMO, OMS_KLUCZ_SEKRETOW: klucz };
   const dzis = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Warsaw' });
   await utworzBazeDemo({ baza: p.baza, dzis, env });
   const haslo = randomBytes(18).toString('base64url');

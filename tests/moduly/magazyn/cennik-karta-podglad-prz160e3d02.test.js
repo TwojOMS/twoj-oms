@@ -6,6 +6,7 @@ import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
 import { definicjeKanalowHistoryczne } from '../../pomoc/kanaly-historyczne-fixture.js';
+import { szyfrTestowy } from '../../pomoc/sejf-testowy.ts';
 import { utworzKarte } from '../../../src/oms/db/magazyn.js';
 import { ofertyKarty, wstawOferte, zmienOferte, zapiszUstawieniaOfertKonta, ustawieniaOfertKonta } from '../../../src/oms/db/oferty-kanalow.ts';
 import { wyjatekCennika, zapiszWyjatekCennika, usunWyjatekCennika } from '../../../src/oms/db/cenniki-kart.ts';
@@ -95,8 +96,9 @@ beforeEach(async () => {
   });
   await app.ready();
   db.prepare(`INSERT OR REPLACE INTO tokeny_kanalu (kanal, access_token, refresh_token, wygasa_at, refresh_wygasa_at, zaktualizowane_at)
-    VALUES (?, ?, 'REFRESH-ATRAPA', '2026-11-14T11:00:00Z', '2027-01-01T00:00:00Z', '2026-11-14T10:00:00Z')`)
-    .run(KONTO, jwt(['allegro:api:orders:read', ...OFERTY]));
+    VALUES (?, ?, ?, '2026-11-14T11:00:00Z', '2027-01-01T00:00:00Z', '2026-11-14T10:00:00Z')`)
+    .run(KONTO, szyfrTestowy(db, 'tokeny_kanalu', 'access_token', KONTO, jwt(['allegro:api:orders:read', ...OFERTY])),
+      szyfrTestowy(db, 'tokeny_kanalu', 'refresh_token', KONTO, 'REFRESH-ATRAPA'));
   db.prepare(`INSERT INTO allegro_mapa_kategorii (kategoria_karty, srodowisko, kategoria_allegro_id) VALUES ('Lampy stołowe', 'produkcja', '257')`).run();
   const regula = db.prepare(`INSERT INTO allegro_reguly_parametrow (srodowisko, kategoria_allegro_id, parametr_id, rodzaj,
     wartosc_json, pole, zmieniono_at) VALUES ('produkcja', '257', ?, ?, ?, ?, ?)`);

@@ -148,6 +148,79 @@ describe('baza stałych klientów', () => {
     expect(wszyscyKlienci(db, { tylkoAktywni: false })).toHaveLength(1);
     expect((await get('/klienci')).body).toContain('wygaszony');
   });
+
+  // ⚠️ PRZ-180. Test wyżej wysyła `aktywny: ''` — przeglądarka tak NIGDY nie robi: odznaczony
+  // checkbox po prostu nie trafia do formularza. Ten test składa żądanie tak jak przeglądarka,
+  // z pól WYRENDEROWANEGO formularza edycji: ukryte zawsze, checkbox tylko zaznaczony.
+  const wyslanePrzezPrzegladarke = (html, odznaczone) => {
+    const pola = {};
+    for (const [tag] of html.matchAll(/<input\b[^>]*>/g)) {
+      const nazwa = tag.match(/\bname="([^"]+)"/)?.[1];
+      if (!nazwa) continue;
+      const typ = tag.match(/\btype="([^"]+)"/)?.[1] ?? 'text';
+      if (typ === 'checkbox') {
+        if (/\bchecked\b/.test(tag) && !odznaczone.includes(nazwa)) pola[nazwa] = 'on';
+        continue;
+      }
+      if (typ === 'radio') continue;
+      pola[nazwa] = tag.match(/\bvalue="([^"]*)"/)?.[1] ?? '';
+    }
+    return pola;
+  };
+
+  it('odznaczenie „Aktywny” w formularzu edycji wygasza klienta (PRZ-180)', async () => {
+    await dopisz();
+    const { id } = wszyscyKlienci(db)[0];
+    const formularz = (await get(`/klienci/${id}`)).body;
+    const pola = wyslanePrzezPrzegladarke(formularz, ['aktywny']);
+    expect(pola).not.toHaveProperty('aktywny');
+    const odp = await post('/klienci', { ...Kontrahent, ...pola });
+    expect(odp.statusCode).toBe(302);
+    expect(wszyscyKlienci(db)).toHaveLength(0);
+    expect(wszyscyKlienci(db, { tylkoAktywni: false })[0].aktywny).toBe(0);
+  });
+
+  it('zapis edycji z zaznaczonym „Aktywny” zostawia klienta aktywnym (PRZ-180)', async () => {
+    await dopisz();
+    const { id } = wszyscyKlienci(db)[0];
+    const pola = wyslanePrzezPrzegladarke((await get(`/klienci/${id}`)).body, []);
+    expect(pola.aktywny).toBe('on');
+    expect((await post('/klienci', { ...Kontrahent, ...pola })).statusCode).toBe(302);
+    expect(wszyscyKlienci(db)).toHaveLength(1);
+  });
+
+  it('nowy klient bez pola „aktywny” (karta zamówienia) zostaje aktywny', async () => {
+    expect((await dopisz()).statusCode).toBe(302);
+    expect(wszyscyKlienci(db)).toHaveLength(1);
+  });
+
+  it('odmowa przy edycji pamięta odznaczone „Aktywny” (PRZ-180)', async () => {
+    await dopisz();
+    const { id } = wszyscyKlienci(db)[0];
+    const pola = wyslanePrzezPrzegladarke((await get(`/klienci/${id}`)).body, ['aktywny']);
+    const odp = await post('/klienci', { ...Kontrahent, ...pola, rabat_procent: '150' });
+    expect(odp.statusCode).toBe(400);
+    const pole = odp.body.match(/<input[^>]*name="aktywny"[^>]*>/)?.[0];
+    expect(pole).toBeDefined();
+    expect(pole).not.toMatch(/\bchecked\b/);
+  });
+
+  // Nowy klient startuje z zaznaczonym „Aktywny”; odznaczony i odbity odmową nie może wrócić
+  // zaznaczony — człowiek poprawiłby literówkę i zapisał aktywnego, nie wiedząc o tym.
+  it('odmowa przy NOWYM kliencie pamięta odznaczone „Aktywny” (PRZ-180)', async () => {
+    const pola = wyslanePrzezPrzegladarke((await get('/klienci/nowy')).body, ['aktywny']);
+    expect(pola).toHaveProperty('aktywny_w_formularzu');
+    const odp = await post('/klienci', { ...Kontrahent, ...pola, rabat_procent: '150' });
+    expect(odp.statusCode).toBe(400);
+    const pole = odp.body.match(/<input[^>]*name="aktywny"[^>]*>/)?.[0];
+    expect(pole).toBeDefined();
+    expect(pole).not.toMatch(/\bchecked\b/);
+  });
+
+  it('formularz nowego klienta startuje z zaznaczonym „Aktywny”', async () => {
+    const pola = wyslanePrzezPrzegladarke((await get('/klienci/nowy')).body, []);
+    expect(pola.aktywny).toBe('on');
+  });
 });
 
 describe('wstawienie danych do nowego zamówienia', () => {
@@ -451,6 +524,15 @@ describe('skopiuj dane do wysyłki na ekranie klientów', () => {
     const body = (await post('/klienci/kopiuj-do-wysylki', FORMULARZ)).body;
     expect(body).toContain('name="w_nazwa" value="Jan Kowalski"');
     expect(body).toContain('name="w_telefon" value="600100200"');
+  });
+
+  // PRZ-180: formularz wraca ze znacznikiem, więc odznaczone „Aktywny” zostaje odznaczone —
+  // inaczej zapis po skopiowaniu adresu przywracałby wygaszonego klienta.
+  it('odznaczone „Aktywny” wraca odznaczone (PRZ-180)', async () => {
+    const body = (await post('/klienci/kopiuj-do-wysylki', { ...FORMULARZ, aktywny_w_formularzu: '1' })).body;
+    const pole = body.match(/<input[^>]*name="aktywny"[^>]*>/)?.[0];
+    expect(pole).toBeDefined();
+    expect(pole).not.toMatch(/\bchecked\b/);
   });
 
   it('NIE zapisuje klienta', async () => {

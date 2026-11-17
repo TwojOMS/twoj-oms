@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ofertaAllegroZKarty } from '../../src/domena/allegro-oferta-z-karty.js';
+import { szyfrTestowy } from '../pomoc/sejf-testowy.ts';
 
 // Celowo inne identyfikatory niż w P9: rozpoznajemy nazwy opisu kategorii v2.
 const MARKA = 'demo-marka';
@@ -140,7 +141,8 @@ it('E3.21 — rzeczywisty podgląd pokazuje powód braku marki jako odmowę', as
     const scope = ['allegro:api:orders:read', 'allegro:api:sale:offers:write', 'allegro:api:sale:settings:read'];
     const token = `e30.${Buffer.from(JSON.stringify({ scope })).toString('base64url')}.atrapa`;
     db.prepare(`INSERT INTO tokeny_kanalu (kanal, access_token, refresh_token, wygasa_at, refresh_wygasa_at, zaktualizowane_at)
-      VALUES (?, ?, 'ATRAPA', '2099-01-01', '2099-01-01', '2026-11-14')`).run(konto, token);
+      VALUES (?, ?, ?, '2099-01-01', '2099-01-01', '2026-11-14')`).run(konto,
+      szyfrTestowy(db, 'tokeny_kanalu', 'access_token', konto, token), szyfrTestowy(db, 'tokeny_kanalu', 'refresh_token', konto, 'ATRAPA'));
     const { narzutBp, ...ustawienia } = dane.ustawienia;
     zapiszUstawieniaOfertKonta(db, konto, { ...ustawienia, narzutProcent: narzutBp / 100 });
     db.prepare(`INSERT INTO allegro_mapa_kategorii (kategoria_karty, srodowisko, kategoria_allegro_id)

@@ -89,7 +89,12 @@ describe('samodzielne syntetyczne demo instalacji', () => {
     expect(result.stdout).toContain(path.join(p, 'administrator-proby.env'));
     expect(result.stdout).toContain(`instalacja-otworz.mjs --katalog "${p}" --port 39383`);
     expect(result.stdout).toContain('Ctrl+C');
-    const env = odczytajEnv(path.join(p, 'proba.env'));
+    // PRZ-182: OMS po instalacji startuje z kluczem poświadczeń z klucz.env (ten, który założył instalator);
+    // proba.env klucza nie ma, a na ekran wartość nie trafia.
+    const klucz = odczytajEnv(path.join(p, 'klucz.env')).OMS_KLUCZ_SEKRETOW;
+    expect(klucz).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(result.stdout + result.stderr).not.toContain(klucz);
+    const env = { ...odczytajEnv(path.join(p, 'proba.env')), OMS_KLUCZ_SEKRETOW: klucz };
     expect(env.OMS_KANALY).toBe('[]'); expect(JSON.stringify(env)).not.toContain('foreign-demo-secret');
     const adminFile = fs.readFileSync(path.join(p, 'administrator-proby.env'), 'utf8');
     const admin = /haslo=(.+)/.exec(adminFile)[1];
@@ -114,8 +119,9 @@ describe('samodzielne syntetyczne demo instalacji', () => {
     expect(rows(path.join(p, 'backup-proba.sqlite'))).toHaveLength(0);
     await visible(env, admin);
     await visible({ ...env, OMS_DB_PATH: path.join(p, 'odtworzenie-demo/oms.sqlite') }, admin);
-    const before = fs.readFileSync(path.join(p, 'oms.sqlite'));
+    const before = fs.readFileSync(path.join(p, 'oms.sqlite')); const kluczPrzed = fs.readFileSync(path.join(p, 'klucz.env'));
     const again = cli(p, 39383); expect(again.status).toBe(1); expect(again.stderr).toContain('INSTALACJA_ODMOWA_NADPISANIA');
     expect(fs.readFileSync(path.join(p, 'oms.sqlite'))).toEqual(before);
+    expect(fs.readFileSync(path.join(p, 'klucz.env'))).toEqual(kluczPrzed);
   }, 60000);
 });

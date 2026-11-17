@@ -134,6 +134,10 @@ node scripts/instalacja-otworz.mjs --katalog "$PWD/oms-demo" --port 39151
   bez `Origin`/`Referer` ochrona CSRF odpowiada 403 i wygląda to jak awaria. Alarmy kanałów w `/health` bez kluczy integracji są w tej próbie normalne.
 - Katalog i port muszą być puste/wolne. Przy odmowie (`INSTALACJA_ODMOWA_NADPISANIA`) wybierz nowy katalog —
   nie kasuj cudzego.
+- W katalogu powstaje też `klucz.env` — klucz, którym OMS szyfruje w bazie hasła i tokeny integracji. Leży obok
+  bazy; wszystkie kroki próby czytają ten sam plik. Nie wypisuj go, nie kasuj i nie podmieniaj. `./oms-demo` leży
+  w repozytorium. `.gitignore` pomija `proba.env`, `administrator-proby.env` i `klucz.env`, ale nie bazę ani
+  pozostałe pliki próby — nie dodawaj tego katalogu do commita.
 
 Szczegóły i ograniczenia: [instalacja-klienta.md](instalacja-klienta.md).
 
@@ -148,6 +152,12 @@ sam, jeśli masz dostęp do serwera (SSH, sekcja 2 wyżej):
 3. Zbuduj paczkę z klona repo (początek instrukcji) i rozpakuj ją według sekcji 3.
 4. `docker compose build`, `docker compose run --rm instalacja`, `docker compose up -d` (sekcje 4–6).
 5. Zweryfikuj `docker compose ps` (stan `healthy`) i `/health`. Dostęp z innego komputera: sekcja 7.
+6. Klucz poświadczeń: krok 5 instrukcji zakłada `/opt/oms/config/klucz.env` i podaje jego id. Id możesz
+   przepisać do podsumowania; wartości nie czytasz. Człowiekowi dajesz jedną linię do jego terminala:
+   `ssh -t LOGIN@ADRES "sudo cat /opt/oms/config/klucz.env"` — zapisuje ją w menedżerze haseł, z id i datą.
+
+Czyszczenie po nieudanym kroku 5 robisz wyłącznie poleceniami z instrukcji: katalog danych i trzy pliki instalatora
+w `/opt/oms/config` wymienione z nazwy. Nigdy `rm -r /opt/oms/config` ani `find /opt/oms/config … -delete`.
 
 Gdy wysyłasz polecenia skryptem przez `ssh LOGIN@ADRES 'bash -s' < skrypt`, polecenie, które czyta wejście, zjada
 resztę skryptu. Robi to `docker compose run`: w teście 24.10 start panelu się nie wykonał, a skrypt zakończył się
@@ -169,14 +179,21 @@ Zanim to zrobisz, wyjaśnij w jednym zdaniu, co się stanie, i poczekaj na wyra�
   w panelu albo w pliku konfiguracji na serwerze (`/opt/oms/config/oms.env`, katalog 0700, plik 0600), nigdy w repo (sekcja 3);
 - jakiekolwiek wystawienie faktury, nadanie paczki, wysyłka do KSeF, wiadomość do klienta;
 - udostępnienie panelu poza siecią lokalną (router, VPN, HTTPS);
-- usunięcie czegokolwiek z `/opt/oms/data`, `/opt/oms/backups`.
+- usunięcie czegokolwiek z `/opt/oms/data`, `/opt/oms/backups`;
+- **OMS odmawia startu przez klucz poświadczeń** (w dzienniku `Błąd konfiguracji:` z `OMS_KLUCZ_SEKRETOW`, w wyniku
+  `KLUCZ_NIEZGODNY` albo `KLUCZ_POSWIADCZEN_ODMOWA`) — zatrzymaj się i pokaż komunikat człowiekowi. Nie generuj
+  zastępczego klucza, nie usuwaj `klucz.env`, nie uruchamiaj `sekrety porzuc`: klucz przynosi człowiek z menedżera
+  haseł, a porzucenie poświadczeń to jego decyzja (`instalacja-docker.md`, rozdział „Klucz poświadczeń”);
+- odtwarzanie bazy z kopii — na odtworzonej bazie nie uruchamiaj instalatora ani `aktualizuj.sh produkcja`
+  (`instalacja-docker.md`, „Odtworzenie po awarii dysku”). Kopii bazy nie przenoś razem z kluczem.
 
 ## Po instalacji
 
 1. **Hasło administratora — zanim cokolwiek posprzątasz.** W próbie lokalnej powiedz, w którym pliku jest. Na serwerze
    daj człowiekowi jedną linię do jego terminala: `ssh -t LOGIN@ADRES "sudo cat /opt/oms/config/administrator-proby.env"`
    (po przejściu na pracę: `administrator.env`). Poczekaj, aż zaloguje się do panelu i zapisze hasło w menedżerze
-   haseł. Dopiero potem sprzątasz dostęp (punkt 4). W teście 24.10 agent usunął `sudo` za wcześnie i człowiek utknął.
+   haseł. Tak samo klucz poświadczeń: `ssh -t LOGIN@ADRES "sudo cat /opt/oms/config/klucz.env"`, zapis z id i datą.
+   Dopiero potem sprzątasz dostęp (punkt 4). W teście 24.10 agent usunął `sudo` za wcześnie i człowiek utknął.
 2. **Podsumowanie.** Każdy z tych punktów ma się w nim znaleźć — w teście 24.10 zabrakło dwóch ostatnich:
    - adres panelu i gdzie leży hasło,
    - co jeszcze nie jest podłączone i czego brakuje (np. kopii poza dyskiem — `docs/instalacja-docker.md`, „Codzienna obsługa”),
@@ -197,6 +214,8 @@ Zanim to zrobisz, wyjaśnij w jednym zdaniu, co się stanie, i poczekaj na wyra�
 ## Gdy coś nie działa
 
 - Błędy `INSTALACJA_…` — komunikat mówi, co zrobić; nie ponawiaj w katalogu z częściowymi danymi.
+- Odmowa startu przez klucz poświadczeń — stop (sekcja „Stop”). Stan bazy (działa bez klucza, niczego nie zmienia):
+  `sudo sh /opt/oms/aktualizuj.sh sekrety stan` (wypisuje id wymaganego klucza, nie wartość).
 - Kontener nie jest `healthy` — `sudo docker compose logs --tail=100 oms`, `deploy/klient/diagnostyka.sh`.
 - Port zajęty — wybierz inny, zapisz który.
 - Wynik, którego nie rozumiesz: nie ukrywaj go. Pokaż człowiekowi dokładny komunikat i powiedz, czego nie wiesz.

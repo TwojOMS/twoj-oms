@@ -278,10 +278,11 @@ describe('PRZ-094.25 linia logu startu produkcji', () => {
     };
     const wypisane = vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(katalogBazy, 'sprawdzKatalogBazy').mockImplementation(() => {});
-    const otworz = vi.spyOn(baza, 'openOmsDb').mockReturnValue({});
+    // Wejście bazy entrypointu: otworzBazeStartu(env, ścieżka, opcje) — opcje idą dalej do openOmsDb.
+    const otworz = vi.spyOn(baza, 'otworzBazeStartu').mockReturnValue({});
     vi.spyOn(uruchomienie, 'uruchomAplikacje').mockResolvedValue({ zamknij: async () => {} });
     await uruchomOms(env, '127.0.0.1');
-    const opcje = otworz.mock.calls[0][1];
+    const opcje = otworz.mock.calls[0][2];
     expect(opcje.log).toBeTypeOf('function');
     opcje.log('uzupełnienia danych zamówień: 0 do sprawdzenia, 3 ms');
     expect(wypisane).toHaveBeenCalledWith('uzupełnienia danych zamówień: 0 do sprawdzenia, 3 ms');

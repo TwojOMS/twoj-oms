@@ -9,8 +9,9 @@ import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { gunzipSync, gzipSync } from 'node:zlib';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { tarUstar } from '../../scripts/paczka-klienta.mjs';
+import { bajtyKlucza, idKlucza, nowyKlucz, utworzSejf } from '../../src/core/bezpieczenstwo/sejf-sekretow.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const AKTUALIZATOR = path.join(ROOT, 'deploy/klient/aktualizuj.sh');
@@ -52,8 +53,18 @@ const stanDockera = k => JSON.parse(fs.readFileSync(path.join(k.baza, 'docker-st
 const kontener = (k, n) => stanDockera(k).kontenery[n];
 const rewizja = (k, n) => stanDockera(k).obrazy[kontener(k, n).obraz].revision;
 
+// PRZ-182: wydanie z narzędziem poświadczeń — scripts/sekrety.mjs w paczce przekazuje wywołanie prawdziwemu narzędziu.
+const NARZEDZIE = Buffer.from(`import { uruchom } from ${JSON.stringify(pathToFileURL(path.join(ROOT, 'scripts/sekrety.mjs')).href)};\nprocess.exitCode = uruchom(process.argv.slice(2));\n`);
+const SEKRET_INFAKT = '{"apiKey":"KONTROLA-INFAKT-sekret-12345"}';
+const MIEJSCE_INFAKT = { tabela: 'konfiguracja_integracji', kolumna: 'sekrety_json', id: 'infakt' };
+const wydanieJson = (commit, format) => JSON.stringify({ commit, tree: 'e'.repeat(40), rodzaj: 'klient-docker', ...(format === undefined ? {} : { formatSekretow: format }) }, null, 2) + '\n';
+/** Paczka wydania znającego format poświadczeń `format`: z narzędziem i (domyślnie) startem szyfrującym bazę. */
+function paczkaZSekretami(k, nazwa, { format = 1, znaczniki = ['TEST_SZYFRUJE'], commit = COMMIT[nazwa], ...reszta } = {}) {
+  return paczka(k, nazwa, { ...reszta, commit, znaczniki, wydanieJson: wydanieJson(commit, format), dodatkowe: new Map([[`${wyd(commit)}/scripts/sekrety.mjs`, NARZEDZIE]]) });
+}
+
 /** Instalacja jak po PRZ-058: wydanie A rozpakowane, obraz zbudowany, oms + kopia działają; bez wskaźnika. */
-function instalacja() {
+function instalacja({ formatA, dodatkoweA = new Map() } = {}) {
   const baza = fs.mkdtempSync(path.join(os.tmpdir(), 'oms-akt-'));
   katalogi.push(baza);
   const oms = path.join(baza, 'opt-oms');
@@ -67,11 +78,15 @@ function instalacja() {
   db.exec('CREATE TABLE konta (login TEXT)');
   db.exec("INSERT INTO konta VALUES ('administrator-proby')");
   for (const n of ['DEMO-001', 'DEMO-002', 'DEMO-003']) db.prepare('INSERT INTO zamowienia (numer) VALUES (?)').run(n);
+  // PRZ-182: poświadczenie integracji zapisane jawnie (baza sprzed szyfrowania) i tabela ustawień ze znacznikiem formatu.
+  db.exec('CREATE TABLE ustawienia (klucz TEXT PRIMARY KEY, wartosc TEXT, zmienione_at TEXT)');
+  db.exec('CREATE TABLE konfiguracja_integracji (integracja TEXT PRIMARY KEY, sekrety_json TEXT)');
+  db.prepare("INSERT INTO konfiguracja_integracji VALUES ('infakt', ?)").run(SEKRET_INFAKT);
   db.close();
   fs.writeFileSync(path.join(oms, 'data/etykiety/e1.pdf'), 'etykieta');
   fs.writeFileSync(path.join(oms, 'data/proformy/p1.pdf'), 'proforma');
   fs.writeFileSync(path.join(oms, 'config/oms.env'), 'OMS_TRYB=proba\nOMS_PASS=tajne-haslo-serwisu\n');
-  const a = paczka(k, 'A');
+  const a = paczka(k, 'A', { dodatkowe: dodatkoweA, ...(formatA === undefined ? {} : { wydanieJson: wydanieJson(COMMIT.A, formatA) }) });
   const x = spawnSync('tar', ['-xzf', '-', '-C', u(path.join(oms, 'releases'))], { input: fs.readFileSync(a.plik), encoding: 'utf8' });
   if (x.status !== 0) throw Error('tar: ' + x.stderr);
   const plikCompose = path.join(oms, 'releases', a.top, 'deploy/klient/compose.yaml');
@@ -128,11 +143,13 @@ describe('aktualizator V0: deploy → accept', () => {
     // Blokada trzyma do decyzji; wskaźnik nadal na A (adopcja zapisała go pod blokadą).
     expect(czytaj(k, 'update-state/blokada/stan')).toMatch(/^etap=czeka_na_akceptacje$/m);
     expect(czytaj(k, 'update-state/biezace').trim()).toBe(wyd(COMMIT.A));
-    // Kopia operacji: baza spójna (te same zamówienia), lista migracji, konfiguracja i pliki, odciski.
+    // Kopia operacji: baza spójna (te same zamówienia), lista migracji, NAZWY zmiennych konfiguracji (PRZ-182:
+    // bez wartości — recover konfiguracji nie przywraca) i pliki, odciski.
     const opdir = `backups/operacje/${op}`;
     expect(zamowienia(k, `${opdir}/oms.sqlite`)).toEqual(['DEMO-001', 'DEMO-002', 'DEMO-003']);
     expect(JSON.parse(czytaj(k, `${opdir}/migracje.json`))).toEqual([{ modul: 'rdzen', numer: 1, nazwa: 'baseline' }]);
-    expect(czytaj(k, `${opdir}/config/oms.env`)).toBe(czytaj(k, 'config/oms.env'));
+    expect(istnieje(k, `${opdir}/config/oms.env`)).toBe(false);
+    expect(czytaj(k, `${opdir}/config/nazwy-zmiennych.txt`)).toBe('oms.env OMS_TRYB\noms.env OMS_PASS\n');
     expect(czytaj(k, `${opdir}/pliki/etykiety/e1.pdf`)).toBe('etykieta');
     expect(czytaj(k, `${opdir}/pliki/proformy/p1.pdf`)).toBe('proforma');
     expect(czytaj(k, `${opdir}/kopia.sha256`)).toContain('./oms.sqlite');
@@ -472,5 +489,356 @@ describe('aktualizator V0: retencja', () => {
     expect(stanDockera(k).tagi[`oms:${COMMIT.C}`]).toBeDefined();
     expect(stanDockera(k).wywolania.some(w => w.startsWith('builder prune -f --filter until=168h'))).toBe(true);
     expect(obrazA).toBeTruthy();
+  });
+});
+
+// --- PRZ-182: poświadczenia integracji szyfrowane w bazie -----------------------------------------------------
+
+const wszystkiePliki = d => fs.readdirSync(d, { withFileTypes: true }).flatMap(e => (e.isDirectory() ? wszystkiePliki(path.join(d, e.name)) : [path.join(d, e.name)]));
+const zBazy = (k, sql) => { const d = new DatabaseSync(plik(k, 'data/oms.sqlite'), { readOnly: true }); try { return d.prepare(sql).get(); } finally { d.close(); } };
+const sekretBazy = k => zBazy(k, "SELECT sekrety_json AS w FROM konfiguracja_integracji WHERE integracja = 'infakt'").w;
+const formatBazy = k => zBazy(k, "SELECT wartosc AS w FROM ustawienia WHERE klucz = 'sekrety.format'")?.w ?? null;
+const kluczZPliku = k => /^OMS_KLUCZ_SEKRETOW=(.+)$/m.exec(czytaj(k, 'config/klucz.env'))?.[1];
+const idK = klucz => idKlucza(bajtyKlucza(klucz));
+const wywolania = k => stanDockera(k).wywolania;
+const idx = (k, fragment, od = 0) => wywolania(k).findIndex((w, i) => i >= od && w.includes(fragment));
+const startOms = c => `${wyd(c)}/deploy/klient/compose.yaml up -d --no-build --no-deps --force-recreate oms`;
+function zapiszKlucz(k, klucz = nowyKlucz()) {
+  fs.writeFileSync(plik(k, 'config/klucz.env'), `OMS_KLUCZ_SEKRETOW=${klucz}\n`, { mode: 0o600 });
+  return klucz;
+}
+/** Baza w formacie 1: poświadczenie zaszyfrowane kluczem `klucz`. */
+function zaszyfrujBaze(k, klucz) {
+  const d = new DatabaseSync(plik(k, 'data/oms.sqlite'));
+  try {
+    d.prepare("UPDATE konfiguracja_integracji SET sekrety_json = ? WHERE integracja = 'infakt'").run(utworzSejf(bajtyKlucza(klucz)).szyfruj(SEKRET_INFAKT, MIEJSCE_INFAKT));
+    d.prepare("INSERT OR REPLACE INTO ustawienia VALUES ('sekrety.format', '1', '2026-11-17')").run();
+  } finally { d.close(); }
+}
+function ustawFormat(k, format) {
+  const d = new DatabaseSync(plik(k, 'data/oms.sqlite'));
+  try { d.prepare("INSERT OR REPLACE INTO ustawienia VALUES ('sekrety.format', ?, '2026-11-17')").run(String(format)); } finally { d.close(); }
+}
+/** Instalacja sprzed szyfrowania (A) po deploy wydania B, które przy starcie zaszyfrowało bazę; czeka na odbiór. */
+function poDeployuSzyfrujacym() {
+  const k = instalacja();
+  const obrazA = kontener(k, 'oms').obraz;
+  const b = paczkaZSekretami(k, 'B');
+  const r = akt(k, ['deploy', b.plik, b.sha]);
+  expect(r.status, r.wyjscie).toBe(0);
+  return { k, r, op: operacja(r), obrazA, obrazB: kontener(k, 'oms').obraz };
+}
+
+describe('PRZ-182: deploy wydania z poświadczeniami szyfrowanymi w bazie', () => {
+  it('klucz zapewniony obrazem kandydata PRZED zatrzymaniem OMS-u; plik 600; komunikat z plikiem i id; kandydat szyfruje bazę', () => {
+    const { k, r, obrazB } = poDeployuSzyfrujacym();
+    const klucz = kluczZPliku(k);
+    expect(bajtyKlucza(klucz)).not.toBeNull();
+    expect(r.stdout).toContain(`KLUCZ_POSWIADCZEN ${k.oms}/config/klucz.env id ${idK(klucz)}`);
+    expect(r.stdout).toContain('menedżerze haseł');
+    expect(r.wyjscie).not.toContain(klucz);
+    if (process.platform !== 'win32') expect(fs.statSync(plik(k, 'config/klucz.env')).mode & 0o777).toBe(0o600);
+    const iKlucz = idx(k, 'sekrety.mjs klucz-zapewnij --plik /opt/oms/config/klucz.env');
+    expect(iKlucz).toBeGreaterThan(-1);
+    expect(wywolania(k)[iKlucz]).toContain(obrazB);
+    expect(iKlucz).toBeLessThan(idx(k, 'stop oms-kopia oms'));
+    expect(sekretBazy(k)).toMatch(new RegExp(`^oms1\\.${idK(klucz)}\\.`));
+    expect(formatBazy(k)).toBe('1');
+    expect(czytaj(k, 'update-state/blokada/stan')).toMatch(new RegExp(`^klucz_id=${idK(klucz)}$`, 'm'));
+  });
+
+  it('kopia operacji: bez klucza i bez wartości z oms.env i kopia.env (cała przeszukana), tylko nazwy; recover nie przywraca konfiguracji', () => {
+    const k = instalacja();
+    fs.writeFileSync(plik(k, 'config/kopia.env'), 'OMS_KOPIA_ZEWNETRZNA=/opt/oms/kopia-zewnetrzna\r\nKOPIA_KONTROLA=kopia-env-wartosc-kontrolna\n');
+    const b = paczkaZSekretami(k, 'B');
+    const r = akt(k, ['deploy', b.plik, b.sha]);
+    expect(r.status, r.wyjscie).toBe(0);
+    const op = operacja(r);
+    const klucz = kluczZPliku(k);
+    const pliki = wszystkiePliki(plik(k, `backups/operacje/${op}`));
+    for (const n of ['klucz.env', 'oms.env', 'kopia.env']) expect(pliki.some(p => path.basename(p) === n), n).toBe(false);
+    for (const p of pliki) {
+      const t = fs.readFileSync(p).toString('latin1');
+      for (const zakazane of ['tajne-haslo-serwisu', 'kopia-env-wartosc-kontrolna', klucz]) expect(t.includes(zakazane), `${p}: ${zakazane === klucz ? 'klucz' : zakazane}`).toBe(false);
+    }
+    expect(czytaj(k, `backups/operacje/${op}/config/nazwy-zmiennych.txt`)).toBe('oms.env OMS_TRYB\noms.env OMS_PASS\nkopia.env OMS_KOPIA_ZEWNETRZNA\nkopia.env KOPIA_KONTROLA\n');
+    // Poprawka konfiguracji z okna odbioru przeżywa powrót z kopią operacji.
+    fs.appendFileSync(plik(k, 'config/oms.env'), 'POPRAWKA_Z_OKNA=1\n');
+    const trescKlucza = czytaj(k, 'config/klucz.env');
+    const rec = akt(k, ['recover', op, '--przywroc-baze']);
+    expect(rec.status, rec.wyjscie).toBe(0);
+    expect(czytaj(k, 'config/oms.env')).toContain('POPRAWKA_Z_OKNA=1');
+    expect(czytaj(k, 'config/klucz.env')).toBe(trescKlucza);
+  });
+
+  it('istniejący zgodny klucz: sprawdz obrazem kandydata przed zatrzymaniem, plik klucza bez zmian', () => {
+    const k = instalacja();
+    const klucz = zapiszKlucz(k);
+    zaszyfrujBaze(k, klucz);
+    const b = paczkaZSekretami(k, 'B');
+    const r = akt(k, ['deploy', b.plik, b.sha]);
+    expect(r.status, r.wyjscie).toBe(0);
+    expect(czytaj(k, 'config/klucz.env')).toBe(`OMS_KLUCZ_SEKRETOW=${klucz}\n`);
+    expect(r.stdout).toContain(`id ${idK(klucz)}`);
+    const iSprawdz = idx(k, 'sekrety.mjs sprawdz --baza /opt/oms/data/oms.sqlite');
+    expect(iSprawdz).toBeGreaterThan(idx(k, 'sekrety.mjs klucz-zapewnij'));
+    expect(iSprawdz).toBeLessThan(idx(k, 'stop oms-kopia oms'));
+    expect(sekretBazy(k)).toMatch(new RegExp(`^oms1\\.${idK(klucz)}\\.`));
+  });
+
+  const odmowy = [
+    ['brak pliku klucza przy szyfrogramach w bazie', () => {}, 'Brak pliku klucza'],
+    ['klucz niezgodny z bazą', k => { zapiszKlucz(k); }, 'KLUCZ_NIEZGODNY'],
+    ['pusty plik klucza (ucięty po awarii)', k => fs.writeFileSync(plik(k, 'config/klucz.env'), ''), 'pusty albo ucięty'],
+  ];
+  for (const [opis, przygotuj, kod] of odmowy) {
+    it(`odmowa przed zatrzymaniem — ${opis}: stare wydanie pracuje, blokada zdjęta, plik klucza bez zmian`, () => {
+      const k = instalacja();
+      const obrazA = kontener(k, 'oms').obraz;
+      zaszyfrujBaze(k, nowyKlucz());
+      przygotuj(k);
+      const przed = istnieje(k, 'config/klucz.env') ? czytaj(k, 'config/klucz.env') : null;
+      const b = paczkaZSekretami(k, 'B');
+      const r = akt(k, ['deploy', b.plik, b.sha]);
+      expect(r.status, r.wyjscie).toBe(1);
+      expect(r.wyjscie).toContain(kod);
+      expect(r.stderr).toContain('PRZERWANE na etapie zbudowane');
+      expect(wywolania(k).some(w => w.startsWith('stop'))).toBe(false);
+      expect(kontener(k, 'oms')).toEqual({ obraz: obrazA, dziala: true });
+      expect(istnieje(k, 'update-state/blokada')).toBe(false);
+      expect(istnieje(k, 'config/klucz.env') ? czytaj(k, 'config/klucz.env') : null).toBe(przed);
+    });
+  }
+});
+
+describe('PRZ-182: recover — decyzja po stanie bazy', () => {
+  it('konwersja zakończona: po zatrzymaniu kandydata odszyfrowanie obrazem kandydata, dopiero potem start starego wydania', () => {
+    const { k, op, obrazA, obrazB } = poDeployuSzyfrujacym();
+    expect(formatBazy(k)).toBe('1');
+    const od = wywolania(k).length;
+    const rec = akt(k, ['recover', op]);
+    expect(rec.status, rec.wyjscie).toBe(0);
+    expect(rec.stdout).toContain('ODSZYFROWANE wartości: 1');
+    expect(sekretBazy(k)).toBe(SEKRET_INFAKT);
+    expect(formatBazy(k)).toBeNull();
+    const iStop = idx(k, 'stop oms-kopia oms', od);
+    const iOdsz = idx(k, 'sekrety.mjs odszyfruj --baza /opt/oms/data/oms.sqlite', od);
+    const iStart = idx(k, startOms(COMMIT.A), od);
+    expect(iStop).toBeGreaterThan(-1);
+    expect(iOdsz).toBeGreaterThan(iStop);
+    expect(iStart).toBeGreaterThan(iOdsz);
+    expect(wywolania(k)[iOdsz]).toContain(obrazB);
+    expect(kontener(k, 'oms')).toEqual({ obraz: obrazA, dziala: true });
+    expect(istnieje(k, 'update-state/blokada')).toBe(false);
+  });
+
+  it('kandydat nie wystartował (przerwanie przy jego starcie): odszyfruj bez zmian, baza nietknięta, stare wydanie wraca', () => {
+    const k = instalacja();
+    const obrazA = kontener(k, 'oms').obraz;
+    const b = paczkaZSekretami(k, 'B');
+    const r = akt(k, ['deploy', b.plik, b.sha], { TEST_ZABIJ_PRZY: startOms(COMMIT.B) });
+    expect(r.status).not.toBe(0);
+    const stan = czytaj(k, 'update-state/blokada/stan');
+    expect(stan).toMatch(/^etap=uruchomione$/m);
+    expect(sekretBazy(k)).toBe(SEKRET_INFAKT);
+    const rec = akt(k, ['recover', /^operacja=(.+)$/m.exec(stan)[1]]);
+    expect(rec.status, rec.wyjscie).toBe(0);
+    expect(rec.stdout).toContain('ODSZYFROWANE wartości: 0');
+    expect(sekretBazy(k)).toBe(SEKRET_INFAKT);
+    expect(formatBazy(k)).toBeNull();
+    expect(kontener(k, 'oms')).toEqual({ obraz: obrazA, dziala: true });
+  });
+
+  it('odszyfrowanie zakończone i przerwanie przed startem starego obrazu: powtórne recover kończy bez ponownej zmiany', () => {
+    const { k, op, obrazA } = poDeployuSzyfrujacym();
+    const r1 = akt(k, ['recover', op], { TEST_ZABIJ_PRZY: startOms(COMMIT.A) });
+    expect(r1.status).not.toBe(0);
+    expect(sekretBazy(k)).toBe(SEKRET_INFAKT);
+    expect(czytaj(k, 'update-state/blokada/stan')).toMatch(/^etap=przywracanie$/m);
+    const r2 = akt(k, ['recover', op]);
+    expect(r2.status, r2.wyjscie).toBe(0);
+    expect(r2.stdout).toContain('ODSZYFROWANE wartości: 0');
+    expect(sekretBazy(k)).toBe(SEKRET_INFAKT);
+    expect(kontener(k, 'oms')).toEqual({ obraz: obrazA, dziala: true });
+    expect(istnieje(k, 'update-state/blokada')).toBe(false);
+  });
+
+  it('odszyfrowanie nieudane (brak klucza): blokada zostaje, stary obraz nie startuje, podpowiedź --przywroc-baze; po wstawieniu klucza powtórne recover kończy', () => {
+    const { k, op, obrazA } = poDeployuSzyfrujacym();
+    const tresc = czytaj(k, 'config/klucz.env');
+    fs.rmSync(plik(k, 'config/klucz.env'));
+    const od = wywolania(k).length;
+    const r1 = akt(k, ['recover', op]);
+    expect(r1.status).toBe(1);
+    expect(r1.stderr).toContain('ODSZYFROWANIE_NIEUDANE');
+    expect(r1.stderr).toContain(`recover ${op} --przywroc-baze`);
+    expect(r1.stderr).toMatch(/znikną/);
+    expect(idx(k, startOms(COMMIT.A), od)).toBe(-1);
+    expect(kontener(k, 'oms').obraz === obrazA && kontener(k, 'oms').dziala).toBe(false);
+    expect(czytaj(k, 'update-state/blokada/stan')).toMatch(/^etap=przywracanie$/m);
+    expect(sekretBazy(k)).toMatch(/^oms1\./);
+    fs.writeFileSync(plik(k, 'config/klucz.env'), tresc, { mode: 0o600 });
+    const r2 = akt(k, ['recover', op]);
+    expect(r2.status, r2.wyjscie).toBe(0);
+    expect(sekretBazy(k)).toBe(SEKRET_INFAKT);
+    expect(kontener(k, 'oms')).toEqual({ obraz: obrazA, dziala: true });
+  });
+
+  it('powrót z kopią operacji (--przywroc-baze): konwerter nie jest uruchamiany, baza z kopii w formacie 0', () => {
+    const { k, op, obrazA } = poDeployuSzyfrujacym();
+    const od = wywolania(k).length;
+    const rec = akt(k, ['recover', op, '--przywroc-baze']);
+    expect(rec.status, rec.wyjscie).toBe(0);
+    expect(wywolania(k).slice(od).some(w => w.includes('sekrety.mjs'))).toBe(false);
+    expect(sekretBazy(k)).toBe(SEKRET_INFAKT);
+    expect(formatBazy(k)).toBeNull();
+    expect(kontener(k, 'oms')).toEqual({ obraz: obrazA, dziala: true });
+  });
+
+  it('brak pasującego konwertera (wydanie bazowe zna format 1, baza w formacie 2): odmowa przed zatrzymaniem; --przywroc-baze wraca', () => {
+    const k = instalacja({ formatA: 1 });
+    const obrazA = kontener(k, 'oms').obraz;
+    const c = paczkaZSekretami(k, 'C', { format: 2, znaczniki: ['TEST_ZEPSUTY'] });
+    const r = akt(k, ['deploy', c.plik, c.sha]);
+    expect(r.status).toBe(1);
+    const stan = czytaj(k, 'update-state/blokada/stan');
+    expect(stan).toMatch(/^etap=uruchomione$/m);
+    const op = /^operacja=(.+)$/m.exec(stan)[1];
+    ustawFormat(k, 2); // kandydat zdążył zapisać bazę w swoim formacie
+    const od = wywolania(k).length;
+    const r1 = akt(k, ['recover', op]);
+    expect(r1.status).toBe(1);
+    expect(r1.stderr).toContain('FORMAT_BEZ_KONWERTERA');
+    expect(r1.stderr).toContain('--przywroc-baze');
+    expect(wywolania(k).slice(od).some(w => w.startsWith('stop'))).toBe(false);
+    expect(czytaj(k, 'update-state/blokada/stan')).toMatch(/^etap=uruchomione$/m);
+    const r2 = akt(k, ['recover', op, '--przywroc-baze']);
+    expect(r2.status, r2.wyjscie).toBe(0);
+    expect(formatBazy(k)).toBeNull();
+    expect(kontener(k, 'oms')).toEqual({ obraz: obrazA, dziala: true });
+  });
+});
+
+describe('PRZ-182: aktualizuj.sh sekrety — narzędzie poświadczeń', () => {
+  function poAkceptacji() {
+    const s = poDeployuSzyfrujacym();
+    const a = akt(s.k, ['accept', s.op]);
+    expect(a.status, a.wyjscie).toBe(0);
+    return s;
+  }
+
+  it('zapis przy pracującym OMS-ie = odmowa bez zmian i bez blokady; odczyt (stan, sprawdz) bez blokady i bez zatrzymania', () => {
+    const { k } = poAkceptacji();
+    const klucz = kluczZPliku(k);
+    const od = wywolania(k).length;
+    for (const polecenie of [['odszyfruj'], ['sprzataj'], ['porzuc', '--potwierdz-wszystkie']]) {
+      const z = akt(k, ['sekrety', ...polecenie]);
+      expect(z.status, polecenie.join(' ')).toBe(1);
+      expect(z.stderr).toContain('SEKRETY_OMS_DZIALA');
+      expect(istnieje(k, 'update-state/blokada')).toBe(false);
+    }
+    expect(formatBazy(k)).toBe('1');
+    const s = akt(k, ['sekrety', 'stan']);
+    expect(s.status, s.wyjscie).toBe(0);
+    expect(s.stdout).toContain(`wymagane id kluczy: ${idK(klucz)}`);
+    const p = akt(k, ['sekrety', 'sprawdz']);
+    expect(p.status, p.wyjscie).toBe(0);
+    expect(p.stdout).toContain('KLUCZ_ZGODNY');
+    expect(`${s.wyjscie}${p.wyjscie}`).not.toContain(klucz);
+    expect(wywolania(k).slice(od).some(w => w.startsWith('stop'))).toBe(false);
+    expect(istnieje(k, 'update-state/blokada')).toBe(false);
+    expect(kontener(k, 'oms').dziala).toBe(true);
+    // Ścieżkę pliku klucza ustala aktualizator, nie wołający.
+    expect(akt(k, ['sekrety', 'klucz-zapewnij', '--plik', '/tmp/inny.env']).stderr).toContain('SEKRETY_PLIK_KLUCZA_STALY');
+  });
+
+  it('narzędzie dostępne po nieudanej aktualizacji mimo starego wskaźnika (obraz kandydata ze stanu operacji)', () => {
+    const k = instalacja();
+    const s0 = akt(k, ['sekrety', 'stan']);
+    expect(s0.status).toBe(1);
+    expect(s0.stderr).toContain('NARZEDZIE_SEKRETOW_NIEDOSTEPNE');
+    const b = paczkaZSekretami(k, 'B', { znaczniki: ['TEST_ZEPSUTY'] });
+    expect(akt(k, ['deploy', b.plik, b.sha]).status).toBe(1);
+    expect(czytaj(k, 'update-state/biezace').trim()).toBe(wyd(COMMIT.A));
+    const obrazB = /^cel_obraz=(.+)$/m.exec(czytaj(k, 'update-state/blokada/stan'))[1];
+    const od = wywolania(k).length;
+    const s = akt(k, ['sekrety', 'stan']);
+    expect(s.status, s.wyjscie).toBe(0);
+    expect(s.stdout).toContain('konfiguracja_integracji.sekrety_json: jawne 1');
+    expect(wywolania(k)[idx(k, 'sekrety.mjs stan', od)]).toContain(obrazB);
+  });
+
+  it('porzuc --nowy-klucz po utracie klucza: przy zatrzymanym OMS-ie nowy plik klucza, poświadczenia porzucone, blokada zdjęta', () => {
+    const { k } = poAkceptacji();
+    const stary = kluczZPliku(k);
+    fs.rmSync(plik(k, 'config/klucz.env'));
+    expect(akt(k, ['compose', 'stop', 'oms', 'kopia']).status).toBe(0);
+    const r = akt(k, ['sekrety', 'porzuc', '--nowy-klucz', '--potwierdz-wszystkie']);
+    expect(r.status, r.wyjscie).toBe(0);
+    const nowy = kluczZPliku(k);
+    expect(bajtyKlucza(nowy)).not.toBeNull();
+    expect(nowy).not.toBe(stary);
+    expect(r.stdout).toContain(`KLUCZ_UTWORZONY id ${idK(nowy)}`);
+    expect(r.stdout).toContain('PORZUCONE: integracja:infakt');
+    expect(r.stdout).toContain('compose up -d');
+    expect(r.wyjscie).not.toContain(nowy);
+    if (process.platform !== 'win32') expect(fs.statSync(plik(k, 'config/klucz.env')).mode & 0o777).toBe(0o600);
+    expect(sekretBazy(k)).toBe('{}');
+    expect(istnieje(k, 'update-state/blokada')).toBe(false);
+    expect(akt(k, ['sekrety', 'sprawdz']).stdout).toContain('KLUCZ_ZGODNY');
+  });
+
+  it('przerwana operacja narzędzia (kill -9): blokada zostaje, deploy odmawia, ponowienie kończy i zdejmuje blokadę', () => {
+    const { k } = poAkceptacji();
+    expect(akt(k, ['compose', 'stop', 'oms', 'kopia']).status).toBe(0);
+    const r1 = akt(k, ['sekrety', 'odszyfruj'], { TEST_ZABIJ_PRZY: 'sekrety.mjs odszyfruj' });
+    expect(r1.status).not.toBe(0);
+    const stan = czytaj(k, 'update-state/blokada/stan');
+    expect(stan).toMatch(/^typ=sekrety$/m);
+    expect(formatBazy(k)).toBe('1');
+    const s = akt(k, ['status']).stdout;
+    expect(s).toContain('blokada: TAK');
+    expect(s).toContain('dalej: ponów `sekrety');
+    const c = paczka(k, 'C');
+    expect(akt(k, ['deploy', c.plik, c.sha]).stderr).toContain('ODMOWA_TRWA_OPERACJA');
+    const r2 = akt(k, ['sekrety', 'odszyfruj']);
+    expect(r2.status, r2.wyjscie).toBe(0);
+    expect(r2.stdout).toContain('ODSZYFROWANE wartości: 1');
+    expect(formatBazy(k)).toBeNull();
+    expect(istnieje(k, 'update-state/blokada')).toBe(false);
+  });
+});
+
+describe('PRZ-182: przejście próba → praca a klucz poświadczeń', () => {
+  const zPrzejsciem = () => instalacja({ dodatkoweA: new Map([[`${wyd(COMMIT.A)}/scripts/produkcja-pierwszy-start.mjs`, Buffer.from('// atrapa\n')]]) });
+
+  it('klucz.env zostaje na miejscu (nie trafia do archiwum); accept usuwa z archiwum kopię produkcja.env, próba zostaje', () => {
+    const k = zPrzejsciem();
+    const klucz = zapiszKlucz(k);
+    expect(akt(k, ['produkcja']).status).toBe(0);
+    const r = akt(k, ['produkcja']);
+    expect(r.status, r.wyjscie).toBe(0);
+    const op = operacja(r);
+    const arch = plik(k, `proba-archiwum/${op}`);
+    expect(czytaj(k, 'config/klucz.env')).toBe(`OMS_KLUCZ_SEKRETOW=${klucz}\n`);
+    expect(wszystkiePliki(arch).some(p => path.basename(p) === 'klucz.env')).toBe(false);
+    expect(wszystkiePliki(arch).some(p => fs.readFileSync(p).toString('latin1').includes(klucz))).toBe(false);
+    expect(fs.existsSync(path.join(arch, 'config/produkcja.env'))).toBe(true);
+    const a = akt(k, ['accept', op]);
+    expect(a.status, a.wyjscie).toBe(0);
+    expect(fs.existsSync(path.join(arch, 'config/produkcja.env'))).toBe(false);
+    expect(fs.readFileSync(path.join(arch, 'config/oms.env'), 'utf8')).toMatch(/^OMS_TRYB=proba$/m);
+    expect(czytaj(k, 'config/klucz.env')).toBe(`OMS_KLUCZ_SEKRETOW=${klucz}\n`);
+  });
+
+  it('powrót do próby (recover) nie rusza klucz.env', () => {
+    const k = zPrzejsciem();
+    const klucz = zapiszKlucz(k);
+    expect(akt(k, ['produkcja']).status).toBe(0);
+    const op = operacja(akt(k, ['produkcja']));
+    const rec = akt(k, ['recover', op]);
+    expect(rec.status, rec.wyjscie).toBe(0);
+    expect(czytaj(k, 'config/klucz.env')).toBe(`OMS_KLUCZ_SEKRETOW=${klucz}\n`);
+    expect(wszystkiePliki(plik(k, `proba-archiwum/${op}`)).some(p => path.basename(p) === 'klucz.env')).toBe(false);
   });
 });

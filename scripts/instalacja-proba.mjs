@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
-import { PLIKI_INSTALACJI, odczytajEnv, opcje, oczyscPowod, coDalejLokalnie } from './instalacja-wspolne.mjs';
+import { PLIKI_INSTALACJI, envEtapu, opcje, oczyscPowod, coDalejLokalnie, sciezkaKlucza } from './instalacja-wspolne.mjs';
 // Dynamicznie, PO kontroli wersji z instalacja-wspolne.mjs (PRZ-093.03): statyczny import node:sqlite albo .ts
 // wywraca skrypt na Node 20 jeszcze przed ewaluacją pierwszego modułu, bez słowa o wersji.
 const { DatabaseSync } = await import('node:sqlite');
@@ -44,8 +44,10 @@ async function main() {
   const znacznik = path.join(katalog, PLIKI_INSTALACJI.znacznik);
   const plikEnv = path.join(katalog, PLIKI_INSTALACJI.proba);
   wymagany(znacznik); wymagany(plikEnv);
-  const env = odczytajEnv(plikEnv);
-  sekrety.push(env.OMS_PASS);
+  // PRZ-182: proba.env + klucz poświadczeń z pliku klucza (ten sam dla wszystkich startów i odtworzenia).
+  const plikKlucza = sciezkaKlucza(katalog);
+  const env = await envEtapu(katalog);
+  sekrety.push(env.OMS_PASS, env.OMS_KLUCZ_SEKRETOW);
   const dbPath = env.OMS_DB_PATH;
   if (!dbPath || path.resolve(dbPath) !== path.join(katalog, PLIKI_INSTALACJI.baza)) throw new Error('INSTALACJA_NIEZGODNY_KATALOG');
   if (env.OMS_TRYB !== 'proba' || env.OMS_KANALY !== '[]' || env.OMS_PORT !== String(port)
@@ -92,8 +94,8 @@ async function main() {
     if (admin.status !== 302) throw new Error('INSTALACJA_RESTORE_LOGIN_ODMOWA');
   } finally { await pierwsze.zamknij(); }
   sprawdzBaze(odtworzonaBaza);
-  for (const linia of coDalejLokalnie({ katalog, port })) console.log(linia);
-  console.log(JSON.stringify({ status: 'proba-zakonczona', katalog, port, kontoProby: path.join(katalog, PLIKI_INSTALACJI.daneAdmina), health: 'HTTP/DB gotowe; integracje niepodlaczone' }));
+  for (const linia of coDalejLokalnie({ katalog, port, klucz: plikKlucza })) console.log(linia);
+  console.log(JSON.stringify({ status: 'proba-zakonczona', katalog, port, kontoProby: path.join(katalog, PLIKI_INSTALACJI.daneAdmina), kluczPoswiadczen: plikKlucza, health: 'HTTP/DB gotowe; integracje niepodlaczone' }));
 }
 
 // PRZ-093.03: kod etapu zostaje, dochodzi powód (np. „listen EADDRINUSE … 127.0.0.1:39151”). Hasła serwisowe

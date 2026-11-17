@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { openOmsDb } from '../../src/oms/db/db.ts';
 import { createTokeny } from '../../src/oms/allegro/tokeny.js';
 import { WYMAGANE_UPRAWNIENIA } from '../../src/domena/uprawnienia-kanalu.js';
+import { szyfrTestowy } from '../pomoc/sejf-testowy.ts';
 
 // OKABLOWANIE: `stanDlaEkranu()` musi NAPRAWDE liczyc braki z tokenu, a nie tylko oddawac
 // pusta liste. Regula w domenie i tak byla przetestowana osobno — tu chodzi o to, czy
@@ -23,7 +24,8 @@ function baza(accessToken) {
   db.prepare(`INSERT INTO tokeny_kanalu
     (kanal, access_token, refresh_token, wygasa_at, refresh_wygasa_at, zaktualizowane_at)
     VALUES (?,?,?,?,?,?)`)
-    .run('allegro_swietlik', accessToken, 'refresz', '2027-01-01T00:00:00.000Z',
+    .run('allegro_swietlik', szyfrTestowy(db, 'tokeny_kanalu', 'access_token', 'allegro_swietlik', accessToken),
+      szyfrTestowy(db, 'tokeny_kanalu', 'refresh_token', 'allegro_swietlik', 'refresz'), '2027-01-01T00:00:00.000Z',
       '2027-01-01T00:00:00.000Z', '2026-08-28T06:39:38.999Z');
   return db;
 }

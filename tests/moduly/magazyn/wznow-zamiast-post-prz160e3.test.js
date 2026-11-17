@@ -15,6 +15,7 @@ import { createAllegroClient } from '../../../src/oms/allegro/client.js';
 import { katalogAllegro, wezlyAllegro } from '../../../src/integracje/kanal-modul.ts';
 import { createSerwerOfertAllegro, API_ATRAPY_ALLEGRO } from '../../../deploy/proba/atrapy/allegro-oferty.mjs';
 import { fixtureAllegro, daneAllegro, aktorAllegro } from '../../pomoc/allegro-konfigurator.ts';
+import { szyfrTestowy } from '../../pomoc/sejf-testowy.ts';
 import { createRejestrKanalow } from '../../../src/moduly/kanaly/services/rejestr-kanalow.ts';
 import { createPetlaOfertAllegro } from '../../../src/moduly/magazyn/services/petla-ofert-allegro.js';
 import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
@@ -133,7 +134,8 @@ async function ekran(e) {
   const scope = ['allegro:api:sale:offers:write', 'allegro:api:sale:settings:read'];
   const token = ['e30', Buffer.from(JSON.stringify({ scope })).toString('base64url'), 'podpis'].join('.');
   e.db.prepare(`INSERT INTO tokeny_kanalu (kanal, access_token, refresh_token, wygasa_at, zaktualizowane_at)
-    VALUES (?, ?, 'REFRESH-ATRAPA', '2027-01-01T00:00:00Z', '2026-11-01T00:00:00Z')`).run(e.KONTO, token);
+    VALUES (?, ?, ?, '2027-01-01T00:00:00Z', '2026-11-01T00:00:00Z')`).run(e.KONTO,
+    szyfrTestowy(e.db, 'tokeny_kanalu', 'access_token', e.KONTO, token), szyfrTestowy(e.db, 'tokeny_kanalu', 'refresh_token', e.KONTO, 'REFRESH-ATRAPA'));
   return { post: (url, payload = {}) => app.inject({ method: 'POST', url, payload, headers: auth }),
     get: url => app.inject({ url, headers: auth }) };
 }

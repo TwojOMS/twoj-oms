@@ -15,6 +15,9 @@ RUN npm ci --omit=dev --no-audit --no-fund --maxsockets=4 --fetch-retries=5 --fe
   && npm cache clean --force
 COPY src ./src
 COPY scripts/instalacja-wspolne.mjs scripts/instalacja-przygotuj.mjs scripts/instalacja-proba.mjs scripts/instalacja-demo.mjs scripts/instalacja-kontener.mjs ./scripts/
+# Klucz poświadczeń: instalator zakłada klucz.env przez `sekrety klucz-zapewnij`; to samo narzędzie obsługuje
+# `aktualizuj.sh sekrety …` (stan, sprawdz, odszyfruj, porzuc, sprzataj).
+COPY scripts/sekrety.mjs ./scripts/
 # PRZ-062: przejście na pracę (pierwsze konto, granice raportu) i granica raportu kanału dodanego później.
 COPY scripts/produkcja-pierwszy-start.mjs scripts/inicjalizuj-granice-bez-historii.mjs ./scripts/
 COPY scripts/link-hasla-admina.mjs ./scripts/

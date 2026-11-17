@@ -172,6 +172,14 @@ maskuj_wzorce() {
 
   sekcja "Konfiguracja"
   [ -f "$OMS/config/oms.env" ] || echo "BRAK oms.env w $OMS/config — OMS nie wstanie"
+  # Klucz poświadczeń w bazie (PRZ-182): tylko obecność, właściciel i tryb — wartości nie czytamy.
+  if [ -f "$OMS/config/klucz.env" ]; then
+    kl_uid=$(stat -c '%u' "$OMS/config/klucz.env" 2>/dev/null || echo '?'); kl_tryb=$(stat -c '%a' "$OMS/config/klucz.env" 2>/dev/null || echo '?')
+    if [ "$kl_uid" = 10001 ] && [ "$kl_tryb" = 600 ]; then echo "klucz.env: jest, właściciel 10001, tryb 600"
+    else echo "UWAGA: klucz.env: właściciel uid=$kl_uid, tryb $kl_tryb — ma być uid=10001, tryb 600 (sudo chown 10001:10001 $OMS/config/klucz.env; sudo chmod 600 $OMS/config/klucz.env)"; fi
+  else
+    echo "BRAK klucz.env w $OMS/config — wydanie z poświadczeniami szyfrowanymi w bazie bez niego nie wstanie (aktualizacja zakłada go sama; odtwarzanie: klucz z menedżera haseł)"
+  fi
   # Compose podstawia $ w env_file (poza apostrofami) — wartość zmienia się po cichu. Tylko nazwy.
   for plik in "$OMS/config/oms.env" "$OMS/config/kopia.env"; do
     [ -f "$plik" ] || continue

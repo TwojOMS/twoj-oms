@@ -13,6 +13,8 @@ import { modulKanaly } from '../../src/moduly/kanaly/modul.ts';
 import { wykonajZlecenieResetu, znacznikResetuProby } from '../../src/oms/db/reset-demo.js';
 import { ZACHOWANE_PRZY_RESECIE, ZACHOWANE_PROBA_FAKTUROWNIA } from '../../src/domena/reset-demo.js';
 import { znacznikBazyProby } from '../../deploy/proba/atrapy/fakturownia-proba.ts';
+import { klasyfikuj } from '../../src/core/bezpieczenstwo/sejf-sekretow.js';
+import { wczytajKonfiguracjeIntegracji } from '../../src/oms/db/konfiguracja-integracji.js';
 
 const TOKEN = 'zmyslony-token-polcien-proba-0001';
 const katalogi = [];
@@ -59,7 +61,10 @@ describe('PRZ-119.11a reset piaskownicy a wiersz Fakturowni', () => {
     expect(JSON.stringify(wynik)).not.toContain(TOKEN);
     const w = wiersz(plik, 'fakturownia');
     expect(JSON.parse(w.ustawienia_json)).toEqual({ domena: 'pracownia-polcien' });
-    expect(JSON.parse(w.sekrety_json)).toEqual({ token: TOKEN });
+    // PRZ-182: jawny token starej bazy po resecie leży zaszyfrowany; warstwa oddaje go bez zmian.
+    expect(klasyfikuj(w.sekrety_json, { json: true })).toBe('szyfrogram');
+    const db = baza(plik);
+    try { expect(wczytajKonfiguracjeIntegracji(db, 'fakturownia').sekrety).toEqual({ token: TOKEN }); } finally { db.close(); }
     expect(w.konto_id).toBeNull();
     // Wybór programu przechodzi jak dotąd (zwykła lista, bez sekretów).
     expect(JSON.parse(wiersz(plik, 'program_fakturowy').ustawienia_json)).toEqual({ program: 'fakturownia' });

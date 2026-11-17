@@ -8,7 +8,7 @@ import {podpisz} from '../../../src/core/bezpieczenstwo/sesja.js';
 import {wczytajSekret} from '../../../src/core/bezpieczenstwo/sekret-sesji.js';
 import {fixtureAllegro,daneAllegro,aktorAllegro,scopesAllegro} from '../../pomoc/allegro-konfigurator.ts';
 import type {ModulOms} from '../../../src/core/kontrakty.ts';
-import {zapiszTokeny} from '../../../src/oms/db/tokeny.js';
+import {zapiszTokeny,wczytajTokeny} from '../../../src/oms/db/tokeny.js';
 import {UPRAWNIENIA_OFERT} from '../../../src/domena/uprawnienia-kanalu.js';
 import {UPRAWNIENIA_NOWEGO_POLACZENIA} from '../../../src/oms/allegro/oauth-code.ts';
 import {migracjaTypuKanaluISklepow} from '../../../src/moduly/kanaly/migracje/0003-kanaly-typ-sklepy.ts';
@@ -42,7 +42,7 @@ function setup(){
  const k=daneAllegro(r.zapiszZmiane(sz.klucz,sz.wersja,{aplikacja:'device',autoryzacja:'polaczone',kontoId:'1000001',login:'polcien_test',pobieranie:'wlaczone'},aktorAllegro));
  zapiszTokeny(f.db,k.klucz,{accessToken:jwt(bazowe),refreshToken:'REFRESH-STARY',wygasaAt:'2099-01-01T00:00:00Z',refreshWygasaAt:'2099-02-01T00:00:00Z'},k.generacja);
  const wiersz=()=>f.db.prepare('SELECT * FROM kanaly_sprzedazy WHERE klucz=?').get(k.klucz);
- const tokeny=()=>f.db.prepare('SELECT access_token,refresh_token FROM tokeny_kanalu WHERE kanal=?').get(k.klucz) as any;
+ const tokeny=()=>{const t=wczytajTokeny(f.db,k.klucz);return t&&{access_token:t.access_token,refresh_token:t.refresh_token};};
  return {...f,...u,k,calls,wiersz,tokeny,setOdmowa:(v:boolean)=>{odmowa=v;}};
 }
 // „Sprawdź uprawnienia aplikacji” + „Chcę wystawiać oferty” — jedyna droga do ponownej zgody.
@@ -173,7 +173,7 @@ it('ekran: „Chcę wystawiać oferty” → komunikat i kotwica, potem „Poł�
  const w=await req('POST','/ustawienia/kanaly/'+k.klucz+'/wiazanie');
  expect(w.statusCode).toBe(200);expect(w.body).toContain('TEST-123');
  expect(repo.pobierz(k.klucz)).toEqual(przed);
- expect(db.prepare('SELECT refresh_token FROM tokeny_kanalu WHERE kanal=?').get(k.klucz)).toEqual({refresh_token:'REFRESH-STARY'});
+ expect(wczytajTokeny(db,k.klucz)?.refresh_token).toBe('REFRESH-STARY');
  // Zgoda w Allegro → „To moje konto — dalej” → krok 4 bez wyboru pobierania → „Zapisz nową zgodę”.
  const probaId=w.body.match(/name="probaId" value="([^"]+)"/)![1];
  czas=new Date(czas.getTime()+6000);
@@ -187,7 +187,7 @@ it('ekran: „Chcę wystawiać oferty” → komunikat i kotwica, potem „Poł�
  expect((await req('POST',adres+'/aktywuj',{probaId,wersja,potwierdz:'tak',pobieraj:'nie'})).statusCode).toBe(303);
  const po=repo.pobierz(k.klucz);
  expect(po).toMatchObject({autoryzacja:'polaczone',pobieranie:'wlaczone',kontoId:'1000001',generacja:przed.generacja,generacjaImportu:przed.generacjaImportu,odUtc:przed.odUtc});
- expect(db.prepare('SELECT refresh_token FROM tokeny_kanalu WHERE kanal=?').get(k.klucz)).toEqual({refresh_token:'REFRESH-NOWY'});
+ expect(wczytajTokeny(db,k.klucz)?.refresh_token).toBe('REFRESH-NOWY');
  const stan=await req('GET',adres);
  expect(stan.body).not.toContain('OMS wstrzymuje zapisy do Allegro');expect(stan.body).toContain('Sprawdź operacje z niejednoznacznym wynikiem');
 });

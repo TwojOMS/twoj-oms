@@ -31,7 +31,9 @@ const zRepo = (repo, p) => import(pathToFileURL(path.join(repo, p)).href);
 export async function envDemo(repo = TEN_REPO) {
   const { ENV_DEMO } = await zRepo(repo, 'scripts/demo-dane.mjs');
   // Konto serwisowe (Basic) działa, dopóki w bazie nie ma kont — demo ich nie zakłada; hasło losowe, nigdzie nie wypisywane.
-  return { ...ENV_DEMO, OMS_USER: 'dowod', OMS_PASS: randomBytes(18).toString('base64url') };
+  // Klucz poświadczeń z env wołającego (klucz piaskownicy z proba.env); bez niego start odmawia czytelnym zdaniem.
+  const klucz = process.env.OMS_KLUCZ_SEKRETOW ? { OMS_KLUCZ_SEKRETOW: process.env.OMS_KLUCZ_SEKRETOW } : {};
+  return { ...ENV_DEMO, ...klucz, OMS_USER: 'dowod', OMS_PASS: randomBytes(18).toString('base64url') };
 }
 
 export async function utworzDemo({ repo = TEN_REPO, baza }) {
@@ -92,7 +94,7 @@ export async function zbuduj({ repo = TEN_REPO, baza, env, teraz }) {
     OMS_ETYKIETY_KATALOG: path.join(katalog, 'etykiety') };
   wymagajTrybuProby(env, 'dowód E4');
   const { modulyPiaskownicy, nadpisaniaPiaskownicy } = await zRepo(repo, 'deploy/proba/atrapy/index.mjs');
-  const { openOmsDb } = await zRepo(repo, 'src/oms/db/db.ts');
+  const { openOmsDb, otworzBazeStartu } = await zRepo(repo, 'src/oms/db/db.ts');
   const { zbudujAplikacje } = await zRepo(repo, 'src/core/aplikacja.ts');
   const licznik = createLicznik();
   const logi = [];
@@ -105,7 +107,8 @@ export async function zbuduj({ repo = TEN_REPO, baza, env, teraz }) {
     z.uslugi.klienciSklepow = licznik.owinMape(z.uslugi.klienciSklepow);
     return z;
   } });
-  db = openOmsDb(baza, { moduly });
+  // Drzewo sprzed szyfrowania poświadczeń nie ma otworzBazeStartu — wtedy dawne otwarcie.
+  db = otworzBazeStartu ? otworzBazeStartu(env, baza, { moduly, bezKataloguBazy: true }) : openOmsDb(baza, { moduly });
   const nadpisania = nadpisaniaPiaskownicy({ db, env, log });
   const aplikacja = await zbudujAplikacje({ moduly, env, db, nadpisania, log, ...(teraz ? { teraz } : {}) });
   const zegary = new Map(aplikacja.zegary.map(z => [z.nazwa, z]));

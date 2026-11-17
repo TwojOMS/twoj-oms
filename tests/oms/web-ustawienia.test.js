@@ -68,9 +68,12 @@ describe('ekran ustawień — domyślna paczka', () => {
   });
 
   it('odmowa niczego nie zapisuje — także poprawnych pól', async () => {
+    // Start zapisuje znacznik formatu poświadczeń — porównujemy stan sprzed odmowy, nie pustą tabelę.
+    const przed = wczytajUstawienia(db);
     await post('/ustawienia/paczka', { waga: '0', dlugosc: '100', szerokosc: '70', wysokosc: '5' });
 
-    expect(wczytajUstawienia(db)).toEqual({});
+    expect(wczytajUstawienia(db)).toEqual(przed);
+    expect(Object.keys(przed)).toEqual(['sekrety.format']);
   });
 });
 
@@ -112,6 +115,7 @@ describe('ekran ustawień — koszty dostawy', () => {
   it('odmowa zostawia wpisane kwoty i nie zapisuje niczego', async () => {
     const klucze = Object.keys(DOSTAWY);
     const wpisane = Object.fromEntries(klucze.map((klucz, indeks) => [klucz, indeks === 0 ? '' : `${indeks}3,7${indeks}`]));
+    const przed = wczytajUstawienia(db);
     const r = await post('/ustawienia/dostawa', wpisane);
 
     expect(r.statusCode).toBe(400);
@@ -119,7 +123,7 @@ describe('ekran ustawień — koszty dostawy', () => {
     for (const klucz of klucze) {
       expect(formularz).toContain(`name="${klucz}" value="${wpisane[klucz]}"`);
     }
-    expect(wczytajUstawienia(db)).toEqual({});
+    expect(wczytajUstawienia(db)).toEqual(przed);
   });
 });
 

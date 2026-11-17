@@ -13,7 +13,8 @@ function granice(){
   vi.spyOn(katalogBazy,'sprawdzKatalogBazy').mockImplementation(()=>{});
   // Nie otwieramy domyślnej bazy ani portu; sprawdzamy argumenty przekazane
   // przez rzeczywisty entrypoint po rzeczywistej walidacji konfiguracji.
-  const db=vi.spyOn(baza,'openOmsDb').mockReturnValue({} as ReturnType<typeof baza.openOmsDb>);
+  // Wejście bazy entrypointu to otworzBazeStartu(env, ścieżka, …) — klucz, katalog, kontrola, openOmsDb.
+  const db=vi.spyOn(baza,'otworzBazeStartu').mockReturnValue({} as ReturnType<typeof baza.otworzBazeStartu>);
   const start=vi.spyOn(uruchomienie,'uruchomAplikacje').mockResolvedValue({zamknij:async()=>{}} as Awaited<ReturnType<typeof uruchomienie.uruchomAplikacje>>);
   return {db,start};
 }
@@ -23,8 +24,8 @@ describe('entrypoint zachowuje frozen fallback pustych ustawień',()=>{
     const {db}=granice();
     await uruchomOms({...env,OMS_DB_PATH:wartosc,OMS_PORT:'0'},'127.0.0.1');
     expect(db).toHaveBeenCalledTimes(1);
-    expect(db.mock.calls[0][0]).toBe(wartosc || '/data-oms/oms.sqlite');
-    expect(db.mock.calls[0][0]).not.toBe('');
+    expect(db.mock.calls[0][1]).toBe(wartosc || '/data-oms/oms.sqlite');
+    expect(db.mock.calls[0][1]).not.toBe('');
   });
   it.each([[undefined,3001],['',3001],['0',0],['3998',3998]] as const)('OMS_PORT=%s przekazuje port %s do rzeczywistej granicy startu',async(wartosc,oczekiwany)=>{
     const {start}=granice();

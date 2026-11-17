@@ -48,6 +48,8 @@ sprawdź, czy test nie asertuje starego napisu (`rg -n "stary napis" tests`) i z
 4. Jeśli użytkownik ma wpisywać dane w panelu, nie tylko w pliku: wzorem jest ekran DPD (`rg -l "ustawienia-dpd" src`).
    Dane idą do tabeli `konfiguracja_integracji` (ustawienia jawne osobno od sekretów), plik konfiguracji wygrywa
    z ekranem (zapis przy zmiennych z pliku = 409), a hasło nie wraca na ekran i nie trafia do dziennika.
+   Sekrety zapisuj i czytaj wyłącznie funkcjami warstwy tej tabeli — warstwa je szyfruje. Nowa kolumna z sekretem
+   poza tą tabelą wymaga dopisania jej do miejsc szyfrowanych (`rg -n "MIEJSCA_SEKRETOW" src`) i testu.
 
 ## Nowy moduł
 

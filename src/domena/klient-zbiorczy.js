@@ -1,4 +1,7 @@
 import { bladOperatora } from './bledy.js';
+// ⚠️ Import w kółko (rabat.js → wdt.js → ten plik): bezpieczny, póki żaden z nich nie woła
+// funkcji drugiego przy wczytywaniu modułu — wszystkie użycia są w ciałach funkcji.
+import { parsujRabat, RABAT_MAX } from './rabat.js';
 
 // Klienci rozliczani ZBIORCZO: wiele zamowien w miesiacu, jedna faktura na koniec.
 //
@@ -31,6 +34,18 @@ function liczba(surowe, opis, numerWpisu) {
     throw new Error(`OMS_KLIENCI_ZBIORCZY: ${opis} musi być nieujemną liczbą, wpis nr ${numerWpisu}`);
   }
   return n;
+}
+
+// ⚠️ Rabat ma tę samą granicę co w formularzu klienta (`parsujRabat`, 0..RABAT_MAX,
+// całkowity). Sama nieujemność przepuszczała 300% — czyli cenę ujemną. Komunikat z
+// `parsujRabat` nie zawiera danych klienta, ale i tak podajemy tylko numer wpisu.
+function rabat(surowe, numerWpisu) {
+  const n = liczba(surowe, 'rabat', numerWpisu);
+  try {
+    return parsujRabat(n);
+  } catch {
+    throw new Error(`OMS_KLIENCI_ZBIORCZY: rabat musi być pełnym procentem od 0 do ${RABAT_MAX}, wpis nr ${numerWpisu}`);
+  }
 }
 
 /**
@@ -115,7 +130,7 @@ export function parsujKlientowZbiorczych(env) {
         + `wpis nr ${numerWpisu}`,
       );
     }
-    const [klucz, nazwa, nip, rabat, prog, obsluga, kurier] = czesci;
+    const [klucz, nazwa, nip, rabatSurowy, prog, obsluga, kurier] = czesci;
     if (!klucz || !nazwa || !normalizujNip(nip)) {
       throw new Error(`OMS_KLIENCI_ZBIORCZY: klucz, nazwa i NIP są wymagane, wpis nr ${numerWpisu}`);
     }
@@ -123,7 +138,7 @@ export function parsujKlientowZbiorczych(env) {
       klucz,
       nazwa,
       nip: normalizujNip(nip),
-      rabatProcent: liczba(rabat, 'rabat', numerWpisu),
+      rabatProcent: rabat(rabatSurowy, numerWpisu),
       progDarmowejDostawyGr: Math.round(liczba(prog, 'próg darmowej dostawy', numerWpisu) * 100),
       oplataObslugiGr: Math.round(liczba(obsluga, 'opłata za obsługę', numerWpisu) * 100),
       oplataKurierskaGr: Math.round(liczba(kurier, 'opłata kurierska', numerWpisu) * 100),
@@ -138,7 +153,11 @@ export function umowaZbiorcza(wiersz) {
     klucz: wiersz.klucz,
     nazwa: wiersz.nazwa,
     nip: normalizujNip(wiersz.nip),
-    rabatProcent: Number(wiersz.rabat_procent ?? 0),
+    // ⚠️ BEZ RABATU. Okres go nie potrzebuje — rabat siedzi już w cenach pozycji
+    // zamówień (domena/rabat.js), a jego stawkę z bazy czyta `rabat-kontraktowy.js` przez
+    // `parsujRabat` (0..RABAT_MAX). Pole `rabatProcent` stąd nie miało ani jednego czytelnika,
+    // a przepuszczało 300%. Walidacja martwego pola dokładałaby za to awarię całej listy
+    // okresów (trasy/okresy.js) przy jednym złym wierszu — więc pole znika.
   };
 }
 

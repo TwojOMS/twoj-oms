@@ -398,7 +398,7 @@ export function registerAkcjeMagazynu(app, { db, magazyn, sklepy, pomoc, karta, 
 
   function ekranPowiazan(req, reply, wynik = null, podgladPrzepiecia = null) {
     const karty = kartyDoPowiazania(db);
-    // ⚠️ ROZSTRZYGNIECIE WLASCICIELA: przy zerze kart ekran MOWI, od czego zaczac,
+    // ⚠️ Przy zerze kart ekran MÓWI, od czego zacząć,
     // zamiast pokazac pusta tabele albo sie wywalic. Wzorzec: `pusta-strona.ejs`.
     if (!karty.length) return reply.view('pusta-strona.ejs', { ...BEZ_KART, szerokosc: 'tabela' });
 

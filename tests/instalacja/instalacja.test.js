@@ -23,6 +23,8 @@ describe('instalacja próby PRZ-050', () => {
     const odmowa = uruchom(przygotuj, ['--katalog', p, '--port', '39150']);
     expect(odmowa.status).toBe(1);
     expect(fs.readFileSync(path.join(p, 'cudze-dane.txt'), 'utf8')).toBe('nie ruszaj');
+    // PRZ-182: odmowa zapada PRZED utworzeniem klucza — w cudzym katalogu nie powstaje klucz.env.
+    expect(fs.readdirSync(p)).toEqual(['cudze-dane.txt']);
     const czysty = path.join(p, 'pusty katalog');
     const pierwszy = uruchom(przygotuj, ['--katalog', czysty, '--port', '39150'], { CUDZY_SEKRET_INTEGRACJI: 'nie-wolno-wyniesc' });
     expect(pierwszy.status, pierwszy.stderr).toBe(0);
@@ -125,6 +127,122 @@ describe('instalacja próby PRZ-050', () => {
       if (otwarcie.exitCode === null) {
         await new Promise(resolve => { otwarcie.once('exit', resolve); otwarcie.kill(); });
       }
+    }
+  }, 30_000);
+});
+
+// PRZ-182: klucz poświadczeń integracji powstaje przy pierwszym uruchomieniu instalatora, w osobnym pliku
+// klucz.env. Kontrola pustego katalogu idzie PRZED utworzeniem klucza, a jedynym dopuszczalnym „śladem” w katalogu
+// jest prawidłowy plik klucza (przerwane przygotowanie). Wartość klucza nie trafia na ekran ani do proba.env.
+describe('klucz poświadczeń od pierwszego uruchomienia', () => {
+  const LINIA = /^OMS_KLUCZ_SEKRETOW=([A-Za-z0-9_-]{43})$/m;
+  const klucz = plik => LINIA.exec(fs.readFileSync(plik, 'utf8'))?.[1];
+  const kluczTestowy = () => Buffer.from(Array.from({ length: 32 }, (_, i) => (i * 7 + 3) % 256)).toString('base64url');
+
+  it('przygotowanie tworzy klucz.env (tryb 600) i nie wypisuje wartości; proba.env klucza nie ma', () => {
+    const p = path.join(katalog(), 'nowa');
+    const wynik = uruchom(przygotuj, ['--katalog', p, '--port', '39170']);
+    expect(wynik.status, wynik.stderr).toBe(0);
+    const plik = path.join(p, 'klucz.env');
+    const wartosc = klucz(plik);
+    expect(wartosc).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    if (process.platform !== 'win32') expect(fs.statSync(plik).mode & 0o777).toBe(0o600);
+    expect(`${wynik.stdout}${wynik.stderr}`).not.toContain(wartosc);
+    expect(JSON.parse(wynik.stdout.trim().split(/\r?\n/).at(-1)).kluczPoswiadczen).toBe(plik);
+    for (const inny of ['proba.env', 'produkcja.env.example']) expect(fs.readFileSync(path.join(p, inny), 'utf8')).not.toContain('OMS_KLUCZ_SEKRETOW=');
+  });
+
+  it('ponowne uruchomienie na gotowym katalogu odmawia i nie zmienia klucza', () => {
+    const p = katalog();
+    expect(uruchom(przygotuj, ['--katalog', p, '--port', '39171']).status).toBe(0);
+    const przed = fs.readFileSync(path.join(p, 'klucz.env'));
+    const drugi = uruchom(przygotuj, ['--katalog', p, '--port', '39171']);
+    expect(drugi.status).toBe(1);
+    expect(drugi.stderr).toContain('INSTALACJA_ODMOWA_NADPISANIA');
+    expect(fs.readFileSync(path.join(p, 'klucz.env'))).toEqual(przed);
+  });
+
+  it('katalog z samym prawidłowym kluczem (przerwane przygotowanie) przechodzi, klucz zostaje bez zmian', () => {
+    const p = katalog();
+    const wartosc = kluczTestowy();
+    fs.writeFileSync(path.join(p, 'klucz.env'), `# zapisany wcześniej\nOMS_KLUCZ_SEKRETOW=${wartosc}\n`, { mode: 0o600 });
+    const przed = fs.readFileSync(path.join(p, 'klucz.env'));
+    const wynik = uruchom(przygotuj, ['--katalog', p, '--port', '39172']);
+    expect(wynik.status, wynik.stderr).toBe(0);
+    expect(fs.readFileSync(path.join(p, 'klucz.env'))).toEqual(przed);
+    expect(`${wynik.stdout}${wynik.stderr}`).not.toContain(wartosc);
+    expect(fs.existsSync(path.join(p, 'proba.env'))).toBe(true);
+  });
+
+  it.each([
+    ['pusty', ''],
+    ['ucięty', 'OMS_KLUCZ_SEKRETOW=dGVzdC1rbHVjei1zZWty'],
+    ['niekanoniczny', `OMS_KLUCZ_SEKRETOW=${'A'.repeat(42)}B\n`],
+  ])('plik klucza %s = odmowa bez tworzenia danych i bez zmiany pliku', (_nazwa, tresc) => {
+    const p = katalog();
+    fs.writeFileSync(path.join(p, 'klucz.env'), tresc);
+    const wynik = uruchom(przygotuj, ['--katalog', p, '--port', '39173']);
+    expect(wynik.status).toBe(1);
+    expect(wynik.stderr).toMatch(/^INSTALACJA_KLUCZ_ODMOWA: /m);
+    expect(fs.readdirSync(p)).toEqual(['klucz.env']);
+    expect(fs.readFileSync(path.join(p, 'klucz.env'), 'utf8')).toBe(tresc);
+  });
+
+  it('wyjątek dotyczy wyłącznie samego pliku klucza: klucz i cokolwiek obok = odmowa', () => {
+    const p = katalog();
+    fs.writeFileSync(path.join(p, 'klucz.env'), `OMS_KLUCZ_SEKRETOW=${kluczTestowy()}\n`);
+    fs.writeFileSync(path.join(p, 'cudze.txt'), 'nie ruszaj');
+    const wynik = uruchom(przygotuj, ['--katalog', p, '--port', '39174']);
+    expect(wynik.status).toBe(1);
+    expect(wynik.stderr).toContain('INSTALACJA_ODMOWA_NADPISANIA');
+    expect(fs.readdirSync(p).sort()).toEqual(['cudze.txt', 'klucz.env']);
+  });
+
+  it('OMS_KLUCZ_SEKRETOW_PLIK kieruje klucz poza katalog danych; wtedy klucz.env w katalogu danych nie jest wyjątkiem', () => {
+    const baza = katalog();
+    const dane = path.join(baza, 'dane'); const plik = path.join(baza, 'config', 'klucz.env');
+    fs.mkdirSync(path.dirname(plik));
+    const wynik = uruchom(przygotuj, ['--katalog', dane, '--port', '39175'], { OMS_KLUCZ_SEKRETOW_PLIK: plik });
+    expect(wynik.status, wynik.stderr).toBe(0);
+    expect(klucz(plik)).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(fs.existsSync(path.join(dane, 'klucz.env'))).toBe(false);
+    const inne = path.join(baza, 'dane2');
+    fs.mkdirSync(inne);
+    fs.writeFileSync(path.join(inne, 'klucz.env'), `OMS_KLUCZ_SEKRETOW=${kluczTestowy()}\n`);
+    const odmowa = uruchom(przygotuj, ['--katalog', inne, '--port', '39175'], { OMS_KLUCZ_SEKRETOW_PLIK: plik });
+    expect(odmowa.status).toBe(1);
+    expect(odmowa.stderr).toContain('INSTALACJA_ODMOWA_NADPISANIA');
+  });
+
+  it('etap próby bez pliku klucza odmawia przed założeniem bazy', () => {
+    const p = katalog();
+    expect(uruchom(przygotuj, ['--katalog', p, '--port', '39176']).status).toBe(0);
+    fs.rmSync(path.join(p, 'klucz.env'));
+    const wynik = uruchom(proba, ['--katalog', p, '--port', '39176']);
+    expect(wynik.status).toBe(1);
+    expect(wynik.stderr).toMatch(/^INSTALACJA_BRAK_KLUCZA: /m);
+    expect(fs.existsSync(path.join(p, 'oms.sqlite'))).toBe(false);
+  });
+
+  it('próba z kluczem startuje (klucz nie jest kluczem integracji), wszystkie etapy używają klucza z pliku', async () => {
+    const { sprawdzTrybProby } = await import('../../src/core/tryb.ts');
+    expect(() => sprawdzTrybProby({ OMS_TRYB: 'proba', OMS_KLUCZ_SEKRETOW: kluczTestowy(), OMS_KLUCZ_SEKRETOW_POPRZEDNI: kluczTestowy() }, [])).not.toThrow();
+    const p = katalog();
+    expect(uruchom(przygotuj, ['--katalog', p, '--port', '39177']).status).toBe(0);
+    const wartosc = klucz(path.join(p, 'klucz.env'));
+    // Proces wywołujący ma INNY klucz w środowisku — etap czyta wyłącznie plik.
+    const wynik = uruchom(proba, ['--katalog', p, '--port', '39177'], { OMS_KLUCZ_SEKRETOW: kluczTestowy() });
+    expect(wynik.status, wynik.stderr).toBe(0);
+    expect(`${wynik.stdout}${wynik.stderr}`).not.toContain(wartosc);
+    expect(wynik.stdout).toContain(path.join(p, 'klucz.env'));
+    const { uruchom: sekrety } = await import('../../scripts/sekrety.mjs');
+    const { idKlucza, bajtyKlucza } = await import('../../src/core/bezpieczenstwo/sejf-sekretow.js');
+    const id = idKlucza(bajtyKlucza(wartosc));
+    for (const baza of ['oms.sqlite', 'backup-proba.sqlite', 'odtworzenie/oms.sqlite']) {
+      const linie = [];
+      expect(sekrety(['sprawdz', '--baza', path.join(p, baza)], { OMS_KLUCZ_SEKRETOW: wartosc }, l => linie.push(l)), linie.join('\n')).toBe(0);
+      expect(linie).toContain(`wymagane id kluczy: ${id}`);
+      expect(linie.join('\n')).not.toContain(wartosc);
     }
   }, 30_000);
 });

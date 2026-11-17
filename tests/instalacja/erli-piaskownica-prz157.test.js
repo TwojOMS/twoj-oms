@@ -5,6 +5,7 @@ import { modulyPiaskownicy, nadpisaniaPiaskownicy } from '../../deploy/proba/atr
 import { ENV_DEMO, wygenerujDaneDemo } from '../../scripts/demo-dane.mjs';
 import { MODULY_KANALOW, ustawRejestrKanalow } from '../../src/domena/moduly-kanalow.ts';
 import { strzezErliProby, transportErliPiaskownicy } from '../../deploy/proba/atrapy/erli.mjs';
+import { zapiszKonfiguracjeIntegracji } from '../../src/oms/db/konfiguracja-integracji.js';
 
 // PRZ-157.11a: oficjalne adresy API (erli.pl i sandbox.erli.dev /svc/shop-api) z kluczem atrapy obsługuje w próbie
 // atrapa konfiguratora w procesie (bez sieci). Straż ma odmówić każdemu innemu adresowi ERLI przed wysyłką.
@@ -45,8 +46,8 @@ it.each(['demo', 'profil Sandbox'])('%s: sandbox z własnym kluczem idzie do sie
     nadpisania: plan?.nadpisania(db) ?? nadpisaniaPiaskownicy({ db, env, log: () => {} }), log: () => {} });
   ustawRejestrKanalow(klucz => klucz === k.klucz ? 'erli' : null, MODULY_KANALOW);
   const klient = (adresApi, kluczApi) => {
-    db.prepare('UPDATE konfiguracja_integracji SET ustawienia_json=?, sekrety_json=? WHERE integracja=?')
-      .run(JSON.stringify({ adresApi }), JSON.stringify({ kluczApi }), `erli:${k.klucz}`);
+    // PRZ-182: przez warstwę dostępu — sekrety leżą w bazie zaszyfrowane (surowy JSON byłby odmową odczytu).
+    zapiszKonfiguracjeIntegracji(db, `erli:${k.klucz}`, { ustawienia: { adresApi }, sekrety: { kluczApi } });
     db.prepare('UPDATE kanaly_sprzedazy SET generacja=generacja+1 WHERE klucz=?').run(k.klucz);
     return aplikacja.usluga('kanaly', 'rejestrKanalow').klient(k.klucz);
   };

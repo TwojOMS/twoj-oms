@@ -7,6 +7,7 @@ import {konfiguracjaKanalow} from '../../../src/moduly/kanaly/konfiguracja.ts';
 import {UPRAWNIENIA_NOWEGO_POLACZENIA} from '../../../src/oms/allegro/oauth-code.ts';
 import {wczytajKonfiguracjeIntegracji,zapiszKonfiguracjeIntegracji} from '../../../src/oms/db/konfiguracja-integracji.js';
 import {readFileSync} from 'node:fs';
+import {konfiguracjeJawne} from '../../pomoc/sejf-testowy.ts';
 const para={clientId:'polcien-device-id',clientSecret:'SEKRET-POLCIEN'};
 const aktor={id:1,login:'polcien_test'};
 const bazy:ReturnType<typeof openOmsDb>[]=[];
@@ -37,7 +38,9 @@ it('sprawdza dane raz, zapisuje panel i nie ujawnia sekretu ani kodów',async()=
  expect(JSON.stringify([wynik,stan,log.mock.calls,consoleLog.mock.calls,consoleError.mock.calls,consoleWarn.mock.calls,db.prepare('SELECT * FROM kanaly_audit').all()])).not.toContain(para.clientSecret);
  expect(stan).toEqual({device:{zrodlo:'panel',koncowkaId:'e-id'},dcrGotowe:false});
  expect(wczytajKonfiguracjeIntegracji(db,'allegro_aplikacja_device:sandbox')?.kontoLogin).toBe(aktor.login);
- expect(JSON.stringify(db.prepare('SELECT * FROM konfiguracja_integracji').all())).not.toMatch(/KOD-DO-ODRZUCENIA|KOD-UZYTKOWNIKA/);
+ // Kontrola pozytywna: odszyfrowany zapis ma Client Secret, więc brak kodów niżej coś znaczy.
+ expect(JSON.stringify(konfiguracjeJawne(db))).toContain(para.clientSecret);
+ expect(JSON.stringify(konfiguracjeJawne(db))).not.toMatch(/KOD-DO-ODRZUCENIA|KOD-UZYTKOWNIKA/);
  expect(app.aplikacjaDevice('produkcja')).toBeNull();
 });
 it('401 odrzuca dane aplikacji bez zapisu',async()=>{

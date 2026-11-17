@@ -2,6 +2,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { KLUCZ_TESTOWY } from '../pomoc/sejf-testowy.ts';
 
 const katalog = mkdtempSync(join(process.cwd(), '.tmp-start-'));
 afterAll(() => rmSync(katalog, { recursive: true, force: true }));
@@ -15,7 +16,7 @@ function start(zmiany: Record<string, string> = {}, kod?: string) {
     env: { ...system, OMS_TRYB: 'produkcja', OMS_USER: 'operator', OMS_PASS: 'fikcyjne',
       OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000',
       OMS_PROFORMY_KATALOG: katalog, OMS_ETYKIETY_KATALOG: katalog,
-      OMS_DB_PATH: join(katalog, 'oms.sqlite'), OMS_PORT: '0', ...zmiany },
+      OMS_DB_PATH: join(katalog, 'oms.sqlite'), OMS_PORT: '0', OMS_KLUCZ_SEKRETOW: KLUCZ_TESTOWY, ...zmiany },
   });
   expect(wynik.error).toBeUndefined();
   expect(wynik.signal).toBeNull();
@@ -38,6 +39,12 @@ describe('komunikaty rzeczywistego procesu startu', () => {
     ['OMS_USER', ''], ['OMS_SPRZEDAWCA_NIP', '1234563219'], ['OMS_KANALY', '{'],
   ])('%s: czytelna odmowa bez stosu', (zmienna, wartosc) => {
     komunikat(start({ [zmienna]: wartosc }), zmienna);
+  });
+
+  it.each([['brak', ''], ['zła postać', 'za-krotki-klucz']])('klucz poświadczeń %s: czytelna odmowa bez stosu, bazy nie ma', (_, wartosc) => {
+    const plik = join(katalog, `bez-klucza-${wartosc.length}.sqlite`);
+    komunikat(start({ OMS_KLUCZ_SEKRETOW: wartosc, OMS_DB_PATH: plik }), 'OMS_KLUCZ_SEKRETOW');
+    expect(existsSync(plik)).toBe(false);
   });
 
   it('brak katalogu bazy: wskazuje OMS_DB_PATH i wolumin Dockera, nie tworzy katalogu', () => {

@@ -63,6 +63,9 @@ export function kluczZNazwy(surowy, nazwa) {
   return zNazwy;
 }
 
+// Checkbox z formularza: wysłany i nie „pusty”/„0”.
+const zaznaczony = (wartosc) => wartosc !== undefined && wartosc !== '' && wartosc !== '0';
+
 const blok = (body, pola, przedrostek) => Object.fromEntries(
   pola.map((p) => [p, tekst(body?.[`${przedrostek}${p}`])]),
 );
@@ -134,7 +137,10 @@ export function znormalizujKlienta(body = {}) {
     platnosc: wybor(body.platnosc, PLATNOSCI, 'rodzaju płatności', 'przelew'),
     termin_platnosci: parsujTerminZamowienia(body.termin_platnosci),
     komentarz: tekst(body.komentarz),
-    aktywny: body.aktywny === undefined || (body.aktywny !== '' && body.aktywny !== '0') ? 1 : 0,
+    // ⚠️ Brak pola to „aktywny” TYLKO bez znacznika `aktywny_w_formularzu` — tak
+    // zakłada klienta karta zamówienia. Formularz klientów ma checkbox, a odznaczony checkbox
+    // przeglądarka pomija; bez znacznika odznaczenie „Aktywny” przy edycji nie wygaszało nikogo.
+    aktywny: zaznaczony(body.aktywny) || (body.aktywny === undefined && !body.aktywny_w_formularzu) ? 1 : 0,
     ...warunkiUmowyZbiorczej(body),
   };
 }

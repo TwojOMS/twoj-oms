@@ -7,6 +7,10 @@
 //    na starcie fazy token idzie z pliku do bazy lokalnej, na wyjściu (także przy błędzie i `exit(9)`) wraca do pliku
 //    atomowo (.nowy + rename, 600) i znika z bazy lokalnej razem z aplikacją Device.
 // Sieć: wyłącznie https + *.allegrosandbox.pl (inny host = wyjątek i wpis STOP). ERLI nie ma klucza → atrapa.
+// PRZ-182: poświadczenia w obu bazach leżą zaszyfrowane kluczem piaskownicy — skrypt czyta je i zapisuje wyłącznie
+// warstwą dostępu z przypiętym sejfem. Klucz: OMS_KLUCZ_SEKRETOW z /srv/oms-proba/konfiguracja/proba.env, wczytany
+// do środowiska bez wypisywania (np. `export "$(grep '^OMS_KLUCZ_SEKRETOW=' /srv/oms-proba/konfiguracja/proba.env)"`).
+// Bez klucza — odmowa przed otwarciem którejkolwiek bazy.
 //
 // Użycie: node deploy/proba/dowod-e4-sandbox.mjs <faza>
 //   przygotuj | kup | anuluj | zero | przyjecie | restart | restart2 | d14 | przywroc | stan
@@ -16,18 +20,20 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { przygotujUruchomienieSandbox } from './sandbox-uruchomienie.ts';
-import { envDemo, utworzDemo, createLicznik, PETLE, wlaczOferty, zasiej, KONTA_DEMO } from './dowod-e4.mjs';
+import { envDemo, createLicznik, PETLE, wlaczOferty, zasiej, KONTA_DEMO } from './dowod-e4.mjs';
 import { createAtrapaWoo } from './atrapy/kanaly.mjs';
 import { createZakup } from './zakup.mjs';
 import { uruchomPulsPollerow } from './atrapy/pollery.mjs';
 import { migawkaStanow } from '../../src/oms/db/stany-magazynowe.js';
 import { iloscDlaKanalu } from '../../src/domena/ilosc-kanalu.js';
 import { definicjeKanalow } from '../../src/moduly/kanaly/konfiguracja.ts';
-import { openOmsDb } from '../../src/oms/db/db.ts';
+import { otworzBazeStartu } from '../../src/oms/db/db.ts';
 import { zbudujAplikacje } from '../../src/core/aplikacja.ts';
 import { createRepozytoriumKanalow } from '../../src/moduly/kanaly/repozytorium-kanalow.ts';
-import { zapiszKonfiguracjeIntegracji } from '../../src/oms/db/konfiguracja-integracji.js';
-import { zapiszTokeny } from '../../src/oms/db/tokeny.js';
+import { usunKonfiguracjeIntegracji, wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji } from '../../src/oms/db/konfiguracja-integracji.js';
+import { wczytajTokeny, zapiszTokeny } from '../../src/oms/db/tokeny.js';
+import { przypnijSejf, sejfZEnv, ZMIENNA_KLUCZA } from '../../src/core/bezpieczenstwo/sejf-sekretow.js';
+import { utworzBazeDemo } from '../../scripts/demo-dane.mjs';
 import { powiazProdukt } from '../../src/oms/db/magazyn.js';
 
 const PRYWATNY = path.join(os.homedir(), '.allegro-sandbox-e3');
@@ -47,6 +53,10 @@ const WOO = 'polcien';
 const ERLI = 'erli_polcien';
 const FAZA = process.argv[2] ?? 'stan';
 const AKTOR = { id: 0, login: 'dowod' };
+// Klucz poświadczeń przed czymkolwiek innym (brak albo zła postać = BladKonfiguracji). Ten sam dla bazy piaskownicy
+// (odczyt aplikacji Device) i bazy dowodu. Wartość nie trafia nigdzie poza środowisko tego procesu.
+const SEJF = sejfZEnv(process.env);
+const KLUCZ_ENV = { [ZMIENNA_KLUCZA]: process.env[ZMIENNA_KLUCZA] };
 
 for (const k of [KAT]) fs.mkdirSync(k, { recursive: true, mode: 0o700 });
 for (const k of [ODP, WYNIKI]) fs.mkdirSync(k, { recursive: true });
@@ -133,11 +143,12 @@ function wczytajTokenyDoBazy(db) {
     refreshWygasaAt: new Date(Date.now() + 80 * 86400000).toISOString() }, undefined);
 }
 function wczytajAplikacjeDevice(db) {
-  const p = new DatabaseSync(BAZA_PROBY, { readOnly: true });
+  // Baza piaskownicy tylko do odczytu, z przypiętym kluczem piaskownicy; wiersz nieczytelny = BladSekretow.
+  const p = przypnijSejf(new DatabaseSync(BAZA_PROBY, { readOnly: true }), SEJF);
   try {
-    const w = p.prepare('SELECT ustawienia_json, sekrety_json FROM konfiguracja_integracji WHERE integracja = ?').get(DEVICE);
+    const w = wczytajKonfiguracjeIntegracji(p, DEVICE);
     if (!w) throw new Error('brak aplikacji Device w bazie piaskownicy');
-    zapiszKonfiguracjeIntegracji(db, DEVICE, { ustawienia: JSON.parse(w.ustawienia_json || '{}'), sekrety: JSON.parse(w.sekrety_json || '{}') });
+    zapiszKonfiguracjeIntegracji(db, DEVICE, { ustawienia: w.ustawienia, sekrety: w.sekrety });
   } finally { p.close(); }
 }
 let oddane = false;
@@ -146,8 +157,8 @@ function oddajTokeny() {
   oddane = true;
   let db;
   try {
-    db = new DatabaseSync(BAZA);
-    const w = db.prepare('SELECT access_token, refresh_token, wygasa_at FROM tokeny_kanalu WHERE kanal = ?').get(KLUCZ);
+    db = przypnijSejf(new DatabaseSync(BAZA), SEJF);
+    const w = wczytajTokeny(db, KLUCZ);
     if (w?.access_token && w?.refresh_token) {
       const stary = JSON.parse(fs.readFileSync(PLIK_TOKENOW, 'utf8'));
       const zmiana = stary.refresh_token !== w.refresh_token || stary.access_token !== w.access_token;
@@ -160,7 +171,7 @@ function oddajTokeny() {
       fs.appendFileSync(HTTP, JSON.stringify({ t: new Date().toISOString(), faza: FAZA, tokeny: zmiana ? 'oddane (zmienione)' : 'bez zmian' }) + '\n');
     }
     db.prepare('DELETE FROM tokeny_kanalu WHERE kanal = ?').run(KLUCZ);
-    db.prepare('DELETE FROM konfiguracja_integracji WHERE integracja = ?').run(DEVICE);
+    usunKonfiguracjeIntegracji(db, DEVICE);
   } catch (e) {
     fs.appendFileSync(HTTP, JSON.stringify({ t: new Date().toISOString(), faza: FAZA, tokeny: 'BŁĄD oddania', blad: e?.name ?? 'Error' }) + '\n');
   } finally { try { db?.close(); } catch { /* nic */ } }
@@ -172,7 +183,7 @@ for (const s of ['SIGINT', 'SIGTERM']) process.on(s, () => process.exit(130));
 async function zbuduj() {
   const katalog = path.join(KAT, 'pliki');
   for (const k of ['proformy', 'etykiety']) fs.mkdirSync(path.join(katalog, k), { recursive: true });
-  const env = { ...(await envDemo()), OMS_PROBA_ALLEGRO_SANDBOX: 'tak', OMS_DB_PATH: BAZA,
+  const env = { ...(await envDemo()), ...KLUCZ_ENV, OMS_PROBA_ALLEGRO_SANDBOX: 'tak', OMS_DB_PATH: BAZA,
     OMS_PROFORMY_KATALOG: path.join(katalog, 'proformy'), OMS_ETYKIETY_KATALOG: path.join(katalog, 'etykiety') };
   const plan = przygotujUruchomienieSandbox(env, { srodowisko: 'sandbox' }, fetchDowodu);
   const licznik = createLicznik();
@@ -183,7 +194,8 @@ async function zbuduj() {
     z.uslugi.klienciSklepow = licznik.owinMape(z.uslugi.klienciSklepow);
     return z;
   } });
-  const db = openOmsDb(BAZA, { moduly });
+  // Kontrola klucza przed otwarciem, potem sejf przypięty do uchwytu (wspólne wejście ścieżek startu).
+  const db = otworzBazeStartu(env, BAZA, { moduly, bezKataloguBazy: true });
   if (KLUCZ) { wczytajAplikacjeDevice(db); wczytajTokenyDoBazy(db); }
   const aplikacja = await zbudujAplikacje({ moduly, env, db, nadpisania: plan.nadpisania(db), log: () => {} });
   const zegary = new Map(aplikacja.zegary.map((z) => [z.nazwa, z]));
@@ -294,7 +306,8 @@ const FAZY = {
   async przygotuj() {
     const w = {};
     if (fs.existsSync(BAZA)) throw new Error('baza dowodu już istnieje — usuń ~/.allegro-sandbox-e3/d2 ręcznie, jeśli to świadomy restart');
-    await utworzDemo({ baza: BAZA });
+    // Jak utworzDemo z dowod-e4.mjs, ale z kluczem poświadczeń w env generatora (zapisuje sekret ERLI warstwą).
+    await utworzBazeDemo({ baza: BAZA, dzis: new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Warsaw' }), env: { ...(await envDemo()), ...KLUCZ_ENV } });
     let a = await zbuduj();
     const repo = createRepozytoriumKanalow({ db: a.db, definicjeEnv: [], konfiguracjaEnv: {} });
     const od = new Date(); od.setUTCHours(0, 0, 0, 0);

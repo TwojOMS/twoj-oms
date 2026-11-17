@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { umowaZbiorcza, parsujKlientowZbiorczych } from '../../src/domena/klient-zbiorczy.js';
+import { RABAT_MAX } from '../../src/domena/rabat.js';
 
 const KLIENT = {
   klucz: 'przykladowa', nazwa: 'Pracownia Przykładowa sp. z o.o.', nip: '1234500011',
@@ -7,7 +8,7 @@ const KLIENT = {
   oplataObslugiGr: 400, oplataKurierskaGr: 1900,
 };
 
-const OKRES = { klucz: KLIENT.klucz, nazwa: KLIENT.nazwa, nip: KLIENT.nip, rabatProcent: KLIENT.rabatProcent };
+const OKRES = { klucz: KLIENT.klucz, nazwa: KLIENT.nazwa, nip: KLIENT.nip };
 
 describe('umowaZbiorcza', () => {
   const WIERSZ = {
@@ -47,6 +48,36 @@ describe('umowaZbiorcza', () => {
       oplata_obslugi_gr: null, oplata_kurierska_gr: null })).not.toThrow();
   });
 
+  // ⚠️ PRZ-180: umowa okresu NIE NIESIE rabatu — nie było czytelnika, a pole przepuszczało 300%.
+  // Zły rabat w wierszu nie wywraca okresu (lista okresów mapuje wszystkich klientów naraz).
+  it.each([[300], [-5], [7.5], [null]])('rabat %s w wierszu nie trafia do umowy i jej nie wywraca', (rabat) => {
+    const umowa = umowaZbiorcza({ ...WIERSZ, rabat_procent: rabat });
+    expect(umowa).not.toHaveProperty('rabatProcent');
+    expect(umowa.klucz).toBe(WIERSZ.klucz);
+  });
+
+});
+
+describe('parsujKlientowZbiorczych — granica rabatu (PRZ-180)', () => {
+  const wpis = (rabat) => ({ OMS_KLIENCI_ZBIORCZY: `przykladowa:Pracownia Przykładowa sp. z o.o.:1234500011:${rabat}:500:4:19` });
+
+  it('przyjmuje rabat równy RABAT_MAX', () => {
+    expect(parsujKlientowZbiorczych(wpis(RABAT_MAX))[0].rabatProcent).toBe(RABAT_MAX);
+  });
+  // Parser woła dziś tylko migracja jednorazowa, której nic w `src` nie uruchamia (decyzja D06) —
+  // stąd „odmawia wpisu”, nie „wywraca start”.
+  it.each([[RABAT_MAX + 1], [300], ['7.5']])('odmawia wpisu z rabatem %s procent zamiast przyjąć cenę ujemną', (rabat) => {
+    expect(() => parsujKlientowZbiorczych(wpis(rabat))).toThrow(/rabat/i);
+  });
+  it('komunikat wskazuje wpis, nie dane klienta', () => {
+    expect(() => parsujKlientowZbiorczych(wpis(300))).toThrow(/wpis nr 1/);
+    expect(() => parsujKlientowZbiorczych(wpis(300))).not.toThrow(/1234500011|Przykładowa/);
+  });
+  it('kwoty nadal mogą być ułamkowe i większe niż 90', () => {
+    const [k] = parsujKlientowZbiorczych({ OMS_KLIENCI_ZBIORCZY: 'przykladowa:P:1234500011:30:500.50:4:190' });
+    expect(k.progDarmowejDostawyGr).toBe(50050);
+    expect(k.oplataKurierskaGr).toBe(19000);
+  });
 });
 
 describe('parsujKlientowZbiorczych', () => {

@@ -1,5 +1,6 @@
 import PDFDocument from 'pdfkit';
 import { createErliClient } from '../../../src/oms/erli/client.js';
+import { wczytajKonfiguracjeIntegracji } from '../../../src/oms/db/konfiguracja-integracji.js';
 import { wymagajTrybuProby } from './tryb.mjs';
 import { PRODUKTY, FIRMY_B2B } from '../../../scripts/demo-dane-firma.mjs';
 import { uzupelnijDemoErli } from '../../../scripts/demo-dane-erli.mjs';
@@ -34,8 +35,11 @@ export function transportErliPiaskownicy({ baza, env, log, fetchImpl = (...args)
       return surowaOdpowiedzErli({ message: 'OMS_PROBA_ERLI_PRODUKCJA' }, 403);
     }
     const db = baza();
-    const zapis = db.prepare("SELECT integracja, ustawienia_json, sekrety_json FROM konfiguracja_integracji WHERE integracja LIKE 'erli:%'").all().find(w => {
-      try { return JSON.parse(w.ustawienia_json).adresApi === bazaApi && authorization === 'Bearer ' + JSON.parse(w.sekrety_json).kluczApi; } catch { return false; }
+    // Klucz API przez warstwę dostępu (sekrety zaszyfrowane w bazie). Nieczytelny wiersz = BladSekretow na wierzch,
+    // nie cicha odmowa 401.
+    const zapis = db.prepare("SELECT integracja FROM konfiguracja_integracji WHERE integracja LIKE 'erli:%'").all().find(w => {
+      const k = wczytajKonfiguracjeIntegracji(db, w.integracja);
+      return k?.ustawienia.adresApi === bazaApi && authorization === 'Bearer ' + k.sekrety.kluczApi;
     });
     if (!zapis || authorization !== 'Bearer atrapa-polcien') return surowaOdpowiedzErli({}, 401);
     const kanal = zapis.integracja.slice(5);

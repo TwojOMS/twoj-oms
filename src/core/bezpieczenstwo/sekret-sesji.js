@@ -6,7 +6,13 @@
 // komunikatu błędu i nie oddajemy na ekran. Kto ją ma, ten wystawi sobie ważne
 // ciasteczko na dowolne konto — bez znajomości hasła.
 
+// W bazie leży zaszyfrowany kluczem poświadczeń (sejf-sekretow.js); odczyt nieczytelnej wartości = BladSekretow.
+
 import { nowySekret } from './sesja.js';
+import { doZapisu, zOdczytu } from './sejf-sekretow.js';
+
+const MIEJSCE = { tabela: 'sekret_sesji', kolumna: 'sekret', id: '1' };
+const odczyt = (db, zapis) => (zapis ? zOdczytu(db, MIEJSCE, zapis) : zapis);
 
 /**
  * Sekret do podpisywania i sprawdzania ciasteczek. Zaklada go przy pierwszym wywolaniu.
@@ -19,12 +25,12 @@ import { nowySekret } from './sesja.js';
  */
 export function wczytajSekret(db) {
   const istniejacy = db.prepare('SELECT sekret FROM sekret_sesji WHERE id = 1').get();
-  if (istniejacy?.sekret) return istniejacy.sekret;
+  if (istniejacy?.sekret) return odczyt(db, istniejacy.sekret);
 
   db.prepare('INSERT OR IGNORE INTO sekret_sesji (id, sekret, zmieniony_at) VALUES (1, ?, ?)')
-    .run(nowySekret(), new Date().toISOString());
+    .run(doZapisu(db, MIEJSCE, nowySekret()), new Date().toISOString());
 
-  return db.prepare('SELECT sekret FROM sekret_sesji WHERE id = 1').get().sekret;
+  return odczyt(db, db.prepare('SELECT sekret FROM sekret_sesji WHERE id = 1').get().sekret);
 }
 
 /**
@@ -37,7 +43,7 @@ export function wczytajSekret(db) {
  * to, co już ma. Panel ma się wtedy degradować do odczytu, a nie oddawać 500.
  */
 export function odczytajSekret(db) {
-  return db.prepare('SELECT sekret FROM sekret_sesji WHERE id = 1').get()?.sekret ?? null;
+  return odczyt(db, db.prepare('SELECT sekret FROM sekret_sesji WHERE id = 1').get()?.sekret ?? null);
 }
 
 /**
@@ -51,7 +57,7 @@ export function podmienSekret(db) {
   db.prepare(`
     INSERT INTO sekret_sesji (id, sekret, zmieniony_at) VALUES (1, ?, ?)
     ON CONFLICT(id) DO UPDATE SET sekret = excluded.sekret, zmieniony_at = excluded.zmieniony_at
-  `).run(sekret, new Date().toISOString());
+  `).run(doZapisu(db, MIEJSCE, sekret), new Date().toISOString());
   return sekret;
 }
 

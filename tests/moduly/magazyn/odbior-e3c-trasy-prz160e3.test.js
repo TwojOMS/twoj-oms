@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
 import { definicjeKanalowHistoryczne } from '../../pomoc/kanaly-historyczne-fixture.js';
+import { szyfrTestowy } from '../../pomoc/sejf-testowy.ts';
 import { utworzKarte } from '../../../src/oms/db/magazyn.js';
 import { wstawOferte, zmienOferte, ofertaPoId, zapiszUstawieniaOfertKonta } from '../../../src/oms/db/oferty-kanalow.ts';
 import { zalozKonto, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
@@ -47,7 +48,8 @@ const oferta = (kanal, idZewnetrzne, zmiany = {}) => {
 const reguly = () => db.prepare('SELECT parametr_id, potwierdzil FROM allegro_reguly_parametrow').all();
 const marki = () => db.prepare('SELECT marka, wartosc_id FROM allegro_marki').all();
 const tokenKonta = (k, scope) => db.prepare(`INSERT OR REPLACE INTO tokeny_kanalu (kanal, access_token, refresh_token, wygasa_at, refresh_wygasa_at, zaktualizowane_at)
-  VALUES (?, ?, 'REFRESH-ATRAPA', '2026-11-14T11:00:00Z', '2027-01-01T00:00:00Z', '2026-11-14T10:00:00Z')`).run(k, jwt(scope));
+  VALUES (?, ?, ?, '2026-11-14T11:00:00Z', '2027-01-01T00:00:00Z', '2026-11-14T10:00:00Z')`).run(k,
+  szyfrTestowy(db, 'tokeny_kanalu', 'access_token', k, jwt(scope)), szyfrTestowy(db, 'tokeny_kanalu', 'refresh_token', k, 'REFRESH-ATRAPA'));
 const sekcjaSprzedazy = body => body.match(/<section[^>]*id="sprzedaz-karty"[\s\S]*?<\/section>/)?.[0] ?? '';
 
 beforeEach(async () => {

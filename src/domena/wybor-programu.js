@@ -1,4 +1,4 @@
-// Wybór modułu faktur (Ustawienia → Integracje → Moduł faktur albo OMS_PROGRAM_FAKTUROWY w pliku).
+// Wybór programu do faktur (Ustawienia → Faktury i podatki → Program do faktur albo OMS_PROGRAM_FAKTUROWY w pliku).
 //
 // Jedno źródło dla reguły (moduly/faktury/modul.ts), ekranu i zdań o wyłączonych fakturach. Jeżeli
 // żaden moduł nie zostanie włączony, nie ma opcji wystawiania faktur; inFakt jest modułem włączanym opcjonalnie.

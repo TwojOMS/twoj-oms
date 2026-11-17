@@ -6,7 +6,9 @@ Ta instrukcja prowadzi przez lokalną próbę bez połączeń z Allegro, WooComm
 
 ## Katalogi
 
-Trzymaj program w osobnym katalogu wydania, a konfigurację i dane poza nim. Osobny katalog próby zawiera `proba.env`, `oms.sqlite`, `proformy/`, `etykiety/` oraz `backup-proba.sqlite`. Docelowa produkcja wymaga innego, pustego katalogu danych i osobnego pliku konfiguracji. Bazy próby nie przenosi się do produkcji. Kopie przenieś po sprawdzeniu na osobny, kontrolowany nośnik. Nie zapisuj ich w repozytorium ani w katalogu programu.
+Trzymaj program w osobnym katalogu wydania, a konfigurację i dane poza nim. Osobny katalog próby zawiera `proba.env`, `klucz.env`, `oms.sqlite`, `proformy/`, `etykiety/` oraz `backup-proba.sqlite`.
+
+`klucz.env` to klucz, którym OMS szyfruje w bazie hasła i tokeny integracji. Przygotowanie tworzy go samo, przed bazą; wszystkie kolejne kroki (próba, demo, otwarcie panelu) czytają ten sam plik. W próbie bez Dockera klucz leży w katalogu próby, obok bazy — kopia całego katalogu zawiera więc bazę i klucz razem i takiej kopii szyfrowanie nie chroni. Przy instalacji w Dockerze klucz leży osobno, poza katalogiem danych (docs/instalacja-docker.md, rozdział „Klucz poświadczeń”). Pliku klucza nie usuwaj ani nie podmieniaj: OMS bez niego nie wstanie, a nowy klucz nie odczyta poświadczeń zapisanych starym. Docelowa produkcja wymaga innego, pustego katalogu danych i osobnego pliku konfiguracji. Bazy próby nie przenosi się do produkcji. Kopie przenieś po sprawdzeniu na osobny, kontrolowany nośnik. Nie zapisuj ich w repozytorium ani w katalogu programu.
 
 ## Próba lokalna
 
@@ -17,7 +19,7 @@ node scripts/instalacja-przygotuj.mjs --katalog C:/OMS-proba --port 39150
 node scripts/instalacja-proba.mjs --katalog C:/OMS-proba --port 39150
 ```
 
-Pierwsza komenda działa tylko na pustym katalogu i generuje losowe, lokalne hasło serwisowe w `proba.env`; nie pokazuje go na ekranie. Druga nasłuchuje wyłącznie na `127.0.0.1`, sprawdza `GET /health`, tworzy pierwsze konto administratora przez panel, restartuje proces, wykonuje `VACUUM INTO`, sprawdza `integrity_check`, odtwarza kopię do osobnego katalogu `odtworzenie/` i ponownie loguje administratora. Dane konta próby trafiają wyłącznie do pliku `administrator-proby.env` z trybem pliku 0600 (ochrona ACL Windows jest opisana poniżej). Zachowaj dane do logowania w menedżerze haseł przed usunięciem pliku. Powtórne przygotowanie katalogu z dowolnym plikiem albo próba uruchomienia wobec istniejącej bazy/WAL/SHM celowo kończy się odmową.
+Pierwsza komenda działa tylko na pustym katalogu i generuje losowe, lokalne hasło serwisowe w `proba.env` oraz klucz poświadczeń w `klucz.env`; nie pokazuje ich na ekranie. Katalog zawierający wyłącznie prawidłowy `klucz.env` (ślad przerwanego przygotowania) też liczy się jako pusty — klucz zostaje i jest użyty ponownie. Druga nasłuchuje wyłącznie na `127.0.0.1`, sprawdza `GET /health`, tworzy pierwsze konto administratora przez panel, restartuje proces, wykonuje `VACUUM INTO`, sprawdza `integrity_check`, odtwarza kopię do osobnego katalogu `odtworzenie/` i ponownie loguje administratora. Dane konta próby trafiają wyłącznie do pliku `administrator-proby.env` z trybem pliku 0600 (ochrona ACL Windows jest opisana poniżej). Zachowaj dane do logowania w menedżerze haseł przed usunięciem pliku. Powtórne przygotowanie katalogu z dowolnym plikiem albo próba uruchomienia wobec istniejącej bazy/WAL/SHM celowo kończy się odmową.
 
 Po udanej próbie otwórz zachowany panel poniższą komendą, wejdź w przeglądarce na `http://127.0.0.1:39150/login` i zaloguj się danymi z lokalnego `administrator-proby.env`. Helper używa wyłącznie konfiguracji próby i adresu loopback. Zatrzymaj go przez Ctrl+C. Nie używaj danych próby w produkcji.
 

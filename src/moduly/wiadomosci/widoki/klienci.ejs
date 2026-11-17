@@ -99,9 +99,13 @@
                 <input name="komentarz" value="<%= wart(f.komentarz) %>" placeholder="np. dzwonić przed dostawą">
               </label>
               <label class="pole-przelacznik">
-                <%# Nowy wpis startuje jako aktywny — `znormalizujKlienta` czyta brak pola jako %>
-                <%# „aktywny", bo formularz nowego klienta nie ma powodu zaczynac od wygaszenia. %>
-                <input type="checkbox" name="aktywny" <%= !f.id || f.aktywny ? 'checked' : '' %>>
+                <%# Nowy wpis startuje jako aktywny, bo formularz nowego klienta nie ma powodu zaczynac %>
+                <%# od wygaszenia. ⚠️ Odznaczony checkbox NIE trafia do formularza, a %>
+                <%# `znormalizujKlienta` czyta brak pola jako „aktywny" (karta zamowienia zaklada %>
+                <%# klienta bez tego pola). Znacznik mowi, ze pole BYLO na ekranie — wtedy brak = 0. %>
+                <%# Formularz oddany po odmowie (ma znacznik) pokazuje to, co czlowiek zostawil. %>
+                <input type="hidden" name="aktywny_w_formularzu" value="1">
+                <input type="checkbox" name="aktywny" <%= (f.aktywny_w_formularzu ? f.aktywny : (!f.id || f.aktywny)) ? 'checked' : '' %>>
                 Aktywny — podpowiada się przy zakładaniu zamówienia
               </label>
             </div>

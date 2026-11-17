@@ -11,4 +11,9 @@ node_modules
 /deploy/drukarka/*.log
 /deploy/drukarka/*.log.1
 
+
+# Klucz poświadczeń (próba lokalna w katalogu repo) — nigdy do repozytorium.
+klucz.env
+proba.env
+administrator-proby.env
 !.env.example

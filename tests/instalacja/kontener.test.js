@@ -71,6 +71,11 @@ describe('compose i obraz klienta PRZ-058', () => {
     // Konfiguracja nie jest montowana w działającym OMS — compose czyta ją na hoście.
     expect(usluga('oms')).not.toContain('/opt/oms/config:');
     expect(usluga('oms')).toContain('path: /opt/oms/config/oms.env');
+    // PRZ-182: klucz poświadczeń trzecim env_file usługi oms (bez pliku compose nie pada — OMS odmawia startu
+    // czytelnym zdaniem). Kopia klucza nie dostaje: kopiuje szyfrogramy, nie klucz.
+    expect(usluga('oms')).toMatch(/- path: \/opt\/oms\/config\/klucz\.env\n {8}required: false/);
+    expect(usluga('kopia')).not.toContain('klucz.env');
+    expect(compose()).toMatch(/^# +\/opt\/oms\/config .*klucz\.env/m);
   });
 
   it('ścieżki danych OMS są przybite do wolumenu, port wystawiony do LAN, proxy bez zaufania', () => {
@@ -97,7 +102,7 @@ describe('compose i obraz klienta PRZ-058', () => {
     expect(d).toContain('COPY package.json wydanie.jso[n] ./');
     // Wszystko, czego używa compose i instalacja, jest w obrazie.
     for (const plik of ['scripts/instalacja-kontener.mjs', 'scripts/instalacja-demo.mjs', 'scripts/instalacja-proba.mjs',
-      'scripts/instalacja-przygotuj.mjs', 'scripts/instalacja-wspolne.mjs']) {
+      'scripts/instalacja-przygotuj.mjs', 'scripts/instalacja-wspolne.mjs', 'scripts/sekrety.mjs']) {
       expect(d).toContain(plik);
     }
     expect(d).toContain('COPY deploy/klient/kopia.mjs ./deploy/klient/kopia.mjs');
@@ -143,7 +148,61 @@ describe('pierwszy start w kontenerze (instalacja-kontener.mjs)', () => {
       expect(db.prepare("SELECT count(*) AS n FROM zamowienia WHERE numer LIKE 'DEMO-%'").get().n).toBe(3);
       expect(db.prepare("SELECT login FROM konta WHERE login='administrator-proby'").get()?.login).toBe('administrator-proby');
     } finally { db.close(); }
+    // PRZ-182: klucz poświadczeń powstaje od razu w katalogu konfiguracji — nigdy w katalogu danych (kopie),
+    // nigdy na ekranie; wynik podaje ścieżkę pliku i każe go zapisać w menedżerze haseł.
+    const plikKlucza = path.join(konfiguracja, 'klucz.env');
+    const klucz = /^OMS_KLUCZ_SEKRETOW=([A-Za-z0-9_-]{43})$/m.exec(fs.readFileSync(plikKlucza, 'utf8'))?.[1];
+    expect(klucz).toBeTruthy();
+    if (process.platform !== 'win32') expect(fs.statSync(plikKlucza).mode & 0o777).toBe(0o600);
+    expect(`${wynik.stdout}${wynik.stderr}`).not.toContain(klucz);
+    expect(env).not.toContain('OMS_KLUCZ_SEKRETOW');
+    expect(wynik.stdout).toContain(plikKlucza);
+    expect(wynik.stdout).toContain('Zapisz zawartość tego pliku w menedżerze haseł. Bez niego kopia bazy nie odda podłączonych integracji.');
+    expect(JSON.parse(wynik.stdout.trim().split(/\r?\n/).at(-1)).kluczPoswiadczen).toBe(plikKlucza);
+    const wszystkie = (k) => fs.readdirSync(k, { withFileTypes: true }).flatMap(e => e.isDirectory() ? wszystkie(path.join(k, e.name)) : [path.join(k, e.name)]);
+    for (const plik of wszystkie(dane)) {
+      expect(path.basename(plik), plik).not.toBe('klucz.env');
+      expect(fs.readFileSync(plik).includes(Buffer.from(klucz)), plik).toBe(false);
+    }
+    // Ponowne uruchomienie na gotowej instalacji: odmowa, klucz bez zmian.
+    const przed = fs.readFileSync(plikKlucza);
+    const ponownie = uruchom(dane, konfiguracja, 39160);
+    expect(ponownie.status).toBe(1);
+    expect(ponownie.stderr).toContain('INSTALACJA_ODMOWA_NADPISANIA');
+    expect(fs.readFileSync(plikKlucza)).toEqual(przed);
   }, 120_000);
+
+  it('istniejący prawidłowy klucz przy pustym katalogu danych jest używany, nie nadpisywany', async () => {
+    const baza = katalog();
+    const dane = path.join(baza, 'data'); const konfiguracja = path.join(baza, 'config');
+    fs.mkdirSync(dane); fs.mkdirSync(konfiguracja);
+    const klucz = Buffer.from(Array.from({ length: 32 }, (_, i) => (i * 11 + 5) % 256)).toString('base64url');
+    const plikKlucza = path.join(konfiguracja, 'klucz.env');
+    fs.writeFileSync(plikKlucza, `OMS_KLUCZ_SEKRETOW=${klucz}\n`, { mode: 0o600 });
+    const przed = fs.readFileSync(plikKlucza);
+    const wynik = uruchom(dane, konfiguracja, 39164);
+    expect(wynik.status, wynik.stderr).toBe(0);
+    expect(fs.readFileSync(plikKlucza)).toEqual(przed);
+    expect(`${wynik.stdout}${wynik.stderr}`).not.toContain(klucz);
+    const { idKlucza, bajtyKlucza } = await import('../../src/core/bezpieczenstwo/sejf-sekretow.js');
+    const { uruchom: sekrety } = await import('../../scripts/sekrety.mjs');
+    const linie = [];
+    expect(sekrety(['sprawdz', '--baza', path.join(dane, 'oms.sqlite')], { OMS_KLUCZ_SEKRETOW: klucz }, l => linie.push(l)), linie.join('\n')).toBe(0);
+    expect(linie).toContain(`wymagane id kluczy: ${idKlucza(bajtyKlucza(klucz))}`);
+  }, 120_000);
+
+  it.each([['pusty', ''], ['ucięty', 'OMS_KLUCZ_SEKRETOW=abc']])('plik klucza %s w konfiguracji = odmowa, dane puste, plik bez zmian', (_n, tresc) => {
+    const baza = katalog();
+    const dane = path.join(baza, 'data'); const konfiguracja = path.join(baza, 'config');
+    fs.mkdirSync(dane); fs.mkdirSync(konfiguracja);
+    fs.writeFileSync(path.join(konfiguracja, 'klucz.env'), tresc);
+    const wynik = uruchom(dane, konfiguracja, 39165);
+    expect(wynik.status).toBe(1);
+    expect(wynik.stderr).toMatch(/^INSTALACJA_KLUCZ_ODMOWA: /m);
+    expect(fs.readdirSync(dane)).toEqual([]);
+    expect(fs.readdirSync(konfiguracja)).toEqual(['klucz.env']);
+    expect(fs.readFileSync(path.join(konfiguracja, 'klucz.env'), 'utf8')).toBe(tresc);
+  });
 
   it('odmawia, gdy konfiguracja już istnieje — i nie dotyka katalogu danych', () => {
     const baza = katalog();

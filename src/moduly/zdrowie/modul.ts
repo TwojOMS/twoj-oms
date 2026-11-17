@@ -7,6 +7,7 @@ import { zegarOstrzezen } from './zegary.ts';
 import { stanKopii, wersjaWydania, nadzorKopiiWymagany, uwagaBezNadzoruKopii } from './kopie.ts';
 import { UWAGA_BRAK_RACHUNKU } from '../../domena/rachunek-firmy.js';
 import { UWAGA_BRAK_NIP } from '../../domena/nip-bdo-firmy.js';
+import { UWAGA_SPRZATANIA, sprzatanieCzeka } from '../../core/bezpieczenstwo/konwersja-sekretow.js';
 
 export const ODSTEP_OSTRZEZEN_MS=3600000;
 export const modulZdrowie: ModulOms<{proba:boolean;kopieKatalog:string;kopiaZewnetrzna:string}> = {
@@ -75,6 +76,8 @@ export const modulZdrowie: ModulOms<{proba:boolean;kopieKatalog:string;kopiaZewn
       if(rachunekFirmy&&!rachunekFirmy.biezacy().rachunek)wynik.uwagi.push(UWAGA_BRAK_RACHUNKU);
       // Tak samo NIP — bez niego proforma, specyfikacja, wywóz i faktura WDT odmawiają.
       if(nipBdoFirmy&&!nipBdoFirmy.biezacy().nip)wynik.uwagi.push(UWAGA_BRAK_NIP);
+      // Plik bazy po zaszyfrowaniu poświadczeń jeszcze nieprzepakowany — znika po udanym sprzątaniu (start albo `sekrety sprzataj`).
+      if(sprzatanieCzeka(ctx.db))wynik.uwagi.push(UWAGA_SPRZATANIA);
       // Nadzór kopii tylko tam, gdzie compose klienta ustawia OMS_KOPIE_KATALOG.
       if(ctx.konfiguracja.kopieKatalog){
         const kopie=stanKopii({katalog:ctx.konfiguracja.kopieKatalog,zewnetrzna:ctx.konfiguracja.kopiaZewnetrzna,teraz});

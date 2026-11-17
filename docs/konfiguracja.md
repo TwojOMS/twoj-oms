@@ -6,8 +6,8 @@ Opis wszystkich zmiennych czytanych przez OMS, pogrupowany tematycznie. Maszynow
 ## Ustawienia z panelu zamiast pliku
 
 Część integracji wpisuje się w panelu (Ustawienia), nie w pliku konfiguracji. Zapis z ekranu trafia do
-bazy (tabela `konfiguracja_integracji`, hasła i klucze jako zwykły tekst — kopie bazy chroń więc tak samo jak plik
-konfiguracji); hasła i klucze zapisane z ekranu nie wracają na ekran ani do dziennika. Zasada jest jedna: **plik konfiguracji wygrywa**. Gdy zmienne danej integracji stoją w pliku, ekran
+bazy (tabela `konfiguracja_integracji`; hasła i klucze zaszyfrowane kluczem poświadczeń — sekcja „Klucz poświadczeń
+integracji” niżej); hasła i klucze zapisane z ekranu nie wracają na ekran ani do dziennika. Zasada jest jedna: **plik konfiguracji wygrywa**. Gdy zmienne danej integracji stoją w pliku, ekran
 mówi tylko, że jest ona „ustawiona w pliku konfiguracji”; zapis z formularza kończy się odpowiedzią 409 i
 niczego nie zmienia. Dane zapisane wcześniej z ekranu można wtedy tylko usunąć (nie są używane).
 
@@ -36,6 +36,47 @@ Poza Dockerem ustaw `OMS_DB_PATH` na plik w istniejącym, zapisywalnym katalogu 
 Przy otwieraniu bazy start wypisuje też linię `uzupełnienia danych zamówień: N do sprawdzenia, M ms`. Uzupełnienie danych zamówień przechodzi po każdym zamówieniu raz: pierwszy start na dużej bazie sprawdza wszystkie (N jest wtedy duże, a start dłuższy), kolejne tylko zamówienia dodane od poprzedniego startu. Pełny przegląd wraca po aktualizacji, która zmienia logikę uzupełnień, i po podmianie bazy na inną kopię; to nie jest błąd.
 
 Skan aktualnego produktu/CLI: 405 plików, 126 czytników, w tym 32 dynamiczne. Każdy czytnik ma mapę w JSON; 0 nieprzypisanych. Nazwy narzędzi/systemu są oddzielne i nie są obowiązkową konfiguracją instalacji. Brak oznacza undefined; pusty tekst, whitespace, ?? i || zależą od konkretnego konfiguratora.
+
+## Klucz poświadczeń integracji
+
+Poświadczenia integracji są szyfrowane w bazie: `konfiguracja_integracji.sekrety_json` (hasła i klucze zapisane z ekranów Ustawień), `tokeny_kanalu` i `tokeny_ksef` (tokeny dostępu i odświeżania) oraz `sekret_sesji`. Szyfr AES-256-GCM, zapis `oms1.<id klucza>.<nonce>.<dane>`, przypięty do tabeli, kolumny i klucza głównego wiersza — wartość przeniesiona do innego wiersza się nie odszyfruje. Kod: `src/core/bezpieczenstwo/sejf-sekretow.js` (sejf), `src/core/bezpieczenstwo/konwersja-sekretow.js` (kontrola przed startem, konwersja, sprzątanie).
+
+| zmienna | znaczenie |
+|---|---|
+| `OMS_KLUCZ_SEKRETOW` | wymagana. 32 losowe bajty zapisane base64url — 43 znaki, bez `=`. Brak albo zła postać = odmowa startu, nigdy klucz zastępczy. |
+| `OMS_KLUCZ_SEKRETOW_POPRZEDNI` | opcjonalna, ten sam format. Tylko na czas wymiany klucza albo odtworzenia kopii spod starego klucza: start przeszyfrowuje nią zapisy na klucz bieżący. Po sprawdzeniu usuń. |
+| `OMS_KLUCZ_SEKRETOW_PLIK` | tylko dla instalatorów: ścieżka pliku z linią `OMS_KLUCZ_SEKRETOW=…`. Bez niej `klucz.env` w katalogu próby, obok bazy; w Dockerze `/opt/oms/config/klucz.env`, poza katalogiem danych. Program czyta klucz wyłącznie ze zmiennej — plik to sposób jej dostarczenia. |
+
+Id klucza to 8 znaków szesnastkowych ze skrótu SHA-256 klucza. To etykieta dla człowieka (wolno ją pokazywać i logować); o zgodności klucza rozstrzyga odszyfrowanie, nie id. Wartości klucza OMS nie wypisuje nigdzie: ani w logu, ani w komunikacie błędu, ani na ekranie.
+
+Start sprawdza bazę połączeniem tylko do odczytu, zanim wykona się jakakolwiek migracja, uzupełnienie danych, reset albo zapis poświadczeń:
+
+| stan bazy | zachowanie startu |
+|---|---|
+| brak znacznika `sekrety.format` (baza sprzed szyfrowania, stara kopia) | jawne wartości szyfrowane jedną transakcją; sekret sesji wymieniany na nowy — wszyscy logują się od nowa |
+| format 1, zapisy pod kluczem bieżącym | nic do zrobienia, żadnego zapisu |
+| format 1, zapisy pod kluczem poprzednim | przeszyfrowanie na klucz bieżący; sesje zostają |
+| format 1 i niepusta wartość jawna | odmowa — to błąd zapisu, nie stara baza; OMS nie szyfruje jej po cichu |
+| format wyższy niż zna wydanie albo zapis w nieznanej wersji | odmowa: baza z nowszego wydania |
+| zapis uszkodzony albo pod kluczem, którego nie ma w konfiguracji | odmowa z id klucza, którego wymaga baza |
+
+Po konwersji OMS przepakowuje plik bazy (`VACUUM`, potem `wal_checkpoint(TRUNCATE)`), żeby stare wartości nie zostały w wolnych stronach; potrzeba wolnego miejsca do dwóch rozmiarów bazy. Pomiar: baza 1 GB — 12,6 s (17.11.2026). Nieudane sprzątanie nie blokuje startu: znacznik `sekrety.sprzatanie` zostaje, `/health` ma uwagę, ponowienie przy następnym starcie.
+
+Narzędzie `scripts/sekrety.mjs` działa bez serwera HTTP i bez migracji: `stan`, `sprawdz`, `klucz-zapewnij`, `odszyfruj`, `porzuc`, `sprzataj` (opis poleceń w nagłówku pliku). Kody wyjścia: 0 — sukces albo klucz zgodny, 1 — odmowa albo klucz niezgodny, 2 — złe użycie. W Dockerze uruchamia się je przez `aktualizuj.sh sekrety …`; polecenia, które zmieniają bazę, działają tam tylko przy zatrzymanym OMS-ie.
+
+Wymiana klucza krok po kroku:
+
+1. Obecny klucz jest w menedżerze haseł, z id i datą.
+2. Nowy klucz jako `OMS_KLUCZ_SEKRETOW`, obecny jako `OMS_KLUCZ_SEKRETOW_POPRZEDNI`.
+3. Restart OMS-u — start przeszyfrowuje zapisy na nowy klucz.
+4. `sekrety.mjs stan`: wszystkie zapisy pod nowym id, „poprzednim: 0”. Nowy klucz do menedżera haseł, z id i datą; stary wpis zostaje, dopóki istnieją kopie spod niego.
+5. Usunięcie `OMS_KLUCZ_SEKRETOW_POPRZEDNI` i restart.
+
+Gotowe polecenia dla instalacji w Dockerze, utrata klucza i odtwarzanie kopii: `docs/instalacja-docker.md`, rozdział „Klucz poświadczeń”.
+
+Wymiana klucza a odwołanie poświadczeń to dwa różne środki. Wymiana klucza nie odbiera dostępu komuś, kto już ma bazę razem z kluczem albo odczytane tokeny — dostawcy nadal je przyjmują. Po wycieku bazy z kluczem odwołaj poświadczenia u dostawców (Allegro, KSeF, sklep, kurierzy, program do faktur, poczta) i zapisz nowe.
+
+Czego szyfrowanie nie daje: ochrony przed kimś, kto ma roota na serwerze albo wszedł do działającego programu (ma bazę i klucz); ochrony kopii całej maszyny albo całego `/opt/oms` (baza i klucz razem); szyfrowania danych klientów, zamówień, faktur i etykiet; ochrony poświadczeń wpisanych do `oms.env` (plik jawny z założenia), kluczy reklam i plików archiwum próby (`/opt/oms/proba-archiwum`); ważności tokenu, który dostawca zdążył unieważnić. Klucze reklam (`OMS_REKLAMY_SEKRETY_DIR`, u klienta `/opt/oms/data/reklamy-sekrety`) leżą w plikach w katalogu danych, nie są szyfrowane ani objęte dzienną kopią — po odtworzeniu podłącza się je ponownie.
 
 ## Rdzeń i uruchomienie
 

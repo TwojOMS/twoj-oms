@@ -1184,10 +1184,11 @@ async function wypelnijMagazyn(db, { dzis, koniecDnia }) {
 export async function utworzBazeDemo({ baza, ziarno = 72, dzis, teraz, env = ENV_DEMO }) {
   const koniecDnia = terazDemo(dzis, teraz);
   if ([baza, `${baza}-wal`, `${baza}-shm`].some((p) => fs.existsSync(p))) throw new Error('DEMO_ODMOWA_NADPISANIA');
-  const { openOmsDb } = await import('../src/oms/db/db.ts');
+  const { otworzBazeStartu } = await import('../src/oms/db/db.ts');
   const { modulyDla } = await import('../src/moduly/lista.ts');
   fs.mkdirSync(path.dirname(baza), { recursive: true });
-  const db = openOmsDb(baza, { moduly: modulyDla(env) });
+  // Klucz poświadczeń z env: generator zapisuje sekrety (np. klucz API ERLI) przez warstwę dostępu.
+  const db = otworzBazeStartu(env, baza, { moduly: modulyDla(env), bezKataloguBazy: true });
   // Kilka tysięcy małych zatwierdzeń: na dysku NAS-a każde z fsync trwało łącznie >4 min (laptop 2 s).
   // Baza demo jest jednorazowa — przy awarii w połowie i tak jest kasowana niżej.
   db.exec('PRAGMA synchronous = OFF');

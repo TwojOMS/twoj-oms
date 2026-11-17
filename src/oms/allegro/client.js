@@ -407,7 +407,7 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
       //   i nie zobaczymy go NIGDY. Zgubione zamowienie zamiast zdublowanego.
       p.set('updatedAt.gte', naDateAllegro(kursor, 'kursor'));
     } else if (od) {
-      // GALAZ PODLOGI — PIERWSZY PRZEBIEG, potencjalnie 8 stron (776 zamowien / 100).
+      // GALAZ PODLOGI — PIERWSZY PRZEBIEG, przy rocznej historii zwykle kilka stron po 100 zamówień.
       // Tu `sort` jest KONIECZNY: klucz sortowania (`lineItems.boughtAt`, data ZLOZENIA)
       // jest NIEZMIENNY, wiec zamowienia dochodzace w trakcie przebiegu dopisuja sie ZA
       // oknem, ktore juz czytamy, i nie przesuwaja stron przeczytanych wczesniej.

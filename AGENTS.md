@@ -26,7 +26,15 @@ człowiek nie powiedział wprost, że chodzi o to konkretne działanie:
   (DPD, InPost, inFakt, poczta) — klucze podaje człowiek, ty ich nie zgadujesz, nie generujesz
   i **nie wypisujesz na ekran ani do logów**;
 - otwieranie panelu na świat (przekierowanie portu, publiczny adres) bez HTTPS i bez zaufanych proxy;
-- usuwanie bazy (`oms.sqlite`), kopii i plików w `data/`, `backups/`.
+- usuwanie bazy (`oms.sqlite`), kopii i plików w `data/`, `backups/`;
+- cokolwiek z kluczem poświadczeń (`klucz.env`, zmienna `OMS_KLUCZ_SEKRETOW`), którym OMS szyfruje w bazie hasła
+  i tokeny integracji. Klucza **nie wypisujesz** (do `sudo cat` dajesz człowiekowi polecenie, sam nie czytasz pliku
+  na ekran), **nie generujesz zastępczego**, gdy baza ma zaszyfrowane poświadczenia, **nie kopiujesz razem z bazą**
+  i **nie czyścisz katalogu konfiguracji hurtem** (`/opt/oms/config` albo katalog próby) — usuwasz tylko pliki,
+  które instrukcja wymienia z nazwy. OMS odmawia startu przez klucz (komunikat z `OMS_KLUCZ_SEKRETOW`,
+  `KLUCZ_NIEZGODNY`, `KLUCZ_POSWIADCZEN_ODMOWA`) = zatrzymaj się i zapytaj człowieka. Utrata klucza oznacza
+  ponowne podłączenie integracji; decyduje o niej człowiek. Opis: `docs/instalacja-docker.md`, rozdział
+  „Klucz poświadczeń”.
 
 Tryb `OMS_TRYB=proba` blokuje start, gdy w środowisku jest jakikolwiek klucz integracji — to
 zamierzona sieć bezpieczeństwa. Nie obchodź jej; zmień tryb dopiero na polecenie człowieka.
@@ -106,7 +114,12 @@ kopię na żądanie robi kontener kopii (polecenie „kopia teraz” w `docs/ins
   **plik konfiguracji z tą samą integracją wygrywa**: ekran jest wtedy tylko do odczytu. Zanim szukasz błędu na
   ekranie, sprawdź, czy tej integracji nie ma w `oms.env`.
 - Panel po zwykłym HTTP nie nadaje się do internetu; HTTPS i kontrola dostępu to osobny krok.
-- Baza, kopie i konfiguracja żyją **poza** katalogiem programu — nie umieszczaj ich w repo.
+- Baza, kopie i konfiguracja żyją **poza** katalogiem programu — nie umieszczaj ich w repo. Dotyczy to też
+  `klucz.env`: `.gitignore` go nie pomija.
+- Poświadczenia integracji w bazie (`sekrety_json`, tokeny kanałów i KSeF, sekret sesji) czyta i zapisuje tylko warstwa
+  z przypiętym sejfem (`rg -n "sejfBazy|przypnijSejf" src scripts`). Surowy `UPDATE` albo `INSERT` jawnego tekstu
+  w te kolumny kończy się odmową startu — OMS nie szyfruje takiej wartości po cichu. Stan bazy bez klucza pokaże
+  `node scripts/sekrety.mjs stan --baza <plik>`.
 - Komentarz mówi, dlaczego kod jest taki — bez numerów zadań, dat, osób i odsyłaczy do dokumentów spoza repo.
   W `src/` pilnuje tego `tests/core/straznik-numerow-zadan-w-komentarzach.test.js`. W `tests/`, `scripts/` i `deploy/`
   zostały jeszcze ślady `PRZ-nnn` z historii projektu: opisują powód zmiany, ale tablicy zadań w repo nie ma.

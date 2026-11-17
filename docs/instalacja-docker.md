@@ -69,6 +69,10 @@ sudo install -d -m 0700 -o 10001 -g 10001 /opt/oms/config /opt/oms/data /opt/oms
 `/opt/oms/kopia-zewnetrzna` to miejsce na pendrive albo dysk USB z kopią poza serwerem — opis
 w sekcji „Kopia poza dyskiem” na końcu.
 
+W `/opt/oms/config` instalacja założy też plik `klucz.env` — klucz, którym OMS szyfruje w bazie hasła
+i tokeny integracji. Należy do użytkownika 10001 i ma tryb 600, tak jak `oms.env`. Nigdy nie leży
+w `/opt/oms/data` i nie trafia do żadnej kopii. Opis: rozdział „Klucz poświadczeń” na końcu.
+
 ## 3. Paczka
 
 ```bash
@@ -109,10 +113,24 @@ w `/opt/oms/config/oms.env`, dane konta w `/opt/oms/config/administrator-proby.e
 Opis zmiennych, ich wymagalności i odpowiedników w panelu znajdziesz w [tabeli zmiennych](zmienne.md) (`docs/zmienne.md`).
 Drugi raz odmówi (`INSTALACJA_ODMOWA_NADPISANIA`) — nie nadpisuje istniejących danych.
 
-Jeśli polecenie skończy się innym błędem `INSTALACJA_…`, zapisz go, wyczyść oba katalogi
-(także pliki ukryte) i powtórz krok 5:
-`sudo find /opt/oms/data /opt/oms/config -mindepth 1 -delete`.
-To kasuje tylko próbę — przy pierwszej instalacji nie ma tam innych danych.
+Klucz poświadczeń powstaje sam, w `/opt/oms/config/klucz.env`. Przed wierszem `"status"` wynik
+pokazuje jego id (8 znaków) i polecenie `sudo cat /opt/oms/config/klucz.env`. Wyświetl plik i zapisz
+jego zawartość w menedżerze haseł, razem z id i datą. Bez klucza kopia bazy nie odda podłączonych
+integracji (rozdział „Klucz poświadczeń”).
+
+Jeśli polecenie skończy się innym błędem `INSTALACJA_…`, zapisz go, wyczyść katalog danych (także
+pliki ukryte), usuń trzy pliki instalatora z katalogu konfiguracji i powtórz krok 5:
+
+```bash
+sudo find /opt/oms/data -mindepth 1 -delete
+sudo rm -f /opt/oms/config/oms.env /opt/oms/config/administrator-proby.env /opt/oms/config/produkcja.env.example
+```
+
+To kasuje tylko próbę — przy pierwszej instalacji nie ma tam innych danych. `klucz.env` zostaje:
+przy powtórzeniu instalator go sprawdzi i użyje, nie nadpisze. Nie kasuj całego `/opt/oms/config` —
+przy odtwarzaniu leży tam klucz przyniesiony z menedżera haseł. Jedyny wyjątek: błąd
+`INSTALACJA_KLUCZ_ODMOWA` przy pierwszej instalacji (plik klucza pusty albo ucięty, np. po zaniku
+prądu). Wtedy w bazie nie ma jeszcze nic zaszyfrowanego — usuń też `klucz.env`, a instalator założy nowy.
 
 ## 6. Start panelu
 
@@ -330,9 +348,20 @@ do archiwum, a ponowne przejście zaczęłoby od pustej bazy i proform od numeru
 Konto `serwis` z pliku konfiguracji po założeniu administratora już nie loguje. Zapisz hasło
 administratora i — teraz, zanim dopiszesz klucze integracji — zawartość `/opt/oms/config/oms.env`
 w menedżerze haseł (`sudo cat` wyświetla ją na ekranie; po sekcji 9 byłyby tam klucze). Na nośniku
-kopii (jeśli jest) kopie próby znikają same po 30 kopiach pracy. Archiwum próby na dysku skasuj po
-`accept`, gdy przestanie być potrzebne: `sudo rm -r /opt/oms/proba-archiwum` — razem z nim znikają
-bazy pracy odłożone przez `recover` (`produkcja-odlozona-*`).
+kopii (jeśli jest) kopie próby znikają same po 30 kopiach pracy.
+
+Klucz poświadczeń (`/opt/oms/config/klucz.env`) przejście zostawia na miejscu: próba i praca mają
+ten sam klucz. Nie jest przenoszony ani archiwizowany, a `recover` go nie rusza.
+
+Archiwum próby `/opt/oms/proba-archiwum/OPERACJA/` zawiera: katalog danych próby (`data/` — baza
+z zamówieniami DEMO, proformy, etykiety), jej kopie (`backups/`, `kopia/`) i jej pliki konfiguracji
+(`config/oms.env` z hasłem konta serwisowego próby, `config/administrator-proby.env`,
+`config/produkcja.env.example`). Do `accept` leży tam też kopia `config/produkcja.env` — potrzebna tylko
+do powrotu; `accept` ją usuwa. Po `recover` dochodzi `produkcja-odlozona-…/` z bazą pracy, a czasem
+także z `oms.env` i `administrator.env` pracy. Te pliki konfiguracji są jawne, jak każdy plik `.env` —
+archiwum traktuj jak katalog z hasłami. Nic nie usuwa go samo, także po przerwanym albo nigdy
+niezaakceptowanym przejściu. Skasuj je po `accept`, gdy przestanie być potrzebne:
+`sudo rm -r /opt/oms/proba-archiwum` — razem z nim znikają bazy pracy odłożone przez `recover`.
 
 ## 9. Integracje po kolei
 
@@ -527,6 +556,7 @@ przełączyłoby OMS z powrotem na stary obraz.
 | kopia teraz | `sudo sh /opt/oms/aktualizuj.sh compose exec -T kopia node deploy/klient/kopia.mjs teraz` |
 | zatrzymanie (dane zostają) | `sudo sh /opt/oms/aktualizuj.sh compose down` |
 | ponowny start (także po zmianie plików w `/opt/oms/config`) | `sudo sh /opt/oms/aktualizuj.sh compose up -d` |
+| poświadczenia w bazie: id wymaganego klucza, sprzątanie pliku | `sudo sh /opt/oms/aktualizuj.sh sekrety stan` |
 | aktualizacja do nowego wydania | `docs/aktualizacja-klienta-v0.md` |
 
 Kopie robi kontener `oms-kopia` (sprawdza co godzinę, co jest potrzebne):
@@ -548,6 +578,20 @@ sudo sh /opt/oms/aktualizuj.sh compose run --rm --no-deps kopia node -e "const{D
 ```
 
 Wynik: nazwa pliku, `ok` i liczba zamówień.
+
+Co jest w kopiach i czego w nich nie ma:
+
+| co kopiujemy | gdzie jest klucz | co odtwarzamy | co trzeba podłączyć ponownie |
+|---|---|---|---|
+| baza: kopie dzienne (`/opt/oms/backups/oms-*.sqlite`) i na nośniku | nie ma go w kopii — `/opt/oms/config/klucz.env` i menedżer haseł | zamówienia, faktury, proformy w bazie, konta, ustawienia, poświadczenia integracji zapisane w panelu (z kluczem tej kopii) | klucze reklam (Meta Ads, Google Analytics 4, Google Ads); integrację, której token dostawca zdążył unieważnić; bez klucza — wszystkie integracje zapisane w panelu, tokeny Allegro i KSeF |
+| etykiety i proformy (`pliki-*.tgz`, na nośniku `pliki/`) | nie dotyczy | pliki PDF | nic |
+| kopia operacji aktualizatora (`/opt/oms/backups/operacje/…`) | nie ma go w kopii | bazę sprzed aktualizacji przy `recover … --przywroc-baze`, na tym samym serwerze | nic |
+| konfiguracja `/opt/oms/config` (`oms.env`, `kopia.env`) | nie dotyczy | nie ma jej w żadnej kopii OMS-u — tylko w menedżerze haseł | integracje wpisane w `oms.env`, jeśli nie ma go w menedżerze |
+| klucz `/opt/oms/config/klucz.env` | — | nie ma go w żadnej kopii OMS-u — tylko w menedżerze haseł (z id i datą) | — |
+| klucze reklam (`/opt/oms/data/reklamy-sekrety`) | nie są szyfrowane | nie ma ich w kopii dziennej ani na nośniku | po odtworzeniu podłącza się je ponownie |
+
+Kopia całego serwera (migawka maszyny wirtualnej, kopia całego `/opt/oms`) zawiera bazę i klucz razem.
+Taką kopię chroń jak hasła — podział na dwa pliki jej nie zabezpiecza.
 
 ## Kopia poza dyskiem (pendrive, dysk USB)
 
@@ -587,16 +631,297 @@ pokazuje alarm „brak nośnika”. `nofail` w `/etc/fstab` pozwala serwerowi ws
 Nośnik montuje się w podkatalogu `nosnik`, nie w samym `/opt/oms/kopia-zewnetrzna`: tylko wtedy
 kontenery widzą jego podłączenie i odłączenie bez restartu (sprawdzone na VM 10.10).
 
-Odtworzenie po awarii dysku (nieprzećwiczone na sprzęcie): kroki 1–4 na nowym dysku; zamiast
-kroku 5 skopiuj z nośnika najnowszą `oms-RRRR-MM-DD.sqlite` jako `/opt/oms/data/oms.sqlite` oraz
-katalogi `pliki/etykiety` i `pliki/proformy` do `/opt/oms/data/`, wykonaj
-`sudo chown -R 10001:10001 /opt/oms/data`, wstaw `oms.env` do `/opt/oms/config` z miejsca, w którym
-go przechowujesz (na nośniku go nie ma — są w nim hasła), potem kroki 6–7. Dlatego zaraz po
-instalacji zapisz zawartość `/opt/oms/config/oms.env` w menedżerze haseł (tak jak hasło administratora).
-
 Serwer wirtualny (VPS) w kontenerze LXC/OpenVZ bywa bez współdzielonych punktów montowania
 (`findmnt -o PROPAGATION /` nie wypisuje `shared`) — wtedy kontenery z nośnikiem nie wystartują;
 na takim serwerze kopię poza dyskiem robi się inaczej (np. pobieranie kopii przez sieć), poza tą instrukcją.
+
+### Odtworzenie po awarii dysku
+
+Procedura nieprzećwiczona jeszcze na sprzęcie. Potrzebujesz trzech rzeczy: nośnika z kopią
+oraz z menedżera haseł zawartości `klucz.env` i `oms.env` pracy. Na nośniku nie ma ani klucza, ani
+konfiguracji — dlatego zaraz po instalacji i po każdej zmianie zapisuj oba pliki w menedżerze haseł.
+
+⚠️ **Na odtworzonej bazie nie uruchamiaj instalatora** (`docker compose run --rm instalacja`) **ani
+`aktualizuj.sh produkcja`.** Instalator zakłada próbę z danymi DEMO. `produkcja` odkłada cały katalog
+danych do archiwum i uruchamia OMS na pustej bazie — odtworzona baza firmy wylądowałaby w archiwum.
+
+1. Na nowym dysku wykonaj kroki 1–4 tej instrukcji. Kroku 5 nie wykonujesz.
+2. Wstaw konfigurację z menedżera haseł. W `klucz.env` wklej linię `OMS_KLUCZ_SEKRETOW=…`,
+   w `oms.env` całą zapisaną treść:
+
+   ```bash
+   sudo nano /opt/oms/config/klucz.env
+   sudo nano /opt/oms/config/oms.env
+   sudo chown 10001:10001 /opt/oms/config/klucz.env /opt/oms/config/oms.env
+   sudo chmod 600 /opt/oms/config/klucz.env /opt/oms/config/oms.env
+   ```
+
+3. Podłącz nośnik tylko do odczytu, skopiuj najnowszą kopię bazy do katalogu roboczego i sprawdź ją
+   (`RRRR-MM-DD` — data z listy plików):
+
+   ```bash
+   sudo mkdir -p /mnt/oms-kopia
+   sudo mount -o ro LABEL=OMS-KOPIA /mnt/oms-kopia
+   sudo ls /mnt/oms-kopia
+   sudo install -d -m 0700 -o 10001 -g 10001 /opt/oms/odtwarzanie
+   sudo install -m 0600 -o 10001 -g 10001 /mnt/oms-kopia/oms-RRRR-MM-DD.sqlite /opt/oms/odtwarzanie/oms.sqlite
+   sudo sh /opt/oms/aktualizuj.sh sekrety sprawdz --baza /opt/oms/odtwarzanie/oms.sqlite
+   ```
+
+   Sprawdzenie bada spójność pliku i odszyfrowuje każde poświadczenie kluczem z `klucz.env`. Dalej
+   idziesz tylko po ostatnim wierszu `KLUCZ_ZGODNY`. `KLUCZ_NIEZGODNY: kopia wymaga id X, podano id Y`
+   znaczy, że kopia powstała pod innym kluczem — znajdź w menedżerze haseł wpis z id X (rozdział
+   „Klucz poświadczeń”, „Historia kluczy”). `BAZA_USZKODZONA` — weź starszą kopię. Kopia sprzed
+   szyfrowania (`format: brak znacznika`) przechodzi bez względu na klucz; OMS zaszyfruje ją przy
+   starcie kluczem z `klucz.env`.
+4. Wstaw sprawdzoną bazę oraz etykiety i proformy z nośnika (kontenery jeszcze nie działają):
+
+   ```bash
+   sudo mv /opt/oms/odtwarzanie/oms.sqlite /opt/oms/data/oms.sqlite
+   sudo rm -f /opt/oms/data/oms.sqlite-wal /opt/oms/data/oms.sqlite-shm
+   sudo cp -a /mnt/oms-kopia/pliki/etykiety /mnt/oms-kopia/pliki/proformy /opt/oms/data/
+   sudo chown -R 10001:10001 /opt/oms/data
+   sudo umount /mnt/oms-kopia
+   ```
+
+5. Sprawdź przed startem: `OMS_TRYB` w `oms.env` nie może być `proba` (pusty albo `produkcja`);
+   adres panelu i lista kanałów mają być takie jak przed awarią. Ścieżek danych nie poprawiasz —
+   ustawia je `compose.yaml`.
+
+   ```bash
+   sudo grep -E '^(OMS_TRYB|OMS_ADRES_PANELU|OMS_KANALY)=' /opt/oms/config/oms.env
+   ```
+
+6. Start i logowanie: kroki 6–7. Logujesz się kontem z odtworzonej bazy, nie kontem z instalacji.
+   Potem `sudo sh /opt/oms/aktualizuj.sh zdrowie` i lista zamówień.
+
+Po odtworzeniu: kopię poza dyskiem włącz blokiem poleceń z tej sekcji, ale **bez pierwszego polecenia
+(`mkfs.ext4`)** — formatowanie skasowałoby nośnik z kopiami. Klucze reklam (Meta Ads, Google
+Analytics 4, Google Ads) podłącz ponownie — nie ma ich w kopii. Jeśli dostawca odrzuci token
+(Allegro, KSeF), podłącz tę integrację od nowa: kopia oddaje poświadczenia z dnia kopii, a nie
+gwarancję, że dostawca je jeszcze przyjmie.
+
+## Klucz poświadczeń
+
+Poświadczenia integracji są szyfrowane w bazie: hasła, klucze API i tokeny zapisane z ekranów
+Ustawień oraz tokeny dostępu Allegro i KSeF. Klucz leży w pliku `/opt/oms/config/klucz.env` — jedna
+linia `OMS_KLUCZ_SEKRETOW=` i 43 znaki. Kopia bazy bez tego klucza odda zamówienia, faktury i konta,
+ale nie poświadczenia: integracje trzeba będzie podłączyć od nowa.
+
+Każdy klucz ma id — 8 znaków, np. `3f9a0c1e`. Id wolno pokazać i zapisać w notatkach, po nim
+rozpoznasz klucz. Samej wartości klucza nie wklejaj do czatu, zgłoszenia ani maila.
+
+### Zapis klucza i historia kluczy
+
+Klucz powstaje sam: przy instalacji (krok 5) albo przy pierwszej aktualizacji do wydania, które
+szyfruje poświadczenia (`docs/aktualizacja-klienta-v0.md`). Oba polecenia podają jego id. Zapisz go od razu:
+
+```bash
+sudo cat /opt/oms/config/klucz.env
+```
+
+W menedżerze haseł zapisz linię `OMS_KLUCZ_SEKRETOW=…` jako osobny wpis, z id i datą. OMS nie
+kopiuje klucza nigdzie: nie ma go w kopii dziennej, na nośniku ani w kopii operacji aktualizatora.
+Menedżer haseł to jedyne miejsce poza serwerem. Nie kopiuj klucza na nośnik razem z bazą.
+
+Każdy klucz, którym zaszyfrowano trzymaną kopię, zostaje w menedżerze haseł z id i datą — także po
+wymianie klucza. Kopie dzienne znikają po 14 dniach, na nośniku po 30 kopiach, własne archiwa — gdy je
+usuniesz. Id klucza, którego wymaga kopia, odczytasz z samej kopii, bez klucza (wiersz
+`wymagane id kluczy:`):
+
+```bash
+sudo sh /opt/oms/aktualizuj.sh sekrety stan --baza /opt/oms/backups/oms-RRRR-MM-DD.sqlite
+```
+
+Kopię spod starego klucza odtwarza się tak: w `klucz.env` zostaje bieżący klucz (`OMS_KLUCZ_SEKRETOW`),
+a w drugiej linii dopisujesz klucz tej kopii jako `OMS_KLUCZ_SEKRETOW_POPRZEDNI=…`. Przy starcie OMS
+przeszyfruje bazę na bieżący klucz; potem linię `…_POPRZEDNI` usuwasz (punkty 4–5 w „Wymiana klucza”).
+Działa dla kopii sprzed dowolnej liczby wymian — potrzebny jest tylko klucz o id z tej kopii.
+
+### Czego szyfrowanie nie daje
+
+- Nie chroni przed kimś, kto ma uprawnienia administratora (root) na serwerze albo dostał się do
+  działającego OMS-u — taka osoba ma bazę i klucz.
+- Kopia całej maszyny albo całego `/opt/oms` zawiera bazę i klucz razem — podział na dwa pliki jej
+  nie zabezpiecza.
+- Nie szyfruje danych klientów, zamówień, faktur ani etykiet.
+- Nie obejmuje poświadczeń wpisanych do `oms.env` (ten plik jest jawny z założenia), kluczy reklam ani
+  plików w archiwum próby (`/opt/oms/proba-archiwum`, sekcja 8). Klucze reklam (Meta Ads, Google
+  Analytics 4, Google Ads) leżą w plikach w katalogu danych (`/opt/oms/data/reklamy-sekrety`), nie są
+  szyfrowane ani objęte dzienną kopią — po odtworzeniu podłącza się je ponownie.
+- Nie przywraca ważności tokenu, który dostawca zdążył unieważnić — odtworzona kopia oddaje
+  poświadczenia, a nie gwarancję, że Allegro czy KSeF je jeszcze przyjmą.
+
+### OMS nie wstaje przez klucz
+
+OMS sprawdza klucz przy każdym starcie, zanim cokolwiek zmieni w bazie. Brak klucza albo klucz
+niepasujący do bazy kończy się odmową startu; OMS nigdy nie tworzy klucza zastępczego. Objaw:
+`sudo sh /opt/oms/aktualizuj.sh compose ps` pokazuje `oms` jako `restarting`, a dziennik
+(`sudo sh /opt/oms/aktualizuj.sh compose logs --tail 30 oms`) ma linię `Błąd konfiguracji:` z jednym
+z komunikatów:
+
+| komunikat | znaczy | co zrobić |
+|---|---|---|
+| `Brak klucza poświadczeń OMS_KLUCZ_SEKRETOW` | nie ma pliku `klucz.env` albo linia jest pusta | wstaw klucz z menedżera haseł (niżej) |
+| `zła postać klucza — oczekiwane 43 znaki` | wklejony klucz jest ucięty albo ma dodatkowy znak | wklej jeszcze raz całą linię |
+| `Baza jest zaszyfrowana kluczem o id X, w konfiguracji jest klucz o id Y` | w pliku jest inny klucz | znajdź w menedżerze haseł klucz o id X |
+| `Baza z nowszego wydania` albo `nieznaną wersję formatu` | bazę zapisało nowsze wydanie OMS-u | uruchom wydanie, które ją zapisało (`docs/aktualizacja-klienta-v0.md`) |
+| `jest uszkodzone` albo `ma niezaszyfrowane poświadczenia` | jeden zapis nie daje się odczytać | `sekrety porzuc` (niżej), potem ta integracja od nowa |
+
+Najpierw zobacz, czego chce baza (działa bez klucza i przy zatrzymanym OMS-ie):
+
+```bash
+sudo sh /opt/oms/aktualizuj.sh sekrety stan
+```
+
+`wymagane id kluczy:` — id klucza, którego potrzebuje baza; `klucz w konfiguracji: id …` — id klucza
+z pliku. Gdy klucz w pliku ma złą postać, `stan` też odmawia — popraw plik.
+
+**Klucz jest w menedżerze haseł.** Wpisz do pliku linię `OMS_KLUCZ_SEKRETOW=…` z menedżera, sprawdź,
+dopiero potem uruchom:
+
+```bash
+sudo nano /opt/oms/config/klucz.env
+sudo chown 10001:10001 /opt/oms/config/klucz.env
+sudo chmod 600 /opt/oms/config/klucz.env
+sudo sh /opt/oms/aktualizuj.sh sekrety sprawdz
+sudo sh /opt/oms/aktualizuj.sh compose up -d
+```
+
+`sprawdz` ma skończyć się wierszem `KLUCZ_ZGODNY`. `KLUCZ_NIEZGODNY` — to nie ten klucz; szukaj dalej.
+
+**Klucza nie ma nigdzie.** Poświadczeń zaszyfrowanych utraconym kluczem nie odczyta nikt. Zostaje
+jedna droga: nowy klucz i porzucenie nieczytelnych poświadczeń. Zamówienia, faktury, konta i ustawienia
+integracji zostają. Znikają hasła i klucze integracji zapisane w panelu, tokeny Allegro i sesja KSeF;
+wszyscy logują się od nowa. Jeśli plik `klucz.env` istnieje (z niepasującym kluczem), najpierw odłóż go
+pod inną nazwą — nie kasuj, może pasować do którejś kopii:
+
+```bash
+sudo mv /opt/oms/config/klucz.env /opt/oms/config/klucz.env.niepasujacy
+```
+
+Dalej:
+
+```bash
+sudo sh /opt/oms/aktualizuj.sh compose stop oms kopia
+sudo sh /opt/oms/aktualizuj.sh sekrety porzuc --nowy-klucz --potwierdz-wszystkie
+sudo cat /opt/oms/config/klucz.env
+sudo sh /opt/oms/aktualizuj.sh compose up -d
+```
+
+Narzędzie najpierw zapisuje nowy klucz (`KLUCZ_UTWORZONY id …`), potem jedną transakcją usuwa
+poświadczenia (`PORZUCONE: …`). Nowy klucz zapisz w menedżerze haseł, z id i datą. Potem podłącz
+integracje ponownie w panelu i połącz kanały Allegro. Jeśli polecenie przerwało się po
+`KLUCZ_UTWORZONY`, powtórz je bez `--nowy-klucz`:
+`sudo sh /opt/oms/aktualizuj.sh sekrety porzuc --potwierdz-wszystkie`.
+
+**Klucz jest dobry, ale jedno poświadczenie jest nieczytelne.** Podgląd wypisuje nazwy w postaci
+`integracja:<nazwa>`, `kanal:<kanał>`, `ksef` albo `sesja`:
+
+```bash
+sudo sh /opt/oms/aktualizuj.sh sekrety porzuc
+sudo sh /opt/oms/aktualizuj.sh compose stop oms kopia
+sudo sh /opt/oms/aktualizuj.sh sekrety porzuc --potwierdz NAZWA
+sudo sh /opt/oms/aktualizuj.sh compose up -d
+```
+
+Usuwa tylko poświadczenia wskazanej integracji; jej ustawienia i powiązania zostają. Potem podłącz ją ponownie.
+
+⛔ Nie usuwaj `klucz.env` i nie wpisuj nowego klucza „na próbę”, gdy baza ma zaszyfrowane
+poświadczenia. OMS z innym kluczem i tak nie wstanie, a stary klucz bywa jedyną drogą do kopii.
+
+### Polecenia `aktualizuj.sh sekrety`
+
+| polecenie | co robi | OMS |
+|---|---|---|
+| `sekrety stan [--baza PLIK]` | liczby zapisów (jawne, puste, uszkodzone, pod kluczem o id …), wymagane id kluczy (bez klucza), format danych, czy czeka sprzątanie pliku | może pracować |
+| `sekrety sprawdz [--baza PLIK]` | spójność pliku i odszyfrowanie wszystkiego; ostatni wiersz `KLUCZ_ZGODNY` albo `KLUCZ_NIEZGODNY: kopia wymaga id X, podano id Y` (też `BAZA_USZKODZONA`, `POSWIADCZENIA_USZKODZONE`) | może pracować |
+| `sekrety klucz-zapewnij` | plik klucza jest — sprawdza go i niczego nie zmienia; nie ma — tworzy nowy klucz, chyba że baza ma zaszyfrowane poświadczenia (wtedy odmowa). Robi to sam `deploy` | może pracować |
+| `sekrety porzuc` | podgląd nieczytelnych poświadczeń | może pracować |
+| `sekrety porzuc --potwierdz NAZWA…` albo `--potwierdz-wszystkie` | usuwa wskazane poświadczenia | **zatrzymany** |
+| `sekrety porzuc --nowy-klucz --potwierdz-wszystkie` | po utracie klucza: nowy klucz i usunięcie nieczytelnych poświadczeń | **zatrzymany** |
+| `sekrety odszyfruj` | zamienia poświadczenia z powrotem na jawne — tylko do powrotu na wydanie sprzed szyfrowania; robi to sam `recover` | **zatrzymany** |
+| `sekrety sprzataj` | przepakowuje plik bazy po zaszyfrowaniu (niżej) | **zatrzymany** |
+
+Polecenia oznaczone „zatrzymany” przy pracującym OMS-ie kończą się odmową `SEKRETY_OMS_DZIALA`, bez
+opcji wymuszenia: OMS mógłby zapisać bazę zaraz po narzędziu. Kolejność: `sudo sh /opt/oms/aktualizuj.sh
+compose stop oms kopia`, polecenie, `sudo sh /opt/oms/aktualizuj.sh compose up -d`. Ścieżkę pliku
+klucza ustala aktualizator — opcji `--plik` nie podajesz. `--baza` działa tylko przy `stan` i `sprawdz`;
+plik spoza `/opt/oms/data` (np. kopia) narzędzie czyta tylko do odczytu. W trakcie niezamkniętej
+aktualizacji polecenie używa obrazu nowego wydania i blokady tej aktualizacji. Przerwane polecenie
+zapisu zostawia własną blokadę: `status` pokazuje `typ=sekrety`, a `sudo sh /opt/oms/aktualizuj.sh
+recover OPERACJA` ją zdejmuje. Baza jest wtedy w stanie sprzed polecenia albo po nim, nigdy w połowie.
+
+### Sprzątanie pliku bazy
+
+Po pierwszym zaszyfrowaniu i po wymianie klucza stare wartości zostają w wolnych miejscach pliku
+bazy. OMS przepakowuje plik przy starcie (baza 1 GB: 12,6 s, pomiar 17.11.2026) i potrzebuje na to
+wolnego miejsca do dwóch rozmiarów bazy. Dzienne kopie wolnych miejsc nie przenoszą; kopia całego
+pliku albo katalogu danych (np. migawka maszyny) — tak, dopóki sprzątanie się nie uda.
+
+Gdy brakuje miejsca albo plik jest zajęty, OMS startuje normalnie, a `/health` ma uwagę „Sprzątanie
+pliku bazy po zaszyfrowaniu poświadczeń nie jest zakończone”. Zwolnij miejsce — sprzątanie powtórzy
+się przy następnym starcie. Od razu:
+
+```bash
+sudo sh /opt/oms/aktualizuj.sh compose stop oms kopia
+sudo sh /opt/oms/aktualizuj.sh sekrety sprzataj
+sudo sh /opt/oms/aktualizuj.sh compose up -d
+```
+
+Wynik `SPRZATNIETE` albo `NIC_DO_SPRZATANIA` — gotowe; `ODLOZONE: …` podaje przyczynę.
+
+### Wymiana klucza
+
+Wymieniasz klucz, gdy mógł go zobaczyć ktoś niepowołany albo gdy odchodzi osoba, która go znała.
+OMS pracuje w trakcie punktów 1–2.
+
+1. Sprawdź stan i zanotuj id obecnego klucza (`klucz w konfiguracji: id …`). Wiersz nie może mieć
+   dopisku `poprzedni:` — wtedy poprzednia wymiana nie jest skończona (dokończ ją punktami 4–5). Obecny
+   klucz musi być w menedżerze haseł z id i datą.
+
+   ```bash
+   sudo sh /opt/oms/aktualizuj.sh sekrety stan
+   ```
+
+2. Wpisz nowy klucz do pliku; obecny przechodzi do drugiej linii jako `OMS_KLUCZ_SEKRETOW_POPRZEDNI`.
+   Polecenie wypisuje tylko `gotowe` — bez tego słowa plik się nie zmienił:
+
+   ```bash
+   sudo sh -c 'cd /opt/oms/config && k=$(openssl rand -base64 32 | tr "/+" "_-" | tr -d "=") && [ ${#k} -eq 43 ] && umask 077 && { echo "OMS_KLUCZ_SEKRETOW=$k"; sed -n "s/^OMS_KLUCZ_SEKRETOW=/OMS_KLUCZ_SEKRETOW_POPRZEDNI=/p" klucz.env; } > klucz.env.nowy && chown 10001:10001 klucz.env.nowy && mv klucz.env.nowy klucz.env && echo gotowe'
+   ```
+
+3. Uruchom OMS ponownie. Przy starcie przeszyfruje poświadczenia na nowy klucz (w dzienniku linia
+   `poświadczenia: zaszyfrowano kluczem …`). Nikt nie jest wylogowywany.
+
+   ```bash
+   sudo sh /opt/oms/aktualizuj.sh compose up -d --force-recreate oms
+   ```
+
+4. Sprawdź: wszystkie zapisy są `pod kluczem` nowego id, `poprzednim: 0`, `sprzątanie pliku: nie czeka`.
+   Nowy klucz (pierwsza linia pliku) zapisz w menedżerze haseł z id i datą. Starego wpisu nie kasuj —
+   otwiera kopie sprzed wymiany.
+
+   ```bash
+   sudo sh /opt/oms/aktualizuj.sh sekrety stan
+   sudo cat /opt/oms/config/klucz.env
+   ```
+
+5. Usuń linię poprzedniego klucza i uruchom OMS ponownie:
+
+   ```bash
+   sudo sed -i '/^OMS_KLUCZ_SEKRETOW_POPRZEDNI=/d' /opt/oms/config/klucz.env
+   sudo chown 10001:10001 /opt/oms/config/klucz.env
+   sudo chmod 600 /opt/oms/config/klucz.env
+   sudo sh /opt/oms/aktualizuj.sh compose up -d --force-recreate oms
+   ```
+
+**Wymiana klucza a odwołanie poświadczeń — to dwa różne środki.** Wymiana klucza nie odbiera dostępu
+komuś, kto już ma bazę razem z kluczem albo odczytane tokeny: dostawcy nadal przyjmują te same
+poświadczenia. Po wycieku bazy z kluczem (np. kopia całego serwera w obcych rękach) odwołaj
+poświadczenia u dostawców — Allegro, KSeF, sklep, kurierzy, program do faktur, poczta — i zapisz nowe
+w panelu. Sama wymiana klucza wystarcza, gdy wyciekł tylko klucz, bez bazy; stare kopie ten stary klucz
+nadal otwiera, dopóki je trzymasz.
 
 ## Gdy coś nie działa
 

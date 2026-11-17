@@ -12,7 +12,7 @@
 //     oficjalny sandbox z własnym kluczem używa sieci, produkcja pozostaje zablokowana.
 //     Zamówienia zapisuje zwykły poller z adapterem ERLI.
 // ⛔ Każdy krok odmawia poza OMS_TRYB=proba (tryb.mjs, modul faktur, sprawdzTrybProby w rdzeniu).
-import { openOmsDb } from '../../../src/oms/db/db.ts';
+import { otworzBazeStartu } from '../../../src/oms/db/db.ts';
 import { uruchomAplikacje } from '../../../src/core/uruchomienie.ts';
 import { sprawdzKonfiguracjeModulow } from '../../../src/core/aplikacja.ts';
 import { modulyDla } from '../../../src/moduly/lista.ts';
@@ -122,7 +122,7 @@ export async function uruchomPiaskownice(env = process.env, { host = '0.0.0.0', 
   let db = null;
   const moduly = modulyPiaskownicy(env, { baza: () => db });
   sprawdzKonfiguracjeModulow(moduly, env);
-  db = openOmsDb(env.OMS_DB_PATH, { moduly });
+  db = otworzBazeStartu(env, env.OMS_DB_PATH, { moduly, bezKataloguBazy: true });
   const nadpisania = nadpisaniaPiaskownicy({ db, env, log });
   // Źródła jak w zdrowiu (moduly/zdrowie/modul.ts): klucze sklepów i kanałów z konfiguracji, którą widzą moduły.
   const wynik = await uruchomAplikacje({ moduly, env, db, host, port: Number(env.OMS_PORT || 3001), nadpisania, ...(log ? { log } : {}) });

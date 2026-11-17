@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-parytetu.ts';
 import { definicjeKanalowHistoryczne } from '../../pomoc/kanaly-historyczne-fixture.js';
+import { szyfrTestowy } from '../../pomoc/sejf-testowy.ts';
 import { utworzKarte } from '../../../src/oms/db/magazyn.js';
 import { zalozKonto, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
 import { podpisz, NAZWA_CIASTECZKA_OMS } from '../../../src/core/bezpieczenstwo/sesja.js';
@@ -46,7 +47,8 @@ const post = (url, payload, headers = auth) => app.inject({ method: 'POST', url,
 const get = (url, headers = auth) => app.inject({ method: 'GET', url, headers });
 const mapa = () => db.prepare('SELECT kategoria_karty, srodowisko, kategoria_allegro_id, potwierdzil, potwierdzono_at FROM allegro_mapa_kategorii ORDER BY srodowisko').all();
 const tokeny = (kanal, scope) => db.prepare(`INSERT OR REPLACE INTO tokeny_kanalu (kanal, access_token, refresh_token, wygasa_at, refresh_wygasa_at, zaktualizowane_at)
-  VALUES (?, ?, 'REFRESH-ATRAPA', '2026-11-14T11:00:00Z', '2027-01-01T00:00:00Z', '2026-11-14T10:00:00Z')`).run(kanal, jwt(scope));
+  VALUES (?, ?, ?, '2026-11-14T11:00:00Z', '2027-01-01T00:00:00Z', '2026-11-14T10:00:00Z')`).run(kanal,
+  szyfrTestowy(db, 'tokeny_kanalu', 'access_token', kanal, jwt(scope)), szyfrTestowy(db, 'tokeny_kanalu', 'refresh_token', kanal, 'REFRESH-ATRAPA'));
 const ADRES_A = `/magazyn/kategorie/${encodeURIComponent('Lampy stołowe')}/allegro`;
 const ADRES_B = `/magazyn/kategorie/${encodeURIComponent('Lampy wiszące')}/allegro`;
 const ADRES_MARKI = `/magazyn/marki/${encodeURIComponent('Pracownia Półcień')}/allegro`;

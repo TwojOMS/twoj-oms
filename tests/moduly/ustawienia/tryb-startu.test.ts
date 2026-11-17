@@ -4,6 +4,7 @@ import { once } from 'node:events';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { KLUCZ_TESTOWY } from '../../pomoc/sejf-testowy.ts';
 
 async function start(tryb: string | undefined) {
   const katalog = mkdtempSync(join(tmpdir(), 'oms030-tryb-'));
@@ -13,6 +14,8 @@ async function start(tryb: string | undefined) {
     OMS_USER: 'operator', OMS_PASS: 'atrapa', OMS_SPRZEDAWCA_NIP: '1234563218',
     OMS_RACHUNEK: '34109010140000000000000000', OMS_KANALY: '[]',
     OMS_ETYKIETY_KATALOG: katalog, OMS_PROFORMY_KATALOG: katalog,
+    // Proces potomny nie ma sejfu domyślnego z pliku przygotowawczego vitest — klucz poświadczeń jak na instalacji.
+    OMS_KLUCZ_SEKRETOW: KLUCZ_TESTOWY,
   };
   const preload = new URL('../../pomoc/blokada-sieci-entrypoint.mjs', import.meta.url).href;
   const child = spawn(process.execPath, ['--import', preload, 'src/oms.js'], { cwd: process.cwd(), env, stdio: ['ignore','pipe','pipe'] });

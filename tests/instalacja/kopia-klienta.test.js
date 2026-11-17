@@ -9,6 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cykl, ustawienia, operacja, ZNACZNIK_NOSNIKA } from '../../deploy/klient/kopia.mjs';
+import { bajtyKlucza, idKlucza, nowyKlucz, utworzSejf } from '../../src/core/bezpieczenstwo/sejf-sekretow.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const SKRYPT = path.join(ROOT, 'deploy/klient/kopia.mjs');
@@ -71,6 +72,35 @@ describe('kopia operacji aktualizatora', () => {
     const op = path.join(k.baza, 'op'); fs.mkdirSync(op);
     expect(() => operacja(plik, op)).toThrow();
     expect(fs.readdirSync(op).filter(n => !n.startsWith('.tmp-'))).toEqual([]);
+  });
+});
+
+describe('PRZ-182: id kluczy kopii — z samej kopii, bez klucza', () => {
+  it('kopia dzienna, kopia na nośniku i kopia operacji: `sekrety.mjs stan --baza` podaje wymagane id bez klucza i bez wartości', () => {
+    const k = instalacja();
+    const klucz = nowyKlucz();
+    const sejf = utworzSejf(bajtyKlucza(klucz));
+    const db = new DatabaseSync(path.join(k.dane, 'oms.sqlite'));
+    db.exec('CREATE TABLE ustawienia (klucz TEXT PRIMARY KEY, wartosc TEXT, zmienione_at TEXT)');
+    db.exec('CREATE TABLE konfiguracja_integracji (integracja TEXT PRIMARY KEY, sekrety_json TEXT)');
+    db.prepare("INSERT INTO konfiguracja_integracji VALUES ('infakt', ?)").run(sejf.szyfruj('{"apiKey":"KONTROLA-KOPII"}', { tabela: 'konfiguracja_integracji', kolumna: 'sekrety_json', id: 'infakt' }));
+    db.prepare("INSERT INTO ustawienia VALUES ('sekrety.format', '1', '2026-11-17')").run();
+    db.close();
+    fs.writeFileSync(path.join(k.usb, ZNACZNIK_NOSNIKA), '');
+    const w = cykl(osobnyNosnik(ustawienia({ ...k.env, OMS_KOPIA_ZEWNETRZNA: k.usb }), k), { teraz: new Date('2026-10-10T12:00:00Z') });
+    expect(w.bledy).toEqual([]);
+    const op = path.join(k.baza, 'op'); fs.mkdirSync(op);
+    operacja(path.join(k.dane, 'oms.sqlite'), op);
+    const env = { ...process.env };
+    delete env.OMS_KLUCZ_SEKRETOW; delete env.OMS_KLUCZ_SEKRETOW_POPRZEDNI; delete env.OMS_DB_PATH;
+    for (const kopia of [path.join(k.kopie, 'oms-2026-10-10.sqlite'), path.join(k.usb, 'oms-2026-10-10.sqlite'), path.join(op, 'oms.sqlite')]) {
+      const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts/sekrety.mjs'), 'stan', '--baza', kopia], { encoding: 'utf8', env });
+      expect(r.status, `${kopia}: ${r.stderr}`).toBe(0);
+      expect(r.stdout).toContain(`wymagane id kluczy: ${idKlucza(bajtyKlucza(klucz))}`);
+      expect(r.stdout).toContain('format: 1');
+      expect(`${r.stdout}${r.stderr}`).not.toContain('KONTROLA-KOPII');
+      expect(`${r.stdout}${r.stderr}`).not.toContain(klucz);
+    }
   });
 });
 

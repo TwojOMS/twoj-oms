@@ -3,7 +3,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { opcje, PLIKI_INSTALACJI, powodPotomka, sekretyKatalogu, oczyscPowod, coDalejLokalnie, krokDemoMs } from './instalacja-wspolne.mjs';
+import {
+  opcje, PLIKI_INSTALACJI, powodPotomka, sekretyKatalogu, oczyscPowod, coDalejLokalnie, krokDemoMs,
+  sciezkaKlucza, wymagajPustegoKatalogu, zapewnijKlucz, ZMIENNA_PLIKU_KLUCZA,
+} from './instalacja-wspolne.mjs';
 
 const LIMIT_ETAPU_MS = 60_000;
 
@@ -21,20 +24,22 @@ function bezDowiazan(katalog) {
     }
   }
 }
-function odmowNadpisania(katalog) {
+// PRZ-182: katalog „pusty” także wtedy, gdy ma wyłącznie prawidłowy plik klucza (przerwane przygotowanie).
+async function odmowNadpisania(katalog, plikKlucza) {
   bezDowiazan(katalog);
-  if (fs.existsSync(katalog) && fs.readdirSync(katalog).length) throw Error('INSTALACJA_ODMOWA_NADPISANIA');
+  await wymagajPustegoKatalogu(katalog, plikKlucza);
 }
-function etap(name, katalog, port) {
+function etap(name, katalog, port, plikKlucza) {
   bezDowiazan(katalog);
   const script = fileURLToPath(new URL(`./instalacja-${name}.mjs`, import.meta.url));
+  // Etap dostaje wyłącznie ścieżkę pliku klucza — żadnej innej zmiennej z powłoki (klucze integracji, OMS_*).
   const result = spawnSync(process.execPath, [script, '--katalog', katalog, '--port', String(port)], {
-    cwd: fileURLToPath(new URL('..', import.meta.url)), env: {}, encoding: 'utf8', timeout: LIMIT_ETAPU_MS,
+    cwd: fileURLToPath(new URL('..', import.meta.url)), env: { [ZMIENNA_PLIKU_KLUCZA]: plikKlucza }, encoding: 'utf8', timeout: LIMIT_ETAPU_MS,
   });
   // PRZ-093.03: kod etapu zostaje (parsują go testy i kontener), ale z powodem — wcześniej przyczyna
   // (zajęty port, stary Node, limit 60 s) ginęła i człowiek widział samo INSTALACJA_DEMO_PROBA_ODMOWA.
   if (result.status !== 0) {
-    const powod = powodPotomka(result, { limitMs: LIMIT_ETAPU_MS, sekrety: sekretyKatalogu(katalog) });
+    const powod = powodPotomka(result, { limitMs: LIMIT_ETAPU_MS, sekrety: sekretyKatalogu(katalog, plikKlucza) });
     throw Error(`INSTALACJA_DEMO_${name.toUpperCase()}_ODMOWA: ${powod}`);
   }
 }
@@ -67,11 +72,14 @@ async function wygeneruj(db, teraz = Date.now()) {
 }
 async function main() {
   const { katalog, port } = opcje(process.argv.slice(2));
-  odmowNadpisania(katalog);
+  const plikKlucza = sciezkaKlucza(katalog);
+  await odmowNadpisania(katalog, plikKlucza);
   fs.mkdirSync(katalog, { recursive: true });
-  odmowNadpisania(katalog);
-  etap('przygotuj', katalog, port);
-  etap('proba', katalog, port);
+  await odmowNadpisania(katalog, plikKlucza);
+  // Klucz dopiero po kontroli katalogu i przed danymi; etapy czytają go z tego samego pliku.
+  const { id: idKlucza } = await zapewnijKlucz(plikKlucza, path.join(katalog, PLIKI_INSTALACJI.baza));
+  etap('przygotuj', katalog, port, plikKlucza);
+  etap('proba', katalog, port, plikKlucza);
   bezDowiazan(katalog);
   const backup = path.join(katalog, 'backup-demo.sqlite');
   const restore = path.join(katalog, 'odtworzenie-demo');
@@ -96,8 +104,8 @@ async function main() {
     try { if (copy.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok') throw Error('INSTALACJA_DEMO_INTEGRITY_ODMOWA'); }
     finally { copy.close(); }
   }
-  for (const linia of coDalejLokalnie({ katalog, port })) console.log(linia);
-  console.log(JSON.stringify({ status: 'demo-zakonczone', katalog, port, kopiaDemo: backup, odtworzenieDemo: restore, dane: '3 zamówienia syntetyczne; integracje niepodłączone' }));
+  for (const linia of coDalejLokalnie({ katalog, port, klucz: plikKlucza })) console.log(linia);
+  console.log(JSON.stringify({ status: 'demo-zakonczone', katalog, port, kopiaDemo: backup, odtworzenieDemo: restore, kluczPoswiadczen: plikKlucza, idKlucza, dane: '3 zamówienia syntetyczne; integracje niepodłączone' }));
 }
 main().catch(error => {
   // Demo nie trzyma haseł w pamięci; powód to komunikat błędu (np. ścieżka, SQLite) w jednej linii.

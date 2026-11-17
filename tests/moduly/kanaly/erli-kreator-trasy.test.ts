@@ -1,6 +1,8 @@
 import {afterEach,expect,it,vi} from 'vitest';
 import {zbudujAplikacje,type Aplikacja} from '../../../src/core/aplikacja.ts';
 import {openOmsDb} from '../../../src/oms/db/db.ts';
+import {konfiguracjeJawne,szyfrTestowy} from '../../pomoc/sejf-testowy.ts';
+import {wczytajKonfiguracjeIntegracji} from '../../../src/oms/db/konfiguracja-integracji.js';
 import {modulyPiaskownicy} from '../../../deploy/proba/atrapy/index.mjs';
 import {createModulKanaly} from '../../../src/moduly/kanaly/modul.ts';
 import {zalozKonto} from '../../../src/core/bezpieczenstwo/konta.js';
@@ -65,7 +67,7 @@ it('401 po zapisaniu nowego sklepu zachowuje dane i klucz, pokazuje błąd i roz
  expect(r.statusCode).toBe(303);expect(r.headers.location).toBe(root+'/'+f.row().klucz+'?polaczenie=blad');
  expect(f.row().nazwa).toBe('Pracownia Półcień');expect(f.calls).toEqual([produkcja+'/me']);
  const zapis=db.prepare("SELECT * FROM konfiguracja_integracji WHERE integracja LIKE 'erli:%'").get()!;
- expect(JSON.parse(String(zapis.sekrety_json))).toEqual({kluczApi:sekret});
+ expect(wczytajKonfiguracjeIntegracji(db,String(zapis.integracja))!.sekrety).toEqual({kluczApi:sekret});
  expect(JSON.parse(String(zapis.ustawienia_json)).sprawdzono).toBe(false);
  const ekran=await f.req('GET',String(r.headers.location).slice(root.length));
  expect(ekran.body).toContain('class="pas-blad" role="alert"');
@@ -146,7 +148,9 @@ it('zapisuje sekret wyłącznie w sekrety_json; HTML i nagłówki nie zawierają
  expect(r.statusCode).toBe(200);expect(r.body).toContain('zapisany');expect(r.body+JSON.stringify(r.headers)).not.toContain(sekret);
  expect(r.body).toMatch(/type="password"/);expect(r.body).not.toMatch(/name="kluczApi"[^>]*value=/);
  const zapis=db.prepare("SELECT * FROM konfiguracja_integracji WHERE integracja LIKE 'erli:%'").get()!;
- expect(JSON.parse(String(zapis.sekrety_json))).toEqual({kluczApi:sekret});expect(String(zapis.ustawienia_json)).not.toContain(sekret);
+ expect(wczytajKonfiguracjeIntegracji(db,String(zapis.integracja))!.sekrety).toEqual({kluczApi:sekret});expect(String(zapis.ustawienia_json)).not.toContain(sekret);
+ // W bazie szyfrogram — surowa kolumna nie zawiera klucza.
+ expect(String(zapis.sekrety_json)).toMatch(/^oms1\./);expect(String(zapis.sekrety_json)).not.toContain(sekret);
  expect(JSON.stringify(db.prepare('SELECT * FROM kanaly_audit').all())).not.toContain(sekret);
 });
 it('połączenie: 401 bez odpowiedzi serwera, poprawne /me pokazuje nazwę i id',async()=>{
@@ -163,7 +167,7 @@ it.each([produkcja,sandbox])('pierwsza aktywacja %s, data zamrożona, wstrzymani
  expect((await f.post(p,'data-startu',{od:'2026-11-02'})).statusCode).toBe(409);
  expect((await f.post(p,'pobieranie',{wlaczone:'nie'})).statusCode).toBe(303);expect(f.row().pobieranie).toBe('wylaczone');
  expect((await f.post(p,'odlacz',{potwierdz:'tak'})).statusCode).toBe(303);expect(f.row().autoryzacja).toBe('odlaczone');
- expect(String(db.prepare("SELECT sekrety_json FROM konfiguracja_integracji WHERE integracja LIKE 'erli:%'").get()?.sekrety_json??'')).not.toContain(sekret);
+ expect(JSON.stringify(konfiguracjeJawne(db).filter(w=>String(w.integracja).startsWith('erli:')))).not.toContain(sekret);
 });
 it('kolizja id wstrzymuje oba kanały ERLI',async()=>{
  const f=await setup(),p=await f.szkic();await f.post(p,'sprawdz');await f.post(p,'aktywuj');
@@ -207,7 +211,7 @@ it('dowolna odpowiedź 403 z sieci pozostaje ukryta, także gdy zawiera klucz',a
 });
 it('blokada produkcji jest czytelna także podczas pobierania metod dostawy',async()=>{
  const f=await setup(false,true),p=await f.szkic(produkcja,'atrapa-polcien');await f.post(p,'sprawdz');
- db.prepare('UPDATE konfiguracja_integracji SET sekrety_json=? WHERE integracja=?').run(JSON.stringify({kluczApi:sekret}),'erli:'+f.row().klucz);
+ db.prepare('UPDATE konfiguracja_integracji SET sekrety_json=? WHERE integracja=?').run(szyfrTestowy(db,'konfiguracja_integracji','sekrety_json','erli:'+f.row().klucz,JSON.stringify({kluczApi:sekret})),'erli:'+f.row().klucz);
  const r=await f.post(p,'pobierz-metody');
  expect(r.statusCode).toBe(400);expect(r.body).toContain('Piaskownica nie łączy się z prawdziwym ERLI');
  expect(r.body).not.toContain(sekret);

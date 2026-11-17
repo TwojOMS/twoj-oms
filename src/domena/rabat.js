@@ -28,8 +28,8 @@ import { cenaWdtGrosze } from './wdt.js';
  * Górna granica rabatu.
  *
  * ⚠️ ISTNIEJE, BO RABAT POWYŻEJ STU PROCENT to cena ujemna, czyli dopłacanie klientowi do
- * zakupu — a gdzie indziej tej granicy brakuje: wpis w `OMS_KLIENCI_ZBIORCZY`
- * (domena/klient-zbiorczy.js, `liczba`) przyjmuje rabat 300% bez słowa. 90% jest granicą arbitralną,
+ * zakupu. Obowiązuje też we wpisach `OMS_KLIENCI_ZBIORCZY` (domena/klient-zbiorczy.js),
+ * które wcześniej przyjmowały rabat 300% bez słowa. 90% jest granicą arbitralną,
  * ale po właściwej stronie: rabat głębszy niż dziewięć dziesiątych ceny katalogowej jest
  * literówką częściej niż uzgodnieniem, a gdy naprawdę jest uzgodnieniem — wpisuje się cenę.
  */

@@ -8,6 +8,8 @@
 //   TEST_BEZ_WERSJI    — /health bez pola wersja (wydanie sprzed PRZ-059)
 //   TEST_INNY_KOD      — /health 200, ale w kontenerze inny kod (wydanie.json z innym commitem, wersja brak)
 //   TEST_BUILD_BLAD    — build kończy się błędem
+//   TEST_SZYFRUJE      — przy starcie oms szyfruje poświadczenia w bazie kluczem z config/klucz.env (PRZ-182)
+// `docker run` mapuje /app na katalog wydania obrazu, czyta --env-file, `--entrypoint test -f` sprawdza plik.
 // Zmienne: TEST_BAZA (katalog testu), TEST_ZABIJ_PRZY (fragment polecenia → SIGKILL aktualizatora).
 // PRZ-062 (przejście próba → praca): `up oms` czyta config/oms.env jak compose przy tworzeniu kontenera —
 //   OMS_TRYB=produkcja na pustym data/ zakłada świeżą bazę (jak migracje OMS), linia TEST_NIE_WSTANIE=1
@@ -70,6 +72,14 @@ function migruj(obraz) {
   } finally { db.close(); }
 }
 
+// PRZ-182: start wydania z szyfrowaniem poświadczeń — konwersja bazy tym samym kodem co start OMS-u, klucz
+// z config/klucz.env (compose podaje go jako env_file). Brak albo zły klucz = OMS odmawia startu (pętla restartów).
+function szyfruj() {
+  const O = process.env.OMS_KATALOG;
+  const r = spawnSync(process.execPath, [path.join(import.meta.dirname, '../pomoc/atrapa-kandydat-sekrety.mjs'), `${O}/data/oms.sqlite`, `${O}/config/klucz.env`], { encoding: 'utf8' });
+  return r.status === 0;
+}
+
 const konfiguracjaOms = () => { try { return fs.readFileSync(path.join(process.env.OMS_KATALOG, 'config/oms.env'), 'utf8'); } catch { return ''; } };
 // Pusty katalog danych + tryb produkcja: OMS zakłada bazę migracjami (tu: te same tabele co instalacja testu).
 function swiezaBaza() {
@@ -114,6 +124,7 @@ if (polecenie === 'compose') {
       const env = konfiguracjaOms();
       stan.kontenery[NAZWY[u]] = { obraz, dziala: true, ...(u === 'oms' && /^TEST_NIE_WSTANIE=1$/m.test(env) ? { zepsuty: true } : {}) };
       if (u === 'oms' && ma(obraz, 'TEST_MIGRACJA')) migruj(obraz);
+      if (u === 'oms' && ma(obraz, 'TEST_SZYFRUJE') && !szyfruj()) stan.kontenery.oms.zepsuty = true;
       if (u === 'oms' && /^OMS_TRYB=produkcja$/m.test(env) && !stan.kontenery.oms.zepsuty) swiezaBaza();
     }
     zapisz(); wyjdz(0);
@@ -181,21 +192,35 @@ if (polecenie === 'exec') {
   wyjdz(1, 'atrapa: nieznane exec');
 }
 if (polecenie === 'run') {
-  if (process.env.TEST_KOPIA_BLAD) wyjdz(1, 'atrapa: kopia nieudana');
+  if (process.env.TEST_KOPIA_BLAD && reszta.some(a => a.includes('kopia.mjs'))) wyjdz(1, 'atrapa: kopia nieudana');
   const mapy = [];
+  // PRZ-182: kontener dostaje tylko zmienne z --env-file (jak docker), nie środowisko testu.
+  const envKontenera = { PATH: process.env.PATH, ...(process.env.SystemRoot ? { SystemRoot: process.env.SystemRoot } : {}) };
+  let entrypoint = null;
   let i = 0;
   for (; i < reszta.length; i++) {
     const a = reszta[i];
     if (a === '-v') { const m = /^(.*?):(\/[^:]*)(?::(ro|rw))?$/.exec(reszta[++i]); mapy.push([m[2], m[1]]); continue; }
-    if (['--user', '--network', '--entrypoint'].includes(a)) { i++; continue; }
+    if (a === '--env-file') {
+      for (const linia of fs.readFileSync(reszta[++i], 'utf8').split(/\r?\n/)) {
+        const m = /^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/.exec(linia);
+        if (m) envKontenera[m[1]] = m[2];
+      }
+      continue;
+    }
+    if (a === '--entrypoint') { entrypoint = reszta[++i]; continue; }
+    if (['--user', '--network'].includes(a)) { i++; continue; }
     if (a.startsWith('-')) continue;
     break;
   }
   const obraz = rozwiaz(reszta[i]);
   if (!obraz) wyjdz(1, `Unable to find image ${reszta[i]}`);
+  // Kod obrazu (/app) = katalog wydania, z którego go zbudowano (PRZ-182: narzędzie scripts/sekrety.mjs).
+  mapy.push(['/app', stan.obrazy[obraz].korzen]);
   const naHost = p => { const m = mapy.filter(([c]) => p === c || p.startsWith(c + '/')).sort((a, b) => b[0].length - a[0].length)[0]; return m ? m[1] + p.slice(m[0].length) : p; };
   const args = reszta.slice(i + 1).map(naHost);
-  const r = spawnSync(process.execPath, args, { encoding: 'utf8' });
+  if (entrypoint === 'test') wyjdz(args[0] === '-f' && fs.existsSync(args[1]) ? 0 : 1);
+  const r = spawnSync(process.execPath, args, { encoding: 'utf8', env: envKontenera });
   process.stdout.write(r.stdout ?? ''); process.stderr.write(r.stderr ?? '');
   process.exit(r.status ?? 1);
 }

@@ -5,7 +5,7 @@
 // wola ekran stanu kanalu. Wyjatek przy tokenie o nieznanym ksztalcie wywalilby cala
 // strone z powodu jednego kanalu — i to jest cala tresc tego pliku.
 //
-// ⚠️ NIEZMIENNIK 4.10: token wchodzi, token NIE WYCHODZI. Na zewnatrz ida wylacznie
+// ⚠️ Token wchodzi, token NIE WYCHODZI. Na zewnątrz idą wyłącznie
 // wartosci wyjete z payloadu (nazwy zakresow, identyfikator konta) — nigdy sam napis.
 
 /**

@@ -8,6 +8,8 @@ import { sprawdzTrybProby } from './tryb.ts';
 import { zaufaneProxy } from './zaufane-proxy.ts';
 import { BladKonfiguracji, bladWalidatora } from './blad-konfiguracji.ts';
 import { polaczenieBezpieczne } from './bezpieczenstwo/logowanie-wspolne.js';
+import { maPrzypietySejf, przypnijSejf, sejfBazy, sejfDlaStartu } from './bezpieczenstwo/sejf-sekretow.js';
+import { konwertujSekrety, sprzatnijPlikBazy } from './bezpieczenstwo/konwersja-sekretow.js';
 
 export type Aplikacja = {
   app: FastifyInstance;
@@ -63,8 +65,15 @@ export async function zbudujAplikacje(o: {
   const log = o.log ?? ((...tekst: string[]) => console.error(...tekst));
   const { kolejnosc, konfiguracje, trustProxy } = przygotujModuly(o.moduly, o.env);
 
+  // Klucz poświadczeń: uchwyt przypięty przez ścieżkę startu zostaje; nieprzypięty dostaje klucz z env.
+  // Bez klucza w env i bez sejfu domyślnego (ten ma tylko proces testów) — odmowa, zanim cokolwiek się zapisze.
+  if (!maPrzypietySejf(o.db)) przypnijSejf(o.db, sejfDlaStartu(o.env));
+
   wykonajMigracje(o.db, kolejnosc, teraz);
   rozdajNoweUprawnienia(o.db, kolejnosc, teraz);
+  // Po migracjach, przed budową modułów: format poświadczeń (konwersja) i przepakowanie pliku po niej.
+  konwertujSekrety(o.db, sejfBazy(o.db), { log, teraz });
+  sprzatnijPlikBazy(o.db, { log });
 
   const uslugi = new Map<string, unknown>();
   const usluga = <T>(modul: string, nazwa: string): T => {
