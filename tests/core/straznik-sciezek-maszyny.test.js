@@ -29,7 +29,7 @@ const SCIEZKA_MASZYNY = new RegExp(String.raw`(?<![\w.:/\\-])(?:`
 const WYJATKI = [
   { plik: 'tests/core/straznik-danych-firmy.test.ts', fragment: '/root/monitoring.sh',
     powod: 'próbka ścieżki, którą skaner danych firmy ma odrzucić w paczce klienta' },
-  { plik: 'tests/core/straznik-danych-firmy.test.ts', fragment: 'C:\\Users\\uzytkownik\\x',
+  { plik: 'tests/core/straznik-danych-firmy.test.ts', fragment: 'C:\\Users\\adam\\x',
     powod: 'próbka ścieżki Windows, którą skaner danych firmy ma odrzucić w paczce klienta' },
 ];
 

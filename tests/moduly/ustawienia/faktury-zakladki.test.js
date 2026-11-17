@@ -48,7 +48,7 @@ describe('publiczne zakładki faktur bez opcjonalnego modułu', () => {
       expect(r.body).not.toContain('action="/ustawienia/integracje/program-fakturowy/ksef"');
     });
   });
-  // 07.11 (PRZ-154 E1.5/E2): oba przypadki jak w twoj-oms main — wspólny nagłówek ekranu, kolumna działów zamiast menu aplikacji.
+  // Oba przypadki jak w głównym repozytorium: wspólny nagłówek ekranu, kolumna działów zamiast menu aplikacji.
   it('podpis ma własny nagłówek w Komunikacji i nie pokazuje formularza SMTP', async () => {
     await wPanelu('brak', async ({ app, admin }) => {
       const r = await get(app, '/ustawienia/komunikacja/podpis', admin);
