@@ -51,6 +51,8 @@ describe('PRZ-051 indeks listy', () => {
       [{ rodzaj: 'status', status: 'wyslane' }, { kanal: 'kanal_b' }, '', (z) => z.status === 'wyslane' && pasujeDoFiltrow(z, { kanal: 'kanal_b' })],
       [{ rodzaj: 'wszystkie' }, { od: '2026-09-14', do: '2026-09-20', wysylka: 'dpd' }, '', (z) => pasujeDoFiltrow(z, { od: '2026-09-14', do: '2026-09-20', wysylka: 'dpd' })],
       [null, {}, 'kowalski miasto', (z) => pasujeDoSzukania(z, 'kowalski miasto')],
+      [{ rodzaj: 'wszystkie' }, { wysylka: ['dpd', 'odbior_osobisty'], kanal: ['kanal_a', 'indywidualne'] }, '', (z) => pasujeDoFiltrow(z, { wysylka: ['dpd', 'odbior_osobisty'], kanal: ['kanal_a', 'indywidualne'] })],
+      [{ rodzaj: 'wszystkie' }, { faktura: ['niewystawiona'] }, '', (z) => pasujeDoFiltrow(z, { faktura: ['niewystawiona'] })],
       [null, { platnosc: 'BLIK' }, 'kowalski', (z) => pasujeDoSzukania(z, 'kowalski') && pasujeDoFiltrow(z, { platnosc: 'BLIK' })],
     ];
     for (const [zakladka, filtry, szukaj, pred] of przypadki) {

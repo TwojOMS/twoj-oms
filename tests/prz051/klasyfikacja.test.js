@@ -71,7 +71,10 @@ describe('PRZ-051 reguły listy w czasie', () => {
   it('klasyfikacja = reguły domeny w KAŻDEJ chwili horyzontu (status, zakładki, filtry, fraza)', () => {
     const filtry = [{}, { od: '2026-09-15' }, { do: '2026-09-15' }, { wysylka: 'dpd' }, { wysylka: 'nieznana' },
       { platnosc: 'blik' }, { platnosc: 'Przelew tradycyjny' }, { kanal: 'kanal_b' }, { kanal: 'indywidualne' },
-      { od: '2026-09-12', do: '2026-09-20', kanal: 'kanal_a', wysylka: 'inpost_paczkomat' }];
+      { od: '2026-09-12', do: '2026-09-20', kanal: 'kanal_a', wysylka: 'inpost_paczkomat' },
+      // Wiele wartości jednego filtra i filtr faktury (życzenie klienta i dokument).
+      { wysylka: ['dpd', 'nieznana'], kanal: ['kanal_b', 'indywidualne'] }, { platnosc: ['blik', 'Przelew tradycyjny'] },
+      { faktura: ['tak'] }, { faktura: ['nie', 'wystawiona'] }, { faktura: ['niewystawiona'] }, { faktura: ['tak', 'nie', 'wystawiona', 'niewystawiona'] }];
     const frazy = ['kowalski', 'lodz', 'ŁÓDŹ', 'zazolc1', 'M-1', 'produkt 3', 'l1', 'sku-2 kowalski', '000', 'brak-takiego'];
     let sprawdzone = 0;
     for (const z of zamowienia) {

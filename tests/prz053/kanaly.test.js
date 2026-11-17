@@ -11,7 +11,7 @@ const env=(d,h={konta:[]})=>({OMS_KANALY:JSON.stringify(d),OMS_HISTORIA_KLASYFIK
 describe('PRZ053 jawne kanały',()=>{
  it.each([{d:a},{d:b}])('przyjmuje skonfigurowany klucz i filtruje właściwe rekordy', ({d})=>{
   const f=parsujFiltry({kanal:d[0].klucz},d);
-  expect(f.kanal).toBe(d[0].klucz);
+  expect(f.kanal).toEqual([d[0].klucz]);
   expect(filtrujFiltrami([{id:1,sklep:d[0].klucz},{id:2,sklep:'obcy'}],f).map(z=>z.id)).toEqual([1]);
   expect(kanalyDoFiltra(d)).toContainEqual({klucz:d[0].klucz,etykieta:d[0].etykieta});
   expect(adresKanalu(d[0].klucz,d)).toBe(d[0].etykieta);
@@ -25,7 +25,8 @@ describe('PRZ053 jawne kanały',()=>{
  it('zachowuje bezpieczny powrót i odrzuca obcy kanał',()=>{
   expect(bezpiecznyPowrotNaListe('/?wszystkie=1&kanal=allegro_przykladowa',a)).toBe('/?wszystkie=1&kanal=allegro_przykladowa');
   expect(bezpiecznyPowrotNaListe('//example.invalid/?kanal=pusty',a)).toBe('/');
-  expect(bezpiecznyPowrotNaListe('/?kanal=pusty&kanal=pusty',a)).toBe('/');
+  expect(bezpiecznyPowrotNaListe('/?kanal=pusty&kanal=pusty',a)).toBe('/?kanal=pusty');
+  expect(bezpiecznyPowrotNaListe('/?kanal=pusty&strona=2&strona=3',a)).toBe('/');
   expect(parsujFiltry({kanal:'allegro_swietlik'},a).kanal).toBeNull();
  });
  it('wymaga jawnego katalogu, także dla pustego query',()=>{

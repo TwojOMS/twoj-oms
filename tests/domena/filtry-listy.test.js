@@ -45,13 +45,13 @@ describe('parsujFiltry', () => {
       od: '2026-07-01', do: '2026-07-31', wysylka: 'dpd', platnosc: 'Za pobraniem',
     }, definicjeKanalowHistoryczne);
     expect(f).toEqual({
-      od: '2026-07-01', do: '2026-07-31', wysylka: 'dpd', platnosc: 'Za pobraniem', kanal: null,
+      od: '2026-07-01', do: '2026-07-31', wysylka: ['dpd'], platnosc: ['Za pobraniem'], kanal: null, faktura: null,
     });
   });
 
   it('brak parametrów daje komplet pustych filtrów', () => {
     expect(parsujFiltry({}, definicjeKanalowHistoryczne)).toEqual({
-      od: null, do: null, wysylka: null, platnosc: null, kanal: null,
+      od: null, do: null, wysylka: null, platnosc: null, kanal: null, faktura: null,
     });
   });
 
@@ -68,7 +68,7 @@ describe('parsujFiltry', () => {
   // ZIGNOROWANA, a nie oddac pusta liste bez slowa wyjasnienia.
   it('stary parametr „pobranie" nie jest już filtrem', () => {
     expect(parsujFiltry({ pobranie: 'tak' }, definicjeKanalowHistoryczne)).toEqual({
-      od: null, do: null, wysylka: null, platnosc: null, kanal: null,
+      od: null, do: null, wysylka: null, platnosc: null, kanal: null, faktura: null,
     });
     expect(saJakiesFiltry(parsujFiltry({ pobranie: 'tak' }, definicjeKanalowHistoryczne))).toBe(false);
   });
@@ -87,8 +87,8 @@ describe('parsujFiltry', () => {
 
   it('odrzuca metodę wysyłki spoza listy, którą panel umie obsłużyć', () => {
     expect(parsujFiltry({ wysylka: 'inpost' }, definicjeKanalowHistoryczne).wysylka).toBe(null);
-    expect(parsujFiltry({ wysylka: 'nieznana' }, definicjeKanalowHistoryczne).wysylka).toBe('nieznana');
-    expect(parsujFiltry({ wysylka: 'odbior_osobisty' }, definicjeKanalowHistoryczne).wysylka).toBe('odbior_osobisty');
+    expect(parsujFiltry({ wysylka: 'nieznana' }, definicjeKanalowHistoryczne).wysylka).toEqual(['nieznana']);
+    expect(parsujFiltry({ wysylka: 'odbior_osobisty' }, definicjeKanalowHistoryczne).wysylka).toEqual(['odbior_osobisty']);
   });
 
   // Powtórzony klucz (?od=a&od=b) Fastify oddaje jako tablicę — ta sama ochrona,
@@ -160,7 +160,7 @@ describe('filtr kanału sprzedaży', () => {
   const zamKanal = (nad = {}) => zam({ sklep: 'swietlik', indywidualne: 0, ...nad });
 
   it('czyta kanał z adresu', () => {
-    expect(parsujFiltry({ kanal: 'pro' }, definicjeKanalowHistoryczne).kanal).toBe('pro');
+    expect(parsujFiltry({ kanal: 'pro' }, definicjeKanalowHistoryczne).kanal).toEqual(['pro']);
   });
 
   it('kanał spoza listy spada do null, jak każda nieznana wartość', () => {
@@ -204,8 +204,8 @@ describe('filtr kanału sprzedaży', () => {
   // zamknieta lista bez tych dwoch kluczy. Test dowodzi, ze `?kanal=allegro_swietlik`
   // JEST przyjmowany i faktycznie zaweza liste — nie jest cicho ignorowany.
   it('kanały Allegro są przyjmowane przez filtr i zawężają listę', () => {
-    expect(parsujFiltry({ kanal: 'allegro_swietlik' }, definicjeKanalowHistoryczne).kanal).toBe('allegro_swietlik');
-    expect(parsujFiltry({ kanal: 'allegro_polcien2' }, definicjeKanalowHistoryczne).kanal).toBe('allegro_polcien2');
+    expect(parsujFiltry({ kanal: 'allegro_swietlik' }, definicjeKanalowHistoryczne).kanal).toEqual(['allegro_swietlik']);
+    expect(parsujFiltry({ kanal: 'allegro_polcien2' }, definicjeKanalowHistoryczne).kanal).toEqual(['allegro_polcien2']);
     expect(pasujeDoFiltrow(zamKanal({ sklep: 'allegro_swietlik' }), { kanal: 'allegro_swietlik' })).toBe(true);
     expect(pasujeDoFiltrow(zamKanal({ sklep: 'allegro_polcien2' }), { kanal: 'allegro_swietlik' })).toBe(false);
   });

@@ -3,8 +3,19 @@ import { METODY_WYSYLKI } from './wysylka.js';
 import { kanalyWidoku } from './kanaly.js';
 import { normalizujMetode } from './metody-platnosci.js';
 import { ETYKIETY } from './status.js';
+import { chceFakture } from './dane-faktury.js';
+import { stanFaktury } from './faktura-stan.js';
 
-// Filtry nad tabelą zamówień: zakres dat złożenia, metoda wysyłki, metoda płatności.
+// Filtry nad tabelą zamówień: zakres dat złożenia, metoda wysyłki, metoda płatności,
+// kanał sprzedaży i faktura.
+//
+// ⚠️ WYSYŁKA, PŁATNOŚĆ, KANAŁ I FAKTURA MAJĄ WIELE WARTOŚCI. Kilka wartości jednego filtra to
+// SUMA („DPD albo paczkomat"), różne filtry dalej łączą się przez I. W adresie to powtórzony
+// parametr (`?wysylka=dpd&wysylka=inpost_paczkomat`) — dokładnie to, co wysyła formularz GET
+// z polami wyboru o jednej nazwie, więc wybór działa bez JavaScriptu, a link z filtrem da się
+// przesłać dalej. Pojedyncza wartość w adresie (stara zakładka) to po prostu lista jednoelementowa.
+// Komplet z `parsujFiltry` trzyma te filtry jako tablicę albo `null` (brak wyboru); reszta
+// funkcji przyjmuje też pojedynczy napis, bo tak składają adres starsze miejsca panelu.
 // Cała reguła siedzi TUTAJ, w warstwie czystej — trasa dostaje gotową, przefiltrowaną
 // tablicę, dokładnie tak samo jak przy wyszukiwaniu (domena/szukanie.js).
 //
@@ -40,6 +51,39 @@ function napis(surowy) {
   return s || null;
 }
 
+// Sufit liczby wartości jednego filtra. Formularz wysyła ich najwyżej tyle, ile ma pól
+// wyboru; tysiąc powtórzeń w adresie to nie wybór człowieka, a każda wartość kosztuje
+// porównanie na każdym zamówieniu.
+const MAKS_WARTOSCI = 50;
+
+/** Wartości filtra jako tablica bez pustych i bez powtórzeń (napis, tablica albo nic). */
+export function wartosciFiltra(surowe) {
+  const tablica = Array.isArray(surowe) ? surowe : [surowe];
+  return [...new Set(tablica.map(napis).filter(Boolean))].slice(0, MAKS_WARTOSCI);
+}
+
+// Wartości dozwolone; puste po odsianiu = brak filtra, a nie pusta lista wyników —
+// ta sama zasada, co przy nieznanym `?status=`.
+const zListy = (surowe, dozwolone) => {
+  const w = wartosciFiltra(surowe).filter((x) => dozwolone.includes(x));
+  return w.length ? w : null;
+};
+
+// Filtr faktury: dwa niezależne pytania w jednym polu. „tak"/„nie" to życzenie klienta
+// (`chceFakture` — z ręcznym przełącznikiem, jak w całym module), „wystawiona"/„niewystawiona"
+// to dokument. W obrębie pytania wartości się sumują, między pytaniami obowiązuje I — dzięki
+// temu „tak" + „niewystawiona" daje faktury do zrobienia, a nie wszystko, co chce faktury
+// albo jej nie ma.
+export const FAKTURA_CHCE = ['tak', 'nie'];
+export const FAKTURA_DOKUMENT = ['wystawiona', 'niewystawiona'];
+export const FAKTURA_DO_FILTRA = [...FAKTURA_CHCE, ...FAKTURA_DOKUMENT];
+export const ETYKIETY_FAKTURY = {
+  tak: 'Klient chce fakturę',
+  nie: 'Klient nie chce faktury',
+  wystawiona: 'Wystawiona',
+  niewystawiona: 'Niewystawiona',
+};
+
 // ⚠️ FILTR POBRANIA USUNIETY — jego miejsce zajal filtr
 // kanalu sprzedazy. Informacja o pobraniu NIE zniknela z panelu: dalej stoi w kolumnie
 // „Dostawa" (etykietaWysylki) i na karcie zamowienia. Zniknela wylacznie mozliwosc
@@ -54,19 +98,57 @@ export const kanalyDoFiltra = (definicje) => kanalyWidoku(definicje);
  */
 export function parsujFiltry(query = {}, definicje) {
   const dozwoloneKanaly = kanalyWidoku(definicje).map(k=>k.klucz);
-  const wysylka = napis(query?.wysylka);
-  const kanal = napis(query?.kanal);
+  // Metoda płatności to CZYTELNA nazwa ze sklepu („Przelew tradycyjny", „Za pobraniem"),
+  // więc listy dopuszczalnych wartości nie ma i być nie może — sklep dokłada bramki bez
+  // pytania nas o zdanie. Nazwa spoza bazy po prostu nie trafi w żadne zamówienie.
+  // Powtórzenia odsiewa słownik: „BLIK" i „blik" to jedna wartość.
+  const kubelki = new Set();
+  const platnosc = wartosciFiltra(query?.platnosc).filter((p) => {
+    const k = normalizujMetode(p).klucz;
+    if (kubelki.has(k)) return false;
+    kubelki.add(k); return true;
+  });
   return {
     od: data(query?.od),
     do: data(query?.do),
-    wysylka: METODY_DO_FILTRA.includes(wysylka) ? wysylka : null,
-    // Metoda płatności to CZYTELNA nazwa ze sklepu („Przelew tradycyjny", „Za pobraniem"),
-    // więc listy dopuszczalnych wartości nie ma i być nie może — sklep dokłada bramki bez
-    // pytania nas o zdanie. Nazwa spoza bazy po prostu nie trafi w żadne zamówienie.
-    platnosc: napis(query?.platnosc),
-    // Kanal spoza zamknietej listy spada do null — tak samo, jak nieznana metoda wysylki.
-    kanal: dozwoloneKanaly.includes(kanal) ? kanal : null,
+    wysylka: zListy(query?.wysylka, METODY_DO_FILTRA),
+    platnosc: platnosc.length ? platnosc : null,
+    // Kanal spoza zamknietej listy wypada — tak samo, jak nieznana metoda wysylki.
+    kanal: zListy(query?.kanal, dozwoloneKanaly),
+    faktura: zListy(query?.faktura, FAKTURA_DO_FILTRA),
   };
+}
+
+// „2 wybrane", „5 wybranych", „22 wybrane" — liczebnik po polsku.
+function ileWybranych(n) {
+  const d = n % 10; const s = n % 100;
+  return `${n} ${d >= 2 && d <= 4 && !(s >= 12 && s <= 14) ? 'wybrane' : 'wybranych'}`;
+}
+
+/**
+ * Pola wyboru formularza filtrów z wieloma wartościami. Każde pole zna swoje opcje, które są
+ * zaznaczone, i krótkie podsumowanie do zwiniętej kontrolki: „Wszystkie" bez wyboru, nazwa
+ * opcji przy jednej, liczba przy kilku — przy wielu zaznaczeniach pasek filtrów nie rośnie.
+ * Płatność porównuje się przez słownik: stara zakładka z surową nazwą („Przelew tradycyjny")
+ * zaznacza tę samą opcję, co nowy adres z kluczem.
+ */
+export function polaWyboruFiltrow(filtry, { wysylka = [], platnosc = [], kanal = [] } = {}) {
+  const pole = (nazwa, etykieta, opcje, wybrane) => {
+    const zaznaczone = opcje.map((o) => ({ ...o, zaznaczona: wybrane.includes(o.klucz) }));
+    const ile = zaznaczone.filter((o) => o.zaznaczona);
+    const podsumowanie = !ile.length ? 'Wszystkie' : ile.length === 1 ? (ile[0].krotko ?? ile[0].etykieta) : ileWybranych(ile.length);
+    return { nazwa, etykieta, opcje: zaznaczone, podsumowanie, ileWybranych: ile.length };
+  };
+  const platnosci = wartosciFiltra(filtry?.platnosc).map((p) => normalizujMetode(p).klucz);
+  const grupaFaktury = (klucz) => (FAKTURA_CHCE.includes(klucz) ? 'Klient chce fakturę' : 'Dokument');
+  return [
+    pole('wysylka', 'Sposób wysyłki', wysylka, wartosciFiltra(filtry?.wysylka)),
+    pole('platnosc', 'Sposób płatności', platnosc, platnosci),
+    pole('kanal', 'Kanał sprzedaży', kanal, wartosciFiltra(filtry?.kanal)),
+    pole('faktura', 'Faktura', FAKTURA_DO_FILTRA.map((k) => ({
+      klucz: k, etykieta: { tak: 'Tak', nie: 'Nie', wystawiona: 'Wystawiona', niewystawiona: 'Niewystawiona' }[k], grupa: grupaFaktury(k), krotko: ETYKIETY_FAKTURY[k],
+    })), wartosciFiltra(filtry?.faktura)),
+  ];
 }
 
 /**
@@ -83,8 +165,11 @@ export function numerStrony(surowa) {
 
 /** Czy cokolwiek jest ustawione — do pokazania chipów i przycisku „Wyczyść". */
 export function saJakiesFiltry(filtry) {
-  return Boolean(filtry?.od || filtry?.do || filtry?.wysylka || filtry?.platnosc || filtry?.kanal);
+  return Boolean(filtry?.od || filtry?.do || FILTRY_WIELU.some((k) => wartosciFiltra(filtry?.[k]).length));
 }
+
+// Filtry z wieloma wartościami, w kolejności parametrów adresu.
+const FILTRY_WIELU = ['wysylka', 'platnosc', 'kanal', 'faktura'];
 
 /**
  * Czy zamówienie mieści się w filtrach. Warunki łączą się przez I: każdy dołożony filtr
@@ -111,6 +196,11 @@ export function kluczeFiltrow(z) {
     indywidualne: Boolean(z?.indywidualne),
     sklep: z?.sklep ?? '',
     platnosc: normalizujMetode(z?.metoda_platnosci).klucz,
+    chceFakture: chceFakture(z),
+    // Tylko dokument, który JEST. Wystawianie w toku, zawieszone i do wyjaśnienia to faktura
+    // niewystawiona — operator, który szuka zamówień bez faktury, ma je zobaczyć. Stan
+    // „wystawiona" nie zależy od upływu czasu, więc indeks może go przechowywać.
+    fakturaWystawiona: stanFaktury(z?.faktura) === 'wystawiona',
   };
 }
 
@@ -125,7 +215,8 @@ export function pasujaKlucze(k, filtry) {
     if (filtry.od && dzien < filtry.od) return false;
     if (filtry.do && dzien > filtry.do) return false;
   }
-  if (filtry?.wysylka && k.wysylka !== filtry.wysylka) return false;
+  const wysylki = wartosciFiltra(filtry?.wysylka);
+  if (wysylki.length && !wysylki.includes(k.wysylka)) return false;
   // ⚠️ KANAL SPRZEDAZY. „indywidualne" NIE jest wartoscia kolumny `sklep` — to znacznik
   // wyliczony z surowej odpowiedzi sklepu (domena/indywidualne.js), bo takie zamowienia
   // wpadaja do WooCommerce sklepu `sklep_a` razem ze zwyklymi.
@@ -134,17 +225,19 @@ export function pasujaKlucze(k, filtry) {
   // przeoczenie: zamowienie indywidualne JEST zamowieniem sklepu A — stamtad przyszlo,
   // tam ma numer i tam wraca notatka o nadaniu. Wykluczenie go znaczyloby, ze dwa filtry
   // trzeba zsumowac, zeby zobaczyc wszystko z jednego sklepu — a nikt sie tego nie domysli.
-  if (filtry?.kanal === 'indywidualne') {
-    if (!k.indywidualne) return false;
-  } else if (filtry?.kanal && k.sklep !== filtry.kanal) {
-    return false;
-  }
+  const kanaly = wartosciFiltra(filtry?.kanal);
+  if (kanaly.length && !kanaly.some((kanal) => (kanal === 'indywidualne' ? k.indywidualne : k.sklep === kanal))) return false;
   // ⚠️ OBIE STRONY przez slownik (domena/metody-platnosci.js), nie porownanie surowych
   // napisow: „BLIK" i „Blik" to jeden filtr, a stara zakladka z surowa nazwa
   // („?platnosc=Przelew%20tradycyjny") dalej trafia, bo normalizacja sprowadza ja do tego
   // samego klucza, co nowy adres z pola wyboru.
-  if (filtry?.platnosc
-    && k.platnosc !== normalizujMetode(filtry.platnosc).klucz) return false;
+  const platnosci = wartosciFiltra(filtry?.platnosc);
+  if (platnosci.length && !platnosci.some((p) => normalizujMetode(p).klucz === k.platnosc)) return false;
+  const faktura = wartosciFiltra(filtry?.faktura);
+  const chce = faktura.filter((f) => FAKTURA_CHCE.includes(f));
+  if (chce.length && !chce.includes(k.chceFakture ? 'tak' : 'nie')) return false;
+  const dokument = faktura.filter((f) => FAKTURA_DOKUMENT.includes(f));
+  if (dokument.length && !dokument.includes(k.fakturaWystawiona ? 'wystawiona' : 'niewystawiona')) return false;
   return true;
 }
 
@@ -172,8 +265,11 @@ export function adresZFiltrami(filtry, { szukaj = null, status = null, wszystkie
   else if (poTerminie) czesci.push(['po_terminie', '1']);
   else if (wszystkie) czesci.push(['wszystkie', '1']);
   if (szukaj) czesci.push(['szukaj', szukaj]);
-  for (const klucz of ['od', 'do', 'wysylka', 'platnosc', 'kanal']) {
+  for (const klucz of ['od', 'do']) {
     if (filtry?.[klucz]) czesci.push([klucz, filtry[klucz]]);
+  }
+  for (const klucz of FILTRY_WIELU) {
+    for (const w of wartosciFiltra(filtry?.[klucz])) czesci.push([klucz, w]);
   }
   // Strona listy — za filtrami, bo należy do tego samego widoku; pierwsza nie
   // zostawia śladu w adresie, żeby „/" i „/?strona=1" nie były dwoma adresami jednej strony.
@@ -208,17 +304,18 @@ export function bezpiecznyPowrotNaListe(surowy, definicje, etykiety = ETYKIETY) 
   if (surowy === '/') return '/';
 
   const parametry = new URLSearchParams(surowy.slice(2));
-  const dozwolone = new Set([
-    'status', 'wszystkie', 'po_terminie', 'szukaj',
-    'od', 'do', 'wysylka', 'platnosc', 'kanal', 'zaznacz', 'strona',
-  ]);
-  for (const klucz of dozwolone) {
+  // Filtry z wieloma wartościami powtarzają parametr zgodnie z umową adresu; każdy inny
+  // powtórzony parametr znaczy, że adres nie pochodzi od panelu.
+  const pojedyncze = ['status', 'wszystkie', 'po_terminie', 'szukaj', 'od', 'do', 'zaznacz', 'strona'];
+  for (const klucz of pojedyncze) {
     if (parametry.getAll(klucz).length > 1) return '/';
   }
 
-  const filtry = parsujFiltry(Object.fromEntries(
-    [...parametry.entries()].filter(([klucz]) => dozwolone.has(klucz)),
-  ), definicje);
+  const filtry = parsujFiltry({
+    od: parametry.get('od') ?? undefined,
+    do: parametry.get('do') ?? undefined,
+    ...Object.fromEntries(FILTRY_WIELU.map((k) => [k, parametry.getAll(k)])),
+  }, definicje);
   const status = parametry.get('status');
   // Czyste generatory odnośników nie mają bazy. Zachowują tylko bezpieczny format klucza
   // własnego; trasa listy sprawdza jego istnienie w aktualnej konfiguracji. Gdy caller

@@ -589,6 +589,18 @@
        nie trzeba pamietac, ktora regula jest ponizej ktorej. */
     .pola .gabaryty label { flex-direction: row; align-items: center; }
 
+    /* Wybór gabarytu na ekranie nadania jako kafelki w siatce. `.nadanie-kolumny .pola input`
+       daje polom `width: 100%` — bez wyjątku dla radia kółko zajmowało całą etykietę, a napis
+       gabarytu łamał się w wąskim pasku obok.
+       Selektor `.pola .gabaryty input[type=radio]` ma większą specyficzność, więc wygrywa. */
+    .pola .gabaryty { display: grid; grid-template-columns: 1fr; gap: .4rem; max-inline-size: 26rem; }
+    .pola .gabaryty label { gap: .55rem; padding: .55rem .7rem; border: 1px solid var(--ramka-pola); border-radius: .35rem;
+      background: var(--powierzchnia); color: inherit; font-size: .9rem; line-height: 1.3; cursor: pointer; }
+    .pola .gabaryty label:has(input:checked) { border-color: var(--marka); box-shadow: inset 0 0 0 1px var(--marka); }
+    .pola .gabaryty label:focus-within { outline: 2px solid var(--marka); outline-offset: 2px; }
+    .pola .gabaryty input[type=radio] { flex: 0 0 auto; inline-size: 1.05rem; block-size: 1.05rem; margin: 0; padding: 0;
+      border: 0; accent-color: var(--marka); }
+
     /* Blok paczkomatu (kod + nazwa automatu) na samej gorze kolumny „Odbiorca" — kod jest
        CZESCIA ADRESU tej przesylki, wiec ma stac przed imieniem i nazwiskiem, nie po nich. */
     .paczkomat { border: 1px solid var(--marka); border-radius: .35rem; overflow: hidden; margin-bottom: .9rem; }
@@ -713,6 +725,51 @@
       border: 1px solid var(--ramka-pola); border-radius: .3rem; background: var(--powierzchnia); color: inherit;
     }
     .filtry select { min-width: 11rem; }
+    /* Lista wielokrotnego wyboru (wysylka, platnosc, kanal, faktura): `details` z polami */
+    /* wyboru, bez JavaScriptu. Zwinieta wyglada jak pole wyboru obok i ma jego szerokosc, */
+    /* lista opcji wisi POD nia nad tabela, zeby otwarcie nie przesuwalo paska filtrow. */
+    /* Zaznaczenie widac od razu na ramce (`:has`), zanim operator kliknie „Filtruj". */
+    .wybor-filtra { position: relative; }
+    .wybor-filtra > summary {
+      list-style: none; cursor: pointer; user-select: none; box-sizing: border-box;
+      display: flex; align-items: center; justify-content: space-between; gap: .6rem;
+      min-width: 11rem; max-width: 15rem; font-size: .88rem; padding: .34rem .5rem .34rem .45rem;
+      /* Ta sama wysokosc i zaokraglenie, co pola daty obok (oms-design.css). */
+      min-height: var(--pole-h, 2.25rem); border-radius: var(--r-el, .3rem);
+      border: 1px solid var(--ramka-pola); background: var(--powierzchnia); color: var(--tekst);
+    }
+    .wybor-filtra > summary::-webkit-details-marker { display: none; }
+    .wybor-filtra > summary::after {
+      content: ""; flex: none; width: .4rem; height: .4rem; margin-top: -.2rem;
+      border-right: 1.5px solid var(--tekst-przygaszony); border-bottom: 1.5px solid var(--tekst-przygaszony);
+      transform: rotate(45deg);
+    }
+    .wybor-filtra[open] > summary::after { margin-top: .2rem; transform: rotate(-135deg); }
+    .wybor-filtra > summary:focus-visible { outline: 2px solid var(--marka); outline-offset: 1px; }
+    .wybor-filtra:has(:checked) > summary { border-color: var(--st-nowe-kropka); background: var(--st-nowe-tlo); }
+    .wybor-filtra-tekst { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .wybor-filtra-tekst--wybrane { font-weight: 600; color: var(--st-nowe-tekst); }
+    .wybor-filtra-lista {
+      position: absolute; z-index: 30; top: calc(100% + .25rem); left: 0;
+      min-width: 100%; width: max-content; max-width: min(22rem, calc(100vw - 2rem));
+      max-height: min(21rem, 60vh); overflow: auto; box-sizing: border-box;
+      margin: 0; padding: .3rem 0; border: 1px solid var(--ramka-pola); border-radius: .35rem;
+      background: var(--powierzchnia); color: var(--tekst); box-shadow: 0 .4rem 1.1rem rgb(0 0 0 / .16);
+    }
+    .wybor-filtra-opcja {
+      display: flex; align-items: center; gap: .55rem; padding: .32rem .75rem;
+      font-size: .88rem; cursor: pointer; white-space: nowrap;
+    }
+    .wybor-filtra-opcja:hover { background: var(--hover-wiersza); }
+    .wybor-filtra-opcja input { margin: 0; flex: none; accent-color: var(--marka); }
+    .wybor-filtra-grupa {
+      display: block; padding: .5rem .75rem .15rem; font-size: .67rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .06em; color: var(--tekst-przygaszony);
+    }
+    .wybor-filtra-grupa:not(:first-of-type) { border-top: 1px solid var(--ramka); margin-top: .3rem; }
+    .wybor-filtra-pusto { display: block; padding: .35rem .75rem; color: var(--tekst-przygaszony); font-size: .85rem; }
+    /* Ostatnie pole w rzedzie stoi przy prawej krawedzi — jego lista otwiera sie w lewo. */
+    .filtry-rzad > .pole-filtra:nth-last-child(2) .wybor-filtra-lista { left: auto; right: 0; }
     .zakres { display: flex; align-items: center; gap: .35rem; }
     .zakres .myslnik { color: var(--tekst-przygaszony); }
     /* Chip aktywnego filtra. Krzyzyk jest ZWYKLYM LINKIEM do tego samego widoku bez tego */
@@ -1351,6 +1408,9 @@
     @media (max-width: 420px) {
       .pole-filtra > .zakres { flex-direction: column; align-items: stretch; }
       .pole-filtra > .zakres .myslnik { display: none; }
+      /* Na telefonie lista opcji rozsuwa pasek, zamiast wisiec poza ekranem. */
+      .wybor-filtra-lista { position: static; margin-top: .25rem; max-width: none; box-shadow: none; }
+      .wybor-filtra > summary { max-width: none; }
     }
     /* Cztery ikony. KSZTALT niesie znaczenie razem z kolorem — */
     /* sam kolor nie wystarcza (patrz komentarz na początku lista.ejs, przy KLASA_IKONY i KSZTALTY_SVG). */

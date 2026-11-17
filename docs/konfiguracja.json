@@ -7859,14 +7859,14 @@
     },
     {
       "path": "src/moduly/zamowienia/modul.ts",
-      "line": 32,
+      "line": 33,
       "expression": "env",
       "callee": "efektywnyTryb",
       "call": "efektywnyTryb(env)"
     },
     {
       "path": "src/moduly/zamowienia/modul.ts",
-      "line": 33,
+      "line": 34,
       "expression": "env",
       "callee": "konfiguracjaZamowien",
       "call": "konfiguracjaZamowien(env)"
@@ -10892,7 +10892,7 @@
     },
     {
       "path": "src/moduly/zamowienia/modul.ts",
-      "sha256": "b3cd66e0271aa990aae05cce7175fea0aa60a9dedb89972b2522d5ec0b45aa49",
+      "sha256": "b08ebcb0c9b70df60af90e69468e8eec298db270e5e3452812cf8dda56216b95",
       "normalizacja": "LF"
     },
     {

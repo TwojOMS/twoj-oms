@@ -167,7 +167,7 @@ describe('metody Allegro w widokach panelu', () => {
     // Adres `/?wysylka=allegro_paczkomat` ma przejsc przez `parsujFiltry` (wartosc spoza
     // METODY_DO_FILTRA spada do null, czyli „bez filtra" — i lista pokazalaby WSZYSTKO).
     const filtry = parsujFiltry({ wysylka: 'allegro_paczkomat' }, definicjeKanalowHistoryczne);
-    expect(filtry.wysylka).toBe('allegro_paczkomat');
+    expect(filtry.wysylka).toEqual(['allegro_paczkomat']);
 
     const lista = [
       { id: 1, numer: 'A', metoda_wysylki: 'allegro_paczkomat' },

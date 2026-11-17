@@ -7,7 +7,7 @@ import { faktyDlaStatusu } from '../../domena/status-reczny.js';
 import { ETYKIETY_WYSYLKI, saNadpisanieWysylki, nazwaDostawy, etykietaWysylki, czyPobranie } from '../../domena/wysylka.js';
 import { kurierDomyslnyErli } from '../../domena/erli-droga-nadania.js';
 import { metodaKuriera } from '../../domena/moduly-kurierow.ts';
-import { parsujFiltry, numerStrony, adresZFiltrami, bezpiecznyPowrotNaListe, METODY_DO_FILTRA, kanalyDoFiltra } from '../../domena/filtry-listy.js';
+import { parsujFiltry, numerStrony, adresZFiltrami, bezpiecznyPowrotNaListe, METODY_DO_FILTRA, kanalyDoFiltra, ETYKIETY_FAKTURY, polaWyboruFiltrow } from '../../domena/filtry-listy.js';
 import { adresKartyZamowienia, kluczPozycjiListy } from '../../domena/adres-karty-zamowienia.js';
 import { wybraneZListy, podzielDoStatusu, powodZaDuzegoDruku } from '../../domena/masowe.js';
 import { metodyPlatnosciWBazie } from '../../oms/db/filtry.js';
@@ -270,28 +270,22 @@ app.get('/', async (req, reply) => {
         href: adresZFiltrami({ ...filtry, od: null, do: null }, kontekst),
       });
     }
-    if (filtry.wysylka) {
-      chipy.push({
-        etykieta: `Wysyłka: ${ETYKIETY_WYSYLKI[filtry.wysylka] ?? filtry.wysylka}`,
-        href: adresZFiltrami({ ...filtry, wysylka: null }, kontekst),
-      });
-    }
-    if (filtry.platnosc) {
-      // Chip mowi ETYKIETA slownika, nie kluczem z adresu — „Płatność: BLIK", nie „blik".
-      chipy.push({
-        etykieta: `Płatność: ${normalizujMetode(filtry.platnosc).etykieta}`,
-        href: adresZFiltrami({ ...filtry, platnosc: null }, kontekst),
-      });
-    }
+    // Filtry z wieloma wartościami: chip na KAŻDĄ wartość, a krzyżyk zdejmuje tylko ją —
+    // „DPD albo paczkomat" bez paczkomatu to nadal „DPD", a nie cała lista.
+    // Chip mówi ETYKIETĄ słownika, nie kluczem z adresu — „Płatność: BLIK", nie „blik".
     // Kanal sprzedazy ma chip tak samo, jak pozostale filtry — takze wtedy, gdy zostal
-    // wlaczony pozycja panelu bocznego, a nie polem wyboru. To JEDEN parametr w adresie,
-    // wiec musi dac sie zdjac jedna droga: bez chipu operator, ktory kliknal „Indywidualne",
-    // nie mialby czym wrocic do pelnej listy poza recznym skracaniem adresu.
-    if (filtry.kanal) {
-      chipy.push({
-        etykieta: `Kanał: ${adresKanalu(filtry.kanal, config.definicje)}`,
-        href: adresZFiltrami({ ...filtry, kanal: null }, kontekst),
-      });
+    // wlaczony pozycja panelu bocznego, a nie polem wyboru: bez chipu operator, ktory kliknal
+    // „Indywidualne", nie mialby czym wrocic do pelnej listy poza recznym skracaniem adresu.
+    const NAZWY_CHIPOW = {
+      wysylka: (w) => `Wysyłka: ${ETYKIETY_WYSYLKI[w] ?? w}`,
+      platnosc: (w) => `Płatność: ${normalizujMetode(w).etykieta}`,
+      kanal: (w) => `Kanał: ${adresKanalu(w, config.definicje)}`,
+      faktura: (w) => `Faktura: ${ETYKIETY_FAKTURY[w] ?? w}`,
+    };
+    for (const [klucz, nazwa] of Object.entries(NAZWY_CHIPOW)) {
+      for (const w of filtry[klucz] ?? []) {
+        chipy.push({ etykieta: nazwa(w), href: adresZFiltrami({ ...filtry, [klucz]: filtry[klucz].filter((x) => x !== w) }, kontekst) });
+      }
     }
 
     const stanPollera = poller?.stan?.() ?? null;
@@ -337,13 +331,15 @@ app.get('/', async (req, reply) => {
       kluczListy: kluczPozycjiListy(adresListy, config.definicje),
       // Adres tego samego widoku BEZ filtrow — przycisk „Wyczyść wszystko".
       adresBezFiltrow: adresZFiltrami({}, kontekst),
-      metodyDoFiltra: METODY_DO_FILTRA.map((k) => ({ klucz: k, etykieta: ETYKIETY_WYSYLKI[k] ?? k })),
-      // Katalog i etykiety pochodzą z jawnej konfiguracji także przed pierwszym zamówieniem.
-      // Kanał lub istniejące zamówienia: ta sama reguła, co statusy w menu.
-      kanalyDoFiltra: kanalyDoFiltra(config.definicje).filter(k => k.klucz !== 'indywidualne' || Object.hasOwn(etykietyStatusow(db), 'indywidualne')),
-      // Lista metod platnosci Z BAZY, nie ze stalej: sklep dokłada bramki bez pytania nas
-      // o zdanie, a wpisana na sztywno lista po cichu przestalaby byc kompletem.
-      metodyPlatnosci: opcjeMetodPlatnosci(metodyPlatnosciWBazie(db)),
+      polaWyboru: polaWyboruFiltrow(filtry, {
+        wysylka: METODY_DO_FILTRA.map((k) => ({ klucz: k, etykieta: ETYKIETY_WYSYLKI[k] ?? k })),
+        // Lista metod platnosci Z BAZY, nie ze stalej: sklep dokłada bramki bez pytania nas
+        // o zdanie, a wpisana na sztywno lista po cichu przestalaby byc kompletem.
+        platnosc: opcjeMetodPlatnosci(metodyPlatnosciWBazie(db)),
+        // Katalog i etykiety pochodzą z jawnej konfiguracji także przed pierwszym zamówieniem.
+        // Kanał lub istniejące zamówienia: ta sama reguła, co statusy w menu.
+        kanal: kanalyDoFiltra(config.definicje).filter(k => k.klucz !== 'indywidualne' || Object.hasOwn(etykietyStatusow(db), 'indywidualne')),
+      }),
       // Lista statusow do paska akcji masowych — TA SAMA, co na karcie zamowienia.
       opcjeStatusu: opcjeStatusow(db),
       // Fraza wraca do pola nad tabela — zeby dalo sie ja poprawic, a nie wpisywac od zera —

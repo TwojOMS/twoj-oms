@@ -38,8 +38,8 @@ describe('PRZ-089 lista zamówień bez podłączonych kanałów', () => {
     expect(html).not.toContain('Brak synchronizacji');
     expect(html).toContain('Żaden kanał sprzedaży nie jest podłączony');
     // Filtr kanałów obcego człowieka: bez „Indywidualne” (kanał panelu zamówień indywidualnych Pracownia Świetlik).
-    expect(html).toContain('<option value="reczne"');
-    expect(html).not.toContain('<option value="indywidualne"');
+    expect(html).toContain('name="kanal" value="reczne"');
+    expect(html).not.toContain('name="kanal" value="indywidualne"');
   });
   it('z OMS_KANAL_INDYWIDUALNY=1 filtr ma „Indywidualne” jak dotąd', async () => {
     const katalog = mkdtempSync(join(tmpdir(), 'oms089-indyw-')); katalogi.push(katalog);
@@ -48,7 +48,7 @@ describe('PRZ-089 lista zamówień bez podłączonych kanałów', () => {
       OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000', OMS_KANALY: '[]',
       OMS_ETYKIETY_KATALOG: katalog, OMS_PROFORMY_KATALOG: katalog, OMS_KANAL_INDYWIDUALNY: '1',
     });
-    expect(html).toContain('<option value="indywidualne"');
+    expect(html).toContain('name="kanal" value="indywidualne"');
   });
   it('z kanałami i bez przebiegu pollera nadal ostrzega jak dotąd', async () => {
     const html = await lista({ ...ENV_DEMO, OMS_TRYB: 'produkcja', OMS_USER: 'operator', OMS_PASS: 'atrapa', OMS_PROFORMY_KATALOG: tmpdir(), OMS_ETYKIETY_KATALOG: tmpdir() });

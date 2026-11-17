@@ -16,6 +16,7 @@ import { integracje } from '../../integracje/klucze.js';
 import { migracjaStatusowWlasnych } from './migracje/0002-statusy-wlasne.ts';
 import { migracjaIndeksuListy } from './migracje/0001-indeks-listy.ts';
 import { migracjaScalen } from './migracje/0003-scalenia.ts';
+import { migracjaIndeksuListyFaktura } from './migracje/0004-indeks-listy-faktura.ts';
 import { efektywnyTryb } from '../../core/tryb.ts';
 import { zrodloAdresuFirmy } from '../../oms/db/adres-firmy.js';
 import { zrodloNipuIBdoFirmy } from '../../oms/db/nip-bdo-firmy.js';
@@ -25,7 +26,7 @@ import { registerUstawieniaGusRoutes } from './ustawienia-gus.js';
 // `fabryki.createGusClient` — atrapa GUS piaskownicy i demo (deploy/proba/atrapy/gus.mjs), jak fabryki inFaktu
 // i VIES w module faktur. Poza OMS_TRYB=proba odmowa już przy konfiguracji.
 export function createModulZamowienia({ zWiadomosciami = false, fabryki = {} as { createGusClient?: (opcje?: { klucz: string; url: string }) => any } } = {}): ModulOms<ReturnType<typeof konfiguracjaZamowien>> { return {
-  nazwa:'zamowienia',wersja:'1.0.0',wymaga:['rdzen','web','kanaly','faktury',...(zWiadomosciami?['wiadomosci']:[])],migracje:[migracjaIndeksuListy,migracjaStatusowWlasnych,migracjaScalen],
+  nazwa:'zamowienia',wersja:'1.0.0',wymaga:['rdzen','web','kanaly','faktury',...(zWiadomosciami?['wiadomosci']:[])],migracje:[migracjaIndeksuListy,migracjaStatusowWlasnych,migracjaScalen,migracjaIndeksuListyFaktura],
   uprawnienia:[{klucz:'zamowienia',etykieta:'Zamówienia',role:['admin','operator']}],
   menu:[{dzial:'sprzedaz',grupa:'obsluga',etykieta:'Zamówienia',adres:'/',uprawnienie:'zamowienia',kolejnosc:10}],
   konfiguracja:env=>{

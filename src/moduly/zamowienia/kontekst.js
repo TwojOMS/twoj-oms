@@ -1059,7 +1059,7 @@ function renderujNowe(
     } = {},
   ) {
     const zwolniona = zwolnionaFirma();
-    return reply.view('nowe-zamowienie.ejs', { szerokosc: 'formularz',
+    return reply.view('nowe-zamowienie.ejs', { szerokosc: 'karta',
       title: 'Nowe zamówienie',
       // Zywe szukanie w magazynie — patrz komentarz przy `<script>` w layout-oms.ejs.
       htmx: true,

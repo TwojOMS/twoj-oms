@@ -26,7 +26,10 @@ const NUMER = /PRZ-\d+/;
 
 /** Wpisy sekcji „# kod” listy wycięcia: od nagłówka `# kod` do następnego nagłówka `# `. */
 function listaWyciecia() {
-  const linie = fs.readFileSync(path.join(KORZEN, 'docs/wyciecie-twojefaktury.txt'), 'utf8').split(/\r?\n/);
+  // Kopia publiczna nie ma modułu TwojeFaktury ani jego listy wycięcia — nie ma czego pomijać.
+  const plikListy = path.join(KORZEN, 'docs/wyciecie-twojefaktury.txt');
+  if (!fs.existsSync(plikListy)) return [];
+  const linie = fs.readFileSync(plikListy, 'utf8').split(/\r?\n/);
   const wpisy = [];
   let wSekcji = false;
   for (const surowa of linie) {
@@ -110,7 +113,7 @@ describe('komentarze w src bez numerów zadań', () => {
   const sprawdzane = wszystkie.filter((p) => !pominiete.includes(p));
 
   it('lista wycięcia ma sekcję kodu, a skan widzi pliki', () => {
-    expect(wpisy.length).toBeGreaterThan(0);
+    expect(wpisy).toEqual([]);
     expect(sprawdzane.length).toBeGreaterThan(100);
   });
 

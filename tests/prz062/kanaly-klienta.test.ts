@@ -129,13 +129,14 @@ describe('PRZ-062 panel na kanałach pod nazwami klienta', () => {
   it('lista i menu filtra: oba kanały pod etykietami klienta, filtr zawęża do właściwego kanału', async () => {
     const lista = await s.get('/?wszystkie=1');
     expect(lista.status).toBe(200); czysty('/', lista);
-    expect(lista.body).toContain('<option value="allegro_przykladowa">Allegro Pracownia Przykładowa</option>');
-    expect(lista.body).toContain('<option value="woo_przykladowa">sklep.przykladowa.example</option>');
+    // Filtr kanału to lista wielokrotnego wyboru: pola wyboru, nie <option>.
+    expect(lista.body).toContain('name="kanal" value="allegro_przykladowa" data-etykieta="Allegro Pracownia Przykładowa"> Allegro Pracownia Przykładowa</label>');
+    expect(lista.body).toContain('name="kanal" value="woo_przykladowa" data-etykieta="sklep.przykladowa.example"> sklep.przykladowa.example</label>');
     for (const numer of ['ab-062', 'W-701']) expect(lista.body).toContain(numer);
     for (const [kanal, jest, nieMa] of [['allegro_przykladowa', 'ab-062', 'W-701'], ['woo_przykladowa', 'W-701', 'ab-062']]) {
       const r = await s.get(`/?wszystkie=1&kanal=${kanal}`);
       expect(r.status).toBe(200); czysty(kanal, r);
-      expect(r.body).toContain(`<option value="${kanal}" selected`);
+      expect(r.body).toContain(`name="kanal" value="${kanal}" checked`);
       expect(r.body).toContain(jest); expect(r.body).not.toContain(`>${nieMa}<`);
     }
   });
@@ -237,7 +238,7 @@ describe('PRZ-062 instalacja bez kanałów: pusto jawnie, nie po firmie autora',
     try {
       const lista = await s.get('/');
       expect(lista.status).toBe(200); expect(firmaW(lista.body)).toEqual([]);
-      const opcje = [...lista.body.matchAll(/<option value="([^"]*)"[^>]*>[^<]*<\/option>/g)].map(m => m[1]);
+      const opcje = [...lista.body.matchAll(/<input type="checkbox" name="kanal" value="([^"]*)"/g)].map(m => m[1]);
       // PRZ-089: „Indywidualne” (panel zamówień indywidualnych autora) tylko z OMS_KANAL_INDYWIDUALNY.
       expect(opcje).toContain('reczne'); expect(opcje).not.toContain('indywidualne');
       expect(opcje.filter(o => definicjeKanalowHistoryczne.some(k => k.klucz === o))).toEqual([]);

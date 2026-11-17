@@ -29,7 +29,7 @@ import { zamowieniaPoId, numeryZamowien } from './zamowienia.js';
 import { idsDolaczonych } from '../../domena/scalanie.js';
 import { sledzZmianyListy } from './sledzenie-listy.js';
 import { klasyfikacjaListy } from '../../domena/klasyfikacja-listy.js';
-import { pasujaKlucze } from '../../domena/filtry-listy.js';
+import { pasujaKlucze, saJakiesFiltry } from '../../domena/filtry-listy.js';
 import { dopasowanieFrazy, normalizuj } from '../../domena/szukanie.js';
 
 // Porcja przeliczenia przed odpowiedzią: tyle zamówień czyta się i klasyfikuje bez oddania
@@ -52,9 +52,10 @@ const rozdziel = (s) => (s === '' ? [] : s.split(SEP));
 function zarejestrujFunkcje(db) {
   let ostatnie = null; let sparsowane = null;
   db.function('lista_filtr', { deterministic: true },
-    (dzien, wysylka, indywidualne, sklep, platnosc, filtryJson) => {
+    (dzien, wysylka, indywidualne, sklep, platnosc, chceFakture, fakturaWystawiona, filtryJson) => {
       if (filtryJson !== ostatnie) { ostatnie = filtryJson; sparsowane = JSON.parse(filtryJson); }
-      return pasujaKlucze({ dzien, wysylka, indywidualne: Boolean(indywidualne), sklep, platnosc }, sparsowane) ? 1 : 0;
+      return pasujaKlucze({ dzien, wysylka, indywidualne: Boolean(indywidualne), sklep, platnosc,
+        chceFakture: Boolean(chceFakture), fakturaWystawiona: Boolean(fakturaWystawiona) }, sparsowane) ? 1 : 0;
     });
   // Fraza rozkładana raz na zapytanie, nie raz na wiersz.
   let ostatniaFraza = null; let dopasuj = null;
@@ -105,9 +106,15 @@ function utworz(db) {
   }
   zarejestrujFunkcje(db);
   const maScalenia = db.prepare('PRAGMA table_info(zamowienia)').all().some((k) => k.name === 'scalone_do');
-  const wstaw = db.prepare(`INSERT OR REPLACE INTO lista_stan (zamowienie_id, utworzone_at, status, robocze_od,
-    po_terminie_od, wazne_do, dzien, wysylka, indywidualne, sklep, platnosc, szukaj_tekst, szukaj_cyfry, blad)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+  // Kolumny filtra faktury dochodzą migracją modułu zamówień; baza złożona z samej pierwszej
+  // migracji (testy indeksu) ich nie ma — wtedy filtr faktury widzi „nie chce, niewystawiona".
+  const maFakture = db.prepare('PRAGMA table_info(lista_stan)').all().some((k) => k.name === 'faktura_wystawiona');
+  const kolumnyFaktury = maFakture ? 'chce_fakture, faktura_wystawiona' : 'NULL, NULL';
+  const wstawWiersz = db.prepare(`INSERT OR REPLACE INTO lista_stan (zamowienie_id, utworzone_at, status, robocze_od,
+    po_terminie_od, wazne_do, dzien, wysylka, indywidualne, sklep, platnosc, szukaj_tekst, szukaj_cyfry, blad
+    ${maFakture ? ', chce_fakture, faktura_wystawiona' : ''})
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?${maFakture ? ',?,?' : ''})`);
+  const wstaw = { run: (...w) => (maFakture ? wstawWiersz.run(...w) : wstawWiersz.run(...w.slice(0, 14))) };
   // ⚠️ ZAMÓWIENIE NIE DO ODCZYTANIA. Jeden wiersz z uszkodzonym JSON-em
   // (ręczny SQL, awaria zapisu) wywracał całą porcję, a znacznik zostawał w `lista_brudne`
   // i trafiał w każdą następną porcję — indeks stawał dla WSZYSTKICH zamówień, a przy pierwszej
@@ -115,7 +122,7 @@ function utworz(db) {
   // jako „do zrobienia" (widoczne, nie zgubione), z przyczyną, a reszta liczy się normalnie.
   // Status `blad` nie jest żadną zakładką — zamówienie liczy się do „Wszystkie" i „Do zrobienia".
   const wstawUszkodzone = (w, e, teraz) => wstaw.run(w.id, w.utworzone_at, STATUS_USZKODZONE, teraz - MARGINES_MS, null,
-    teraz + PONOW_USZKODZONE_MS, null, null, 0, w.sklep ?? null, null, normalizuj(w.numer ?? ''), '', przyczynaUszkodzenia(e));
+    teraz + PONOW_USZKODZONE_MS, null, null, 0, w.sklep ?? null, null, normalizuj(w.numer ?? ''), '', przyczynaUszkodzenia(e), null, null);
   let kolejka = Promise.resolve();
   let sprawdzenieRuszylo = false;
   let sprawdzenie = null; // { kursor, sprawdzone, wszystkie } w trakcie sprawdzania w tle
@@ -160,7 +167,8 @@ function utworz(db) {
         }
         wstaw.run(z.id, z.utworzone_at, k.status, k.robocze_od, k.po_terminie_od, k.wazne_do - rozrzut(z.id),
           k.filtr.dzien, k.filtr.wysylka, k.filtr.indywidualne ? 1 : 0, k.filtr.sklep, k.filtr.platnosc,
-          k.szukaj.tekst.join(SEP), k.szukaj.cyfry.join(SEP), null);
+          k.szukaj.tekst.join(SEP), k.szukaj.cyfry.join(SEP), null,
+          k.filtr.chceFakture ? 1 : 0, k.filtr.fakturaWystawiona ? 1 : 0);
       }
       db.exec('RELEASE lista_porcja');
     } catch (e) {
@@ -276,8 +284,8 @@ function utworz(db) {
       if (zakladka?.rodzaj === 'status') { warunki.push('status = ?'); arg.push(zakladka.status); }
       else if (zakladka?.rodzaj === 'robocze') { warunki.push('robocze_od <= ?'); arg.push(teraz); }
       else if (zakladka?.rodzaj === 'po_terminie') { warunki.push('po_terminie_od <= ?'); arg.push(teraz); }
-      if (filtry && Object.values(filtry).some(Boolean)) {
-        warunki.push('lista_filtr(dzien, wysylka, indywidualne, sklep, platnosc, ?) = 1');
+      if (saJakiesFiltry(filtry)) {
+        warunki.push(`lista_filtr(dzien, wysylka, indywidualne, sklep, platnosc, ${kolumnyFaktury}, ?) = 1`);
         arg.push(JSON.stringify(filtry));
       }
       if (szukaj) { warunki.push('lista_szukaj(szukaj_tekst, szukaj_cyfry, ?) = 1'); arg.push(szukaj); }
@@ -287,7 +295,7 @@ function utworz(db) {
       // wszystkich bierzemy z tego samego przejścia (`COUNT(*) OVER ()`) zamiast drugiego skanu.
       // Sama zakładka idzie indeksem: strona kończy się po LIMIT, a COUNT
       // po indeksie kolumny jest tani — okno wymusiłoby tam pełne przejście i sortowanie.
-      if (filtry && Object.values(filtry).some(Boolean) || szukaj) {
+      if (saJakiesFiltry(filtry) || szukaj) {
         const wiersze = db.prepare(`SELECT zamowienie_id, COUNT(*) OVER () AS lacznie FROM lista_stan ${gdzie}
           ORDER BY utworzone_at DESC, zamowienie_id DESC LIMIT ? OFFSET ?`).all(...arg, limit, offset);
         return { ids: wiersze.map((w) => w.zamowienie_id), lacznie: wiersze.length ? wiersze[0].lacznie : ileWszystkich() };

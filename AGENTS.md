@@ -107,5 +107,6 @@ kopię na żądanie robi kontener kopii (polecenie „kopia teraz” w `docs/ins
   ekranie, sprawdź, czy tej integracji nie ma w `oms.env`.
 - Panel po zwykłym HTTP nie nadaje się do internetu; HTTPS i kontrola dostępu to osobny krok.
 - Baza, kopie i konfiguracja żyją **poza** katalogiem programu — nie umieszczaj ich w repo.
-- Komentarze odwołujące się do `PRZ-nnn` to ślady zadań z historii projektu; opisują powód zmiany,
-  ale tablicy zadań w repo nie ma.
+- Komentarz mówi, dlaczego kod jest taki — bez numerów zadań, dat, osób i odsyłaczy do dokumentów spoza repo.
+  W `src/` pilnuje tego `tests/core/straznik-numerow-zadan-w-komentarzach.test.js`. W `tests/`, `scripts/` i `deploy/`
+  zostały jeszcze ślady `PRZ-nnn` z historii projektu: opisują powód zmiany, ale tablicy zadań w repo nie ma.

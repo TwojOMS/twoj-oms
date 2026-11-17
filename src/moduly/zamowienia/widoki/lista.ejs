@@ -153,48 +153,32 @@
             <input type="date" name="do" value="<%= filtry.do || '' %>" aria-label="Data zamówienia do">
           </span>
         </label>
-        <label class="pole-filtra">
-          <span>Sposób wysyłki</span>
-          <select name="wysylka">
-            <option value="">Wszystkie</option>
-            <% metodyDoFiltra.forEach(function (m) { %>
-              <option value="<%= m.klucz %>"<%- filtry.wysylka === m.klucz ? ' selected' : '' %>><%= m.etykieta %></option>
-            <% }); %>
-          </select>
-        </label>
-        <label class="pole-filtra">
-          <span>Sposób płatności</span>
-          <%# Lista pochodzi Z BAZY (oms/db/filtry.js), a nie ze stalej: sklep dokłada bramki %>
-          <%# bez pytania nas o zdanie, a lista wpisana na sztywno po cichu przestalaby %>
-          <%# byc kompletem. %>
-          <select name="platnosc">
-            <option value="">Wszystkie</option>
-            <%# Kubelki ze slownika (domena/metody-platnosci.js): wartoscia jest KLUCZ %>
-            <%# kanoniczny (stabilny w zakladkach), napisem etykieta. „BLIK" i „Blik" %>
-            <%# z bazy to jedna opcja. %>
-            <% metodyPlatnosci.forEach(function (m) { %>
-              <option value="<%= m.klucz %>"<%- filtry.platnosc === m.klucz ? ' selected' : '' %>><%= m.etykieta %></option>
-            <% }); %>
-          </select>
-        </label>
-        <label class="pole-filtra">
-          <span>Kanał sprzedaży</span>
-          <%# Lista ZAMKNIETA, sklada ja domena (kanalyDoFiltra) — inaczej niz metody %>
-          <%# platnosci wyzej, ktore ida Z BAZY. Powod jest asymetryczny: bramki platnosci %>
-          <%# doklada SKLEP, a kanaly dokladamy MY, wpisem w konfiguracji — kanal bez %>
-          <%# zamowien tez ma byc na liscie (domena/filtry-listy.js). %>
-          <%# %>
-          <%# ⚠️ „Indywidualne" NIE jest wartoscia kolumny `sklep` — to kanal wyprowadzony %>
-          <%# ze znacznika `zamowienia.indywidualne`, bo takie zamowienia wpadaja do sklepu %>
-          <%# sklepu A razem ze zwyklymi. To pole i pozycja „Indywidualne" w panelu %>
-          <%# bocznym to TEN SAM parametr adresu, a nie dwie osobne regulki. %>
-          <select name="kanal">
-            <option value="">Wszystkie</option>
-            <% kanalyDoFiltra.forEach(function (k) { %>
-              <option value="<%= k.klucz %>"<%- filtry.kanal === k.klucz ? ' selected' : '' %>><%= k.etykieta %></option>
-            <% }); %>
-          </select>
-        </label>
+        <%# Wysyłka, płatność, kanał i faktura: LISTY WIELOKROTNEGO WYBORU. Pola wyboru o jednej %>
+        <%# nazwie w formularzu GET dają powtórzony parametr adresu — bez JavaScriptu i z linkiem, %>
+        <%# który da się przesłać dalej. Lista chowa się w `details`, a zwinięta kontrolka mówi %>
+        <%# tylko „Wszystkie”, nazwę jednej opcji albo „3 wybrane” — pasek filtrów nie rośnie %>
+        <%# przy wielu zaznaczeniach. Opcje składa trasa (polaWyboruFiltrow w domena/filtry-listy.js): %>
+        <%# płatności Z BAZY (sklep dokłada bramki bez pytania nas o zdanie, wartością jest klucz %>
+        <%# słownika), kanały z konfiguracji — także kanał bez zamówień. %>
+        <%# ⚠️ „Indywidualne" NIE jest wartoscia kolumny `sklep` — to kanal wyprowadzony ze znacznika %>
+        <%# `zamowienia.indywidualne`. Ta opcja i pozycja „Indywidualne" w panelu bocznym to TEN SAM %>
+        <%# parametr adresu, a nie dwie osobne regulki. %>
+        <% polaWyboru.forEach(function (p) { %>
+          <div class="pole-filtra">
+            <span id="filtr-<%= p.nazwa %>-etykieta"><%= p.etykieta %></span>
+            <details class="wybor-filtra" name="wybor-filtra" data-wszystkie="Wszystkie">
+              <summary aria-describedby="filtr-<%= p.nazwa %>-etykieta"><span class="wybor-filtra-tekst<%= p.ileWybranych ? ' wybor-filtra-tekst--wybrane' : '' %>"><%= p.podsumowanie %></span></summary>
+              <fieldset class="wybor-filtra-lista">
+                <legend class="poza-okiem"><%= p.etykieta %></legend>
+                <% let grupa = null; p.opcje.forEach(function (o) { %>
+                  <% if (o.grupa && o.grupa !== grupa) { grupa = o.grupa; %><span class="wybor-filtra-grupa"><%= o.grupa %></span><% } %>
+                  <label class="wybor-filtra-opcja"><input type="checkbox" name="<%= p.nazwa %>" value="<%= o.klucz %>"<%- o.zaznaczona ? ' checked' : '' %> data-etykieta="<%= o.krotko || o.etykieta %>"> <%= o.etykieta %></label>
+                <% }); %>
+                <% if (!p.opcje.length) { %><span class="wybor-filtra-pusto">Brak danych do wyboru</span><% } %>
+              </fieldset>
+            </details>
+          </div>
+        <% }); %>
         <button class="btn btn--glowny" type="submit">Filtruj</button>
       </div>
       <% if (chipy.length) { %>
@@ -210,6 +194,7 @@
         </div>
       <% } %>
     </form>
+    <script type="module" src="<%= zasob('filtry-wyboru.js') %>"></script>
     <%# Wyszukiwarka: zwykly formularz GET, bez JavaScriptu — tak samo, jak reszta panelu. %>
     <%# Dzieki temu wynik ma WLASNY ADRES (?szukaj=...), ktory da sie odswiezyc, wrzucic %>
     <%# w zakladki i wkleic komus w wiadomosci. Szuka po CALEJ liscie, nie po biezacej %>
@@ -221,8 +206,8 @@
       <%# `kanal` jedzie dalej razem z reszta filtrow — jest wpisany SWIADOMIE, tak samo %>
       <%# jak zakres dat, wiec fraza ma go zawezac, a nie kasowac. Zdejmuje sie wylacznie %>
       <%# zakladke statusu (nawigacja), i to jest cala roznica. %>
-      <% ['od', 'do', 'wysylka', 'platnosc', 'kanal'].forEach(function (k) { %>
-        <% if (filtry[k]) { %><input type="hidden" name="<%= k %>" value="<%= filtry[k] %>"><% } %>
+      <% ['od', 'do', 'wysylka', 'platnosc', 'kanal', 'faktura'].forEach(function (k) { %>
+        <% [].concat(filtry[k] || []).forEach(function (w) { %><input type="hidden" name="<%= k %>" value="<%= w %>"><% }); %>
       <% }); %>
       <label class="szukajka-pole">
         <span class="szukajka-etykieta">Szukaj zamówienia</span>
