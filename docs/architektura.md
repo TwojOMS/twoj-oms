@@ -187,4 +187,5 @@ w `src/moduly/zamowienia/modul.ts`.
 
 - Kontrakty (moduł, kanał sprzedaży, kurier): `src/core/kontrakty.ts`.
 - Zmienne środowiska: `docs/konfiguracja.json` i `docs/konfiguracja.md`.
+- Kanał jako moduł: `docs/kanal-jako-modul.md`; kurier jako moduł: `docs/kurier-jako-modul.md`.
 - Granice między modułami: `scripts/granice-modulow.mjs` i `tests/core/granice-modulow.test.ts`.
